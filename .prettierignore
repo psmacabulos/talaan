@@ -1,0 +1,14 @@
+node_modules
+.next
+out
+build
+coverage
+package-lock.json
+next-env.d.ts
+
+# Owner-authored instructions and reference files — Claude edits these
+# directly when a step calls for it, not through a repo-wide format pass.
+CLAUDE.md
+AGENTS.md
+docs/
+design/
