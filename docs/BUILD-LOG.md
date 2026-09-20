@@ -234,3 +234,47 @@ Given the number of small interacting decisions (preset data shape, the specific
 
 ### Result
 All three build tasks done. Waiting on the owner's review.
+
+---
+
+## Step 6: shadcn/ui and base components
+
+**Goal:** the first real interactive UI pieces — buttons, dialogs, dropdowns, a table — built to plug directly into the color system Steps 4–5 already built, plus three shared components (`StatusPill`, `EmptyState`, `PageHeader`).
+
+### The engine choice: researched, not assumed
+The installed shadcn CLI (`shadcn@4.21.0`) turned out to be a significantly newer redesign than expected — it now asks which accessibility engine (Radix UI, shadcn's own new "Base" primitives, or React Aria) should power every component, via `-b`. This wasn't documented anywhere in CLAUDE.md, and guessing wrong would have meant regenerating every component file later. Checked `npx shadcn@latest --help`, `init --help`, and `npx shadcn@latest info` (which showed the CLI's own doc links, revealing its default preset points at a *different* registry than the one the already-configured shadcn MCP server uses) before bringing this to the owner as a real decision rather than picking silently. Owner chose Radix UI, matching the MCP server's own default.
+
+The CLI also turned out to have a *second* interactive choice not mentioned anywhere: a "preset" (`Nova`, `Vega`, `Maia`, …, or `Custom`), each bundling its own font/color starter theme. `-y` doesn't skip this prompt; it needs `-p <name>` explicitly, and `-p custom` isn't actually a valid value (it errored: "Invalid preset: custom"). Went with `-p nova` (Lucide icons, matching CLAUDE.md's own icon choice) — but see below, since the preset's font/color output couldn't just be trusted anyway.
+
+### `shadcn init` is not blank-slate safe on a project with existing tokens
+Ran `npx shadcn@latest init -b radix -p nova -y`, then immediately diffed every file it touched (`git status` / `git diff`) before adding a single component, per the plan's own stated safety step. It:
+- Appended a whole second, generic `:root`/`.dark` color block to `globals.css` (flat greys, `oklch(1 0 0)` etc.) — which, being later in the cascade than our own token declarations, would have silently outranked the real brand colors.
+- Injected `--radius-sm` through `--radius-4xl` directly into the `@theme inline` block using a different formula than Step 4's own radius scale — same conflict, same risk (the `@theme inline` entry sits later in the cascade than tokens.css's plain `:root` declaration).
+- Rewrote `--font-heading` to point at a new Geist font it loaded, added `font-sans`/`geist.variable` to `<html>`'s class list, and added an `@layer base { html { @apply font-sans; } }` rule — all of which would have replaced Lexend with Geist as the page's default font.
+- Added `--color-sidebar-*` and `--color-chart-*` mappings for components this project isn't using.
+
+All of the above was manually removed. What was kept: `@import "tw-animate-css"` and `@import "shadcn/tailwind.css"` (checked the latter's actual contents in `node_modules` first — it's just animation keyframes and `data-state` variants Radix components use, no colors, no conflict), `components.json` (correctly detected Tailwind v4, no config file, `src/app/globals.css`), and `src/lib/utils.ts` (`export { cn } from "cn"` — a genuine, official, zero-dependency npm package by shadcn himself, verified with `npm view cn`, not a hand-written clsx/tailwind-merge combo as expected from older guides).
+
+**The lesson, for next time:** an `init`/scaffold command should never be trusted to be additive-only on a project with its own existing conventions, even a well-known one. Diff immediately, before doing anything else.
+
+### New tokens: aliased, not reinvented
+Before adding components, checked with `--dry-run --view` on each of the 10 planned components (and the actual `git diff`'s injected values) which CSS variables they genuinely reference. Found four missing from the Step 4/5 token set: `popover`, `secondary`, `input`, `destructive`. Rather than hand-picking four new brand colors and extending every preset (`presets.ts`, `apply-preset.ts`, and `presets.test.ts`'s AA loop) to cover them, aliased each to an existing, already-preset-aware token directly in `globals.css`'s `@theme inline` block: `--color-popover: var(--card)`, `--color-secondary: var(--accent)`, `--color-input: var(--border)`, `--color-destructive: var(--status-absent)`. This means all four automatically track whichever preset and mode is active, with no new preset data and no new tests to keep in sync. Only `--destructive-foreground` needed a genuinely new literal (no existing token fits "text color for a solid destructive fill") — added to `tokens.css` next to the status colors, with contrast checked directly (`wcagContrast` via a quick Node script, same technique as Step 5): 6.10:1 in light mode, 8.80:1 in dark mode, both comfortably past AA.
+
+### A real cross-step interaction found while testing: portals and the Step 5 preview
+While clicking through the new Dialog/Sheet/DropdownMenu on the demo page under a non-default `?preset=` (Step 5's temporary preview link), noticed the popup content kept showing the School preset's colors instead of the one being previewed. Root cause: Step 5's preview recolors only inside its own wrapper `<div>` (deliberately, so it never has to touch `<html>`) — but Radix renders dialogs/menus/selects through a portal, a separate DOM branch outside that wrapper entirely, so the scoped override never reaches them. Confirmed this doesn't affect the real system: `ThemePresetStyle` (wired into `layout.tsx`) sets colors at `:root`/`.dark`, which applies document-wide regardless of where a portal renders. Documented as a known, harmless limitation of the temporary preview tool in `docs/COMPONENTS.md` rather than engineering a fix into scaffolding Step 11 replaces anyway.
+
+### What got built
+- `components.json`, `src/lib/utils.ts` (`cn()`), 11 files in `src/components/ui/` (button, input, label, select, sheet, dialog, dropdown-menu, table, badge, sonner, skeleton) via `npx shadcn@latest add ... -y`.
+- `<Toaster />` mounted in `layout.tsx`, inside `<ThemeProvider>` (it calls `useTheme()` from `next-themes`, so it has to be inside that provider's tree, not just anywhere in `<body>`).
+- `src/components/status-pill.tsx`, `empty-state.tsx`, `page-header.tsx`, each with a Testing Library test.
+- A "Components (Step 6)" section on the existing demo page (`src/app/page.tsx`), showing one example of everything.
+- `docs/COMPONENTS.md` (new — a different subject from `STYLING-SYSTEM.md`'s color mechanism, so kept as its own file rather than a "part 2"), cross-linked from `STYLING-SYSTEM.md` and the README.
+
+### A near-miss caught before it shipped
+First draft of the `EmptyState` demo on the page passed a real `onClick` handler as its `action` prop, directly from `page.tsx` (an async Server Component) through `EmptyState` and `Button` (neither marked `"use client"`) down to a plain `<button>`. This would have failed at build time — a Server Component can't hand a live function down to a host element with no Client Component boundary in between. Caught by reasoning through the render tree before running the build, not by the error itself; simplified the demo to not pass an action handler (the behavior is already covered by `empty-state.test.tsx`'s own `fireEvent` test, which renders `EmptyState` directly rather than through the server tree).
+
+### Verified
+`lint`, `typecheck`, `test` (32/32 passing), and `build` all pass. Confirmed in the browser with Playwright at 1280px and 360px, in light and dark, including opening the Dialog/Sheet/DropdownMenu/Select and firing a toast — clean console throughout, and (bonus, since the demo page happened to be showing a non-default preset mid-check) directly confirmed the status pills stay fixed while everything else recolors.
+
+### Result
+All build tasks done. Waiting on the owner's review.

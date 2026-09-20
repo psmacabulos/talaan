@@ -49,5 +49,6 @@ Every color a school sees comes from a **theme preset** — never a hardcoded va
 - [`docs/BUILD-LOG.md`](docs/BUILD-LOG.md) — a detailed account of how each step was actually built: real commands, configuration choices, and how any problems were solved.
 - [`docs/LEARNING-LOG.md`](docs/LEARNING-LOG.md) — short, plain-language notes explaining tools and commands along the way.
 - [`docs/STYLING-SYSTEM.md`](docs/STYLING-SYSTEM.md) — how the design tokens, Tailwind, and dark mode actually work together, file by file, with diagrams.
+- [`docs/COMPONENTS.md`](docs/COMPONENTS.md) — the shadcn/ui component library: the Radix decision, how components pick up our tokens, and the shared `StatusPill`/`EmptyState`/`PageHeader` components.
 - [`docs/OWNER-GUIDE.md`](docs/OWNER-GUIDE.md) — how the owner works with Claude on this project, step by step.
 - [`CLAUDE.md`](CLAUDE.md) — the standing instructions Claude follows for this project (stack, design system, code structure, workflow rules).

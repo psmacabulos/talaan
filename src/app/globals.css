@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "../styles/tokens.css";
 @import "../styles/base.css";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
 /* Tailwind v4 CSS-first dark mode: key `dark:` off next-themes' `.dark` class
    on <html> instead of only `prefers-color-scheme`. */
@@ -25,6 +27,24 @@
 
   --color-border: var(--border);
   --color-ring: var(--ring);
+
+  /* Added by Step 6 (shadcn/ui components) — aliased to an existing token
+     rather than given an independent value per preset, since none of them
+     need their own brand identity: a popover is just a raised surface like
+     --card, a secondary surface is a soft one like --accent, and an input
+     border matches --border. See docs/COMPONENTS.md. */
+  --color-popover: var(--card);
+  --color-popover-foreground: var(--card-foreground);
+  --color-secondary: var(--accent);
+  --color-secondary-foreground: var(--accent-foreground);
+  --color-input: var(--border);
+
+  /* Fixed, never themed — same reasoning as the status colors below.
+     "Destructive" and "absent" are the same red for the same reason: danger
+     means the same thing in every theme. --destructive-foreground is a new
+     literal (tokens.css) since no existing token fits a solid fill's text. */
+  --color-destructive: var(--status-absent);
+  --color-destructive-foreground: var(--destructive-foreground);
 
   --color-status-present: var(--status-present);
   --color-status-present-bg: var(--status-present-bg);

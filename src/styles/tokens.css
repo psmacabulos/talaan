@@ -44,6 +44,12 @@
   --status-idle: oklch(49.3% 0.046 260);
   --status-idle-bg: oklch(94.7% 0.013 255.5);
 
+  /* Destructive actions (Step 6) — fixed like the status colors above.
+     The color itself is --status-absent (aliased in globals.css); this is
+     just its solid-fill text color, which needs its own literal since
+     nothing else fits a light foreground on a medium-dark red. */
+  --destructive-foreground: oklch(100% 0 0);
+
   /* Radius scale */
   --radius: 0.625rem;
   --radius-sm: calc(var(--radius) - 0.25rem);
@@ -91,6 +97,10 @@
   --status-absent-bg: oklch(27.3% 0.061 17.3);
   --status-idle: oklch(77.6% 0.036 260.4);
   --status-idle-bg: oklch(29.1% 0.051 263.3);
+
+  /* Dark-mode status-absent is bright (76.5% lightness), so its solid-fill
+     foreground has to be dark, not light — see the light block above. */
+  --destructive-foreground: oklch(15% 0.02 25);
 
   --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.24);
   --shadow-md: 0 4px 12px oklch(0% 0 0 / 0.32);

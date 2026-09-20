@@ -1,6 +1,53 @@
+import { UsersRound } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { presetToScopedCss } from "@/lib/theme/apply-preset";
 import { getThemePreset, themePresets } from "@/lib/theme/presets";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { StatusPill } from "@/components/status-pill";
+import { EmptyState } from "@/components/empty-state";
+import { PageHeader } from "@/components/page-header";
+import { ToastDemoButton } from "@/components/toast-demo-button";
 
 const PREVIEW_SELECTOR = "[data-preset-preview]";
 
@@ -130,6 +177,174 @@ export default async function Home({ searchParams }: PageProps<"/">) {
             </a>
             .
           </p>
+        </section>
+
+        {/* Step 6 verification aid: one example of every new shadcn/ui
+            component and shared component, so it can be checked under every
+            preset and color mode. This is not Step 7's real style guide
+            (/design-system, dev-only, every state) — just enough to see
+            everything rendered before that gets built properly. */}
+        <section className="flex flex-col gap-6 border-t border-border pt-8">
+          <h2 className="text-xl font-semibold">Components (Step 6)</h2>
+
+          <div className="flex flex-col gap-2">
+            <h3 className="text-sm font-semibold text-muted-foreground">Buttons</h3>
+            <div className="flex flex-wrap gap-2">
+              <Button>Default</Button>
+              <Button variant="outline">Outline</Button>
+              <Button variant="secondary">Secondary</Button>
+              <Button variant="ghost">Ghost</Button>
+              <Button variant="destructive">Destructive</Button>
+              <Button variant="link">Link</Button>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <h3 className="text-sm font-semibold text-muted-foreground">Badges</h3>
+            <div className="flex flex-wrap gap-2">
+              <Badge>Default</Badge>
+              <Badge variant="secondary">Secondary</Badge>
+              <Badge variant="destructive">Destructive</Badge>
+              <Badge variant="outline">Outline</Badge>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <h3 className="text-sm font-semibold text-muted-foreground">
+              Status pills (fixed colors)
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              <StatusPill status="present" />
+              <StatusPill status="late" />
+              <StatusPill status="absent" />
+              <StatusPill status="idle" />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="demo-name">Student name</Label>
+              <Input id="demo-name" placeholder="Juan Dela Cruz" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="demo-grade">Grade level</Label>
+              <Select>
+                <SelectTrigger id="demo-grade" className="w-full">
+                  <SelectValue placeholder="Choose a grade" />
+                </SelectTrigger>
+                <SelectContent>
+                  {[7, 8, 9, 10, 11, 12].map((grade) => (
+                    <SelectItem key={grade} value={String(grade)}>
+                      Grade {grade}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline">Open dialog</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Replace card</DialogTitle>
+                  <DialogDescription>
+                    This marks the old card as lost and links a new one. This is a Step 6
+                    placeholder — the real flow arrives in Step 16.
+                  </DialogDescription>
+                </DialogHeader>
+              </DialogContent>
+            </Dialog>
+
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline">Open sheet</Button>
+              </SheetTrigger>
+              <SheetContent>
+                <SheetHeader>
+                  <SheetTitle>Add student</SheetTitle>
+                  <SheetDescription>
+                    A Step 6 placeholder — the real form arrives in Step 15.
+                  </SheetDescription>
+                </SheetHeader>
+              </SheetContent>
+            </Sheet>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">Open menu</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem>Edit</DropdownMenuItem>
+                <DropdownMenuItem>Replace card</DropdownMenuItem>
+                <DropdownMenuItem variant="destructive">Remove</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <ToastDemoButton />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <h3 className="text-sm font-semibold text-muted-foreground">Table</h3>
+            <div className="overflow-x-auto rounded-lg border border-border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Section</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell>Juan Dela Cruz</TableCell>
+                    <TableCell>Grade 9 — Rizal</TableCell>
+                    <TableCell>
+                      <StatusPill status="present" />
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>Maria Santos</TableCell>
+                    <TableCell>Grade 9 — Rizal</TableCell>
+                    <TableCell>
+                      <StatusPill status="late" />
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <h3 className="text-sm font-semibold text-muted-foreground">Skeleton</h3>
+            <div className="flex flex-col gap-2">
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <h3 className="text-sm font-semibold text-muted-foreground">Empty state</h3>
+            <EmptyState
+              icon={UsersRound}
+              title="No students yet"
+              description="Add your first student to start recording attendance."
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <h3 className="text-sm font-semibold text-muted-foreground">Page header</h3>
+            <div className="rounded-lg border border-border p-4">
+              <PageHeader
+                title="Students"
+                description="Everyone enrolled at this school."
+                actions={<Button size="sm">Add student</Button>}
+              />
+            </div>
+          </div>
         </section>
       </div>
     </div>

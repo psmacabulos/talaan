@@ -1,7 +1,7 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: █████░░░░░░░░░░░░░░░ 26%**  (16 of 62 tasks, 4 of 24 steps approved)
+**Overall progress: ██████░░░░░░░░░░░░░░ 29%**  (18 of 62 tasks, 4 of 24 steps approved)
 
 **Next up:** Step 5, Theme presets and contrast helper (ready for your review)
 
@@ -12,7 +12,7 @@
 | 3 | Continuous integration | ██████████ 100% | Approved |
 | 4 | Design tokens, fonts and dark mode | ██████████ 100% | Approved |
 | 5 | Theme presets and contrast helper | ████████░░  75% | Ready for your review |
-| 6 | shadcn/ui and base components | ░░░░░░░░░░   0% | Not started |
+| 6 | shadcn/ui and base components | ███████░░░  67% | Ready for your review |
 | 7 | Style guide page and token check | ░░░░░░░░░░   0% | Not started |
 | 8 | Domain types, schemas and seed data | ░░░░░░░░░░   0% | Not started |
 | 9 | Mock repositories and session | ░░░░░░░░░░   0% | Not started |
@@ -81,8 +81,8 @@ Commit: `feat(theme): add theme presets and contrast helper`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 6: shadcn/ui and base components
-- [ ] Initialise shadcn/ui. Add button, input, label, select, sheet, dialog, dropdown-menu, table, badge, sonner toast and skeleton.
-- [ ] Shared components: `StatusPill`, `EmptyState`, `PageHeader`.
+- [x] Initialise shadcn/ui. Add button, input, label, select, sheet, dialog, dropdown-menu, table, badge, sonner toast and skeleton.
+- [x] Shared components: `StatusPill`, `EmptyState`, `PageHeader`.
 Done when: components render correctly under every preset, in light and dark.
 Commit: `feat(ui): add base and shared components`
 - [ ] Owner review: I checked it and said "approved"

@@ -23,6 +23,14 @@ The owner creates the repository and makes **every** commit. You never run git c
 ## Progress tracking
 `docs/PLAN.md` starts with a progress block (overall bar and a table of every step). `scripts/progress.mjs` generates it from the checkboxes. Never edit between the `progress:start` and `progress:end` markers by hand, and never tick "Owner review" before I approve.
 
+## Documentation
+Three docs in `docs/` get updated as part of finishing a step, not as an afterthought:
+- **`docs/BUILD-LOG.md`** — one `##` section per step: a developer-diary account of how it was actually built. Real commands run, real configuration chosen, and especially any conflict or error hit and exactly how it was resolved (what was checked, what alternative was picked, why).
+- **`docs/LEARNING-LOG.md`** — short, plain-language lessons for me, since I'm learning as this gets built. Treat every question I ask because I don't know something (a command, a tool, a design decision) as a trigger to add or update an entry here — don't wait to be asked. Organize by topic (a `## Contents` list near the top, `###` entries within each topic section), not chronologically. When a fuller write-up already exists (an Artifact, a `docs/<TOPIC>.md`), keep the entry short and link to it instead of duplicating the explanation.
+- **`docs/<TOPIC>.md`** — one per genuinely distinct technical subsystem (for example `STYLING-SYSTEM.md`, `COMPONENTS.md`), written when that subsystem is first built, not just noted in the build log. Explain how the mechanism works and how the files connect, with real code from the actual files and a diagram, ending in a "quick recipes" section for common future tasks. Before starting a new one, check whether an existing doc already covers that subsystem and extend it instead — only split into a new file when a step is a genuinely different topic (color tokens vs. the component library built on top of them, for example), not by default and not never. Link every new one from `README.md`'s project guide.
+
+Update all of these before the step's review report, the same way `docs/PLAN.md` gets ticked and `npm run progress` gets run.
+
 ## Stack
 - Next.js (latest stable, App Router), React, TypeScript with `strict`. Node 24 or newer (current LTS — kept in sync with CI, so local and CI always run the same version). Package manager: npm.
 - Tailwind CSS v4 (CSS-first config, no tailwind.config file) and shadcn/ui with CSS variables enabled.

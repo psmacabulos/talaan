@@ -2,6 +2,10 @@
 
 This is a from-scratch explanation of the token/theming code added in Step 4 — not just *what* files exist, but *how they connect* and *why*, so you can trace it yourself next time. `docs/BUILD-LOG.md` covers the decisions and debugging story for Step 4; this document is the reference for how the mechanism itself works, for whenever you need to add a token, use one in a new component, or just remember how the pieces fit.
 
+**Interactive companion:** [Talaan Theme Layers](https://claude.ai/artifact/HWXYY2M2GwdxXAkY9djNwy) — a live, clickable version of the Step 5 explanation below (the override switch, the specificity trick, the file map), built with the project's real color values. Saved here so the link isn't only sitting in a chat.
+
+**See also:** [`docs/COMPONENTS.md`](COMPONENTS.md) — the component library (shadcn/ui) built in Step 6 on top of this color system.
+
 If you already know CSS custom properties (`var(--x)`) and how the CSS cascade picks a value when there are multiple candidates, skip to [The files, one by one](#the-files-one-by-one). If those two things are new to you, read the next section first — everything else is built on them.
 
 ## The two ideas everything else depends on
