@@ -1,4 +1,8 @@
 import { ThemeToggle } from "@/components/theme-toggle";
+import { presetToScopedCss } from "@/lib/theme/apply-preset";
+import { getThemePreset, themePresets } from "@/lib/theme/presets";
+
+const PREVIEW_SELECTOR = "[data-preset-preview]";
 
 const coreTokens = [
   { label: "Background", className: "bg-background text-foreground border border-border" },
@@ -16,9 +20,26 @@ const statusTokens = [
   { label: "Not yet tapped", className: "bg-status-idle-bg text-status-idle" },
 ];
 
-export default function Home() {
+// Step 5 verification aid ONLY: lets the owner preview every theme preset
+// via ?preset=ocean|emerald|crimson|violet without a real picker UI (that's
+// Steps 11/21). Scoped to this page's own content via PREVIEW_SELECTOR —
+// it never touches <html> — so it needs none of the "no flash" machinery
+// in src/lib/theme/apply-preset.ts. Remove once Step 11's dev switcher
+// exists.
+export default async function Home({ searchParams }: PageProps<"/">) {
+  const params = await searchParams;
+  const requestedPreset = typeof params.preset === "string" ? params.preset : undefined;
+  const preset = getThemePreset(requestedPreset);
+  const previewCss = presetToScopedCss(preset, PREVIEW_SELECTOR);
+
   return (
-    <div className="flex flex-1 flex-col items-center bg-background px-6 py-16 text-foreground sm:px-10">
+    <div
+      data-preset-preview
+      className="flex flex-1 flex-col items-center bg-background px-6 py-16 text-foreground sm:px-10"
+    >
+      {/* Raw, hardcoded CSS text (never user input) — dangerouslySetInnerHTML
+          is used so the string is set verbatim, not HTML-escaped. */}
+      <style dangerouslySetInnerHTML={{ __html: previewCss }} />
       <div className="flex w-full max-w-3xl flex-col gap-10">
         <header className="flex flex-col gap-3">
           <h1 className="text-3xl font-semibold">Talaan design tokens</h1>
@@ -30,9 +51,25 @@ export default function Home() {
             </code>{" "}
             — nothing is a raw hex value.
           </p>
-          <div>
+          <div className="flex flex-wrap items-center gap-2">
             <ThemeToggle />
           </div>
+          <p className="text-sm text-muted-foreground">
+            Previewing <strong className="text-foreground">{preset.name}</strong>. Try another
+            preset:{" "}
+            {themePresets.map((option, index) => (
+              <span key={option.id}>
+                {index > 0 ? ", " : ""}
+                <a
+                  href={`/?preset=${option.id}`}
+                  className="text-link underline underline-offset-2"
+                >
+                  {option.name}
+                </a>
+              </span>
+            ))}
+            . (A temporary Step 5 preview link — the real theme picker comes in later steps.)
+          </p>
         </header>
 
         <section className="flex flex-col gap-3">

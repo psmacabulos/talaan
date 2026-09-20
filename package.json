@@ -13,6 +13,7 @@
     "progress": "node scripts/progress.mjs"
   },
   "dependencies": {
+    "culori": "^4.0.2",
     "next": "16.3.5",
     "next-themes": "^0.4.6",
     "react": "19.2.8",
@@ -22,6 +23,7 @@
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",
+    "@types/culori": "^4.0.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

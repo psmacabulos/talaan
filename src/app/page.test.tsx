@@ -3,8 +3,8 @@ import { render, screen } from "@testing-library/react";
 import Home from "./page";
 
 describe("Home page", () => {
-  it("renders the design tokens demo with a theme toggle", () => {
-    render(<Home />);
+  it("renders the design tokens demo with a theme toggle", async () => {
+    render(await Home({ params: Promise.resolve({}), searchParams: Promise.resolve({}) }));
 
     expect(
       screen.getByRole("heading", { level: 1, name: /talaan design tokens/i }),

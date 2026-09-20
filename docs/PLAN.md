@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ████░░░░░░░░░░░░░░░░ 21%**  (13 of 62 tasks, 4 of 24 steps approved)
+**Overall progress: █████░░░░░░░░░░░░░░░ 26%**  (16 of 62 tasks, 4 of 24 steps approved)
 
-**Next up:** Step 5, Theme presets and contrast helper (not started)
+**Next up:** Step 5, Theme presets and contrast helper (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -11,7 +11,7 @@
 | 2 | Formatting, type-check and test tooling | ██████████ 100% | Approved |
 | 3 | Continuous integration | ██████████ 100% | Approved |
 | 4 | Design tokens, fonts and dark mode | ██████████ 100% | Approved |
-| 5 | Theme presets and contrast helper | ░░░░░░░░░░   0% | Not started |
+| 5 | Theme presets and contrast helper | ████████░░  75% | Ready for your review |
 | 6 | shadcn/ui and base components | ░░░░░░░░░░   0% | Not started |
 | 7 | Style guide page and token check | ░░░░░░░░░░   0% | Not started |
 | 8 | Domain types, schemas and seed data | ░░░░░░░░░░   0% | Not started |
@@ -73,9 +73,9 @@ Commit: `feat(design): add design tokens, fonts and dark mode`
 - [x] Owner review: I checked it and said "approved"
 
 ### Step 5: Theme presets and contrast helper
-- [ ] `src/lib/theme/presets.ts` with the presets `school`, `ocean`, `emerald`, `crimson`, `violet` (light and dark values).
-- [ ] A server helper that applies a preset to `<html>` with no flash, wired into the root layout.
-- [ ] Contrast helper (readable foreground, AA check, custom-color palette generation) with unit tests.
+- [x] `src/lib/theme/presets.ts` with the presets `school`, `ocean`, `emerald`, `crimson`, `violet` (light and dark values).
+- [x] A server helper that applies a preset to `<html>` with no flash, wired into the root layout.
+- [x] Contrast helper (readable foreground, AA check, custom-color palette generation) with unit tests.
 Done when: switching the preset in code recolors the demo page, every preset passes AA, and the tests pass.
 Commit: `feat(theme): add theme presets and contrast helper`
 - [ ] Owner review: I checked it and said "approved"

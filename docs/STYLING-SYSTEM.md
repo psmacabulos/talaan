@@ -238,3 +238,78 @@ sequenceDiagram
 **I want to change what a color actually looks like**: edit its value in `tokens.css` only (both `:root` and `.dark` if it should differ between modes). Never hunt through components — nothing outside `tokens.css` should contain a literal color.
 
 **I want to know if something is using a raw color it shouldn't**: this is exactly what Step 7's `check:tokens` script (not built yet) will automate — until then, a raw hex/oklch/rgb value or a Tailwind palette class (`bg-blue-500`) anywhere outside `src/styles/tokens.css` is a sign something's wrong.
+
+## Step 5: theme presets and the contrast helper
+
+Step 4 (above) hardcoded exactly one theme — Balanga City NSHS's colors — directly into `tokens.css`. Step 5 turns "one fixed theme" into "swappable presets, checked for accessibility by a computer instead of eyeballed." Everything in this section is new; nothing from Step 4 changed.
+
+### Why this was two separate steps, not one
+
+It would have been possible to design all 5 presets and the accessibility checks before writing a single line of `tokens.css`. That wasn't done on purpose, for reasons worth writing down rather than leaving as an unexplained choice in `docs/PLAN.md`:
+
+1. **Step 4 had to prove the *mechanism* works before Step 5 could add more *data* to it.** Before any theme can be swapped, something has to make *any* theme render correctly at all — the CSS custom properties, the Tailwind `@theme inline` mapping that turns `--primary` into a usable `bg-primary` class, and the `next-themes` toggle that flips `.dark` on `<html>`. That's real plumbing, with real ways to get it wrong (see Step 4's "Tailwind v4 mechanics worth knowing" note above — radius/shadow defaults, the `@custom-variant dark` line). Building that plumbing against a *single*, already-designed palette meant Step 4 could be checked with one simple, human-judgeable question: "does this look like the approved prototype?" If the plumbing and four new brand palettes had been built at the same time, a rendering bug and simply a bad color choice would have looked identical from the outside — much harder to tell apart, and much harder to review in one sitting.
+
+2. **Step 4's one palette wasn't arbitrary — it was already hand-verified.** The `school` colors come from `design/school-portal-prototype.html`, a palette a human had already designed and checked for contrast before any of this project's code existed. Step 4 could lean on that: extract the values faithfully, confirm the extraction matches, done — see Step 4's "Computing exact colors instead of eyeballing them" note above, which checked contrast on the results but wasn't inventing new colors. Step 5's other four palettes (`ocean`, `emerald`, `crimson`, `violet`) don't have that luxury: nobody hand-designed and checked them first, so *before* they could be trusted, Step 5 had to build a system capable of checking any palette automatically.
+
+3. **That's the real difference between the two steps, in one sentence:** Step 4 checked one palette's accessibility *by hand*, once, with a throwaway script written for that purpose and then discarded. Step 5 turned that manual, one-time check into `presets.test.ts` and `contrast.ts` — a permanent, automatic check that runs on every `npm run test`, for as many palettes as this project ever adds, forever. Step 5 couldn't have come *before* Step 4, because there was nothing yet to automate the checking *of* — Step 4 had to exist first to give the first real, trustworthy example to build the automated version against (and, per the bug story below, to give something to sanity-check the new automated system against: Step 5's `presets.test.ts` includes a check that `school`'s values still match `tokens.css` exactly, which only means something because Step 4's values were already known-correct).
+
+4. This also matches how `docs/PLAN.md` is deliberately structured: each step is sized to be one thing the owner can review in one sitting (see `CLAUDE.md`'s step protocol — "Implement only that step... small enough for me to review in one sitting"). "Does dark mode work at all" and "are these four new brand colors both good-looking and provably accessible" are two different kinds of question, best reviewed and approved separately rather than bundled into one large, harder-to-audit change.
+
+```mermaid
+flowchart TB
+    Culori["culori (npm package)<br/>OKLCH math + WCAG contrast"]
+    Presets["src/lib/theme/presets.ts<br/>5 presets: school, ocean, emerald, crimson, violet"]
+    Contrast["src/lib/theme/contrast.ts<br/>AA checks + readable-foreground + custom palettes"]
+    Apply["src/lib/theme/apply-preset.ts<br/>preset -> CSS text"]
+    Style["src/lib/theme/theme-preset-style.tsx<br/>renders that CSS as a &lt;style&gt; tag"]
+    Layout["src/app/layout.tsx<br/>renders ThemePresetStyle with the default preset"]
+    Page["src/app/page.tsx<br/>demo page: ?preset= preview"]
+
+    Culori --> Presets
+    Culori --> Contrast
+    Presets --> Apply
+    Presets --> Contrast
+    Apply --> Style
+    Style --> Layout
+    Apply --> Page
+    Presets --> Page
+
+    style Presets fill:#223060,color:#fff
+    style Contrast fill:#223060,color:#fff
+    style Apply fill:#1C77A5,color:#fff
+```
+
+### Why OKLCH, not hex, for the token *values* themselves
+
+Hex/RGB has no channel that matches how the eye actually perceives brightness — HSL's "lightness" comes closest but still lies (pure blue and pure yellow at the "same" HSL lightness look very different in brightness). OKLCH's `L` channel is *perceptually uniform*: `50%` means roughly the same perceived brightness regardless of hue. That property is the entire reason this step is straightforward to build correctly: "make this color pass 4.5:1 contrast" becomes "raise or lower one number," and "generate a palette from one brand color" becomes "vary lightness/chroma, keep the hue." Both are unreliable operations in raw hex/RGB. You can still *give* Claude a brand color as hex, same as CLAUDE.md's own `#223060` — it just gets converted to OKLCH once, the same way `tokens.css`'s values already were in Step 4.
+
+### 1. `src/lib/theme/presets.ts` — the data
+
+A `ThemePreset` has an `id`, a `name`, and `light`/`dark` objects covering only the *themed* color tokens (`background`, `foreground`, `card`, `primary`, `link`, `highlight`, `muted`, `accent`, `border`, `ring`, and each token's `-foreground` pair). Radius, shadow, motion and the four fixed status colors (present/late/absent/idle) are **not** here — they stay in `tokens.css`, identical across every preset, because CLAUDE.md is explicit that status colors are never themed.
+
+`school`'s values are the literal strings already in `tokens.css` — picking it is provably a no-op. The other four (`ocean`, `emerald`, `crimson`, `violet`) are built with a small `oklchToken(lightness, chroma, hue)` helper that calls culori's `clampChroma` before formatting the CSS string. That clamping step matters for a subtle reason (see the next section) — a saturated color authored by hand can sit just outside what a screen can actually display, and a browser will silently render the nearest color it *can* display instead, which could be a slightly different color (and slightly different contrast ratio) than what was actually tested.
+
+### 2. A real bug this step hit: rounding after clamping can un-clamp a color
+
+The first version of `oklchToken` clamped chroma into gamut, then rounded the clamped numbers for a readable CSS string (`32.500000001% ` isn't a value a human should have to read). That rounding happened *after* clamping — which turned out to be backwards. Clamping finds the exact chroma that's on the boundary of what a screen can show; rounding that boundary value can round it *up*, past the boundary, right back out of gamut. `src/lib/theme/contrast.test.ts`'s `generateCustomPalette` test caught this for real (a generated color failed culori's own `displayable()` check), not hypothetically.
+
+The fix, in `src/lib/theme/oklch.ts`'s `toOklchString()`: round lightness and hue *first*, clamp chroma *against those already-rounded numbers* (not the raw ones), then round the resulting chroma *down*, never up. Rounding down can only move a color further from the gamut boundary, never past it — so the exact string that gets written to the page is guaranteed displayable, not just the unrounded number that was checked before formatting.
+
+### 3. `src/lib/theme/contrast.ts` — the AA checks
+
+Three small, independent pieces, all built on culori:
+- `contrastRatio(a, b)` / `meetsAA(ratio)` — WCAG's actual contrast formula, not an approximation.
+- `pickReadableForeground(background, candidates)` — tries each candidate in order, falls back to whichever of pure black/white contrasts more if none pass. That fallback is provably always AA-safe: the worst case (black vs. white contrast tied) works out to about 4.58:1, just above the 4.5 threshold.
+- `generateCustomPalette(brandColor)` — for a future "Custom brand color" picker (a later step): takes one color, derives a full light+dark token set from it, nudging any color that doesn't naturally pass AA (never just leaving it to fail), the same "adjust or reject" rule CLAUDE.md asks for.
+
+`src/lib/theme/presets.test.ts` is what actually enforces "every preset passes AA" — it loops over all 5 presets, both modes, and every foreground/background pairing, and fails with the exact pairing and ratio if one doesn't clear 4.5:1. It also checks that `school`'s values still match `tokens.css`'s literal text, so the two files can't silently drift apart.
+
+### 4. `src/lib/theme/apply-preset.ts` + `theme-preset-style.tsx` — applying a preset with no flash
+
+`presetToCss(preset)` turns a preset into plain CSS text: `:root:root{...}.dark.dark{...}`. The doubled selector (`:root:root`, not `:root`) is deliberate — it still matches the exact same `<html>` element, but raises the CSS specificity just enough to reliably beat `tokens.css`'s own plain `:root`/`.dark` rules, regardless of which stylesheet the browser happens to parse first. `<ThemePresetStyle presetId={...} />` renders that text as a `<style>` tag, and `layout.tsx` places it as the first thing inside `<body>`, before `<ThemeProvider>` — the same place `next-themes`' own flash-prevention script already lives (Step 4).
+
+This needs no client-side script, unlike the light/dark toggle. Light/dark depends on a value only the *browser* knows (a saved preference in `localStorage`), so the server has to guess and a script corrects it before paint. A theme preset, in Phase 1, has no such gap — `DEFAULT_THEME_PRESET_ID` is a plain constant the server already knows when it renders the page, so there's nothing to patch after the fact. A later step (once a school/session exists) will pass a real preset id into the same component instead of the hardcoded default — nothing else about this mechanism needs to change.
+
+### 5. `src/app/page.tsx` — a temporary way to see every preset
+
+The demo page reads `?preset=` from the URL (only a `page.tsx` can do this — a `layout.tsx` never receives search params) and recolors just its own content via a scoped `<style>` block (`presetToScopedCss`), never touching `<html>`. Visit `/?preset=ocean` (or `emerald`/`crimson`/`violet`) to see any preset, in either light or dark mode via the existing toggle. This is explicitly a **Step 5 verification aid** — a real preset picker (a dropdown, then a full settings page) is later-step work; this one exists only so the presets can be checked in a browser today.

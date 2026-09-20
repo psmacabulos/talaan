@@ -195,3 +195,42 @@ Also worth noting for next time: stopping a backgrounded `npm run dev` task didn
 
 ### Result
 All three build tasks done, `lint`/`typecheck`/`test`/`build` pass, and the demo page was visually confirmed correct in both modes at both breakpoints with a clean console. Waiting on the owner's review.
+
+---
+
+## Step 5: Theme presets and contrast helper
+
+**Goal:** turn Step 4's one hardcoded theme into five swappable presets (`school`, `ocean`, `emerald`, `crimson`, `violet`), plus a contrast helper that checks every one of them against WCAG AA automatically instead of by eye.
+
+### Deciding how to do the color math: culori vs. hand-rolled
+This step needs OKLCH↔sRGB conversion and the WCAG contrast formula. Weighed writing that math by hand (Björn Ottosson's published OKLab formulas, same approach as Step 4's one-off conversion script) against adding `culori`, a small, purpose-built npm package. Since CLAUDE.md requires asking before any new dependency, brought this to the owner directly: hand-rolled color math is a plausible place for a subtle bug to hide in code whose entire job is accessibility correctness, and `culori` is stable, tree-shaken, and does exactly this (OKLCH conversion, gamut clamping, WCAG contrast) with years of use behind it. Owner approved adding it.
+
+Before writing any code against it, verified culori's *actual* API rather than trusting memory of it: `npm view culori version` (4.0.2), then, once installed, ran real calls from a Node REPL in the project directory (`node -e "require('culori')..."`) to confirm `oklch()`, `wcagContrast()`, `clampChroma()` and `displayable()` behave as expected — including converting `#223060` through `oklch()` and getting back `32.5% 0.087 268.9`, matching the value already hand-derived in `tokens.css` back in Step 4. That cross-check was reassuring: two independent methods (a hand-written script then, a library now) agree.
+
+One thing not in the initial plan: `culori` ships **no TypeScript types of its own** (no `.d.ts` files, no `types` field in its `package.json`) — confirmed by checking `node_modules/culori` directly rather than assuming. `@types/culori` exists on npm and is what every other untyped dependency in this project (`@types/node`, `@types/react`) already does, so added it as a devDependency alongside `culori` itself.
+
+### A real bug: rounding a clamped color can push it back out of gamut
+Some of the proposed preset colors (mostly saturated blues and greens at low lightness, checked with culori's `displayable()`) sit just outside what a screen can actually show — a browser would silently render the nearest color it *can* show instead, which might not be the exact color the AA math was run against. First fix attempt: clamp with `clampChroma`, then round the result for a readable CSS string. That was backwards — rounding a boundary value can round it back past the boundary. `contrast.test.ts`'s `generateCustomPalette` test caught this for real (one generated color failed `displayable()`), not as a theoretical worry.
+
+Fixed in a new shared helper, `src/lib/theme/oklch.ts`'s `toOklchString()`: round lightness/hue *first*, clamp chroma against those *already-rounded* numbers, then round the resulting chroma *down* (never up, via `Math.floor`) before writing the final string. Rounding down can only move a color further inside the gamut, never past its edge — so the string actually written to the page is guaranteed displayable, not just the pre-rounding number that got checked.
+
+### Verified the proposed color values before committing to them, not after
+Rather than hand-guess whether `ocean`/`emerald`/`crimson`/`violet`'s specific OKLCH numbers would pass AA, ran the actual `wcagContrast()` calls from a scratch script in the project directory for every foreground/background pairing across all 5 presets × light/dark before finalizing `presets.ts` — all passed on the first attempt, once gamut-clamping was applied per the bug above. `presets.test.ts` now runs the same check permanently, on every `npm run test`, so this isn't a one-time manual fact but an enforced one.
+
+### Designed with a Plan subagent, then reviewed
+Given the number of small interacting decisions (preset data shape, the specificity trick for overriding `tokens.css` without a flash, where a Next.js page can and can't read `?preset=` from the URL, what the custom-palette algorithm should actually do), dispatched a Plan subagent to work out a concrete design against the real codebase and confirm culori's real API, rather than reasoning about all of it from memory in one pass. Reviewed its output against `docs/PLAN.md`'s exact Step 5 wording and the current `tokens.css` values before turning it into the plan the owner approved — one placeholder detail (`@types/culori` "shipping its own types") turned out to be wrong on closer inspection (see above) and was corrected during implementation, not assumed.
+
+### What got built
+- `src/lib/theme/presets.ts` — the 5 presets. `school`'s values are copied verbatim from `tokens.css`, so picking it is a no-op; the other four use a small `oklchToken()` helper.
+- `src/lib/theme/oklch.ts` — the shared, gamut-safe CSS-string formatter (see the rounding bug above).
+- `src/lib/theme/contrast.ts` — `contrastRatio`, `meetsAA`, `pickReadableForeground`, `generateCustomPalette` (for a future "Custom" theme picker).
+- `src/lib/theme/apply-preset.ts` + `theme-preset-style.tsx` — turns a preset into a `<style>` tag, wired into `layout.tsx` with a hardcoded `DEFAULT_THEME_PRESET_ID` (no session exists yet to read a real one from).
+- `src/app/page.tsx` — now reads `?preset=` to preview any of the 5 presets, clearly commented as a temporary Step 5 aid, not the real picker (a later step).
+- Three new test files (`presets.test.ts`, `contrast.test.ts`, `apply-preset.test.ts`, 24 tests total) — including a check that `school`'s values still match `tokens.css`'s literal text, so the two can't silently drift apart.
+- `README.md` — a short "how to add a theme preset" walkthrough.
+
+### Verified
+`lint`, `typecheck`, `test` (24/24 passing), and `build` all pass. Confirmed in the browser with Playwright at 1280px and 360px, light and dark: the default view is visually identical to Step 4 (as `school` being a byte-for-byte copy of `tokens.css` predicts), and all four new presets are legible and calm in both modes at both sizes, with a clean console throughout.
+
+### Result
+All three build tasks done. Waiting on the owner's review.

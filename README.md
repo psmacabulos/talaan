@@ -33,6 +33,16 @@ There are no environment variables required yet in Phase 1 — see [`.env.exampl
 | `npm run test`      | Run the test suite once with Vitest.                                            |
 | `npm run progress`  | Regenerate the progress table at the top of `docs/PLAN.md` from its checkboxes. |
 
+## Theming
+
+Every color a school sees comes from a **theme preset** — never a hardcoded value in a component. Presets live in [`src/lib/theme/presets.ts`](src/lib/theme/presets.ts); `src/lib/theme/contrast.ts` checks every one of them against WCAG AA automatically (see [`docs/STYLING-SYSTEM.md`](docs/STYLING-SYSTEM.md) for how the whole mechanism fits together).
+
+**To add a new preset:**
+
+1. In `src/lib/theme/presets.ts`, add an entry to `themePresets` with a new `id` and `name`, and light/dark values for every color in `ThemeColorTokens`. Use the `oklchToken(lightness, chroma, hue)` helper (see the existing presets for examples) — it keeps the color inside what a screen can actually display.
+2. Run `npm run test`. `presets.test.ts` checks every text/background pairing in your new preset against WCAG AA in both light and dark mode, and will fail with the exact pairing and ratio if something isn't readable enough — adjust the lightness of that color and re-run until it passes.
+3. That's it — no component changes needed. A preset is picked by passing its `id` to `<ThemePresetStyle presetId="..." />` (currently hardcoded to `DEFAULT_THEME_PRESET_ID` in the root layout; a real per-school picker comes in a later step).
+
 ## Project guide
 
 - [`docs/PLAN.md`](docs/PLAN.md) — the step-by-step build plan and progress tracker (a checklist).

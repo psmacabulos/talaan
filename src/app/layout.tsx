@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Atkinson_Hyperlegible, Lexend } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ThemePresetStyle } from "@/lib/theme/theme-preset-style";
+import { DEFAULT_THEME_PRESET_ID } from "@/lib/theme/presets";
 import "./globals.css";
 
 const lexend = Lexend({
@@ -28,6 +30,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
+        <ThemePresetStyle presetId={DEFAULT_THEME_PRESET_ID} />
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
