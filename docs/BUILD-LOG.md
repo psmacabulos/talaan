@@ -116,3 +116,20 @@ The real pass/fail signal only exists once the owner pushes and GitHub actually 
 
 ### Result
 Step 3 build task complete. Waiting on the owner to push and confirm the workflow goes green before approving.
+
+### A real bug the CI caught: `typecheck` failed on a clean checkout
+Owner pushed and CI went red on the typecheck step:
+```
+Error: src/app/layout.tsx(20,50): error TS2304: Cannot find name 'LayoutProps'.
+```
+`LayoutProps` is a Next.js-generated helper type (from its typed-routes feature). It only exists inside a hidden `.next/types` folder, and that folder is only created by running `next dev`, `next build`, or `next typegen` — the `typecheck` script from Step 2 was just `tsc --noEmit`. Locally that worked because `.next` already existed from earlier `dev`/`build` runs in this folder; on a fresh CI checkout there's no `.next` folder yet, so `tsc` couldn't find the type and failed.
+
+Checked Next.js's own docs (`node_modules/next/dist/docs/01-app/03-api-reference/06-cli/next.md`), which name this exact situation and recommend the fix directly: `next typegen && tsc --noEmit`. Applied it:
+```diff
+- "typecheck": "tsc --noEmit",
++ "typecheck": "next typegen && tsc --noEmit",
+```
+Verified by deleting the local `.next` folder (`rm -rf .next`) to simulate a clean checkout, then re-running `npm run typecheck` — it passed. Re-ran the full `lint`/`typecheck`/`test`/`build` sequence afterward to confirm nothing else broke.
+
+### Result (updated)
+Step 3's workflow file was correct; the failure it caught was a latent bug in Step 2's `typecheck` script, now fixed. Waiting on the owner to push this fix and confirm CI goes green.
