@@ -36,6 +36,21 @@ This warning was probably always happening, just invisible: committing through V
 
 Fixed with a `.gitattributes` file containing one line: `* text=auto eol=lf`. This tells Git explicitly "always use LF for text files," so there's no more mismatch to warn about, no matter whether the commit comes from the terminal or VS Code's panel.
 
+### Reviewing an old step's code without interrupting current work: `git worktree`
+Asked how to inspect an earlier step's actual running code (not just its diff) while Claude keeps building the next step, without the two interfering with each other in the same folder.
+
+Two different tools for two different needs:
+- **Just reading what changed** — plain, read-only commands, safe to run any time no matter what's happening in the working folder: `git log --oneline` (list every step's commit), `git show <hash>` (full diff of one commit), `git diff <hash>~1 <hash>` (same, as an explicit range). These never touch any files, so there's no risk of colliding with in-progress work.
+- **Actually running an old step** (clicking through the app as it looked at that commit) — a **git worktree**: a *second* folder, checked out to an old commit, sharing the same repository history but completely separate from the main folder's files. Set up once with:
+  ```bash
+  git worktree add ../talaan-review <hash>
+  ```
+  then `npm install && npm run dev` inside that second folder. No stashing, no switching branches, no touching the main folder at all — both can be open and running at the same time.
+
+Considered and set aside: a separate git branch (or PR) per step. It would mean creating, pushing, reviewing and merging a branch for every one of the plan's 24 steps — all by hand, since Claude can't run any git command that changes state (`.claude/settings.json` blocks it). For a solo, strictly sequential build where each step already needs an explicit "approved" before the next one starts, that ceremony doesn't add real safety over plain commits on `main` plus a worktree for hands-on study.
+
+**Not set up yet** — noted as something to do later; this entry is the reference for when that happens.
+
 ### Adding the shadcn MCP server
 An "MCP server" is a small tool that Claude Code can talk to for extra abilities — here, letting Claude browse and add shadcn/ui components directly instead of guessing at their code.
 
@@ -147,3 +162,14 @@ Five small packages arrived with Step 6's components. None of them are about col
 | **`tw-animate-css`** | Ready-made animation classes (`fade-in-0`, `zoom-in-95`, `slide-in-from-top-2`) that dialogs/menus/selects use so they animate open/closed instead of popping in instantly. | Open the Dialog or Select and watch it fade + scale in |
 
 **How would a developer (not an AI) know they needed exactly these?** The same way this was actually checked, not from memory: running `npx shadcn add button --dry-run --view` prints the real generated code *before* anything is written, and its `import` lines at the top name every package it leans on. `npm view <package-name>` on npmjs.com shows a one-line description and confirms a package is legitimate before trusting it. That's the whole method — read what the tool is about to do, and read the library's own one-paragraph description — not something only possible with an AI in the loop.
+
+### Why opening a Dialog/Select/DropdownMenu made the page "shake" — two real causes, tangled together
+Noticed while clicking through the demo page: the page visibly moved for as long as a Dialog/Sheet/Select/DropdownMenu was open. This took three attempts to actually resolve, because there turned out to be **two separate real causes**, and fixing only one at a time either did nothing visible or made things worse.
+
+**Cause 1 — the content itself shifting.** All four share a "scroll lock" that hides the browser's real scrollbar while open. The component library already compensates for that (pulling the content in slightly on the other side, so it visually stays put) — but that compensation depends on a slightly obscure browser default being left alone. The first fix attempted (forcing the scrollbar to always show) accidentally broke that default, which broke the library's own compensation, and made the content actually start shifting for the first time — worse than the starting point, not better.
+
+**Cause 2 — the scrollbar itself flickering.** Independently of whether the content moves, hiding and reshowing the real scrollbar is itself a visible change, right at the edge of the browser window — even when the content behind it hasn't moved at all. This is what was still happening after undoing the first (broken) fix: the content had stopped shifting, but the scrollbar was still blinking away and back, which still reads as "shaking," just a different kind.
+
+**The actual fix needed both pieces together, not one at a time:** keep the scrollbar permanently reserved (stops it from ever disappearing) *and* explicitly cancel the library's own compensation margin (since with the scrollbar now permanently there, that compensation is no longer needed, and — as discovered the hard way — leaving it in place is exactly what caused the first regression).
+
+**The real lesson:** when a bug report describes one visible symptom ("it shakes"), it's worth checking whether more than one distinct mechanism could produce that same symptom, before declaring the first plausible-looking cause "the" cause. Fixing a real, measured problem is not the same as fixing *the* problem someone reported — especially when the fix touches shared, load-bearing behavior (like a scroll-lock library's own compensation) that something else was already quietly depending on.

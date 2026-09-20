@@ -1,5 +1,38 @@
 /* Base element styles built on the tokens above. No raw colors here either. */
 
+/*
+ * Opening a Dialog/Sheet/Select/DropdownMenu locks scrolling (radix-ui, via
+ * its bundled react-remove-scroll) by setting `overflow: hidden` on <body>
+ * while it's open. Two separate, real effects follow from that, and both
+ * need to be neutralized — fixing only one made things visibly worse (see
+ * docs/BUILD-LOG.md's Step 6 entry for the full story):
+ *
+ * 1. The real browser scrollbar disappears and reappears (since <html> is
+ *    left at its default `overflow-y: visible`, browsers apply <body>'s
+ *    overflow to the viewport in its place — a spec-defined rule, not a
+ *    bug). That's a real, visible flicker of the scrollbar itself.
+ * 2. react-remove-scroll already tries to compensate for #1 by giving
+ *    <body> a matching `margin-right`, so the *content* doesn't visibly
+ *    move even though the viewport briefly got wider. That compensation
+ *    is correct on its own.
+ *
+ * Forcing the scrollbar to always be reserved (below) fixes #1, but it
+ * also removes the viewport-widening #2 was compensating for — so #2's
+ * margin then has nothing to cancel out, and content starts shrinking
+ * instead. The fix has to address both at once: keep the scrollbar always
+ * reserved, AND cancel the now-unnecessary margin.
+ */
+html {
+  overflow-y: scroll;
+}
+
+html body[data-scroll-locked] {
+  /* Higher specificity than react-remove-scroll's own injected rule
+     (`body[data-scroll-locked]`), so this reliably wins regardless of
+     which one loads or updates first. */
+  margin-right: 0px !important;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

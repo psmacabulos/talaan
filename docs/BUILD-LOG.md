@@ -278,3 +278,29 @@ First draft of the `EmptyState` demo on the page passed a real `onClick` handler
 
 ### Result
 All build tasks done. Waiting on the owner's review.
+
+### A visible bug the owner caught during review: the page "shakes" when a Dialog/Sheet/Select/DropdownMenu opens — and a wrong fix that made it into the codebase before being caught
+Owner reported the page visibly jittering when any of these four opened. This one is worth writing up honestly including the mistake, not just the eventual fix.
+
+**First pass — measured one thing, fixed the wrong thing.** Instrumented `document.documentElement.clientWidth` before/after opening a dialog: 1265px → 1280px, exactly the scrollbar's width. Radix's shared scroll-lock sets `body[data-scroll-locked] { overflow: hidden !important; ... }` while an overlay is open, which removes the real browser scrollbar. Tried `scrollbar-gutter: stable` (didn't help — it only reserves gutter for `auto`/`scroll` overflow, not `hidden`), then `html { overflow-y: scroll; }`, which brought the measured jump to 0px for all four components. Shipped it to `src/styles/base.css`, reported it fixed.
+
+**It wasn't fixed — it was a regression, caught by the owner actually using the app.** The owner reported the shake was still happening, with more specific detail this time (shifts left/right on a wide screen, up/down on a narrow one). Re-investigated rather than assuming a caching issue: measured the actual visible content wrapper's `getBoundingClientRect()`, not just `document.documentElement.clientWidth`, before and after opening — and it had genuinely started shrinking by 15px only *after* the "fix" was added. What actually happened: `body[data-scroll-locked]`'s full injected rule also sets `margin-right: 15px !important` on `<body>`, compensating for the freed scrollbar space via CSS's own body→viewport overflow-propagation rule (a real, spec-defined behavior: when `<html>`'s overflow is the literal keyword `visible`, the *body's* overflow governs the viewport instead). That compensation was already working correctly in the original, untouched code — confirmed by re-testing the exact same `getBoundingClientRect()` check with the "fix" temporarily neutralized (`html { overflow-y: visible !important; }` via `page.addStyleTag()`): the wrapper never moved, in the original code, at all. Forcing `overflow-y: scroll` on `html` broke the propagation rule the compensation depended on, so the same margin kept firing but with nothing to cancel out — a brand new, real 15px shrink that hadn't existed before.
+
+**First revert: reverted the change entirely.** Removed the `html { overflow-y: scroll; }` rule from `src/styles/base.css`. Re-verified with `getBoundingClientRect()` (left, top, width) plus `scrollY`, at both 1280px and 390px wide, for Dialog, Sheet, Select and DropdownMenu, open and closed — zero movement in every case, matching the original code's actual (correct) behavior. Reported this back as fixed.
+
+**Owner reported it was still happening, and described it more precisely this time: a quick "shake" (back and forth) on both open *and* close, whereas the previous (regressed) behavior had been a single directional shift that held steady until closing.** That distinction mattered. Re-tested at animation-frame granularity (a `requestAnimationFrame` loop sampling the wrapper's `getBoundingClientRect()` every frame for ~1 second around the click, not just a before/after snapshot) — found zero variation across every sampled frame, in the automated headless browser. Since the owner's description (a quick round-trip motion, not a sustained shift) is consistent with the *scrollbar itself* physically disappearing and reappearing — a real, visible change at the very edge of a real, non-headless browser window that a content-position measurement wouldn't capture — concluded the original `document.documentElement.clientWidth` jump (1265→1280, the very first thing measured, several fixes ago) was itself a second real, independent problem that had never actually been addressed: only the content-shift side-effect of it had been chased, not the scrollbar-visibility flicker itself.
+
+**Final fix: address both real mechanisms at once, not one at a time.** `src/styles/base.css` now has two rules together:
+```css
+html {
+  overflow-y: scroll; /* scrollbar never appears/disappears */
+}
+html body[data-scroll-locked] {
+  margin-right: 0px !important; /* cancel react-remove-scroll's now-unneeded compensation */
+}
+```
+The second rule uses a slightly more specific selector (`html body[...]` vs. the library's own `body[...]`) specifically so it reliably wins regardless of DOM/style-injection order, since both rules use `!important`. Re-verified with the same frame-by-frame sampling, for Dialog/Sheet/Menu at 1280px (open through close, ~2.5 seconds sampled per component) and Sheet at 390px (including `scrollY` and vertical position this time, since the owner's report distinguished wide- vs. narrow-screen behavior): every single sampled frame showed the exact same position and width, for all of them.
+
+**The lesson, updated:** the very first measurement taken (the `clientWidth` jump) was a real, valid observation of a real, separate defect (the scrollbar visually flickering) — the mistake was fixing it in a way that broke a *different*, already-correct thing (the content-position compensation), then declaring victory once the narrowly-scoped regression was undone, without going back to confirm the original defect was still actually addressed. Two independent problems measured under one bug report both needed their own fix, applied together, not whichever one was found and "solved" first.
+
+**Confirmed fixed by the owner**, after a hard refresh, on their own machine — not just in the automated headless check.
