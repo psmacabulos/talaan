@@ -1,0 +1,98 @@
+/*
+ * Design tokens: the only place color, radius, shadow and motion values are
+ * allowed to be literal. Everything else in the app references these by name
+ * (Tailwind utilities via the @theme inline mapping in globals.css).
+ *
+ * Light values here are the default ("school") theme, computed from the
+ * brand colors in CLAUDE.md (#223060 / #1C77A5 / #F9E321) and the rest of the
+ * approved prototype's palette (design/school-portal-prototype.html),
+ * converted to OKLCH. Step 5 adds swappable presets on top of this same
+ * token structure; this file only defines the one default theme.
+ */
+
+:root {
+  /* Surfaces and text */
+  --background: oklch(97.5% 0.006 255.5);
+  --foreground: oklch(25.2% 0.061 262.8);
+  --card: oklch(100% 0 0);
+  --card-foreground: oklch(25.2% 0.061 262.8);
+
+  /* Brand */
+  --primary: oklch(32.5% 0.087 268.9);
+  --primary-foreground: oklch(100% 0 0);
+  --link: oklch(54% 0.108 236.8);
+  --highlight: oklch(90.6% 0.184 102);
+  --highlight-foreground: oklch(25.2% 0.061 262.8);
+
+  /* Muted and accent surfaces */
+  --muted: oklch(94.7% 0.013 255.5);
+  --muted-foreground: oklch(52.4% 0.044 259.2);
+  --accent: oklch(95.9% 0.01 228.9);
+  --accent-foreground: oklch(25.2% 0.061 262.8);
+
+  /* Structure */
+  --border: oklch(92.3% 0.016 257.2);
+  --ring: oklch(32.5% 0.087 268.9);
+
+  /* Fixed attendance status colors — same meaning in every theme, never swapped by a preset */
+  --status-present: oklch(51.2% 0.121 154.1);
+  --status-present-bg: oklch(95.3% 0.025 160.6);
+  --status-late: oklch(50.8% 0.108 73.3);
+  --status-late-bg: oklch(95.7% 0.055 90.3);
+  --status-absent: oklch(51.8% 0.179 23.5);
+  --status-absent-bg: oklch(94.4% 0.025 14.6);
+  --status-idle: oklch(49.3% 0.046 260);
+  --status-idle-bg: oklch(94.7% 0.013 255.5);
+
+  /* Radius scale */
+  --radius: 0.625rem;
+  --radius-sm: calc(var(--radius) - 0.25rem);
+  --radius-md: calc(var(--radius) - 0.125rem);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.25rem);
+
+  /* Elevation — shadows tinted with the brand hue instead of flat black */
+  --shadow-sm: 0 1px 2px oklch(32.5% 0.087 268.9 / 0.08);
+  --shadow-md: 0 4px 12px oklch(32.5% 0.087 268.9 / 0.12);
+  --shadow-lg: 0 12px 32px oklch(32.5% 0.087 268.9 / 0.16);
+
+  /* Motion — short and purposeful */
+  --duration-fast: 100ms;
+  --duration-base: 200ms;
+  --duration-slow: 300ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.dark {
+  --background: oklch(19.8% 0.037 264.2);
+  --foreground: oklch(95.1% 0.016 262.8);
+  --card: oklch(24.2% 0.047 263.9);
+  --card-foreground: oklch(95.1% 0.016 262.8);
+
+  --primary: oklch(67.5% 0.081 231.4);
+  --primary-foreground: oklch(17.7% 0.032 258.7);
+  --link: oklch(74.4% 0.065 231.4);
+  --highlight: oklch(90.6% 0.184 102);
+  --highlight-foreground: oklch(25.2% 0.061 262.8);
+
+  --muted: oklch(29.1% 0.051 263.3);
+  --muted-foreground: oklch(73.8% 0.043 260.9);
+  --accent: oklch(29.2% 0.058 252.8);
+  --accent-foreground: oklch(95.1% 0.016 262.8);
+
+  --border: oklch(32% 0.057 264.4);
+  --ring: oklch(67.5% 0.081 231.4);
+
+  --status-present: oklch(80.3% 0.148 157.1);
+  --status-present-bg: oklch(30.9% 0.05 165.9);
+  --status-late: oklch(88% 0.135 86.1);
+  --status-late-bg: oklch(30.7% 0.048 87.4);
+  --status-absent: oklch(76.5% 0.14 17.7);
+  --status-absent-bg: oklch(27.3% 0.061 17.3);
+  --status-idle: oklch(77.6% 0.036 260.4);
+  --status-idle-bg: oklch(29.1% 0.051 263.3);
+
+  --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.24);
+  --shadow-md: 0 4px 12px oklch(0% 0 0 / 0.32);
+  --shadow-lg: 0 12px 32px oklch(0% 0 0 / 0.4);
+}

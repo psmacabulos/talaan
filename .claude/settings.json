@@ -66,6 +66,9 @@
       "Read(./.env.local)",
       "Edit(./.env)",
       "Edit(./.env.local)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\aqua_flask\\AppData\\Local\\Temp\\claude\\d--Repositories-talaan-starter-talaan\\f40f0ab3-06d6-4b68-a959-983ea92fd559\\scratchpad"
     ]
   }
 }

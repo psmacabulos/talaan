@@ -38,5 +38,6 @@ There are no environment variables required yet in Phase 1 — see [`.env.exampl
 - [`docs/PLAN.md`](docs/PLAN.md) — the step-by-step build plan and progress tracker (a checklist).
 - [`docs/BUILD-LOG.md`](docs/BUILD-LOG.md) — a detailed account of how each step was actually built: real commands, configuration choices, and how any problems were solved.
 - [`docs/LEARNING-LOG.md`](docs/LEARNING-LOG.md) — short, plain-language notes explaining tools and commands along the way.
+- [`docs/STYLING-SYSTEM.md`](docs/STYLING-SYSTEM.md) — how the design tokens, Tailwind, and dark mode actually work together, file by file, with diagrams.
 - [`docs/OWNER-GUIDE.md`](docs/OWNER-GUIDE.md) — how the owner works with Claude on this project, step by step.
 - [`CLAUDE.md`](CLAUDE.md) — the standing instructions Claude follows for this project (stack, design system, code structure, workflow rules).

@@ -50,7 +50,15 @@ This warning was probably always happening, just invisible: committing through V
 
 Fixed with a `.gitattributes` file containing one line: `* text=auto eol=lf`. This tells Git explicitly "always use LF for text files," so there's no more mismatch to warn about, no matter whether the commit comes from the terminal or VS Code's panel.
 
-## Keep CI's Node version matched to whatever you actually run locally
-A dependency once broke in CI but not locally, purely because CI was pinned to Node 20 while this machine runs Node 24 — a check that "passes locally" means nothing if CI is quietly testing a different Node version underneath. The fix wasn't to make people switch Node versions before every push (that's just moving work around) — it was to point CI at the same version already installed here: `.github/workflows/ci.yml`'s `node-version` and CLAUDE.md's stated minimum were both updated to Node 24, so local and CI now always match, permanently, with no extra step per push.
+## Keeping local and CI on identical versions, so "it works here" always means "it works there"
+Two separate real bugs this week both boiled down to the same root cause: something was a different version locally than in CI. Worth understanding both halves, since together they're the whole story of "local = CI":
 
-If this machine's Node version is ever upgraded to a new major later, update both of those in the same commit that does the upgrade, for the same reason.
+**1. Node.js itself.** A dependency (`jsdom`) broke in CI but not locally, purely because CI was pinned to Node 20 while this machine runs Node 24 — the dependency only worked on Node 22+. Fix: instead of asking anyone to switch Node versions before every push, `.github/workflows/ci.yml`'s `node-version` and CLAUDE.md's stated minimum were both moved to Node 24, matching what's actually installed here. If this machine's Node version is ever upgraded to a new major later, update both of those in the same commit, for the same reason — otherwise this exact problem comes back.
+
+**2. Package versions — this is what `package-lock.json` and `npm ci` are actually for.** `package.json` lists version *ranges* (like `"vitest": "^4.1.11"`, meaning "4.1.11 or any later 4.x"). Two different installs on two different days could legitimately resolve different exact versions from the same `package.json`. `package-lock.json` freezes the *exact* version of every package (direct and indirect) that was actually installed, so everyone — and every machine — gets identically the same dependency tree. That's why `npm ci` (used in `.github/workflows/ci.yml`) matters instead of `npm install`: `npm ci` refuses to resolve anything new and installs *exactly* what the lockfile says, deleting `node_modules` first to guarantee a clean match. `npm install` is fine for everyday local work (adding a package, letting patch versions drift a little), but before trusting a "it passes locally" result, the most faithful local check is the same one CI does:
+```bash
+rm -rf node_modules .next
+npm ci
+npm run lint && npm run typecheck && npm run test && npm run build
+```
+Committing `package-lock.json` every time it changes (already happening automatically with `npm install`) is what makes this guarantee real — if it's ever out of sync with `package.json`, `npm ci` fails loudly rather than silently installing something different than what CI will get.

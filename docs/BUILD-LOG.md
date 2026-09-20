@@ -165,3 +165,33 @@ All three real bugs CI caught are fixed: the typecheck script, and two dependenc
 
 ### Decided: stop pinning CI to an older Node than the dev machine
 The owner didn't want a recurring "switch Node versions before every push" habit — reasonably, since that's ongoing manual work for a mismatch that shouldn't exist in the first place. Rather than keep Node 20 as the floor and manage around it, moved the floor to match what's actually installed: `.github/workflows/ci.yml`'s `node-version` and CLAUDE.md's stated minimum are both now Node 24. Local and CI run the same version going forward, so this class of surprise shouldn't recur without a deliberate Node upgrade (in which case, update both files together).
+
+---
+
+## Step 4: Design tokens, fonts and dark mode
+
+**Goal:** real CSS-variable tokens (no hardcoded colors), self-hosted fonts, and a working light/dark toggle with no flash — the first piece of the design system, and the first time the app gets a second color mode (the HTML prototype only ever had one).
+
+### Computing exact colors instead of eyeballing them
+CLAUDE.md gives three brand hex values (`#223060`, `#1C77A5`, `#F9E321`) and says tokens should be OKLCH. Rather than approximate the conversion, wrote a small script (Björn Ottosson's standard sRGB → OKLab → OKLCH formulas) to get exact values. Then went further: the approved prototype (`design/school-portal-prototype.html`) already has a fully worked-out, accessible light **and** dark palette built from these same brand colors (background, card, text, borders, and the four attendance status colors — present/late/absent/idle — in both modes). Extracted every one of those hex values from the prototype's `<style>` block and ran them through the same converter, including reproducing its two `color-mix()` dark-mode colors (a lightened brand-2 for dark-mode primary/link) by computing the actual blended RGB rather than relying on runtime `color-mix()`.
+
+Checked contrast on the results (WCAG relative-luminance formula, same script) rather than assuming: every foreground/background pairing used in the demo clears 4.5:1, including the tightest ones (light-mode link on background: 4.62:1; light-mode muted text: 5.04:1) — confirms the prototype's original design was already accessible, now backed by numbers.
+
+### Tailwind v4 mechanics worth knowing
+- Radius and shadow: Tailwind v4 already ships default `--radius-sm`, `--shadow-sm`, etc. inside its own `@theme default` block (checked `node_modules/tailwindcss/theme.css` directly rather than assuming). Because that's a low-priority Tailwind-managed layer, a plain `:root { --radius-sm: ... }` declared afterward in our own CSS overrides it automatically — no need to redeclare radius/shadow inside `@theme inline`, only the color and font tokens (which are new names Tailwind doesn't know about) need that treatment.
+- Dark mode: added `@custom-variant dark (&:where(.dark, .dark *));` so Tailwind's `dark:` variant keys off next-themes' `.dark` class on `<html>`, not just `prefers-color-scheme`.
+- Fonts: confirmed exact `next/font/google` export names and available weights by reading `node_modules/next/dist/compiled/@next/font/dist/google/font-data.json` directly (`Lexend` and `Atkinson_Hyperlegible`; the latter only ships weights 400/700, matching what the prototype already uses) rather than guessing.
+
+### One lint rule needed a deliberate override
+`next-themes`' own documented pattern for avoiding a hydration mismatch (render a disabled placeholder until a `mounted` state flips true in `useEffect`) trips the newer `react-hooks/set-state-in-effect` rule, which normally flags exactly this shape of code as a bug. Added a targeted `eslint-disable-next-line` with a one-line comment explaining why, rather than removing the pattern — this is the standard fix recommended by next-themes itself, not an anti-pattern in this specific case.
+
+### Verified visually, not just with the test suite
+Ran the dev server and drove it with the Playwright browser tools (navigate, resize, screenshot, click, read console) at 360px and 1280px, in both light and dark, checking the browser console for errors at each step (none). One quirk noted: this sandboxed browser's `prefers-color-scheme` flapped between light and dark on its own between a couple of calls, unrelated to the app — switched to clicking the toggle directly (via `document.querySelector(...).click()`) and reading `document.documentElement.classList` to verify deterministically instead of trusting ambient system preference.
+
+### A real bug the owner caught: unreadable highlight text in dark mode
+The demo's "Highlight" swatch used `bg-highlight text-foreground`. `--highlight` is a fixed brand color that's deliberately the *same* bright yellow in both modes (it's decorative, not a themed surface) — but `--foreground` flips to near-white in dark mode, so the pairing produced pale/white text on bright yellow: unreadable. Fixed by adding a dedicated, fixed `--highlight-foreground` token (dark navy, same value in both modes — same reasoning as the fixed status colors) instead of reusing a token that changes with the theme. Confirmed the new pairing at 12.2:1 contrast with the same script used earlier, and visually in the browser.
+
+Also worth noting for next time: stopping a backgrounded `npm run dev` task didn't always kill the actual `next dev` process on this Windows machine — a couple of stray servers on port 3000 kept serving stale code after being "stopped," which briefly caused confusing screenshots. Fixed by checking `netstat -ano | grep :3000` and `taskkill //PID <pid> //F` when a fresh dev server reports the port already in use.
+
+### Result
+All three build tasks done, `lint`/`typecheck`/`test`/`build` pass, and the demo page was visually confirmed correct in both modes at both breakpoints with a clean console. Waiting on the owner's review.

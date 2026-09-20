@@ -3,10 +3,14 @@ import { render, screen } from "@testing-library/react";
 import Home from "./page";
 
 describe("Home page", () => {
-  it("renders a heading and the Next.js logo", () => {
+  it("renders the design tokens demo with a theme toggle", () => {
     render(<Home />);
 
-    expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
-    expect(screen.getByAltText("Next.js logo")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 1, name: /talaan design tokens/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /toggle theme|switch to (dark|light) mode/i }),
+    ).toBeInTheDocument();
   });
 });
