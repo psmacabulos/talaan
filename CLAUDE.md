@@ -24,7 +24,7 @@ The owner creates the repository and makes **every** commit. You never run git c
 `docs/PLAN.md` starts with a progress block (overall bar and a table of every step). `scripts/progress.mjs` generates it from the checkboxes. Never edit between the `progress:start` and `progress:end` markers by hand, and never tick "Owner review" before I approve.
 
 ## Stack
-- Next.js (latest stable, App Router), React, TypeScript with `strict`. Node 20.9 or newer. Package manager: npm.
+- Next.js (latest stable, App Router), React, TypeScript with `strict`. Node 24 or newer (current LTS — kept in sync with CI, so local and CI always run the same version). Package manager: npm.
 - Tailwind CSS v4 (CSS-first config, no tailwind.config file) and shadcn/ui with CSS variables enabled.
 - next-themes (dark mode), next/font (self-hosted fonts), React Hook Form + Zod, TanStack Table, sonner (toasts), lucide-react (icons).
 - Tests: Vitest + Testing Library; Playwright + axe for end-to-end and accessibility. Add each when its step needs it.

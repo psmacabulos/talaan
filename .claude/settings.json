@@ -10,7 +10,16 @@
       "Bash(git log *)",
       "Bash(npm run *)",
       "Bash(node scripts/progress.mjs)",
-      "WebFetch(domain:www.cctvpinoy.com)"
+      "WebFetch(domain:www.cctvpinoy.com)",
+      "Bash(nvm list *)",
+      "Bash(npm ls *)",
+      "Bash(npm install *)",
+      "Bash(npm view *)",
+      "Bash(node -e \"const v=JSON.parse\\(require\\('fs'\\).readFileSync\\(0,'utf8'\\)\\); console.log\\(v.slice\\(-10\\)\\)\")",
+      "Bash(node -e \"console.log\\(require\\('@testing-library/jest-dom/package.json'\\).exports\\)\")",
+      "Bash(git check-ignore *)",
+      "Bash(rm -rf node_modules .next)",
+      "Bash(npm ci *)"
     ],
     "deny": [
       "Bash(git add)",

@@ -49,3 +49,8 @@ This is a Git thing, unrelated to `npm run build` or Next.js. Every text file ha
 This warning was probably always happening, just invisible: committing through VS Code's Source Control panel runs the same Git commands under the hood, but doesn't show you their raw warning text. Once a commit was made directly in a terminal (`git commit`), Git's own output — warnings included — became visible for the first time.
 
 Fixed with a `.gitattributes` file containing one line: `* text=auto eol=lf`. This tells Git explicitly "always use LF for text files," so there's no more mismatch to warn about, no matter whether the commit comes from the terminal or VS Code's panel.
+
+## Keep CI's Node version matched to whatever you actually run locally
+A dependency once broke in CI but not locally, purely because CI was pinned to Node 20 while this machine runs Node 24 — a check that "passes locally" means nothing if CI is quietly testing a different Node version underneath. The fix wasn't to make people switch Node versions before every push (that's just moving work around) — it was to point CI at the same version already installed here: `.github/workflows/ci.yml`'s `node-version` and CLAUDE.md's stated minimum were both updated to Node 24, so local and CI now always match, permanently, with no extra step per push.
+
+If this machine's Node version is ever upgraded to a new major later, update both of those in the same commit that does the upgrade, for the same reason.

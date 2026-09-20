@@ -6,7 +6,7 @@ This is currently **Phase 1: front end only**. The app runs against a typed mock
 
 ## Requirements
 
-- Node.js 20.9 or newer
+- Node.js 24 or newer
 - npm
 
 ## Setup

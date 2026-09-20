@@ -133,3 +133,35 @@ Verified by deleting the local `.next` folder (`rm -rf .next`) to simulate a cle
 
 ### Result (updated)
 Step 3's workflow file was correct; the failure it caught was a latent bug in Step 2's `typecheck` script, now fixed. Waiting on the owner to push this fix and confirm CI goes green.
+
+### A second CI failure — a real Node-version incompatibility, and how to check locally before pushing
+After the typecheck fix, `test` failed in CI with:
+```
+TypeError: webidl.util.markAsUncloneable is not a function
+ at new CacheStorage node_modules/jsdom/node_modules/undici/lib/web/cache/cachestorage.js:20:17
+```
+This didn't reproduce locally at first — because this machine runs Node 24, and the workflow pins Node 20 (matching this project's stated "Node 20.9 or newer" floor). Node's `worker_threads.markAsUncloneable` only exists from Node ~22.5 onward; `jsdom@30.1.0` (installed "latest" during Step 2, with no version pin) depends on `undici@^8.x`, which calls that function unconditionally instead of feature-detecting it — so it crashes on any Node < 22. Confirmed with a web search (this is a known, widely-hit issue — several other projects filed the identical bug against jsdom 30 + Node 20).
+
+**To actually catch this locally instead of finding out from a red CI run**, the fix has to be tested on the same Node version CI uses, not whatever Node happens to be installed here. Since this machine already had `nvm` (a tool for switching between installed Node versions):
+```bash
+nvm install 20      # installs the latest 20.x (matches the workflow's node-version: "20")
+nvm use 20.20.2
+npm run test         # reproduced the exact CI error locally
+```
+**Fix:** rather than raising the project's Node floor (a bigger, more disruptive change to a decision already documented in CLAUDE.md), pinned the offending dependency back to the last version line that supports Node 20:
+```diff
+- "jsdom": "^30.1.1",
++ "jsdom": "^29.1.1",
+```
+While fixing this, `npm install` also warned that `@testing-library/jest-dom@7.0.1` (also installed "latest" in Step 2) requires Node ≥22 too — same class of problem, just hadn't crashed anything yet. Checked its version history (`npm view @testing-library/jest-dom@<version> engines`) and found the floor was raised between 6.9.1 (`node >=14`) and 6.10.0 (`node >=22`), so pinned back one line:
+```diff
+- "@testing-library/jest-dom": "^7.0.1",
++ "@testing-library/jest-dom": "^6.9.1",
+```
+Re-ran the full `lint`/`typecheck`/`test`/`build` sequence on Node 20.20.2 — all four passed — then switched this machine back to its normal Node 24 default (`nvm use 24.18.1`) so nothing was left in a different state than before.
+
+### Result (updated again)
+All three real bugs CI caught are fixed: the typecheck script, and two dependencies that had drifted onto Node-22-only versions. Waiting on the owner to push and confirm CI goes fully green.
+
+### Decided: stop pinning CI to an older Node than the dev machine
+The owner didn't want a recurring "switch Node versions before every push" habit — reasonably, since that's ongoing manual work for a mismatch that shouldn't exist in the first place. Rather than keep Node 20 as the floor and manage around it, moved the floor to match what's actually installed: `.github/workflows/ci.yml`'s `node-version` and CLAUDE.md's stated minimum are both now Node 24. Local and CI run the same version going forward, so this class of surprise shouldn't recur without a deliberate Node upgrade (in which case, update both files together).
