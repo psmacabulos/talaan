@@ -1,15 +1,15 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██░░░░░░░░░░░░░░░░░░ 11%**  (7 of 62 tasks, 2 of 24 steps approved)
+**Overall progress: ███░░░░░░░░░░░░░░░░░ 13%**  (8 of 62 tasks, 2 of 24 steps approved)
 
-**Next up:** Step 3, Continuous integration (not started)
+**Next up:** Step 3, Continuous integration (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
 | 1 | Scaffold the Next.js project | ██████████ 100% | Approved |
 | 2 | Formatting, type-check and test tooling | ██████████ 100% | Approved |
-| 3 | Continuous integration | ░░░░░░░░░░   0% | Not started |
+| 3 | Continuous integration | █████░░░░░  50% | Ready for your review |
 | 4 | Design tokens, fonts and dark mode | ░░░░░░░░░░   0% | Not started |
 | 5 | Theme presets and contrast helper | ░░░░░░░░░░   0% | Not started |
 | 6 | shadcn/ui and base components | ░░░░░░░░░░   0% | Not started |
@@ -59,7 +59,7 @@ Commit: `chore: add formatting, typecheck and test tooling`
 - [x] Owner review: I checked it and said "approved"
 
 ### Step 3: Continuous integration
-- [ ] `.github/workflows/ci.yml` that runs lint, typecheck, test and build on every push and pull request (file only; do not touch repository settings).
+- [x] `.github/workflows/ci.yml` that runs lint, typecheck, test and build on every push and pull request (file only; do not touch repository settings).
 Done when: the workflow file is correct. (I confirm it is green after I push.)
 Commit: `ci: add GitHub Actions workflow`
 - [ ] Owner review: I checked it and said "approved"
@@ -205,7 +205,7 @@ Commit: `chore: final polish for phase 1`
 - PostgreSQL with Prisma (or Drizzle), replacing the mock repositories.
 - Auth.js sign-in with hashed passwords and roles; the school always comes from the session.
 - Tenant-scoped data access, Postgres row-level security, and tests proving one school cannot read another's data.
-- Tap API with per-station keys, idempotent uploads and lost-card alerts.
+- Tap API with per-station keys, idempotent uploads and lost-card alerts. Keep the contract hardware-agnostic (a plain HTTP call authenticated by station key, not tied to a browser session) so a station can be a browser/Web NFC tablet or phone now, and a dedicated fixed NFC reader (turnstile-style, for schools that want that later) without changing the API.
 - Offline-first sync for tap stations, then parent notifications (push first, SMS as an option).
 - Privacy: consent records, export and delete per school, audit log.
 - Deployment (Vercel plus managed Postgres), backups, monitoring.

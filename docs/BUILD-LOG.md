@@ -90,3 +90,29 @@ Re-ran `lint`, `typecheck`, `test`, `build` after the fix — all passed again.
 
 ### Result
 Step 2 build tasks complete, all four checks green, one manual action left for the owner (discard the prototype file), then ready for "approved".
+
+Owner discarded the prototype file, reviewed, and said "approved".
+
+---
+
+## Step 3: Continuous integration
+
+**Goal:** a GitHub Actions workflow that runs `lint`, `typecheck`, `test`, and `build` on every push and pull request. File only — no repository settings (branch protection, required checks) touched, since Claude has no access to those and CLAUDE.md is explicit this step is file-only.
+
+### What got built
+Added `.github/workflows/ci.yml`:
+- Triggers on `push` and `pull_request` (any branch).
+- One job, `ubuntu-latest`.
+- `actions/checkout@v4` → `actions/setup-node@v4` (Node 20, `cache: "npm"` for dependency caching) → `npm ci` (not `npm install` — CI should install exactly what `package-lock.json` says, and fail if the lockfile is out of sync) → four separate steps for `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build`.
+
+Kept it deliberately small: one job, one OS, one Node version — no test matrix, since the plan only asks to prove the four checks pass, not to test cross-platform compatibility.
+
+### Verification
+Claude can't trigger GitHub Actions directly (no push access), so this step is verified two ways:
+1. Locally: `lint`, `typecheck`, `test`, `build` all still pass (same four commands the workflow runs).
+2. The workflow YAML structure was checked by hand against the very common `actions/checkout` + `actions/setup-node` pattern — no custom scripting, low syntax-error risk.
+
+The real pass/fail signal only exists once the owner pushes and GitHub actually runs it — that's the plan's own "Done when" condition, confirmed by the owner, not by Claude.
+
+### Result
+Step 3 build task complete. Waiting on the owner to push and confirm the workflow goes green before approving.

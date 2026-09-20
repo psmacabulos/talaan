@@ -32,3 +32,8 @@ It created `.mcp.json` in the repo root — a project-scoped config so anyone wo
 It also added `shadcn` as a devDependency in `package.json` (the CLI package itself).
 
 MCP servers only load when a Claude Code session *starts* — so after adding one, you need to close and reopen the session (or start a new one) before Claude can actually use it.
+
+## Saving and quitting in vi/vim
+Some git commands (like `git commit` typed without `-m "message"`) open a text editor for you to type the commit message — on many systems that's vi/vim, which doesn't work like a normal text editor.
+
+To save and exit: press `Esc` first (makes sure you're not still "typing"), then type `:wq` and press Enter. `:q!` instead quits without saving, if you want to back out. This project shouldn't need it though — VS Code's Source Control panel handles commit messages without ever opening vi.
