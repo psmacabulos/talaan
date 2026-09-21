@@ -62,4 +62,50 @@
   --duration-base: var(--duration-base);
   --duration-slow: var(--duration-slow);
   --ease-standard: var(--ease-standard);
+
+  /*
+   * The login page's looping value-prop carousel (login-art-panel.tsx):
+   * one shared keyframe, three `animate-value-prop-N` utilities that only
+   * differ by a negative delay, so three elements running the identical
+   * animation land staggered by a third of the total cycle — the standard
+   * CSS trick for "the same loop, offset," without needing separate
+   * keyframes per item. See that file's own comment for the reduced-motion
+   * fallback (this alone isn't enough — see globals.css's own note above
+   * the keyframes below).
+   */
+  --animate-value-prop-1: value-prop-cycle 9s var(--ease-standard) infinite;
+  --animate-value-prop-2: value-prop-cycle 9s var(--ease-standard) -3s infinite;
+  --animate-value-prop-3: value-prop-cycle 9s var(--ease-standard) -6s infinite;
+}
+
+/*
+ * Each item is visible for roughly a quarter of the 9s cycle, then hidden
+ * for the rest — three of these, staggered a third of a cycle apart via
+ * the negative delays above, produces "show one, then the next, then the
+ * next, then all disappear briefly before the loop restarts." 0%/100% are
+ * identical on purpose so the loop point is seamless.
+ *
+ * This keyframe's `!important`-free duration means Step 4's global
+ * `prefers-reduced-motion` rule (src/styles/base.css) — which forces
+ * animation-duration to ~0 — would otherwise make this snap through an
+ * entire cycle instantly and land on the final (hidden) frame, i.e.
+ * disappear completely for those users. login-art-panel.tsx guards
+ * against that itself with `motion-reduce:` utilities that turn the
+ * animation off and show every item at once, statically, instead.
+ */
+@keyframes value-prop-cycle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  4%,
+  30% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  34% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
 }

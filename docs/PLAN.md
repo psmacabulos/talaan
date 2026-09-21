@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ████████████░░░░░░░░ 58%**  (38 of 65 tasks, 11 of 25 steps approved)
+**Overall progress: ████████████░░░░░░░░ 62%**  (41 of 66 tasks, 13 of 25 steps approved)
 
-**Next up:** Step 11.5, Responsive scaling, small screen to big screen (ready for your review)
+**Next up:** Step 13, Dashboard (not started)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -18,8 +18,8 @@
 | 9 | Mock repositories and session | ██████████ 100% | Approved |
 | 10 | App shell and navigation | ██████████ 100% | Approved |
 | 11 | Dev switchers and theme dropdown | ██████████ 100% | Approved |
-| 11.5 | Responsive scaling, small screen to big screen | ███████░░░  67% | Ready for your review |
-| 12 | Login page | ░░░░░░░░░░   0% | Not started |
+| 11.5 | Responsive scaling, small screen to big screen | ██████████ 100% | Approved |
+| 12 | Login page | ██████████ 100% | Approved |
 | 13 | Dashboard | ░░░░░░░░░░   0% | Not started |
 | 14 | Students list | ░░░░░░░░░░   0% | Not started |
 | 15 | Student form | ░░░░░░░░░░   0% | Not started |
@@ -129,13 +129,13 @@ Commit: `feat(shell): add dev switchers and theme dropdown`
 - [x] The app shell's main content area uses the full available width/height, capped at a generous max-width past 1536px (grows generously, then stops, rather than stretching edge to edge on an ultrawide) — a shared convention every future page inherits automatically.
 Done when: checked across a real range of sizes, not just 360px/1280px (added 1920px and 2560px) — the app visibly grows with the screen instead of leaving large empty space, while staying correct and readable at 360px.
 Commit: `feat(design): add fluid responsive scaling from small to large screens`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 12: Login page
-- [ ] Login page matching the prototype: left panel (DepEd logo top left when enabled, school logo top right, "Attendance portal" and the school name in the center, graph-paper background) and the sign-in form on the right, with validation and demo shortcuts.
+- [x] Login page matching the prototype: left panel (DepEd logo top left when enabled, school logo top right, "Attendance portal" and the school name in the center, graph-paper background) and the sign-in form on the right, with validation and demo shortcuts.
 Done when: it matches the prototype at 360px and 1280px, in light and dark.
 Commit: `feat(auth): add login page`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 13: Dashboard
 - [ ] Segmented today bar with counts, attendance by grade, needs-attention list, live tap feed, simulated tap, and the teacher variant.
@@ -205,6 +205,7 @@ Commit: `test: add end-to-end tests`
 
 ### Step 24: Final polish
 - [ ] Lighthouse pass on login and dashboard, 360px and 1280px review in light and dark, remove unused code, finish the README.
+- [ ] Sitewide spacing/alignment consistency pass across every screen built so far: generous, deliberate whitespace (not the prototype's literal values), and real box-centering checked by measurement, not just by eye. See CLAUDE.md's UX quality bar and docs/BUILD-LOG.md's Step 12 "review round 2" (the flexbox centering bug found this way).
 Done when: scores and the review are reported honestly, and lint, typecheck, test, build and check:tokens pass.
 Commit: `chore: final polish for phase 1`
 - [ ] Owner review: I checked it and said "approved"

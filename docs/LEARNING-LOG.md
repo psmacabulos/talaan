@@ -11,6 +11,8 @@ Short, plain-language notes explaining things along the way — for whenever I w
 - [Domain modeling: types vs. schemas](#domain-modeling-types-vs-schemas)
 - [Tap stations and notifications (Phase 2 planning)](#tap-stations-and-notifications-phase-2-planning)
 - [App shell and navigation (Step 10)](#app-shell-and-navigation-step-10)
+- [CSS layout: Flexbox spacing gotchas](#css-layout-flexbox-spacing-gotchas)
+- [Multi-tenant apps: one customer's identity doesn't belong on a shared screen](#multi-tenant-apps-one-customers-identity-doesnt-belong-on-a-shared-screen)
 
 ---
 
@@ -193,6 +195,16 @@ Noticed while clicking through the demo page: the page visibly moved for as long
 
 **The real lesson:** when a bug report describes one visible symptom ("it shakes"), it's worth checking whether more than one distinct mechanism could produce that same symptom, before declaring the first plausible-looking cause "the" cause. Fixing a real, measured problem is not the same as fixing *the* problem someone reported — especially when the fix touches shared, load-bearing behavior (like a scroll-lock library's own compensation) that something else was already quietly depending on.
 
+### A shadcn "style" doesn't have to carry every component (Step 12)
+Running `npx shadcn add form` produced no error and no file — the CLI reported "No files" for that item. This project's `components.json` uses `"style": "radix-nova"`, a newer, from-scratch Radix-based style (its `button.tsx` imports `cn` from the standalone `cn` package, not the classic `@/lib/utils` helper most shadcn tutorials show). That style's registry simply hasn't shipped a `form` item yet — confirmed with `npx shadcn view form` (empty) vs. `npx shadcn view button` (full file) and `npx shadcn search @shadcn -q form` (the *classic* registry does have one, under a different style's conventions).
+
+Rather than pull in the classic-style `form.tsx` (which would've mixed two different `cn`/Radix wiring conventions in the same project), the sign-in form was built directly against `react-hook-form` and the existing `Input`/`Label` components — no generated wrapper needed for one form. **The lesson:** a scaffolding CLI succeeding silently isn't the same as it succeeding — always check the actual file it claims to have added before assuming it's there.
+
+### Adding a `size` prop to a component wrapping a real HTML element can collide with a *native* attribute of the same name (Step 12)
+Giving `Input` a `size="lg" | "default"` variant (to fix inputs that looked too small next to their labels — see `docs/BUILD-LOG.md`'s Step 12 "review round 4") broke the type-check with a confusing error. Cause: a plain `<input>` already has its own built-in `size` attribute (an old HTML one — how many characters wide it is, a number), and `React.ComponentProps<"input">` includes it automatically. The new variant prop and the native attribute had the same name but different, incompatible types (a specific string vs. a number), and TypeScript couldn't reconcile the two into one prop.
+
+**The fix:** `Omit<React.ComponentProps<"input">, "size">` before adding the variant's own `size` back in — explicitly telling TypeScript "ignore the native one, use mine instead." **Worth remembering for next time:** before naming a new prop on a component that wraps a real HTML element (`input`, `button`, `img`, `a`, ...), it's worth checking whether that element already has a native attribute of the same name — `size`, `type`, `form`, `title`, `color` and a handful of others are all real HTML attributes that can quietly collide with an intuitive-sounding prop name.
+
 ---
 
 ## Next.js as a full-stack framework
@@ -215,6 +227,9 @@ Step 9 wrote `setDevSession` as a Server Action, but nothing called it from a bu
 2. **A Client Component reaches *up* and imports the action by name** (`import { setDevSession } from "..."`) — what the dev switcher actually does. This needs the action in its own file, with `"use server"` on the file's very first line, not inside the function. `npm run build` enforces this for real: it failed with a genuinely confusing message (something about "the Pages Router," which this project doesn't even use) the first time this was gotten wrong, because the file the action lived in also had ordinary, non-action exports mixed in, and the bundler couldn't cleanly cut a client-safe reference out of it.
 
 **Why the distinction exists at all:** in case 2, Next has to ship *something* to the browser standing in for that function (an id it can POST back to later) — and it can only safely do that cleanly for a whole file it knows is 100% actions, not a file where some exports are actions and others are ordinary server-only code the browser must never see.
+
+### Navigating *from* a Server Action: `redirect()` (Step 12)
+Step 11's dev switcher calls a Server Action but never navigates anywhere — it stays on the same page and relies on the "a cookie mutation is enough to re-render" behavior above. The login page's sign-in needed something more: after setting the session cookie, actually send the browser to `/dashboard`. Next's own answer is `redirect("/dashboard")` from `next/navigation`, called at the end of the Server Action itself (`src/features/auth/actions.ts`) — not `useRouter().push(...)` back in the button's click handler. `redirect()` works by throwing a special value that Next's own machinery catches and turns into navigation, so it has to be the last thing the action does; calling it doesn't "return" normally to whatever called the action.
 
 ---
 
@@ -298,3 +313,45 @@ Asked after "shell" got used a few times without ever being defined plainly, and
 The whole app right now runs on **make-believe data** — a handful of fake schools, fake students, fake staff, typed in by hand, not a real database. That's on purpose: it lets the entire look-and-feel of the app (every screen, every button, whether a teacher sees the right menu) get built and actually looked at and corrected *before* the much harder, riskier part (a real database, real logins, a real NFC card reader at the gate) gets built. Fixing "that button's in a confusing spot" is a five-minute change right now; the same conversation after a real login system exists would be slower, because more things would depend on it.
 
 The **dev switcher** (the "Principal, Balanga City..." menu in the top bar) exists purely because of that choice. There's no real login yet, so there's no ordinary way to check "does a teacher see a different screen than a principal?" The switcher is a stand-in: pick a name from the list, and the app pretends that's who's signed in — same students, same screens, just viewed as a different role. It's marked "dev only" and is coded to vanish completely once the app goes live for real, because by then real logins will do this job instead.
+
+---
+
+## CSS layout: Flexbox spacing gotchas
+
+### `text-align: center` centers text — not the box it's in (Step 12)
+Reported as "the school name isn't centered," with a screenshot showing it sitting to the left of the headline above it. The whole panel already had `text-center` set, so the instinct might be "that should already be handled" — but `text-align` only centers the *text inside* an element's own box; it says nothing about where that box itself sits.
+
+The real cause: the headline and the subtitle were both inside a `<div style="flex flex-col">` with no `items-center`. The headline happened to fill the full width available to it (its text is long enough to force that), so it looked centered by accident. The subtitle has its own narrower `max-w-[22ch]` limit, and with nothing telling the flex column to center a child that doesn't fill the full width, the browser's default is to push it flush against the left edge instead.
+
+**The fix was one class**, `items-center`, added to that wrapping div. **The general rule:** centering *text* and centering a *box* are two different CSS jobs — `text-align: center` for the first, `items-center` (in a flex/grid parent) or `margin: 0 auto` for the second. A bug report that says "not centered" could be either one, and they look identical until you check.
+
+### Measuring instead of guessing when a screenshot alone doesn't explain the bug
+Rather than nudge spacing classes until it looked right, ran a small script directly in the browser (`element.getBoundingClientRect()`, via Playwright's `page.evaluate`) to get the actual pixel position of the headline, the subtitle, and the panel around them. That's what turned up the real numbers (subtitle centered at a different x than the headline) and confirmed the fix afterward (both now land on the same x, at 360px, 1280px and 2560px). Full write-up: `docs/BUILD-LOG.md`'s Step 12 "review round 2."
+
+### A plain `@import`ed CSS file can silently out-rank Tailwind's own utility classes (Step 12)
+Reported as "the focus outline is too thick." Turning the ring down a size (round 4) didn't actually fix it, because ring width was never the real problem — checking the *computed* style of a focused input (not just looking at it) showed two separate focus outlines drawing at once: a native browser one *and* Tailwind's own. `src/styles/base.css` sets a plain, global `:focus-visible { outline: ... }` as a sensible-looking fallback, and every styled component (`Input`, `Button`, `Select`) already says `outline-none` specifically to turn that off in favor of its own nicer-looking ring. Normally `outline-none` should win — but `base.css` gets pulled in with a plain `@import`, not wrapped in Tailwind's own `@layer` system, and modern CSS has an explicit rule for this exact situation: **an "unlayered" style always beats a "layered" one**, no matter which one is more specific or which one loads later. Tailwind's utility classes (including `outline-none`) all live inside Tailwind's own named layers — so the unlayered global rule was quietly winning every time, showing its outline *in addition to* whatever ring the component tried to draw.
+
+**The fix:** wrap `base.css`'s rules in `@layer base { ... }`, so they join Tailwind's own layer stack instead of floating above it. One CSS-only change, and it fixed every focusable element in the app at once (this was never login-specific), not just the one that got reported. **The general lesson:** when a project imports a plain CSS file *alongside* a utility framework like Tailwind, that file's rules can silently outrank the framework's own classes — regardless of how specific or "later" those classes look in the source — unless it's deliberately put in the same layer system. Worth checking with the browser's actual computed styles (not just how something looks) whenever two style sources for the same element might be fighting.
+
+### A looping animation needs its own `prefers-reduced-motion` fallback — the site's blanket rule isn't always enough (Step 12)
+The app already has one global rule (`base.css`) that neutralizes motion for anyone who's turned on "reduce motion": it forces every animation's duration down to nearly zero and caps it at one run. That's the right fix for a one-time entrance (something that fades in once) — at zero duration it just snaps straight to its final, fully-visible state, instantly. It's the *wrong* fix for an infinite decorative loop, like the new login page's value-prop carousel (see `docs/BUILD-LOG.md`'s Step 12 "review round 5"): at zero duration, "run the loop once and stop" lands on whatever the keyframe's *last* frame happens to be — which for a fade-in/fade-out loop is invisible. Without a specific fix, everyone with reduced motion turned on would have seen nothing there at all.
+
+**The fix:** added `motion-reduce:` classes directly on top of the animated ones (Tailwind's built-in variant for this exact media feature) that turn the animation off entirely and force the element to just sit there, fully visible, instead. **The lesson:** the site's one global "turn motion down" rule is a good default, but it assumes every animation ends somewhere reasonable when played for ~0 seconds — an infinite loop doesn't, so it needs its own explicit, deliberately-chosen fallback, not just a trust that the blanket rule will handle it. Checked by actually emulating the setting in the browser (Playwright's `emulateMedia`) rather than assuming.
+
+**Where "reduce motion" actually lives, and why it looked broken instead of correct at first:** the carousel appeared static (not looping) when checked in a real browser, but looped fine in Claude's own test browser — looking like a bug. It wasn't one: `prefers-reduced-motion` isn't a browser setting, it's read from a **Windows** setting (Settings → Accessibility → Visual effects → "Animation effects"), and it was switched off. Claude's test browser only showed the animation because it had been explicitly told (via a Playwright testing command) to ignore that setting for testing purposes — not because it was reading some different, correct value. Once "Animation effects" was switched on in Windows, the real browser matched. Worth remembering: this setting affects *every* app and website on the PC that respects it (this one included, on purpose), not just this one page — and switching it back off later isn't "breaking" anything, it's the site correctly noticing a real preference again.
+
+### Don't just shrink the desktop layout for mobile — ask if the same content belongs there at all (Step 12)
+The login page's desktop version has a big decorative left panel (logo, headline, tagline). Below the point where the screen switches to one column, that whole panel was stacking *above* the sign-in form, in full — same size, same content, just moved. It technically worked (no errors, nothing broken, checked every round), but it meant a phone had to scroll past a large decorative block before reaching the one thing it opened the page to do: sign in.
+
+**The fix wasn't smaller spacing — it was different content.** Below that breakpoint, the decorative panel disappears completely (`hidden lg:flex` — gone, not shrunk), replaced by a small heading with just the words "Attendance portal," so the sign-in form is the first real thing on the screen. **The lesson:** "does this render correctly on a small screen" and "does this make sense on a small screen" are two different questions — the first is what a quick check confirms, the second needs someone to actually ask "does the *first* screen's worth of content on this device do the visitor's actual job."
+
+---
+
+## Multi-tenant apps: one customer's identity doesn't belong on a shared screen
+
+### The login page showed one school's real name and logo to every school's staff (Step 12)
+The login screen's left panel was built with Balanga City NSHS's actual name and seal — matching the approved prototype, which also hardcodes one demo school throughout. That's fine for a *prototype* (it only ever needs to demonstrate one look), but Talaan itself is multi-tenant: many schools use the same app, each seeing only their own data once signed in. The login screen, though, renders **before** anyone is signed in — there's no school known yet at that point, no session to read one from. Showing Balanga's own branding there meant a teacher at a different school, opening the same login page, would see someone else's school name and seal above the sign-in form — confusing at best, and not really "Balanga's page" or "that other school's page," just wrong for everyone.
+
+**The fix:** the login screen now carries generic product identity only — a plain "Attendance portal" heading, a tap-themed icon (not tied to any school), and a one-line description of what the product does. Nothing school-specific renders until *after* someone actually signs in, at which point the app already knows — from their account — which school's data and branding to show.
+
+**The general rule, worth remembering for every future screen:** before building a screen, ask *when* it renders relative to knowing who the user is. A screen that can render before sign-in (login, a public marketing page, a "forgot password" screen) can only safely show information true for *everyone* — never one specific customer's/school's own data, even if the reference design or the current test data only shows one example of it.

@@ -1,65 +1,83 @@
-/* Base element styles built on the tokens above. No raw colors here either. */
-
-/*
- * Opening a Dialog/Sheet/Select/DropdownMenu locks scrolling (radix-ui, via
- * its bundled react-remove-scroll) by setting `overflow: hidden` on <body>
- * while it's open. Two separate, real effects follow from that, and both
- * need to be neutralized — fixing only one made things visibly worse (see
- * docs/BUILD-LOG.md's Step 6 entry for the full story):
+/* Base element styles built on the tokens above. No raw colors here either.
  *
- * 1. The real browser scrollbar disappears and reappears (since <html> is
- *    left at its default `overflow-y: visible`, browsers apply <body>'s
- *    overflow to the viewport in its place — a spec-defined rule, not a
- *    bug). That's a real, visible flicker of the scrollbar itself.
- * 2. react-remove-scroll already tries to compensate for #1 by giving
- *    <body> a matching `margin-right`, so the *content* doesn't visibly
- *    move even though the viewport briefly got wider. That compensation
- *    is correct on its own.
- *
- * Forcing the scrollbar to always be reserved (below) fixes #1, but it
- * also removes the viewport-widening #2 was compensating for — so #2's
- * margin then has nothing to cancel out, and content starts shrinking
- * instead. The fix has to address both at once: keep the scrollbar always
- * reserved, AND cancel the now-unnecessary margin.
+ * Everything below is wrapped in Tailwind's own `base` layer (`@layer
+ * base`) rather than left as plain unlayered CSS. This isn't just tidiness:
+ * per the CSS Cascade Layers spec, unlayered rules always beat *any*
+ * layered rule for a normal-priority declaration, regardless of selector
+ * specificity — so the plain `:focus-visible { outline: ... }` rule below,
+ * left unlayered, was unconditionally overriding every component's own
+ * `outline-none` (a Tailwind utility, which lives in the `utilities`
+ * layer). Confirmed in the browser: a focused Input showed BOTH the native
+ * 2px outline from here AND the component's own box-shadow ring
+ * simultaneously — two stacked focus indicators, which is what actually
+ * read as "too thick" (see docs/BUILD-LOG.md's Step 12 "review round 5").
+ * Inside `@layer base`, this rule still works as a fallback for anything
+ * that doesn't set its own focus ring, but any component that does
+ * (Button, Input, Select) now correctly wins, as intended.
  */
-html {
-  overflow-y: scroll;
-}
+@layer base {
+  /*
+   * Opening a Dialog/Sheet/Select/DropdownMenu locks scrolling (radix-ui,
+   * via its bundled react-remove-scroll) by setting `overflow: hidden` on
+   * <body> while it's open. Two separate, real effects follow from that,
+   * and both need to be neutralized — fixing only one made things visibly
+   * worse (see docs/BUILD-LOG.md's Step 6 entry for the full story):
+   *
+   * 1. The real browser scrollbar disappears and reappears (since <html>
+   *    is left at its default `overflow-y: visible`, browsers apply
+   *    <body>'s overflow to the viewport in its place — a spec-defined
+   *    rule, not a bug). That's a real, visible flicker of the scrollbar
+   *    itself.
+   * 2. react-remove-scroll already tries to compensate for #1 by giving
+   *    <body> a matching `margin-right`, so the *content* doesn't visibly
+   *    move even though the viewport briefly got wider. That compensation
+   *    is correct on its own.
+   *
+   * Forcing the scrollbar to always be reserved (below) fixes #1, but it
+   * also removes the viewport-widening #2 was compensating for — so #2's
+   * margin then has nothing to cancel out, and content starts shrinking
+   * instead. The fix has to address both at once: keep the scrollbar
+   * always reserved, AND cancel the now-unnecessary margin.
+   */
+  html {
+    overflow-y: scroll;
+  }
 
-html body[data-scroll-locked] {
-  /* Higher specificity than react-remove-scroll's own injected rule
-     (`body[data-scroll-locked]`), so this reliably wins regardless of
-     which one loads or updates first. */
-  margin-right: 0px !important;
-}
+  html body[data-scroll-locked] {
+    /* Higher specificity than react-remove-scroll's own injected rule
+       (`body[data-scroll-locked]`), so this reliably wins regardless of
+       which one loads or updates first. */
+    margin-right: 0px !important;
+  }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-body);
-}
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-body);
+  }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-family: var(--font-heading);
-}
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+  }
 
-:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
