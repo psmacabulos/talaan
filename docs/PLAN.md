@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ████████░░░░░░░░░░░░ 42%**  (26 of 62 tasks, 8 of 24 steps approved)
+**Overall progress: ██████████░░░░░░░░░░ 48%**  (30 of 62 tasks, 9 of 24 steps approved)
 
-**Next up:** Step 9, Mock repositories and session (not started)
+**Next up:** Step 10, App shell and navigation (not started)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -15,7 +15,7 @@
 | 6 | shadcn/ui and base components | ██████████ 100% | Approved |
 | 7 | Style guide page and token check | ██████████ 100% | Approved |
 | 8 | Domain types, schemas and seed data | ██████████ 100% | Approved |
-| 9 | Mock repositories and session | ░░░░░░░░░░   0% | Not started |
+| 9 | Mock repositories and session | ██████████ 100% | Approved |
 | 10 | App shell and navigation | ░░░░░░░░░░   0% | Not started |
 | 11 | Dev switchers and theme dropdown | ░░░░░░░░░░   0% | Not started |
 | 12 | Login page | ░░░░░░░░░░   0% | Not started |
@@ -102,12 +102,12 @@ Commit: `feat(data): add domain types, schemas and seed data`
 - [x] Owner review: I checked it and said "approved"
 
 ### Step 9: Mock repositories and session
-- [ ] Repository interfaces and mock implementations with simulated latency.
-- [ ] `getSession()` returning `{ userId, role, schoolId }` from a dev-only cookie; impossible to enable in production.
-- [ ] Unit tests for the repositories.
+- [x] Repository interfaces and mock implementations with simulated latency.
+- [x] `getSession()` returning `{ userId, role, schoolId }` from a dev-only cookie; impossible to enable in production.
+- [x] Unit tests for the repositories.
 Done when: tests pass and no UI code talks to seed data directly.
 Commit: `feat(data): add mock repositories and session`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 10: App shell and navigation
 - [ ] Authenticated layout: sidebar, top bar, responsive drawer, role-based navigation, route guards.

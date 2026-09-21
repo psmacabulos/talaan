@@ -8,6 +8,8 @@ Short, plain-language notes explaining things along the way — for whenever I w
 - [Colors and theming](#colors-and-theming)
 - [Components and libraries (shadcn/ui)](#components-and-libraries-shadcnui)
 - [Next.js as a full-stack framework](#nextjs-as-a-full-stack-framework)
+- [Domain modeling: types vs. schemas](#domain-modeling-types-vs-schemas)
+- [Tap stations and notifications (Phase 2 planning)](#tap-stations-and-notifications-phase-2-planning)
 
 ---
 
@@ -192,3 +194,63 @@ Asked while starting Step 8, worried about how "the back end" will actually get 
 **The Next.js way:** front end and back end code live in the *same* project, mostly in the *same files*, using three tools instead of hand-wiring API routes: a **Server Component** (a page that talks straight to a database while rendering, no separate API call needed), a **Server Action** (a function marked `"use server"` that a form calls on submit), and a **Route Handler** (`src/app/api/.../route.ts` — a plain URL for things that aren't browser pages, like the future tap-station API, which a device calls directly with an HTTP request, not a browser session).
 
 **What "deployed" means depends on where:** on Vercel (Next.js's own company), there's no server to manage — every page/action/route becomes an on-demand function that spins up per request. On a plain server/VM (`next start`), it's one long-lived Node.js process, shaped similarly to an Express server, just organized by Next.js's file-based routing. Either way: **one deployed thing, not two** — Phase 2's back end will be more files in this same project (Steps 9 uses a mock version of this shape already; Phase 2 swaps in a real database via Prisma), not a second program built from scratch.
+
+**Full visual, interactive version:** [One Server, Two Jobs](https://claude.ai/artifact/6Sfdb2DEQhoTe9Qxz7d2QR) — diagrams the two-programs-vs-one comparison above, a page read, a Server Action write, and exactly where `getSession()` sits, plus how this compares cost-wise to a separate Express + JWT setup.
+
+---
+
+## Domain modeling: types vs. schemas
+
+### What's the actual difference between a "domain type" and a "schema"? And is Step 8 front end or back end?
+Asked after Step 8's files were listed for commit — "schemas" made sense, but "types" felt like a separate, unclear thing.
+
+**A schema is a rule-checker that actually runs.** When real data shows up (a form submitted, a tap recorded), the schema is the code that checks it — "is this LRN exactly 12 digits?" — for real, every time the app runs.
+
+**A type is a label used only while the code is being written — it doesn't exist once the app is running.** It tells the editor "a Student has these fields," so mistakes (a missing field, the wrong kind of value) get caught immediately while writing some *other* piece of code later, before anything runs. Types are stripped out completely when the code is built.
+
+**Analogy:** the schema is the school clerk who actually checks a submitted form. The type is the blank form template itself — it shows what boxes exist, but never checks anyone's actual answers.
+
+They're related on purpose in this project: the schema is written once, and the type is just read off of it automatically (`z.infer`, see [`docs/DATA-MODEL.md`](DATA-MODEL.md#schemasts-first-typests-second)) — not two separate things to keep in sync by hand.
+
+**Front end or back end?** Neither — no screen changed, still no database or server. It's the shared vocabulary both sides will eventually use: the fake seed data is built to match it now, and the real Phase 2 database code will agree on the same shapes later.
+
+---
+
+## Tap stations and notifications (Phase 2 planning)
+
+### Does a tap station need a native app, or a login, to use an NFC reader?
+Discussed while reviewing Step 8's ER diagram (`Tap.stationId`) — full write-up in [`docs/DATA-MODEL.md`](DATA-MODEL.md) and the [[project-tap-api-hardware-agnostic]] / parent-notifications planning notes, kept short here.
+
+**No native app needed.** A browser tab is enough. Most inexpensive USB/Bluetooth NFC readers work as "keyboard-wedge" devices — to the computer/tablet, they look exactly like someone typing the card's serial number (then Enter) into whatever's focused. On our own tap station page, that "focused spot" isn't a disconnected text box — it's a hidden, always-active part of *our own* page, watched by *our own* code, which reacts the instant a full serial arrives (shows success/duplicate/lost-card, no button to click). This works identically on a laptop, tablet, or phone, in any browser. Some Android phones/tablets can *also* read NFC directly through Chrome (no external reader at all, "Web NFC") — but that's Android-Chrome-only, so the external-reader path is the more universal one to rely on.
+
+**Login vs. a registered device:** for now, requiring a staff login on the tap station (instead of a real per-device "station key") is fine — it's just a different way of answering "which school is this," and doesn't conflict with keeping the API hardware-agnostic later.
+
+**Offline behavior:** a tap made while offline is generated and queued **on the device itself** (it already has its own ID, so it doesn't need the server to exist first) — it gets sent once the connection returns, and a parent notification only ever goes out *after* that.
+
+---
+
+## What is a "repository"? (Step 9)
+
+### The librarian analogy
+Asked while reviewing Step 9's repository files. A repository is like a library's front desk: you don't walk into the storage room and grab a book yourself, you ask the librarian, who knows where it actually is and fetches it. `studentRepository.listBySchool(schoolId)` plays that role for data — nothing else in the app ever reaches into the raw seed data file directly.
+
+**Why bother, when today's data is just a hardcoded fake list?** Because that's exactly the point — today it's a fake list in a file; in Phase 2 it becomes a real database call. If every screen had reached into the fake list by name, all of those places would need rewriting later. Since everything only ever asks the repository, only the repository's own insides change when the real database arrives — everything that was already asking it keeps working, unaware anything changed underneath.
+
+**See a repository being asked for data, and the "librarian" idea drawn out visually:** [One Server, Two Jobs](https://claude.ai/artifact/6Sfdb2DEQhoTe9Qxz7d2QR)'s "Reading data" and "Writing data" diagrams show `studentRepository`/`setDevSession` being called this exact way, end to end.
+
+### Repository, compared to Express's Model/Controller/Service/Routes
+Asked next, having previously worked with a layered Express backend. Short version — the Model/Repository half exists now (Step 8/9), the rest doesn't yet:
+
+| Express/MVC | Talaan / Next.js | Built as of Step 9? |
+|---|---|---|
+| Model | Zod schemas + types (`src/features/*/schemas.ts`, `types.ts`) | Yes — Step 8 |
+| Repository | `src/data/repositories/*.ts` | Yes — Step 9 |
+| Service layer | `src/features/*/actions.ts` (Server Actions) | Not yet |
+| Controller | Folded into Server Components (reads) + Server Actions/Route Handlers (writes) | Not yet |
+| Routes | File-based — the page file *is* the route | Not yet |
+
+Next.js merges what Express usually splits into two things (Routes + Controller) into one: a page file that's both the route definition and the code that fetches and renders it. **A fuller, dedicated write-up (with real code on both sides of the table) is intentionally saved for once Step 10+ actually builds the Controller/Service/Routes side** — see the `project-backend-layers-comparison-doc` memory. This table is the placeholder until then.
+
+**Not the back end yet, but its future shape.** Same as Step 8's types/schemas — still Phase 1, still in-memory, no network. This is the pattern the real Phase 2 code will keep, not a preview of Phase 2 itself.
+
+**Full write-up, with a diagram:** [`docs/DATA-ACCESS.md`](DATA-ACCESS.md).

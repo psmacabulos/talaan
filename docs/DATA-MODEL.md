@@ -2,6 +2,8 @@
 
 Step 8 added the layer everything from here on is built against: what a School, Staff member, Student, Card, Tap and Alert actually *are* (as TypeScript types), what makes one *valid* (as Zod schemas), and a full set of fake-but-realistic sample records (seed data) standing in for a real database until Phase 2. This is a from-scratch explanation of how those three pieces fit together — `docs/BUILD-LOG.md`'s Step 8 entry covers the decisions and a couple of real bugs hit along the way; this document is the reference for how the mechanism itself works.
 
+**None of this is the back end.** No screen changed, and there's still no database or server — everything here is still Phase 1 front-end code (plain TypeScript files and validation logic, nothing that talks to a network). Think of it as the shared vocabulary both sides will eventually agree on: the seed data is built to match it now, and Phase 2's real database code will use the exact same shapes later. See `docs/LEARNING-LOG.md`'s "Domain modeling: types vs. schemas" entry for the plain-language version of this distinction.
+
 **See also:** [`docs/STYLING-SYSTEM.md`](STYLING-SYSTEM.md) and [`docs/COMPONENTS.md`](COMPONENTS.md) for the two other subsystems this one doesn't touch — colors and components are a completely separate concern from what a Student record contains.
 
 ## The data itself: entities, fields and relationships

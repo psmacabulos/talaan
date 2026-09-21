@@ -375,3 +375,35 @@ Re-verified after the additions: `lint`, `typecheck`, `test` (77/77 — 4 new te
 
 ### Result
 All build tasks done, including the review-round additions above. Waiting on the owner's review.
+
+---
+
+## Step 9: Mock repositories and session
+
+**Goal:** a repository interface + mock implementation per Step 8 entity (read-only: `list`/`get`), simulated latency on every call, and `getSession()`/`setDevSession()` — the dev-only stand-in for real login, guarded so switching it is impossible in production.
+
+### A long detour before writing any code: whether Next.js should even be the back end
+Before this step, the owner raised real doubts (prompted by reading `docs/DATA-MODEL.md`'s ER diagram) about whether to split the back end into a separate Express server, driven by concrete worries: serverless cold starts affecting the physical tap station, whether WebSockets were needed for the hardware connection, and — once cold starts were resolved — how much any of this would actually cost against a very thin single-school profit margin. This became a genuinely long research thread, verified against current facts rather than assumed at each step (the `vercel:create-a-backend` skill, a `vercel:deployment-expert` agent's independent evaluation, and live pricing/docs checks for Vercel, Railway, Render, Google Cloud Run + Cloud SQL, Hostinger, and Netlify, in that order, each ruled in or out on the same two criteria: does it actually eliminate the cold-start concern, and is it cheaper than the last one). It ended with a decision that doesn't change anything about this step's code (still Phase 1, still mock data) but does settle the target Step 9's repositories are quietly designed for: Heroku (a Basic dyno, not Eco — Eco sleeps after 30 minutes idle, undoing the whole point) funded by the owner's existing $271 GitHub Student Developer Pack credit, with a move to Vercel deferred until there are enough schools to justify its cost. Recorded in full in the `project-hosting-and-infrastructure` memory rather than repeated here — the short version is what matters for this step: the repository interfaces are written against plain `Promise`-returning methods with no assumption about *where* the real implementation will eventually run, which is exactly what makes this whole debate irrelevant to how Step 9 itself was built. The architecture half of this detour (one server vs. two, where a read/write actually goes, where the session fits) is drawn out in the **[One Server, Two Jobs](https://claude.ai/artifact/6Sfdb2DEQhoTe9Qxz7d2QR)** artifact, also linked from `docs/LEARNING-LOG.md` and `docs/DATA-ACCESS.md`.
+
+### Why every repository is read-only for now
+Tempting to add `create`/`update` to each interface while designing them — resisted this. Step 9's own done-when criterion ("no UI code talks to seed data directly") only needs reads, and nothing exists yet that would exercise a write method. A speculative `StudentRepository.create()` with no caller and only a hypothetical test would be exactly the kind of half-finished surface CLAUDE.md warns against. Each future step that actually needs a write (Step 15's student form, Step 16's card replace, Step 18's staff invite, Step 19's tap recording) adds exactly the method it needs, when it needs it — extending an already-built repository file is normal growth, not scope creep into later work.
+
+### The factory-function shape, chosen for one specific reason: tests shouldn't need the full seed set
+Every mock repository is `createMock*Repository(data = seedX, options?) => Interface`, not a hardcoded singleton. This means `school-repository.test.ts` can construct a repository from two hand-written fixture schools instead of all 3 real ones (harmless at this scale, but the same pattern keeps `student-repository.test.ts` from needing all 72 real students just to check that `listBySchool` filters correctly) — tests describe exactly the scenario they're checking, nothing borrowed from the real data that could change later and silently break an unrelated test.
+
+### `getSession()` needed splitting into a testable half and a Next.js-glue half
+First instinct was to unit-test `getSession()` and `setDevSession()` directly, mocking `next/headers`'s `cookies()`. Decided against it: `cookies()` is a request-scoped API with real, somewhat fiddly shape (it's a promise resolving to an object with `.get()`/`.set()`/etc.), and mocking it faithfully is itself a small maintenance burden for not much benefit, since the actual *decisions* being tested (does a missing cookie fall back correctly? does a stale one? does the production guard actually throw?) don't depend on cookies at all — they depend on a staff id string and a repository. Pulled those decisions out into `resolveSession(staffId, repository)` and `assertDevSessionMutationAllowed()`, both plain functions, both fully covered in `session.test.ts` with a fake `StaffRepository` fixture and `vi.stubEnv("NODE_ENV", ...)`. `getSession()` and `setDevSession()` themselves are left as 2-3 line wrappers that call `cookies()` and hand off to the tested logic — correct by inspection, not worth mocking Next internals to cover.
+
+### Confirmed, not assumed: inline `"use server"` in a file with other exports
+`setDevSession` needs `"use server"` (it's a Server Action Step 11 will eventually wire to a button), but `session.ts` also exports plain types and functions — a file-level `"use server"` directive requires every export to be an async function, which wouldn't fit. Checked Next's own docs (`node_modules/next/dist/docs/01-app/01-getting-started/07-mutating-data.md`) rather than assume: the directive can be placed inside a single function's body instead, marking only that function. Confirmed it actually compiles by running `npm run build`, not just trusting the docs' example — a production build would fail loudly if this pattern were invalid, and it didn't.
+
+### What got built
+- `src/data/repositories/latency.ts` (`simulateLatency`, `DEFAULT_LATENCY_MS`) and one `{entity}-repository.ts` + `.test.ts` pair per Step 8 entity (school, staff, student, card, tap, alert), plus `index.ts` re-exporting every singleton.
+- `src/lib/session.ts` (`Session`, `resolveSession`, `getSession`, `assertDevSessionMutationAllowed`, `setDevSession`) + `session.test.ts`.
+- `docs/DATA-ACCESS.md` (new — a genuinely distinct subsystem from Step 8's `DATA-MODEL.md`), linked from `README.md`.
+
+### Verified
+`lint`, `typecheck`, `test` (104/104 — 27 new), `check:tokens`, and `build` all pass. No browser check needed — nothing renders yet; the done-when criterion is entirely about the repository layer being real and tested.
+
+### Result
+All build tasks done. Waiting on the owner's review.
