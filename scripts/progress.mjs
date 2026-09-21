@@ -11,7 +11,11 @@ const steps = [];
 let cur = null;
 
 for (const line of text.split('\n')) {
-  const h = line.match(/^### Step (\d+): (.+)$/);
+  // Allows "Step 11.5" — an unplanned step inserted between two existing
+  // ones (e.g. a cross-cutting fix noticed mid-build) without renumbering
+  // every step after it, and every "built in Step N" reference to them
+  // scattered through the codebase and docs.
+  const h = line.match(/^### Step (\d+(?:\.\d+)?): (.+)$/);
   if (h) {
     cur = { n: Number(h[1]), title: h[2].trim(), build: [], hasReview: false, reviewDone: false };
     steps.push(cur);

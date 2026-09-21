@@ -49,4 +49,9 @@ describe("createMockStaffRepository", () => {
     const repo = createMockStaffRepository(allStaff, { latencyMs: 0 });
     await expect(repo.getById("nope")).resolves.toBeNull();
   });
+
+  it("lists every staff member, including the super admin", async () => {
+    const repo = createMockStaffRepository(allStaff, { latencyMs: 0 });
+    await expect(repo.list()).resolves.toEqual(allStaff);
+  });
 });

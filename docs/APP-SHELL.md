@@ -133,6 +133,44 @@ Both render the exact same `NavLinks`, just packaged differently:
 - **`Sidebar`** — a plain, always-rendered `<div>`, hidden below `lg` (1024px) and shown as a static 256px column at `lg` and up: `className="hidden lg:flex"`. No JavaScript needed to decide this — it's a CSS media query.
 - **`MobileNav`** — a Client Component wrapping shadcn's `Sheet` (built on Radix's `Dialog` — focus trap and Escape-to-close come for free), visible only below `lg` (`className="lg:hidden"` on its trigger button). Its `NavLinks` gets an `onNavigate` callback that calls `setOpen(false)`, so tapping a link closes the drawer instead of leaving it open over the new page.
 
+## Step 11: the top bar's right side — `DevSwitcher` and `ThemeDropdown`
+
+Step 10 left the top bar's right side as a static "Principal, Balanga City NSHS" text span. Step 11 makes it interactive, and adds a second control next to it:
+
+```mermaid
+flowchart LR
+    Topbar["topbar.tsx (server)"]
+    Prod{"NODE_ENV ===<br/>'production'?"}
+    Static["plain &lt;span&gt;<br/>(exactly Step 10's text)"]
+    DevSwitcher["DevSwitcher *client*<br/>'view as' menu, every persona"]
+    ThemeDropdown["ThemeDropdown *client*<br/>role !== 'teacher'"]
+
+    Topbar --> Prod
+    Prod -- yes --> Static
+    Prod -- no --> DevSwitcher
+    Topbar --> ThemeDropdown
+
+    style DevSwitcher fill:#223060,color:#fff
+    style ThemeDropdown fill:#1C77A5,color:#fff
+```
+
+**`DevSwitcher`** replaces the static text with a button showing the exact same text, opening a `DropdownMenuRadioGroup` grouped by school (`DropdownMenuLabel` per school, a "Platform" group for the school-less super admin). Picking a persona calls two Server Actions in sequence, inside `startTransition` (the documented way to invoke a Server Action from a plain click handler, not a `<form>`):
+
+```tsx
+function switchTo(staffId: string) {
+  startTransition(async () => {
+    await setDevSession(staffId); // src/lib/session-actions.ts
+    await clearThemeOverride(); // src/lib/theme/theme-override-actions.ts — see docs/STYLING-SYSTEM.md
+  });
+}
+```
+
+The `topbar.tsx` server component decides whether `DevSwitcher` renders **at all** — `process.env.NODE_ENV !== "production"` — the same belt-and-suspenders pattern `assertDevSessionMutationAllowed` already used inside the action itself (Step 9): the UI not rendering a button is never treated as the actual security boundary, only as a convenience on top of one.
+
+**`ThemeDropdown`** is unrelated to the dev/production split — CLAUDE.md calls for keeping it in real, "demo" builds, since a school truly will get theme control eventually (Step 21 just hasn't wired up saving yet). It renders whenever `role !== "teacher"`, in production or not. Its own Server Action (`setThemeOverride`) checks the role server-side too, independently of the UI — see `docs/STYLING-SYSTEM.md`'s Step 11 section for what it actually does to the page's colors.
+
+**Both controls disappear below `sm` (640px)**, same reasoning as Step 10's original identity chip: a 360px top bar only has room for the menu button and the page title before things start truncating.
+
 ## Quick recipes
 
 **I want to add a new page to the shell** (e.g. a student detail page): add `src/app/(app)/students/[id]/page.tsx`. It automatically gets the sidebar/top bar from `(app)/layout.tsx` — nothing else to wire up. If it should be restricted, add the guard pattern from the "Route guards" section above.

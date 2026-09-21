@@ -6,6 +6,8 @@ export interface StaffRepository {
   /** A school's own staff — never includes the global super admin. */
   listBySchool(schoolId: string): Promise<Staff[]>;
   getById(id: string): Promise<Staff | null>;
+  /** Every staff member, every school, plus the super admin — the Step 11 dev switcher's full persona list. */
+  list(): Promise<Staff[]>;
 }
 
 export function createMockStaffRepository(
@@ -22,6 +24,10 @@ export function createMockStaffRepository(
     async getById(id) {
       await simulateLatency(latencyMs);
       return data.find((staff) => staff.id === id) ?? null;
+    },
+    async list() {
+      await simulateLatency(latencyMs);
+      return [...data];
     },
   };
 }

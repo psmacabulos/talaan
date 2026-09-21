@@ -5,9 +5,9 @@ import { staffRepository, type StaffRepository } from "@/data/repositories";
 export const DEV_SESSION_COOKIE = "talaan-dev-session";
 
 /**
- * Who the app renders as until Step 11's dev switcher UI exists (and
- * whenever its cookie is missing/stale after that) — Balanga's own
- * principal, a sensible default persona for a demo.
+ * Who the app renders as whenever the dev session cookie is missing or
+ * stale (before the Step 11 switcher has been used, or after seed data
+ * changes) — Balanga's own principal, a sensible default persona for a demo.
  */
 const DEFAULT_DEV_STAFF_ID = "staff-principal-school-balanga";
 
@@ -46,25 +46,13 @@ export async function getSession(): Promise<Session> {
 
 /**
  * The guard behind "impossible to enable in production" (CLAUDE.md). Called
- * first inside setDevSession — Server Functions are reachable by a direct
- * POST from anywhere, not just from a button that happens not to render, so
- * the check has to live in the function itself, not just in whatever UI
- * calls it (Step 11).
+ * first inside setDevSession (src/lib/session-actions.ts) — Server
+ * Functions are reachable by a direct POST from anywhere, not just from a
+ * button that happens not to render, so the check has to live in the
+ * function itself, not just in whatever UI calls it (Step 11).
  */
 export function assertDevSessionMutationAllowed(): void {
   if (process.env.NODE_ENV === "production") {
     throw new Error("Dev session switching is disabled in production.");
   }
-}
-
-/** What Step 11's role/school switcher will call. Not wired to any UI yet. */
-export async function setDevSession(staffId: string): Promise<void> {
-  "use server";
-  assertDevSessionMutationAllowed();
-  const cookieStore = await cookies();
-  cookieStore.set(DEV_SESSION_COOKIE, staffId, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-  });
 }

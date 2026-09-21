@@ -1,5 +1,8 @@
 import type { ThemeColorTokens, ThemePreset } from "./presets";
 
+/** Anything with a resolved light/dark token pair — a named preset, or a school's custom brand-color palette (contrast.ts's CustomPalette). */
+type ResolvedThemeTokens = { light: ThemeColorTokens; dark: ThemeColorTokens };
+
 const CSS_VARIABLE_NAMES: Record<keyof ThemeColorTokens, string> = {
   background: "--background",
   foreground: "--foreground",
@@ -34,7 +37,7 @@ function declarationsFor(tokens: ThemeColorTokens): string {
  * preset id is a plain server-side value, so the server renders the final,
  * correct CSS in the first response — there's nothing to patch after paint.
  */
-export function presetToCss(preset: ThemePreset): string {
+export function presetToCss(preset: ResolvedThemeTokens): string {
   return `:root:root{${declarationsFor(preset.light)}}.dark.dark{${declarationsFor(preset.dark)}}`;
 }
 

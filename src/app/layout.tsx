@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Atkinson_Hyperlegible, Lexend } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemePresetStyle } from "@/lib/theme/theme-preset-style";
-import { DEFAULT_THEME_PRESET_ID } from "@/lib/theme/presets";
+import { DEFAULT_THEME_PRESET_ID, getThemePreset } from "@/lib/theme/presets";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -23,6 +23,8 @@ export const metadata: Metadata = {
   description: "School attendance portal",
 };
 
+const defaultPreset = getThemePreset(DEFAULT_THEME_PRESET_ID);
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
@@ -31,7 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
-        <ThemePresetStyle presetId={DEFAULT_THEME_PRESET_ID} />
+        <ThemePresetStyle tokens={{ light: defaultPreset.light, dark: defaultPreset.dark }} />
         <ThemeProvider>
           {children}
           <Toaster />

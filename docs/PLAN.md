@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████░░░░░░░░░░ 52%**  (32 of 62 tasks, 9 of 24 steps approved)
+**Overall progress: ███████████░░░░░░░░░ 55%**  (36 of 65 tasks, 11 of 25 steps approved)
 
-**Next up:** Step 10, App shell and navigation (ready for your review)
+**Next up:** Step 11.5, Responsive scaling, small screen to big screen (not started)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -16,8 +16,9 @@
 | 7 | Style guide page and token check | ██████████ 100% | Approved |
 | 8 | Domain types, schemas and seed data | ██████████ 100% | Approved |
 | 9 | Mock repositories and session | ██████████ 100% | Approved |
-| 10 | App shell and navigation | ███████░░░  67% | Ready for your review |
-| 11 | Dev switchers and theme dropdown | ░░░░░░░░░░   0% | Not started |
+| 10 | App shell and navigation | ██████████ 100% | Approved |
+| 11 | Dev switchers and theme dropdown | ██████████ 100% | Approved |
+| 11.5 | Responsive scaling, small screen to big screen | ░░░░░░░░░░   0% | Not started |
 | 12 | Login page | ░░░░░░░░░░   0% | Not started |
 | 13 | Dashboard | ░░░░░░░░░░   0% | Not started |
 | 14 | Students list | ░░░░░░░░░░   0% | Not started |
@@ -114,13 +115,20 @@ Commit: `feat(data): add mock repositories and session`
 - [x] `loading.tsx`, `error.tsx`, `not-found.tsx`.
 Done when: all three roles see the right menu, a teacher cannot open Staff, and it works at 360px and 1280px.
 Commit: `feat(shell): add app shell, navigation and route guards`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 11: Dev switchers and theme dropdown
-- [ ] Dev-only role and school switcher.
-- [ ] Theme dropdown in the top bar (principal and super admin, demo builds), and the school's chosen theme loaded from its record.
+- [x] Dev-only role and school switcher.
+- [x] Theme dropdown in the top bar (principal and super admin, demo builds), and the school's chosen theme loaded from its record.
 Done when: switching school changes logo and colors with no flash, and the dropdown recolors everything live.
 Commit: `feat(shell): add dev switchers and theme dropdown`
+- [x] Owner review: I checked it and said "approved"
+
+### Step 11.5: Responsive scaling, small screen to big screen
+- [ ] A real fluid type and spacing scale (CLAUDE.md's design-system rule 9): text, spacing, icon sizes and touch targets grow smoothly as the viewport widens, instead of only snapping at the couple of breakpoints used so far.
+- [ ] The app shell and page content use the full viewport width and height on a large screen — no leftover empty margin — with a content-width limit only where line length genuinely needs one (long body text), not as a blanket cap on every page.
+Done when: checked across a real range of sizes, not just 360px/1280px (add at least 768px, 1440px and 1920px+) — the app visibly grows with the screen instead of leaving large empty space, while staying correct and readable at 360px.
+Commit: `feat(design): add fluid responsive scaling from small to large screens`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 12: Login page

@@ -314,7 +314,9 @@ Three small, independent pieces, all built on culori:
 
 `presetToCss(preset)` turns a preset into plain CSS text: `:root:root{...}.dark.dark{...}`. The doubled selector (`:root:root`, not `:root`) is deliberate — it still matches the exact same `<html>` element, but raises the CSS specificity just enough to reliably beat `tokens.css`'s own plain `:root`/`.dark` rules, regardless of which stylesheet the browser happens to parse first. `<ThemePresetStyle presetId={...} />` renders that text as a `<style>` tag, and `layout.tsx` places it as the first thing inside `<body>`, before `<ThemeProvider>` — the same place `next-themes`' own flash-prevention script already lives (Step 4).
 
-This needs no client-side script, unlike the light/dark toggle. Light/dark depends on a value only the *browser* knows (a saved preference in `localStorage`), so the server has to guess and a script corrects it before paint. A theme preset, in Phase 1, has no such gap — `DEFAULT_THEME_PRESET_ID` is a plain constant the server already knows when it renders the page, so there's nothing to patch after the fact. A later step (once a school/session exists) will pass a real preset id into the same component instead of the hardcoded default — nothing else about this mechanism needs to change.
+This needs no client-side script, unlike the light/dark toggle. Light/dark depends on a value only the *browser* knows (a saved preference in `localStorage`), so the server has to guess and a script corrects it before paint. A theme preset, in Phase 1, has no such gap — `DEFAULT_THEME_PRESET_ID` is a plain constant the server already knows when it renders the page, so there's nothing to patch after the fact.
+
+**Step 11 update — a second `<ThemePresetStyle>`, not a changed prop on this one.** This section originally said a later step would "pass a real preset id into the same component instead of the hardcoded default." That's not quite what happened, once a real session/school existed to resolve a theme from — see the Step 11 section below for why, and for `ThemePresetStyle`'s actual current prop (`tokens`, not `presetId`).
 
 ### 5. `src/app/page.tsx` — a temporary way to see every preset
 
@@ -376,3 +378,95 @@ flowchart LR
 
     style Check fill:#1C77A5,color:#fff
 ```
+
+## Step 11: a fourth override layer — the signed-in school's real theme, and a live preview on top
+
+Steps 4-7 built a mechanism that could only ever show one preset: whatever `DEFAULT_THEME_PRESET_ID` says, because there was no session yet to ask "whose theme is this?" Step 11 is the step where a real session (`getSession()`, Step 9) and a real school record finally exist at the same time as the theming mechanism — so this is where "each school's own saved theme" and "a live preview dropdown" actually plug in.
+
+### The three-layer stack becomes four
+
+```mermaid
+flowchart TB
+    L1["1. tokens.css<br/>:root / .dark — the baseline, always loaded"]
+    L2["2. Root layout's ThemePresetStyle<br/>id='theme-preset' — the app DEFAULT (Steps 4-5)"]
+    L3["3. (app)/layout.tsx's ThemePresetStyle<br/>id='theme-preset-active' — the SIGNED-IN school's real theme (Step 11)"]
+    L4["4. next-themes' .dark class<br/>— which HALF of whichever layer above applies"]
+
+    L1 --> L2 --> L3
+    L3 -.wins the specificity tie, being later in the HTML source.-> L1
+    L4 -.orthogonal: picks light vs dark, doesn't set colors itself.-> L3
+
+    style L3 fill:#223060,color:#fff
+```
+
+Layer 3 is new, and it's deliberately *not* a change to layer 2's component — it's a second instance of the exact same `ThemePresetStyle`, rendered from `src/app/(app)/layout.tsx` instead of the root layout. Both use the identical `:root:root`/`.dark.dark` doubled-selector trick (see the Step 5 section above), so both have identical CSS specificity — and when two rules tie on specificity, the one *later in the HTML source* wins. Because `(app)/layout.tsx` renders inside `{children}` in the root layout, its `<style>` tag always comes after the root's, so every page inside the shell gets the school's real theme, while `/` and `/design-system` (outside the shell, which never render `(app)/layout.tsx`) keep just the plain default from layer 2, untouched.
+
+This is why **the root layout needed zero changes** for Step 11 (only its one `ThemePresetStyle` call site was updated to match that component's new prop, below) — the actual "which school, which theme" decision lives entirely in `(app)/layout.tsx`, where the session already is.
+
+### `ThemePresetStyle`'s prop changed from `presetId` to `tokens`
+
+```tsx
+// src/lib/theme/theme-preset-style.tsx
+export function ThemePresetStyle({
+  tokens,
+  id = "theme-preset",
+}: {
+  tokens: { light: ThemeColorTokens; dark: ThemeColorTokens };
+  id?: string;
+}) {
+  return <style id={id} dangerouslySetInnerHTML={{ __html: presetToCss(tokens) }} />;
+}
+```
+
+Steps 4-5 gave it a `presetId: string` and had it look the preset up internally — fine when the only possible source was `getThemePreset()`. Step 11 needed to feed it a school's *custom* brand-color palette too (`generateCustomPalette`, built in Step 5 but unused until now), which isn't a named preset at all. Rather than teach the component every possible source, it now just takes the already-resolved `{ light, dark }` tokens — the *caller* decides where those came from. `presetToCss` needed the same widening, from `(preset: ThemePreset)` to `(tokens: { light, dark })`, since it only ever read those two fields anyway.
+
+### `src/lib/theme/active-theme.ts` — "what theme is on screen right now"
+
+```ts
+export function resolveSchoolTheme(theme: SchoolTheme): ResolvedTheme {
+  if (theme.kind === "custom") {
+    return generateCustomPalette(theme.brandColor);
+  }
+  const preset = getThemePreset(theme.presetId);
+  return { light: preset.light, dark: preset.dark };
+}
+
+export function resolveActiveTheme(school: School | null, overridePresetId?: ThemePresetId): ResolvedTheme {
+  if (overridePresetId) {
+    const preset = getThemePreset(overridePresetId);
+    return { light: preset.light, dark: preset.dark };
+  }
+  if (school) return resolveSchoolTheme(school.theme);
+  return resolveSchoolTheme({ kind: "preset", presetId: DEFAULT_THEME_PRESET_ID });
+}
+```
+
+`resolveSchoolTheme` is the first real caller of `generateCustomPalette` outside its own unit test — a school's `theme` field (Step 8) is a discriminated union (`{kind: "preset", presetId}` or `{kind: "custom", brandColor}`), and this is where that union finally gets resolved into actual colors. `resolveActiveTheme` layers the live preview override on top: override wins if one is set, otherwise the school's own theme, otherwise the app default (a super admin with no school in view). `(app)/layout.tsx` calls this once per request and hands the result straight to layer 3's `ThemePresetStyle`.
+
+### The live preview: a cookie, not a database write
+
+The top-bar theme dropdown (`src/components/app-shell/theme-dropdown.tsx`, principal/super admin only) recolors everything instantly, but **on purpose doesn't save anything to the school record** — that's Step 21's job. It sets a plain per-browser cookie instead:
+
+```ts
+// src/lib/theme/theme-override-actions.ts — "use server" at the top of the file
+export async function setThemeOverride(presetId: ThemePresetId): Promise<void> {
+  const session = await getSession();
+  if (session.role === "teacher") throw new Error("Teacher accounts can't change the theme.");
+  const cookieStore = await cookies();
+  cookieStore.set(THEME_OVERRIDE_COOKIE, presetId, { httpOnly: true, sameSite: "lax", path: "/" });
+}
+```
+
+No flash, and no client-side script needed to apply it — per Next's own Server Actions docs, *"Mutates cookies through `cookies()`... Setting or deleting a cookie automatically re-renders the current page."* Setting the cookie is itself what triggers the server to re-render with the new theme in the very same round trip; nothing about the flash-prevention story from Steps 4-5 had to change.
+
+**A real bug this step hit, and the fix that came out of it:** the natural first instinct was to have `setDevSession` (the dev switcher's persona-switch action, Step 9/11) call `clearThemeOverride()` directly, so switching persona always resets the preview. That would have made `session.ts` import from `theme-override-actions.ts`, which already imports `getSession` *from* `session.ts` for the check above — the two files would import each other. Fixed by keeping `clearThemeOverride` as its own independent Server Action instead, called as a second step right after `setDevSession` from the dev switcher's own click handler (`src/components/app-shell/dev-switcher.tsx`), not from inside `setDevSession` itself. Same end result (persona switch always clears the preview), no cycle.
+
+**Another one, easy to miss until the build actually fails:** a Server Action that a *Client Component imports directly* (not just receives as a prop from a Server Component) must live in a file with `"use server"` at the **top of the file**, not inline inside the function. Inline placement (the pattern `session.ts`'s `setDevSession` used to use, back in Step 9, before it moved to its own file) only works for an action a Server Component defines and passes *down* as a prop — a different call shape than a Client Component reaching up and importing the function by name. Got this wrong on the first pass (moved `setDevSession` to its own file but kept theme-override's actions inline), and `npm run build` failed immediately with a clear "depends on next/headers... in the Pages Router" error pointing at the exact import chain — Turbopack couldn't cleanly split the client-safe reference from the rest of the module. Fixed by giving every Server Action a Client Component imports directly its own dedicated file (`session-actions.ts`, `theme-override-actions.ts`), with the file-level directive — see `docs/BUILD-LOG.md`'s Step 11 entry for the full trace.
+
+## Quick recipes (Step 11 additions)
+
+**I want to know what theme is actually showing right now, given a school and a possible preview override:** `resolveActiveTheme(school, overridePresetId)` (`src/lib/theme/active-theme.ts`) — pure function, no React needed.
+
+**I want to add a Server Action a Client Component will import directly:** give it its own file with `"use server"` on the very first line, not inline inside the function — see `session-actions.ts` or `theme-override-actions.ts` for the pattern. Inline `"use server"` is only for an action a Server Component defines locally and passes down as a prop.
+
+**I want to preview a theme without saving it anywhere:** that's exactly what `setThemeOverride`/the top-bar dropdown already do — a cookie, not a repository write. Don't add a `SchoolRepository.update` method for this; that belongs to Step 21, when there's an actual "Save" action to attach it to.

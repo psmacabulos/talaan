@@ -1,25 +1,29 @@
 import { presetToCss } from "./apply-preset";
-import { DEFAULT_THEME_PRESET_ID, getThemePreset } from "./presets";
+import type { ThemeColorTokens } from "./presets";
 
 /**
- * Renders the active theme preset's colors as a <style> tag, server-side,
+ * Renders a resolved light/dark token pair as a <style> tag, server-side,
  * before anything else paints — see apply-preset.ts for why that alone is
- * enough to avoid a flash. `presetId` is hardcoded by the caller for now
- * (there's no session yet); Steps 9/11/21 will pass a real value once one
- * exists.
+ * enough to avoid a flash. The root layout renders one with the app's
+ * default tokens; (app)/layout.tsx (Step 11) renders a second one, with a
+ * different `id`, carrying the signed-in school's actual resolved theme
+ * (src/lib/theme/active-theme.ts) — being later in the HTML source, it wins
+ * the `:root:root` specificity tie for every page inside the shell, while
+ * standalone pages outside it (/, /design-system) keep just the default.
  */
 export function ThemePresetStyle({
-  presetId = DEFAULT_THEME_PRESET_ID,
+  tokens,
+  id = "theme-preset",
 }: {
-  presetId?: string;
+  tokens: { light: ThemeColorTokens; dark: ThemeColorTokens };
+  id?: string;
 }) {
-  const preset = getThemePreset(presetId);
   return (
     <style
-      id="theme-preset"
+      id={id}
       // Raw, hardcoded CSS text (never user input) — dangerouslySetInnerHTML
       // is used so the string is set verbatim, not HTML-escaped.
-      dangerouslySetInnerHTML={{ __html: presetToCss(preset) }}
+      dangerouslySetInnerHTML={{ __html: presetToCss(tokens) }}
     />
   );
 }
