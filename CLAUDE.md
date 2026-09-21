@@ -86,9 +86,10 @@ src/styles/      tokens.css, base.css
 ## Domain (for types, mocks and copy)
 - Roles: `super_admin` (all schools), `principal` (one school, full access), `teacher` (read-only, own advisory class).
 - Multi-tenant: every record belongs to a school. Phase 2 enforces this on the server; keep `schoolId` on every type from the start.
-- Student: first, middle and last name, birth date (show age, never store age), optional LRN (12 digits), grade 7 to 12, section, guardian name and mobile, card status.
+- Student: first, middle and last name, birth date (show age, never store age), optional LRN (12 digits), grade 7 to 12, section, guardian name and mobile, card status, optional photo (for a station's tap-confirmation display).
 - Card: unique NFC serial (uppercase hex with colons, for example `04:A3:5F:2B:91:C0:80`), status active, lost or retired. One active card per student. Replacing a card marks the old one lost. A lost card tapped at a station raises an alert.
-- Tap: idempotent by a device-made UUID, stores the student at tap time, and repeated taps within a few minutes are ignored.
+- Tap: idempotent by a device-made UUID, stores the student at tap time, and repeated taps within a few minutes are ignored. A station made while offline still generates its tap records locally (same device-made UUID) and queues them; they reach the server, and only then can a notification go out, once connectivity returns.
+- Notifications: each school sets one preference — off, time-in only, or time-in and time-out — set by its principal or super admin, never per parent. SMS is the primary channel (a paid provider, chosen later); push is a possible later addition under the same preference.
 - Students are minors: collect the minimum, never put personal data on cards, keep names out of logs.
 - The DepEd logo is a client-supplied asset and permission is pending. Show it only when `showDepedLogo` is true, and default that to false outside the demo.
 

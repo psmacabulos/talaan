@@ -326,3 +326,52 @@ One real false-positive risk checked before trusting the regex: `button.tsx`'s o
 
 ### Result
 All build tasks done. Waiting on the owner's review.
+
+---
+
+## Step 8: Domain types, schemas and seed data
+
+**Goal:** TypeScript types and Zod schemas for schools, staff, students, cards, taps and alerts (every record carrying `schoolId`), plus seed data standing in for a real database: 3 schools, 72 students across grades 7-12 and 12 sections, 7 staff, and sample taps.
+
+### `zod` was already installed — just not as a direct dependency
+`npm ls zod` showed it already present, pulled in transitively by `eslint-config-next` and `shadcn` (both use it internally). Installed it directly anyway (`npm install zod`, resolved to `^4.6.5`, already the newest available) rather than relying on an indirect version, since a transitive dependency isn't guaranteed to stay at any particular version — a future `npm install` on one of those tools could bump or even drop it, silently breaking every schema in the app. Verified the exact Zod v4 API surface being relied on (`z.email()`, `z.iso.date()`, `z.iso.datetime()`, `z.uuid()` — v4's newer top-level string-format functions, not the older chained `.email()`/`.datetime()` style) with a throwaway Node script before writing any real schema, rather than assuming from memory.
+
+### Where types and schemas actually live, and which one is the source of truth
+CLAUDE.md's code structure lists each feature folder as holding "components, actions, schemas, types" — two separate files, `schemas.ts` and `types.ts`. Rather than hand-writing both (risking them drifting apart — a field added to one and forgotten in the other), `schemas.ts` is the single source of truth in every feature: it defines the actual Zod validation rules, and `types.ts` just re-exports the TypeScript type Zod already knows how to derive from each schema (`export type Student = z.infer<typeof studentSchema>`). One definition per domain concept, not two kept in sync by hand.
+
+### A real design question: how does a Student "have" a Card?
+Two options: embed the current card's info directly on the Student record, or make Card its own record pointing back with `studentId`, the way a relational database would. Went with the second — CLAUDE.md is explicit that "replacing a card marks the old one lost," meaning a student can accumulate a *history* of cards over time, not just one. Embedding would mean overwriting history every time a card is replaced; a separate `Card { studentId, status }` record per card means the old (now `lost`) card and the new (`active`) one can both exist side by side, which is exactly what Step 16's replace flow needs to show. `Tap` also stores its own `studentId`, captured at the moment of the tap rather than looked up live — so relinking a card later can never silently rewrite what an old tap meant.
+
+### `super_admin` doesn't belong to a school — modeled as `schoolId: string | null`, enforced by a `.refine()`
+CLAUDE.md says "keep `schoolId` on every type from the start," but a super admin manages *all* schools, not one. Modeled `Staff.schoolId` as nullable, with `null` meaning "not scoped to one school" — valid only for `super_admin`. Added two `.refine()` checks on `staffSchema` (one for each direction: a super admin *must* have a null schoolId, everyone else *must not*) so this rule is actually enforced by the schema, not just true by convention — confirmed by a test that a `principal` with `schoolId: null` is correctly rejected.
+
+### `check:tokens` had a real gap, found by writing real data: a school's own brand color isn't a "hardcoded" color
+Step 21 (later) lets a school type in one brand color and generate a whole palette from it — `contrast.ts`'s `generateCustomPalette`, already built in Step 5, exists for exactly this. Modeling that meant `schoolSchema` needed a `theme: { kind: "custom", brandColor: string }` variant, validated as a hex color — and the moment a real hex string (`"#223060"`, matching CLAUDE.md's own brand example) showed up in `schools/schemas.ts` and its test, Step 7's `check:tokens` correctly caught it... but it was actually a false positive. CLAUDE.md's rule reads "no raw colors... **in components or pages**" — a domain schema validating a color as *data* a school typed in isn't a hardcoded styling choice, it's the literal thing being modeled. Fixed by narrowing `scripts/check-tokens.mjs`'s exemption: any `schemas.ts` or `schemas.test.ts` file is now treated the same as the theme files themselves (never renders anything, so it can't be the kind of violation the rule is actually about), everything else is still checked exactly as before. Re-ran `check:tokens` against the whole codebase afterward to confirm nothing else slipped through the wider exemption.
+
+### A real bug caught by the seed-data tests, not by inspection
+First draft of `taps.ts` built five students' tap times with a template string: `` `2026-06-20T07:5${7 + i}:00Z` ``, intending minutes 57-61. For `i` past 2 this produces `07:510` and `07:511` — not a valid time at all. `npm run test` caught it immediately (`tapSchema` rejects it, since `z.iso.datetime()` actually parses the string rather than just checking its shape) with a clear failing assertion naming the exact tap id. Fixed with a small `timeAt(baseHour, baseMinute, offsetMinutes)` helper that does real hour-rollover arithmetic instead of string-pasting digits — the kind of bug that's easy to miss reading the code (the string *looks* plausible at a glance) but impossible to miss once something actually tries to parse it, which is the whole case for the seed-data tests below existing at all.
+
+### Seed data tests, not just schema tests
+Beyond validating individual fields, `src/data/seed/seed.test.ts` checks the seed data's own real invariants: exactly 3 schools/7 staff/72 students, every record's `schoolId` actually matches a real seed school, exactly one super admin, no student ever has two *active* cards at once, no two cards ever share a serial, and the one deliberate lost-card scenario has a matching alert. These aren't schema rules (Zod has no idea what "72" or "no duplicate serials across the whole list" means for a single record) — they're the kind of mistake that's easy to introduce while hand-authoring generator code (an off-by-one in a loop, an id collision) and only shows up once something actually counts or cross-checks the data, the same way the tap-time bug above only showed up once something tried to parse it.
+
+### What got built
+- `src/features/{schools,staff,students,attendance}/{schemas,types}.ts` and a `schemas.test.ts` per feature.
+- `src/data/seed/{names,schools,staff,students,cards,taps}.ts` plus `index.ts` re-exporting all of it, and `seed.test.ts`.
+- `zod` promoted from a transitive to a direct dependency in `package.json`.
+- `scripts/check-tokens.mjs`'s exemption widened to cover `schemas.ts`/`schemas.test.ts` files.
+
+### Verified
+`lint`, `typecheck`, `test` (73/73), `check:tokens`, and `build` all pass.
+
+### Review round: drawing the ER diagram surfaced real Phase 2 architecture questions, before anything was committed
+Owner review of Step 8 didn't just check the code — reading `docs/DATA-MODEL.md`'s new ER diagram prompted real questions about how a tap will actually reach the server (login vs. a registered device/station key), whether an external USB NFC reader can integrate cleanly (yes — most are "keyboard-wedge" HID devices, which type straight into the app's own listening input, not a disconnected text box), and what parent notifications actually need to look like. This surfaced two concrete, worthwhile changes to Step 8's still-unapproved schema, made before commit rather than as a follow-up step:
+
+- **`School.notificationPreference`** — a three-value enum (`off` / `time_in_only` / `time_in_and_time_out`), not a boolean. Named for *when* to notify, not *how* (SMS is the actual Phase 2 channel), so a later channel like push can reuse the same field. Set per school by its principal/super admin, never per parent. The seed data gives each of the 3 schools a different value on purpose, so `seed.test.ts` exercises all three from day one.
+- **`Student.photoUrl`** (optional) — for a possible future station screen showing the tapping student's photo, so a staffed gate can visually confirm the right student tapped. Not required; most schools won't set it up.
+
+Also clarified (no schema change needed — already correctly modeled by `Tap.id` being device-made): a tap made while a station is offline is generated and queued **on the device**, before ever reaching the server; a notification only goes out once that tap actually arrives server-side. `CLAUDE.md`'s Domain section and `docs/PLAN.md`'s Phase 2 bullets were updated to state this explicitly, and to make SMS the stated priority channel over push.
+
+Re-verified after the additions: `lint`, `typecheck`, `test` (77/77 — 4 new tests for the two fields), `check:tokens`, and `build` all still pass.
+
+### Result
+All build tasks done, including the review-round additions above. Waiting on the owner's review.

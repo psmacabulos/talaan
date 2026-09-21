@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ███████░░░░░░░░░░░░░ 35%**  (22 of 62 tasks, 6 of 24 steps approved)
+**Overall progress: ████████░░░░░░░░░░░░ 42%**  (26 of 62 tasks, 8 of 24 steps approved)
 
-**Next up:** Step 7, Style guide page and token check (ready for your review)
+**Next up:** Step 9, Mock repositories and session (not started)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -13,8 +13,8 @@
 | 4 | Design tokens, fonts and dark mode | ██████████ 100% | Approved |
 | 5 | Theme presets and contrast helper | ██████████ 100% | Approved |
 | 6 | shadcn/ui and base components | ██████████ 100% | Approved |
-| 7 | Style guide page and token check | ███████░░░  67% | Ready for your review |
-| 8 | Domain types, schemas and seed data | ░░░░░░░░░░   0% | Not started |
+| 7 | Style guide page and token check | ██████████ 100% | Approved |
+| 8 | Domain types, schemas and seed data | ██████████ 100% | Approved |
 | 9 | Mock repositories and session | ░░░░░░░░░░   0% | Not started |
 | 10 | App shell and navigation | ░░░░░░░░░░   0% | Not started |
 | 11 | Dev switchers and theme dropdown | ░░░░░░░░░░   0% | Not started |
@@ -92,14 +92,14 @@ Commit: `feat(ui): add base and shared components`
 - [x] `check:tokens` script that fails on raw colors outside the theme files; add it to the CI workflow.
 Done when: the page is unreachable in production, and `check:tokens` fails if a hex is added to a component.
 Commit: `feat(design): add style guide page and token check`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 8: Domain types, schemas and seed data
-- [ ] TypeScript types and Zod schemas for schools, users, students, cards, taps and alerts (with `schoolId` on every record).
-- [ ] Seed data: 3 schools, 72 students across grades 7 to 12 and 12 sections, 7 staff, sample taps.
+- [x] TypeScript types and Zod schemas for schools, users, students, cards, taps and alerts (with `schoolId` on every record).
+- [x] Seed data: 3 schools, 72 students across grades 7 to 12 and 12 sections, 7 staff, sample taps.
 Done when: types and schemas compile, and schema tests pass.
 Commit: `feat(data): add domain types, schemas and seed data`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 9: Mock repositories and session
 - [ ] Repository interfaces and mock implementations with simulated latency.
@@ -205,7 +205,7 @@ Commit: `chore: final polish for phase 1`
 - PostgreSQL with Prisma (or Drizzle), replacing the mock repositories.
 - Auth.js sign-in with hashed passwords and roles; the school always comes from the session.
 - Tenant-scoped data access, Postgres row-level security, and tests proving one school cannot read another's data.
-- Tap API with per-station keys, idempotent uploads and lost-card alerts. Keep the contract hardware-agnostic (a plain HTTP call authenticated by station key, not tied to a browser session) so a station can be a browser/Web NFC tablet or phone now, and a dedicated fixed NFC reader (turnstile-style, for schools that want that later) without changing the API.
-- Offline-first sync for tap stations, then parent notifications (push first, SMS as an option).
+- Tap API with per-station keys, idempotent uploads and lost-card alerts. Keep the contract hardware-agnostic (a plain HTTP call authenticated by station key, not tied to a browser session) so a station can be a browser/Web NFC tablet or phone now, an external USB/Bluetooth NFC reader (keyboard-wedge input, works on any device/browser) or a dedicated fixed NFC reader (turnstile-style) later, without changing the API. Early stations may instead identify themselves by a logged-in staff session rather than a real station key — compatible with the same contract, just a different way of answering "which station/school."
+- Offline-first sync for tap stations: a tap made while offline is generated and queued on the device (its id already assigned client-side), then sent once connectivity returns. Parent notifications — SMS as the primary channel, push as a possible later addition — are sent only once a tap has actually reached the server, per each school's own preference (off / time-in only / time-in and time-out).
 - Privacy: consent records, export and delete per school, audit log.
 - Deployment (Vercel plus managed Postgres), backups, monitoring.

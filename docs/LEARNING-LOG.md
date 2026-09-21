@@ -7,6 +7,7 @@ Short, plain-language notes explaining things along the way — for whenever I w
 - [Keeping local and CI in sync](#keeping-local-and-ci-in-sync)
 - [Colors and theming](#colors-and-theming)
 - [Components and libraries (shadcn/ui)](#components-and-libraries-shadcnui)
+- [Next.js as a full-stack framework](#nextjs-as-a-full-stack-framework)
 
 ---
 
@@ -178,3 +179,16 @@ Noticed while clicking through the demo page: the page visibly moved for as long
 **The actual fix needed both pieces together, not one at a time:** keep the scrollbar permanently reserved (stops it from ever disappearing) *and* explicitly cancel the library's own compensation margin (since with the scrollbar now permanently there, that compensation is no longer needed, and — as discovered the hard way — leaving it in place is exactly what caused the first regression).
 
 **The real lesson:** when a bug report describes one visible symptom ("it shakes"), it's worth checking whether more than one distinct mechanism could produce that same symptom, before declaring the first plausible-looking cause "the" cause. Fixing a real, measured problem is not the same as fixing *the* problem someone reported — especially when the fix touches shared, load-bearing behavior (like a scroll-lock library's own compensation) that something else was already quietly depending on.
+
+---
+
+## Next.js as a full-stack framework
+
+### How is this different from a separate React front end + Node.js back end?
+Asked while starting Step 8, worried about how "the back end" will actually get built later (Phase 2), since Next.js is described as "full-stack."
+
+**The older, separate way:** two independent programs — a front end and a Node/Express back end — deployed as two separate things, talking over the network (the browser `fetch`es the Express server's API).
+
+**The Next.js way:** front end and back end code live in the *same* project, mostly in the *same files*, using three tools instead of hand-wiring API routes: a **Server Component** (a page that talks straight to a database while rendering, no separate API call needed), a **Server Action** (a function marked `"use server"` that a form calls on submit), and a **Route Handler** (`src/app/api/.../route.ts` — a plain URL for things that aren't browser pages, like the future tap-station API, which a device calls directly with an HTTP request, not a browser session).
+
+**What "deployed" means depends on where:** on Vercel (Next.js's own company), there's no server to manage — every page/action/route becomes an on-demand function that spins up per request. On a plain server/VM (`next start`), it's one long-lived Node.js process, shaped similarly to an Express server, just organized by Next.js's file-based routing. Either way: **one deployed thing, not two** — Phase 2's back end will be more files in this same project (Steps 9 uses a mock version of this shape already; Phase 2 swaps in a real database via Prisma), not a second program built from scratch.

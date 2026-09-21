@@ -357,6 +357,8 @@ This is a small standalone Node script (same style as `scripts/progress.mjs`), n
 
 Run with `npm run check:tokens`; it's also a CI step (`.github/workflows/ci.yml`, right after Lint) so a raw color can't merge even if nobody happens to look at the diff. It exits non-zero with a `file:line` list on any hit, and prints a clean pass message otherwise. Checked against the whole codebase as it stood before this step existed: zero violations — confirming the patterns aren't accidentally too strict before trusting them to gate CI.
 
+**Step 8 update — `schemas.ts` files are exempt too, not just the theme files.** CLAUDE.md's actual rule is "no raw colors... *in components or pages*" — Step 8 added `School.theme`'s `"custom"` variant, where a school types in one real brand color (a hex string) as plain domain *data*, validated by `src/features/schools/schemas.ts`. That's not a hardcoded styling choice, it's the literal thing being modeled, so `check-tokens.mjs` now also skips any file matching `schemas.ts`/`schemas.test.ts` — these never render anything, the same reasoning that exempts `src/lib/theme/`. Everything else (components, pages) is still checked exactly as before.
+
 ```mermaid
 flowchart LR
     Src["src/** (.ts, .tsx, .css, .js, .mjs)"]

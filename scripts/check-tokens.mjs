@@ -46,8 +46,19 @@ const TAILWIND_PALETTE_CLASS = new RegExp(
   'g',
 );
 
+// CLAUDE.md's actual rule is "no raw colors... in components or pages" — a
+// domain schema can legitimately validate a color as plain data (Step 8's
+// School.theme "custom" brand color, supplied by a school and stored as a
+// hex string, is exactly this: real data, not a hardcoded styling choice).
+// schemas.ts / schemas.test.ts files never render anything, so they're
+// exempt the same way the theme files are.
+const ALLOWED_FILENAME_PATTERN = /[/\\]schemas(\.test)?\.ts$/;
+
 function isAllowed(filePath) {
-  return ALLOWED_DIRS.some((dir) => filePath.startsWith(dir + path.sep));
+  return (
+    ALLOWED_DIRS.some((dir) => filePath.startsWith(dir + path.sep)) ||
+    ALLOWED_FILENAME_PATTERN.test(filePath)
+  );
 }
 
 function walk(dir, files = []) {
