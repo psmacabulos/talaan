@@ -20,4 +20,12 @@ describe("PageHeader", () => {
     render(<PageHeader title="Staff" />);
     expect(screen.getByRole("heading", { name: "Staff" })).toBeInTheDocument();
   });
+
+  it("renders as an h1 by default and an h2 when asked", () => {
+    const { rerender } = render(<PageHeader title="Staff" />);
+    expect(screen.getByRole("heading", { name: "Staff", level: 1 })).toBeInTheDocument();
+
+    rerender(<PageHeader title="Staff" as="h2" />);
+    expect(screen.getByRole("heading", { name: "Staff", level: 2 })).toBeInTheDocument();
+  });
 });

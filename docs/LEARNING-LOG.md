@@ -10,6 +10,7 @@ Short, plain-language notes explaining things along the way — for whenever I w
 - [Next.js as a full-stack framework](#nextjs-as-a-full-stack-framework)
 - [Domain modeling: types vs. schemas](#domain-modeling-types-vs-schemas)
 - [Tap stations and notifications (Phase 2 planning)](#tap-stations-and-notifications-phase-2-planning)
+- [App shell and navigation (Step 10)](#app-shell-and-navigation-step-10)
 
 ---
 
@@ -254,3 +255,20 @@ Next.js merges what Express usually splits into two things (Routes + Controller)
 **Not the back end yet, but its future shape.** Same as Step 8's types/schemas — still Phase 1, still in-memory, no network. This is the pattern the real Phase 2 code will keep, not a preview of Phase 2 itself.
 
 **Full write-up, with a diagram:** [`docs/DATA-ACCESS.md`](DATA-ACCESS.md).
+
+---
+
+## App shell and navigation (Step 10)
+
+### Why passing an icon into a "use client" component crashed the app
+Every Next.js file is either a **Server Component** (runs only on the server, can't hold click handlers or use browser-only hooks like "what page am I on") or a **Client Component** (marked `"use client"` at the top — runs in the browser too, so it *can* react to clicks and hooks, but costs a bit more since its code has to ship to the browser). Most of this app's files are Server Components by default — that's the CLAUDE.md-mandated default, and it's also just less code sent to the phone/browser.
+
+The sidebar's nav links needed to highlight whichever one is the current page — that needs a Client Component, since only the browser knows "what page am I on right now" without the whole page reloading. So `Sidebar` (a Server Component) tried to hand its list of nav items — including each one's icon, an actual React component — to that Client Component as a prop. That broke, with the error *"Functions cannot be passed directly to Client Components"*. The reason: crossing from server code into client code isn't just calling a function normally — the data has to be able to survive being turned into a message and sent to the browser (a bit like sending a JSON payload), and a React component is executable code, not data, so it can't survive that trip.
+
+**The fix, and the general pattern:** instead of resolving "which icons does this role see" on the server and handing over the result, the Client Component now just receives the *role* (a plain word like `"teacher"`) and looks up its own icons directly, since the list they're looked up from is a plain shared file both sides can read from independently. The rule of thumb: across that Server → Client handoff, only pass plain data (text, numbers, plain objects/arrays of those) — never a component, function, or class instance.
+
+### What a "route group" is, and why `(app)` doesn't show up in the URL
+A folder name in parentheses, like `src/app/(app)/`, is Next.js's signal that the folder is for *organizing files only* — it's invisible to the actual web address. `src/app/(app)/dashboard/page.tsx` is the page at `/dashboard`, not `/app/dashboard`. This exists so every "you have to be signed in to see this" page (dashboard, attendance, students, staff, tap station, schools) can share one `layout.tsx` (the sidebar + top bar) without that grouping leaking into every URL.
+
+### Why the page title lives in two places now (`<h1>` and `<h2>`)
+A screen reader user can jump between a page's headings the way a sighted person skims bolded section titles — but that only works if there's exactly *one* top-level heading (`<h1>`) per page, naming what the whole page is. This app's persistent top bar now shows that `<h1>` (e.g. "Dashboard") for every screen. Each screen's own content used to *also* print an `<h1>` with the identical word, which meant two "the most important heading" on the same page — confusing for anyone navigating by headings, not just a screen-reader edge case. The fix: the in-page one is now a step down, `<h2>` — still visually a big bold title (nothing looks different), just correctly marked as "a section of this page," not "the whole page," since the top bar already claimed that role.

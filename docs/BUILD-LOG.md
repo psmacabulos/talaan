@@ -407,3 +407,37 @@ First instinct was to unit-test `getSession()` and `setDevSession()` directly, m
 
 ### Result
 All build tasks done. Waiting on the owner's review.
+
+---
+
+## Step 10: App shell and navigation
+
+**Goal:** the authenticated layout every later screen renders inside — sidebar, top bar, a responsive drawer below `lg`, role-based navigation, and route guards for the sections a role's own nav doesn't link to — plus `loading.tsx`/`error.tsx`/`not-found.tsx`.
+
+### Checked the framework docs before writing anything, per `AGENTS.md`
+This project's Next.js (16.3.5) is genuinely newer than training data in a few places that mattered for this step, confirmed by reading `node_modules/next/dist/docs/` rather than assuming: `middleware.js` is deprecated and renamed `proxy.js` (not needed here anyway — the guards only need the role `getSession()` already returns); layouts can't read the current pathname (no rerender on navigation), so active-link highlighting and the top bar's page title needed a small Client Component using `usePathname`/`useSelectedLayoutSegment`; `error.tsx`'s `retry` prop became stable in 16.3 (used instead of the older `reset`); and only a **root** `app/not-found.tsx` automatically catches unmatched URLs — a nested one only fires from an explicit `notFound()` call, which nothing in this step makes, so only the root one was added.
+
+### A real bug: passing nav icons across the Server → Client Component boundary
+First draft had `Sidebar` (a Server Component) compute the role's nav list — each item carrying its actual `lucide-react` icon component — and pass that array as a prop into `NavLinks` (a Client Component, needed for `usePathname`'s active-link state). This built and typechecked fine but failed at runtime: *"Functions cannot be passed directly to Client Components"* — a React Server Components rule, not a Next-specific one. A Server Component can render a Client Component and pass it data, but that data crosses a serialization boundary, and a component reference is a function, not serializable data. Same issue existed one layer down for `MobileNav`.
+
+Fix: `NavLinks` and `MobileNav` no longer *receive* the resolved item list. They import `navItemsForRole` themselves (`src/components/app-shell/nav-items.ts` has no `"use client"`/`"use server"` directive — it's a plain shared module, bundled into whichever side imports it) and take only `role: Role`, a plain string, as a prop. `Sidebar` and `Topbar` (both Server Components) now just forward `role` straight through instead of resolving it first — simpler, and there's nothing left to resolve twice.
+
+### Two design issues only visible once actually looked at, not from reading the code
+Both caught by loading the app in a browser at 360px and 1280px, in both themes, as CLAUDE.md's step protocol requires — neither would have shown up from lint/typecheck/tests alone:
+- **Duplicate `<h1>`.** The persistent top bar title (`TopbarTitle`, derived from the route) and the in-page `PageHeader` were both rendering an `<h1>` with the identical text ("Dashboard", "Staff", …) — two top-level headings per page, which breaks screen-reader heading navigation. The reference prototype actually already models the right hierarchy (its top bar renders an `<h1>`, its own `pageStudents()` etc. render `<h2>`) — missed on the first pass. Fixed by giving the shared `PageHeader` component (built in Step 6, already approved) an `as?: "h1" | "h2"` prop, defaulting to `"h1"` so its two existing standalone-page usages (`/`, `/design-system`) are unaffected, and passing `as="h2"` from the six new shell pages. Added a test (`page-header.test.tsx`) asserting both heading levels render correctly.
+- **Top bar title truncating on a phone.** At 360px, `/dashboard`'s title rendered as "Dash…" — it was losing a flex-shrink contest against the "Principal, Balanga City National Science High School" role/school text on the same row, since neither had `min-w-0` (without it, a flex item's content sets a lower bound on how far it can shrink, so `truncate` alone doesn't help in a flex row). Fixed by giving the title `min-w-0 flex-1` (so it claims available space first) and hiding the role/school text below `sm` entirely (`hidden sm:block`) — secondary identity info that the mobile drawer's own header already shows, not worth fighting the title for room on a phone-width bar.
+
+### A design call, reversed after seeing it rendered: the access-denied panel
+First draft built `AccessDenied` on top of the existing `EmptyState` component (Step 6) for consistency. Seeing it rendered made the mismatch obvious: `EmptyState`'s dashed border reads as "empty, add something here" (its actual job elsewhere in the app) — the wrong visual metaphor for "you're not allowed here", which is closer to an exceptional/blocked state than an empty one. Rebuilt with `(app)/error.tsx`'s plainer pattern instead (centered icon, heading, description, no bordered box) — no dashed border implies "add content", so it doesn't fight the message.
+
+### What got built
+- `src/components/app-shell/`: `nav-items.ts` (+ `.test.ts`) — the one place nav visibility and route guards both read from, so they can't drift apart; `nav-links.tsx`, `sidebar.tsx`, `mobile-nav.tsx`, `topbar.tsx`, `topbar-title.tsx`, `app-shell.tsx`, `access-denied.tsx`.
+- `src/app/(app)/layout.tsx` (a route group — adds no path segment, still a nested layout under the one root layout), `loading.tsx`, `error.tsx` (+ `.test.tsx`), and `dashboard/`, `attendance/`, `students/`, `staff/`, `station/`, `schools/` — each a placeholder page naming the step that actually builds it; the last three guarded with `hasNavAccess(role, segment)`, rendering `AccessDenied` with a reason specific to that role/page instead of a silent redirect or a generic 404.
+- `src/app/not-found.tsx` — the project didn't have one yet; a plain branded 404 outside the shell (not every visitor here is "in" the app).
+- `PageHeader`'s new `as` prop (see above).
+
+### Verified
+`lint`, `typecheck`, `test` (114/114 — 10 new), `check:tokens`, and `build` all pass. In the browser at 360px/1280px, light/dark: full nav for the default dev session (Balanga principal); simulated a teacher session by hand (setting `talaan-dev-session` to `staff-teacher-school-balanga`) and confirmed the nav drops to Dashboard/Attendance/Students and `/staff`/`/station` show the access-denied panel instead of the real page; mobile drawer opens, closes itself on navigation, and traps focus (Radix `Dialog` primitive under the hood). `loading.tsx` exists per convention but isn't independently visible yet — the placeholder pages have no data fetch, so it renders too fast to see; it'll actually show once a later step adds a real fetch.
+
+### Result
+All build tasks done. Waiting on the owner's review.

@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████░░░░░░░░░░ 48%**  (30 of 62 tasks, 9 of 24 steps approved)
+**Overall progress: ██████████░░░░░░░░░░ 52%**  (32 of 62 tasks, 9 of 24 steps approved)
 
-**Next up:** Step 10, App shell and navigation (not started)
+**Next up:** Step 10, App shell and navigation (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -16,7 +16,7 @@
 | 7 | Style guide page and token check | ██████████ 100% | Approved |
 | 8 | Domain types, schemas and seed data | ██████████ 100% | Approved |
 | 9 | Mock repositories and session | ██████████ 100% | Approved |
-| 10 | App shell and navigation | ░░░░░░░░░░   0% | Not started |
+| 10 | App shell and navigation | ███████░░░  67% | Ready for your review |
 | 11 | Dev switchers and theme dropdown | ░░░░░░░░░░   0% | Not started |
 | 12 | Login page | ░░░░░░░░░░   0% | Not started |
 | 13 | Dashboard | ░░░░░░░░░░   0% | Not started |
@@ -110,8 +110,8 @@ Commit: `feat(data): add mock repositories and session`
 - [x] Owner review: I checked it and said "approved"
 
 ### Step 10: App shell and navigation
-- [ ] Authenticated layout: sidebar, top bar, responsive drawer, role-based navigation, route guards.
-- [ ] `loading.tsx`, `error.tsx`, `not-found.tsx`.
+- [x] Authenticated layout: sidebar, top bar, responsive drawer, role-based navigation, route guards.
+- [x] `loading.tsx`, `error.tsx`, `not-found.tsx`.
 Done when: all three roles see the right menu, a teacher cannot open Staff, and it works at 360px and 1280px.
 Commit: `feat(shell): add app shell, navigation and route guards`
 - [ ] Owner review: I checked it and said "approved"
