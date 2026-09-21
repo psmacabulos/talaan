@@ -241,7 +241,9 @@ sequenceDiagram
 
 **I want to change what a color actually looks like**: edit its value in `tokens.css` only (both `:root` and `.dark` if it should differ between modes). Never hunt through components — nothing outside `tokens.css` should contain a literal color.
 
-**I want to know if something is using a raw color it shouldn't**: this is exactly what Step 7's `check:tokens` script (not built yet) will automate — until then, a raw hex/oklch/rgb value or a Tailwind palette class (`bg-blue-500`) anywhere outside `src/styles/tokens.css` is a sign something's wrong.
+**I want to know if something is using a raw color it shouldn't**: run `npm run check:tokens` (also runs in CI on every push). It scans everything under `src/` except `src/lib/theme/` and `src/styles/` for a raw hex/oklch/rgb/hsl literal or a Tailwind palette class (`bg-blue-500`) and fails with the exact file and line if it finds one. See the Step 7 section below for how it works.
+
+**I want to check a theme change across every preset and every component before it ships**: visit `/design-system` (dev-only — 404s in a production build). See the Step 7 section below.
 
 ## Step 5: theme presets and the contrast helper
 
@@ -317,3 +319,58 @@ This needs no client-side script, unlike the light/dark toggle. Light/dark depen
 ### 5. `src/app/page.tsx` — a temporary way to see every preset
 
 The demo page reads `?preset=` from the URL (only a `page.tsx` can do this — a `layout.tsx` never receives search params) and recolors just its own content via a scoped `<style>` block (`presetToScopedCss`), never touching `<html>`. Visit `/?preset=ocean` (or `emerald`/`crimson`/`violet`) to see any preset, in either light or dark mode via the existing toggle. This is explicitly a **Step 5 verification aid** — a real preset picker (a dropdown, then a full settings page) is later-step work; this one exists only so the presets can be checked in a browser today.
+
+## Step 7: the style guide page and `check:tokens`
+
+Step 4 built the mechanism, Step 5 added swappable data, Step 6 added a component library on top. Step 7 adds the two things that make sure all of that stays correct as the app grows: a page to actually *look* at every token and component together, and a script that enforces "no raw colors" automatically instead of relying on someone noticing during review.
+
+### `/design-system` — reusing Step 5's mechanism, not a new one
+
+`src/app/design-system/page.tsx` is deliberately built from pieces that already existed rather than inventing new theming machinery:
+
+```tsx
+export default async function DesignSystemPage({ searchParams }: PageProps<"/design-system">) {
+  if (process.env.NODE_ENV === "production") {
+    notFound();
+  }
+  const params = await searchParams;
+  const preset = getThemePreset(typeof params.preset === "string" ? params.preset : undefined);
+  const previewCss = presetToScopedCss(preset, PREVIEW_SELECTOR);
+  // ...renders <style>{previewCss}</style>, a preset switcher, ThemeToggle,
+  // and <StyleGuideContent /> (src/app/design-system/_components/) inside
+  // a div carrying PREVIEW_SELECTOR's data attribute.
+}
+```
+
+This is exactly the Step 5 demo page's `?preset=` + `presetToScopedCss` trick (see section 5 above), just promoted from "temporary verification aid" to "the permanent, dev-only style guide," with a bigger gallery (radius/elevation/motion tokens, and component *states* like disabled and invalid, not just one example of each). Color mode still comes from the real `ThemeToggle` — there's no separate light/dark switch on this page.
+
+**Why not show every preset's light and dark side by side at once?** That was the first idea, and it doesn't actually work cleanly: Tailwind's dark-mode rule (`@custom-variant dark (&:where(.dark, .dark *));`, section 3 above) matches *any* descendant of *any* `.dark`-classed ancestor, with no way to opt a nested subtree back out. A "light-forced" panel nested anywhere under the real `<html class="dark">` would still be a structural descendant of `.dark` — so while its CSS-variable colors could be forced light directly, any component using a `dark:`-specific utility class (like the outline Button's `dark:bg-input/30` — a bonus rule layered on top of the token colors, not derived from them) would still pick that up, since Tailwind's selector-matching can't be told "except this branch." One active preset+mode at a time, controlled by the same real `ThemeToggle` and `<html>` state the rest of the app uses, has no such gap — it's not a simulation, it's the real thing.
+
+**Why `notFound()` in the component body, not routing config:** a `middleware.ts` rule or a build-time route exclusion would also work, but both are *external* to the page — someone could refactor routing later and silently bring the page back in production without ever touching `design-system/page.tsx` itself. Checking `process.env.NODE_ENV` at the top of the page means the guard travels with the file; deleting or editing the page is the only way to change its production behavior.
+
+### `scripts/check-tokens.mjs` — a plain-text scan, not a linter plugin
+
+This is a small standalone Node script (same style as `scripts/progress.mjs`), not an ESLint rule — no new dependency needed for something this targeted. It walks every `.ts`/`.tsx`/`.css`/`.js`/`.mjs` file under `src/`, skips `src/lib/theme/` and `src/styles/` (the files CLAUDE.md's design-system rule 7 explicitly allows to contain real color values), and flags two things line by line:
+
+1. **A color literal**: a hex code, or `rgb()`/`hsl()`/`oklch()`/etc. called with a literal number right after the paren (`\b(?:rgb|rgba|hsl|hsla|oklch|oklab|lab|lch)\(\s*[\d.]`). That last part matters — `color-mix(in oklch, var(--secondary), ...)` (used by `button.tsx`'s outline variant, as an arbitrary Tailwind value: `in_oklch,var(...)`) contains the word "oklch" but never has a `(` immediately after it, so it correctly doesn't match; it's referencing a color *space* to interpolate in, not hardcoding a color.
+2. **A Tailwind built-in palette class**: `bg-blue-500`, `text-emerald-600`, and every other `<prefix>-<palette-name>-<shade>` combination Tailwind ships by default. This is a plain naming pattern, easy to enumerate, and doesn't need to inspect what a class actually resolves to.
+
+Run with `npm run check:tokens`; it's also a CI step (`.github/workflows/ci.yml`, right after Lint) so a raw color can't merge even if nobody happens to look at the diff. It exits non-zero with a `file:line` list on any hit, and prints a clean pass message otherwise. Checked against the whole codebase as it stood before this step existed: zero violations — confirming the patterns aren't accidentally too strict before trusting them to gate CI.
+
+```mermaid
+flowchart LR
+    Src["src/** (.ts, .tsx, .css, .js, .mjs)"]
+    Skip["src/lib/theme/**, src/styles/**<br/>(skipped — allowed to define real colors)"]
+    Check["scripts/check-tokens.mjs"]
+    CI[".github/workflows/ci.yml"]
+    Fail["exit 1 + file:line list"]
+    Pass["exit 0"]
+
+    Src --> Check
+    Skip -.excluded from.-> Check
+    Check -- violation found --> Fail
+    Check -- clean --> Pass
+    CI --> Check
+
+    style Check fill:#1C77A5,color:#fff
+```

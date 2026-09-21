@@ -99,3 +99,5 @@ src/styles/      tokens.css, base.css
 - Never commit secrets. Keep `.env.example` current, and do not read or edit `.env` files.
 - If a decision is hard to undo, ask me first and give a recommendation.
 - Keep replies short and specific. Say plainly when something is uncertain or was not tested.
+- When fixing a reported visual bug, verify against the actual thing I described (an element's real on-screen position, measured before/after/during, at animation-frame granularity if needed) — not a proxy metric that merely seems related. A proxy can look fixed while the real symptom persists or gets worse.
+- After running any scaffolding or code-generation CLI on the existing project (`shadcn add`, or similar tools in later steps), diff every file it touched before doing anything else. These tools are not guaranteed to be additive-only, even well-known ones.

@@ -31,6 +31,7 @@ There are no environment variables required yet in Phase 1 — see [`.env.exampl
 | `npm run format`    | Reformat all files with Prettier.                                               |
 | `npm run typecheck` | Check TypeScript types without emitting output.                                 |
 | `npm run test`      | Run the test suite once with Vitest.                                            |
+| `npm run check:tokens` | Fail if a raw color (hex/rgb/hsl/oklch or a Tailwind palette class) shows up outside the theme files. |
 | `npm run progress`  | Regenerate the progress table at the top of `docs/PLAN.md` from its checkboxes. |
 
 ## Theming
@@ -42,6 +43,7 @@ Every color a school sees comes from a **theme preset** — never a hardcoded va
 1. In `src/lib/theme/presets.ts`, add an entry to `themePresets` with a new `id` and `name`, and light/dark values for every color in `ThemeColorTokens`. Use the `oklchToken(lightness, chroma, hue)` helper (see the existing presets for examples) — it keeps the color inside what a screen can actually display.
 2. Run `npm run test`. `presets.test.ts` checks every text/background pairing in your new preset against WCAG AA in both light and dark mode, and will fail with the exact pairing and ratio if something isn't readable enough — adjust the lightness of that color and re-run until it passes.
 3. That's it — no component changes needed. A preset is picked by passing its `id` to `<ThemePresetStyle presetId="..." />` (currently hardcoded to `DEFAULT_THEME_PRESET_ID` in the root layout; a real per-school picker comes in a later step).
+4. Check it against every token and component at `/design-system` (dev-only — 404s in a production build) with `?preset=your-new-id`.
 
 ## Project guide
 

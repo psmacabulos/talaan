@@ -10,6 +10,7 @@
     "format": "prettier --write .",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
+    "check:tokens": "node scripts/check-tokens.mjs",
     "progress": "node scripts/progress.mjs"
   },
   "dependencies": {

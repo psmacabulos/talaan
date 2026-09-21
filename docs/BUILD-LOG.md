@@ -304,3 +304,25 @@ The second rule uses a slightly more specific selector (`html body[...]` vs. the
 **The lesson, updated:** the very first measurement taken (the `clientWidth` jump) was a real, valid observation of a real, separate defect (the scrollbar visually flickering) — the mistake was fixing it in a way that broke a *different*, already-correct thing (the content-position compensation), then declaring victory once the narrowly-scoped regression was undone, without going back to confirm the original defect was still actually addressed. Two independent problems measured under one bug report both needed their own fix, applied together, not whichever one was found and "solved" first.
 
 **Confirmed fixed by the owner**, after a hard refresh, on their own machine — not just in the automated headless check.
+
+---
+
+## Step 7: Style guide page and token check
+
+**Goal:** a dev-only `/design-system` page showing every token, component and state under every preset in light and dark, plus a `check:tokens` script that fails the build if a raw color sneaks into a component.
+
+### Design decision: one active preset+mode at a time, not simulated side-by-side panels
+First instinct was to render every preset's light *and* dark version simultaneously, side by side, using `presetToScopedCss` plus a locally-nested `.dark` wrapper div (the same trick that makes Tailwind's `dark:` variant work anywhere, not just on `<html>`). Worked out on paper that this doesn't actually hold up: Tailwind's dark variant (`@custom-variant dark (&:where(.dark, .dark *));`) matches *any* descendant of *any* ancestor with the `.dark` class, with no way to "un-dark" a subtree from inside — so a "light-forced" panel nested anywhere under the real `<html class="dark">` (whenever the owner's own light/dark toggle happens to be dark) would still pick up components' `dark:`-specific utility classes (like the outline Button's `dark:bg-input/30`), even while its CSS-variable colors were correctly forced light. That's a real, if narrow, visual inaccuracy — not hypothetical.
+
+Went with the simpler and fully accurate alternative instead: the same mechanism the Step 5/6 homepage demo already used successfully — a preset switcher as plain `?preset=` links (scoped via `presetToScopedCss`, never touching `<html>`), with light/dark controlled by the real `ThemeToggle`. Every one of the 10 preset × mode combinations (5 presets × light/dark) is reachable by clicking through, and each one renders with full fidelity (real `.dark` state on `<html>`, not a simulated approximation) — at the cost of only showing one at a time instead of all-at-once. Documented as the recommended pattern in `docs/STYLING-SYSTEM.md`.
+
+### `check:tokens`: what counts as a violation, and where the "allowed" boundary sits
+Two patterns, matching CLAUDE.md's own wording exactly: a hex/`rgb()`/`hsl()`/`oklch()` (etc.) literal, and any of Tailwind's built-in palette classes (`bg-blue-500`, `text-emerald-600`, ...). Deliberately excluded `src/lib/theme/**` and `src/styles/**` wholesale, rather than exempting individual files — that's exactly the CLAUDE.md-defined boundary ("no raw colors outside the theme files"), and it already covers every file that legitimately contains a literal today (`tokens.css`, `presets.ts`, `contrast.ts`, `oklch.ts`, and their `.test.ts` files).
+
+One real false-positive risk checked before trusting the regex: `button.tsx`'s outline variant uses `hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)]` — which contains the word "oklch" but isn't a literal color (it's a color-mix interpolation space, referencing tokens). Confirmed the color-function regex (`oklch\(` immediately followed by a digit/decimal) doesn't match this, since Tailwind's arbitrary-value syntax never puts a `(` right after the color-space keyword there — it's `in_oklch,` (a comma), not `oklch(`. Ran the finished script against the whole existing codebase before adding anything new: zero violations, confirming it isn't accidentally too strict.
+
+### Verified
+`lint`, `typecheck`, `test` (32/32), `build`, and `check:tokens` all pass. Confirmed dev-only-ness for real, not just by reading the code: ran a full `next build` (`NODE_ENV=production`), started it on a spare port (3000 already had the owner's own `next dev` running — left that alone and used `-p 3099` instead), and confirmed `/design-system` returns `404` while `/` still returns `200`. Checked the page itself with Playwright at 1280px and 360px, in light and dark, and clicked through the Ocean preset to confirm the switcher recolors correctly while staying in whatever mode the toggle was already on — clean console throughout.
+
+### Result
+All build tasks done. Waiting on the owner's review.

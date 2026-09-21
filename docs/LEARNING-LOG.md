@@ -138,6 +138,11 @@ Same mechanism, same result (a real `.bg-primary` class still gets generated) �
 
 **Using it day to day is unchanged:** write ordinary Tailwind classes in a component (`className="bg-card border border-border rounded-lg p-4"`) — no special syntax. The only real difference from a fresh Tailwind project: you can't reach for the built-in palette (`bg-blue-500`, `text-emerald-600`) — only names actually declared in `tokens.css` and mapped in this `@theme inline` block work, which is what makes "no hardcoded colors" possible to enforce at all. To add a brand-new one, see the "Quick recipes" section at the bottom of [`docs/STYLING-SYSTEM.md`](STYLING-SYSTEM.md).
 
+### What `check:tokens` (Step 7) is actually looking for
+Asked what a "raw color literal" is and why the script needs to scan the codebase for one. Short version: a **literal** is an actual color value typed straight into the code — a hex code (`#223060`), or `rgb(...)`/`hsl(...)`/`oklch(...)` with real numbers in it. That's the opposite of a **token name** like `bg-primary`, which doesn't name a color at all — it names "whatever the current theme's primary color is," which is what lets a whole theme swap happen with zero component changes (see the entry above).
+
+Nothing in the language stops someone from typing a literal color into a component by habit — `className="bg-[#223060]"` would look completely fine today (it happens to match the current default theme) but would leave that one element permanently stuck at that color in every other preset and in dark mode, while everything around it correctly changes. `check:tokens` is a plain search over `src/` (not the `design/` prototype folder, which is *supposed* to be full of hardcoded colors) for exactly those patterns, plus Tailwind's own built-in color names (`bg-blue-500`, `text-emerald-600`, etc., which the project isn't supposed to use — see the entry above). It fails loudly if it finds one, the same way a lint error would. Only `tokens.css`, `presets.ts`, and the small theme-math helper files are allowed to contain real color values — that's where "primary = this exact blue" is supposed to be defined exactly once.
+
 ---
 
 ## Components and libraries (shadcn/ui)
