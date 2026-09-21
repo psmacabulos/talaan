@@ -1,4 +1,6 @@
+import { CalendarCheck } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
 
 export default function AttendancePage() {
   return (
@@ -8,9 +10,11 @@ export default function AttendancePage() {
         title="Attendance"
         description="Pick a date and class to see who tapped in."
       />
-      <p className="max-w-prose text-sm text-muted-foreground">
-        Date, grade and section filters, and the class table, are built in Step 17.
-      </p>
+      <EmptyState
+        icon={CalendarCheck}
+        title="Not built yet"
+        description="Date, grade and section filters, and the class table, are built in Step 17."
+      />
     </div>
   );
 }

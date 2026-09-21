@@ -480,3 +480,27 @@ Approved.
 After using the app for a while, the owner noticed it only really adapts at two sizes (the 360px/1280px check points CLAUDE.md names) and doesn't grow on a genuinely large screen — real feedback, not a hypothetical, and one that needs its own step and its own commit rather than getting folded into whichever feature step happens to be next. That meant inserting a new step *between* the already-numbered Step 11 and Step 12 (Login page) — asked for explicitly so a future look at the logs shows exactly which files changed for which concern.
 
 The literal-minded fix (renumber Login→12 becomes 13, Dashboard→13 becomes 14, ... down to Final polish→24 becomes 25) would have meant hunting down and editing every already-written "built in Step 13/17/18/19/20/21" reference — six placeholder pages' own copy, plus mentions across `docs/BUILD-LOG.md`, `docs/LEARNING-LOG.md`, `docs/APP-SHELL.md`, and `docs/STYLING-SYSTEM.md` — a lot of scattered, easy-to-miss edits for a change that's really just "one more step exists now." Instead, the new step is `### Step 11.5: ...`, and `scripts/progress.mjs`'s heading regex widened from `Step (\d+)` to `Step (\d+(?:\.\d+)?)` (one line) so it's still tracked with real checkboxes, a real progress percentage, and shows up correctly as "next" once Step 11's own approval landed — with zero other files needing to change. `npm run progress` confirms it: `Step 11.5, Responsive scaling...` sorts correctly between Step 11 and Step 12 in the table.
+
+---
+
+## Step 11.5: Responsive scaling, small screen to big screen
+
+**Goal:** the app grows sensibly from 360px up through a genuinely large monitor (1920px+), instead of looking identical from 1280px upward — without inflating font sizes to the point they look oversized up close, since this is for a bigger desktop/laptop monitor, not a wall-mounted display.
+
+### Measured the actual symptom before touching anything
+Screenshotted `/dashboard` at 1920×1080 in a real browser before writing any code — confirmed the exact thing described: a fixed 256px sidebar, text at exactly its 1280px size, and a large dead zone to the right and below the content. `grep -rn "xl:\|2xl:\|container" src` came back completely empty — nothing past Tailwind's `lg` (1024px) had ever been given a value anywhere in the app. Also confirmed the *mechanism* wasn't broken: `<main>` was already `flex-1` with no width cap inside a `min-h-dvh` column, so it was already stretching to fill 100% of the available box — the emptiness was because today's pages are 2-3 lines of Step 10 placeholder text with nothing sized to notice the extra room, not because something was artificially constraining width.
+
+### A clarifying question, asked before designing anything
+"Big screen" is genuinely ambiguous in a way that changes the fix: a bigger desktop monitor (viewed up close, wants width used well) and a wall-mounted lobby TV (viewed from across a room, wants a "10-foot UI" — much bigger text, simpler layout) call for close to opposite treatments. Asked directly rather than guess; confirmed it's the desktop-monitor case. That ruled out the instinct to just scale typography up broadly, and pointed at "use width well, cap it at a sane point, grow only a few specific things" instead.
+
+### What got built
+- `AppShell`'s `<main>` (`src/components/app-shell/app-shell.tsx`): content wrapped in `w-full 2xl:max-w-[1600px]` (no `mx-auto` — stays flush left under the full-width top bar rather than becoming a centered island), padding grows a step further at `lg`/`2xl`.
+- `PageHeader` (`src/components/page-header.tsx`): title `text-2xl` → `lg:text-3xl` → `2xl:text-4xl`; description `text-sm` → `lg:text-base` — continuing the pattern `TopbarTitle` started in Step 10 (`sm:text-xl`).
+- The six `(app)/*/page.tsx` placeholders: their plain `<p>` note became an `EmptyState` panel (icon + "Not built yet" + the same copy) — genuinely the right component here (unlike `AccessDenied` in Step 10, which deliberately avoided `EmptyState` because its dashed border was the wrong metaphor for "blocked"; here "nothing built here yet" is exactly right).
+- `docs/APP-SHELL.md`'s new Step 11.5 section (mechanism + a diagram + why "grow forever" isn't the goal), a `docs/LEARNING-LOG.md` entry on the same "why cap it" reasoning.
+
+### Verified
+`lint`, `typecheck`, `test` (121/121, unchanged — no new test surface, this step is styling/layout only), `check:tokens`, and `build` all pass. In the browser at 360px (unchanged, confirmed by screenshot), 1920px and 2560px, light and dark: the content cap visibly engages past 1536px (a real, measured right-margin appears at 2560px instead of stretching edge to edge), `PageHeader` titles are visibly larger, and the placeholder panels read as an intentional "not built yet" card instead of two lines of text floating in a large empty rectangle. Checked `/schools` as a principal (the `AccessDenied` page) at 1920px too — its own internal `max-w-md` centering still looks correct inside the wider outer container, no regression.
+
+### Result
+All build tasks done. Waiting on the owner's review.

@@ -29,8 +29,16 @@ export function PageHeader({
       )}
     >
       <div className="flex flex-col gap-1">
-        <Heading className="font-heading text-2xl font-semibold text-foreground">{title}</Heading>
-        {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+        {/* Grows a step at lg and again at 2xl — TopbarTitle (Step 10)
+            started this pattern with sm:text-xl; every page heading should
+            feel proportionate on a big monitor, not frozen at its 1280px
+            size. See docs/APP-SHELL.md's "Big screens" section. */}
+        <Heading className="font-heading text-2xl font-semibold text-foreground lg:text-3xl 2xl:text-4xl">
+          {title}
+        </Heading>
+        {description ? (
+          <p className="text-sm text-muted-foreground lg:text-base">{description}</p>
+        ) : null}
       </div>
       {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
     </div>

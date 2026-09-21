@@ -1,7 +1,9 @@
+import { School as SchoolIcon } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { hasNavAccess } from "@/components/app-shell/nav-items";
 import { AccessDenied } from "@/components/app-shell/access-denied";
 import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
 
 export default async function SchoolsPage() {
   const session = await getSession();
@@ -19,10 +21,11 @@ export default async function SchoolsPage() {
         title="Schools"
         description="Each school has its own logo, colors and accounts."
       />
-      <p className="max-w-prose text-sm text-muted-foreground">
-        The schools list and add-school flow, with logo upload and a live theme preview, are
-        built in Step 20.
-      </p>
+      <EmptyState
+        icon={SchoolIcon}
+        title="Not built yet"
+        description="The schools list and add-school flow, with logo upload and a live theme preview, are built in Step 20."
+      />
     </div>
   );
 }

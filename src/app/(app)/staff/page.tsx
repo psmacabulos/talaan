@@ -1,7 +1,9 @@
+import { IdCard } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { hasNavAccess } from "@/components/app-shell/nav-items";
 import { AccessDenied } from "@/components/app-shell/access-denied";
 import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
 
 export default async function StaffPage() {
   const session = await getSession();
@@ -19,9 +21,11 @@ export default async function StaffPage() {
         title="Staff"
         description="Principals and teachers who can sign in to this school."
       />
-      <p className="max-w-prose text-sm text-muted-foreground">
-        The staff list and invite drawer are built in Step 18.
-      </p>
+      <EmptyState
+        icon={IdCard}
+        title="Not built yet"
+        description="The staff list and invite drawer are built in Step 18."
+      />
     </div>
   );
 }

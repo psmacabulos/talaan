@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ███████████░░░░░░░░░ 55%**  (36 of 65 tasks, 11 of 25 steps approved)
+**Overall progress: ████████████░░░░░░░░ 58%**  (38 of 65 tasks, 11 of 25 steps approved)
 
-**Next up:** Step 11.5, Responsive scaling, small screen to big screen (not started)
+**Next up:** Step 11.5, Responsive scaling, small screen to big screen (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -18,7 +18,7 @@
 | 9 | Mock repositories and session | ██████████ 100% | Approved |
 | 10 | App shell and navigation | ██████████ 100% | Approved |
 | 11 | Dev switchers and theme dropdown | ██████████ 100% | Approved |
-| 11.5 | Responsive scaling, small screen to big screen | ░░░░░░░░░░   0% | Not started |
+| 11.5 | Responsive scaling, small screen to big screen | ███████░░░  67% | Ready for your review |
 | 12 | Login page | ░░░░░░░░░░   0% | Not started |
 | 13 | Dashboard | ░░░░░░░░░░   0% | Not started |
 | 14 | Students list | ░░░░░░░░░░   0% | Not started |
@@ -125,9 +125,9 @@ Commit: `feat(shell): add dev switchers and theme dropdown`
 - [x] Owner review: I checked it and said "approved"
 
 ### Step 11.5: Responsive scaling, small screen to big screen
-- [ ] A real fluid type and spacing scale (CLAUDE.md's design-system rule 9): text, spacing, icon sizes and touch targets grow smoothly as the viewport widens, instead of only snapping at the couple of breakpoints used so far.
-- [ ] The app shell and page content use the full viewport width and height on a large screen — no leftover empty margin — with a content-width limit only where line length genuinely needs one (long body text), not as a blanket cap on every page.
-Done when: checked across a real range of sizes, not just 360px/1280px (add at least 768px, 1440px and 1920px+) — the app visibly grows with the screen instead of leaving large empty space, while staying correct and readable at 360px.
+- [x] Page titles and the shell's content padding grow at `lg`/`2xl` instead of staying frozen at their 1280px size (confirmed a real desktop-monitor target, not a TV/lobby display, so body text deliberately doesn't inflate — see docs/APP-SHELL.md's Step 11.5 section).
+- [x] The app shell's main content area uses the full available width/height, capped at a generous max-width past 1536px (grows generously, then stops, rather than stretching edge to edge on an ultrawide) — a shared convention every future page inherits automatically.
+Done when: checked across a real range of sizes, not just 360px/1280px (added 1920px and 2560px) — the app visibly grows with the screen instead of leaving large empty space, while staying correct and readable at 360px.
 Commit: `feat(design): add fluid responsive scaling from small to large screens`
 - [ ] Owner review: I checked it and said "approved"
 

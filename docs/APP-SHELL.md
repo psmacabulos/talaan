@@ -171,9 +171,35 @@ The `topbar.tsx` server component decides whether `DevSwitcher` renders **at all
 
 **Both controls disappear below `sm` (640px)**, same reasoning as Step 10's original identity chip: a 360px top bar only has room for the menu button and the page title before things start truncating.
 
+## Step 11.5: big screens — grow generously, then stop
+
+Every check so far (Steps 1-11) was at 360px and 1280px, per CLAUDE.md's two named check points. Using the real app on a real large monitor surfaced a real gap: nothing in the shell had ever been given behavior past `lg` (1024px) — `grep -rn "xl:\|2xl:" src` returned nothing, anywhere, before this step. On a 1920px+ screen the sidebar stayed 256px, every piece of text stayed exactly its 1280px size, and the content area — already unconstrained, already `flex-1` — just showed a large empty rectangle, because there was nothing sized to notice the extra room.
+
+**The target matters, and changes the fix.** Confirmed with the owner this is about a bigger desktop/laptop monitor, viewed up close — not a wall-mounted TV/lobby display (which would need a "10-foot UI": much bigger text, simpler layout, viewed from across a room). Up close, inflating body text to fill a wide monitor just looks oversized — the actual fix is making better use of *width*, and growing only the handful of things that should visibly scale (page titles, breathing room), not everything.
+
+```mermaid
+flowchart LR
+    A["360px<br/>drawer, cramped"]
+    B["1024px (lg)<br/>static sidebar appears"]
+    C["1536px (2xl)<br/>padding grows another step,<br/>content gets a real max-width"]
+
+    A -->|"lg: breakpoint (Step 10)"| B
+    B -->|"2xl: breakpoint (Step 11.5)"| C
+
+    style C fill:#223060,color:#fff
+```
+
+**Content stops growing past a point, on purpose.** `AppShell`'s `<main>` wraps `{children}` in `<div className="w-full 2xl:max-w-[1600px]">` — below 1536px this does nothing (unchanged since Step 10); at 1536px and up, content is capped at 1600px instead of stretching into a single absurdly wide block on an ultrawide monitor. No `mx-auto` — the cap doesn't center the content, it just stops it from stretching further, so it stays flush with the top bar's title above it (which does span full width) instead of becoming a visually disconnected island. This mirrors how real dashboard products (Linear, Notion, GitHub) behave: navigation chrome (the 256px sidebar, the top bar height) stays a constant width regardless of monitor size — only the *content* area grows, and even it stops at a sane point rather than "growing forever," because very long line lengths and very wide tables get harder to scan, not easier.
+
+**Typography grows in two more places, following the pattern `TopbarTitle` already started in Step 10** (`sm:text-xl`): `PageHeader`'s title steps up at `lg`/`2xl` (`text-2xl` → `lg:text-3xl` → `2xl:text-4xl`), and its description at `lg` (`text-sm` → `lg:text-base`). Nothing else grows — body copy inside pages stays put, since (per the target above) that's the text someone's actually reading up close, not glancing at from across a room.
+
+**Why the placeholder pages changed too, not just the container.** With next-to-no real content yet (Steps 13+ haven't built the real dashboard/tables), a wider container alone wouldn't visibly demonstrate anything — a slightly-less-narrow box around two lines of text still looks like a mostly-empty page. Each placeholder's plain `<p>` became an `EmptyState` panel (icon + "Not built yet" + the same explanatory copy) — genuinely the right component for this now (unlike `AccessDenied`, which deliberately avoided `EmptyState`'s dashed border in Step 10 because "empty, add content" was the wrong metaphor for "you're blocked" — here "nothing built here yet" is exactly what `EmptyState` means). This is honest scope, not a trick: the full "this really fills my monitor" payoff still lands once Steps 13+ add real cards/tables/grids that can actually use the reclaimed width — this step makes sure they inherit good behavior automatically instead of every future page re-deciding it, and makes today's shell and placeholders look intentional in the meantime, not just "technically ready."
+
 ## Quick recipes
 
 **I want to add a new page to the shell** (e.g. a student detail page): add `src/app/(app)/students/[id]/page.tsx`. It automatically gets the sidebar/top bar from `(app)/layout.tsx` — nothing else to wire up. If it should be restricted, add the guard pattern from the "Route guards" section above.
+
+**I'm building real content for a page past Step 12 and want it to behave well on a big screen:** you don't need to do anything extra for the outer container — `(app)/layout.tsx` already caps it at 1600px past 1536px width. If the content itself is data-dense (a table, a multi-column grid), let it use the *full* available width inside that container rather than adding your own narrower max-width — a wide table or a grid that adds columns as space allows is exactly the kind of thing that should benefit from the reclaimed room. If it's prose-heavy (a form, a long description), a narrower `max-w-prose`/`max-w-xl` wrapper *inside* the page is fine and often better for readability — that's a per-page call, not something the shell should force.
 
 **I want to add a new top-level nav item:** add one entry to `NAV_ITEMS` in `nav-items.ts` (segment, href, label, icon, roles) — the sidebar, the mobile drawer, and the top bar title all pick it up automatically. Create the matching `src/app/(app)/<segment>/page.tsx`.
 

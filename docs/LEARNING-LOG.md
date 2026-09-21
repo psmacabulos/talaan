@@ -154,6 +154,9 @@ The trick reused from Steps 4-5: the same `<style>` tag mechanism can be rendere
 
 **A separate, smaller idea layered on top:** the top-bar theme dropdown that recolors things live is deliberately *not* the same as "this school's real saved color." It's a plain cookie — this browser's own temporary preview, gone the moment you switch to a different signed-in persona. Nothing gets written to any school's actual record until a real "Save" button exists (a later step).
 
+### Why "make it grow forever" isn't actually the goal on a big screen (Step 11.5)
+Asked for the site to visibly grow as the screen gets bigger, on a real monitor. The instinct might be "let it stretch to fill however wide the screen is" — but that's not actually what good, professional software does, and it's worth knowing why before assuming a bigger number is always better: a paragraph of text (or a wide table) that stretches across a 32" ultrawide monitor edge to edge becomes *harder* to read, not easier — your eyes have to travel further per line, and it's easy to lose your place. The fix real products use (and the one built here): let content grow generously with the screen, but stop it at a sane width once it's already comfortably large, and put any *extra* room to use as more columns or more items, not a longer line length. That's why the app's main content area is capped at 1600px past a certain screen width instead of just being told "always 100% wide" — full details, with a diagram, in `docs/APP-SHELL.md`'s Step 11.5 section.
+
 ---
 
 ## Components and libraries (shadcn/ui)

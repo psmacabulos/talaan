@@ -34,7 +34,16 @@ export function AppShell({
           schools={schools}
           activePresetId={activePresetId}
         />
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        {/* Below 2xl (1536px), full width — unchanged from Step 10. At 2xl
+            and up, padding grows a step further and content stops at a
+            generous but real cap instead of stretching into a single
+            absurdly wide column on an ultrawide monitor — content still
+            hugs the left edge (no mx-auto), matching the top bar above it
+            rather than becoming a centered island. See docs/APP-SHELL.md's
+            "Big screens" section for why capped-and-left, not infinite. */}
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8 2xl:px-12 2xl:py-10">
+          <div className="w-full 2xl:max-w-[1600px]">{children}</div>
+        </main>
       </div>
     </div>
   );
