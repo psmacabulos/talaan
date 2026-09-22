@@ -12,7 +12,7 @@ import { StudentDrawer } from "./student-drawer";
 import { StudentsPagination } from "./students-pagination";
 import { StudentsTable } from "./students-table";
 import { StudentsToolbar } from "./students-toolbar";
-import type { Student } from "./types";
+import type { Card, Student } from "./types";
 
 /**
  * The students page's single interactive owner (Step 15). `page.tsx` stays
@@ -40,7 +40,10 @@ export function StudentsDirectory({
   showGradeFilter: boolean;
   canEdit: boolean;
 }) {
-  const [drawer, setDrawer] = useState<{ open: boolean; student?: Student }>({ open: false });
+  const [drawer, setDrawer] = useState<{ open: boolean; student?: Student; cards: Card[] }>({
+    open: false,
+    cards: [],
+  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -50,7 +53,7 @@ export function StudentsDirectory({
         description={description}
         actions={
           canEdit ? (
-            <Button onClick={() => setDrawer({ open: true, student: undefined })}>
+            <Button onClick={() => setDrawer({ open: true, student: undefined, cards: [] })}>
               <Plus className="size-4" aria-hidden="true" />
               Add student
             </Button>
@@ -68,7 +71,7 @@ export function StudentsDirectory({
             items={items}
             taps={taps}
             params={params}
-            onRowClick={canEdit ? (student) => setDrawer({ open: true, student }) : undefined}
+            onRowClick={canEdit ? (row) => setDrawer({ open: true, student: row.student, cards: row.cards }) : undefined}
           />
           <StudentsPagination params={params} total={total} />
         </>
@@ -77,8 +80,9 @@ export function StudentsDirectory({
       <StudentDrawer
         open={drawer.open}
         student={drawer.student}
+        cards={drawer.cards}
         onOpenChange={(open) => setDrawer((current) => ({ ...current, open }))}
-        onSuccess={() => setDrawer({ open: false })}
+        onSuccess={() => setDrawer({ open: false, cards: [] })}
       />
     </div>
   );

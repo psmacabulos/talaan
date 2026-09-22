@@ -2,7 +2,7 @@
 
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { StudentForm } from "./student-form";
-import type { Student } from "./types";
+import type { Card, Student } from "./types";
 
 /**
  * Thin Sheet chrome around StudentForm (Step 15). Only renders the form
@@ -13,11 +13,14 @@ import type { Student } from "./types";
 export function StudentDrawer({
   open,
   student,
+  cards,
   onOpenChange,
   onSuccess,
 }: {
   open: boolean;
   student?: Student;
+  /** That student's card history — ignored when `student` is undefined (a brand-new, not-yet-saved student has nothing to link a card to). */
+  cards: Card[];
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
 }) {
@@ -36,6 +39,7 @@ export function StudentDrawer({
           <StudentForm
             key={student?.id ?? "new"}
             student={student}
+            cards={cards}
             onSuccess={onSuccess}
             onCancel={() => onOpenChange(false)}
           />

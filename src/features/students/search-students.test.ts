@@ -128,6 +128,15 @@ describe("searchStudents", () => {
     expect(result.items.map((row) => row.student.firstName)).toEqual(["Ana", "Dado", "Ela", "Ben", "Carla"]);
   });
 
+  it("attaches each row's full card history, not just the derived status", async () => {
+    const result = await searchStudents(SCHOOL_ID, BASE, {}, deps);
+    const ela = result.items.find((row) => row.student.firstName === "Ela");
+    expect(ela?.cards.map((c) => c.id).sort()).toEqual(["c-ela-new", "c-ela-old"]);
+
+    const carla = result.items.find((row) => row.student.firstName === "Carla");
+    expect(carla?.cards).toEqual([]);
+  });
+
   it("paginates without changing the total, and returns nothing past the last page", async () => {
     const pageOne = await searchStudents(SCHOOL_ID, { ...BASE, page: 1 }, {}, deps);
     expect(pageOne.total).toBe(5);

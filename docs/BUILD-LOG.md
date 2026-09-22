@@ -752,3 +752,42 @@ The "Add student" button lives in the page header; the row-click-to-edit behavio
 
 ### Result
 All build tasks done. Waiting on the owner's review.
+
+---
+
+## Step 16: Card link and replace
+
+**Goal:** link a card to a student via a simulated tap, reject duplicate serials, and replace a lost card (old one marked lost, new one linked) — one active card per student enforced. The ID card section the Step 15 drawer deliberately left out.
+
+### Confirmed with the owner before building: simulate only, not manual entry or real Web NFC
+The owner's stated goal is to eventually test this with a real RFID card. Before assuming how, asked directly: stick to "Simulate a card tap" as the plan literally says and the prototype does, add a manual serial-entry field so a real card's UID could be typed in today, or go all the way to the Web NFC API for a real phone-to-card tap. Owner chose the first — simulate only, real-card testing stays a later concern — so this step didn't grow into a much bigger scope than the plan actually asked for.
+
+### Repository layer: `CardRepository.create`/`markLost`
+Same shape as Step 15's `StudentRepository` additions (`docs/DATA-ACCESS.md` already named this pair in advance). `markLost(cardId)` rather than a generic `update(card)` — a card's only field that ever changes after creation is `status`, so naming the method after the real action reads better everywhere it's called than a generic setter would.
+
+### "Reject duplicate serials" — real, but only provably verified by a unit test
+The server generates the simulated serial itself (`generateCardSerial()`, random 7-byte hex, same shape as the seed data's own `cardSerialAt()` but genuinely randomized) and checks it against every card in the system via a small pure predicate, `isSerialAvailable(serial, existingCards)` — false only if an *active* card elsewhere already has that exact serial. With true randomness, a real collision essentially never happens in a live click-through, so the reject-duplicate path was verified with a direct unit test (`card-serial.test.ts`) rather than ever actually observed firing in the browser — said plainly here rather than glossed over.
+
+### Threading card history down to the drawer without a new fetch
+`search-students.ts`'s `searchStudents()` already calls `cardRepository.listByStudent()` for every visible row, to derive the table's `cardStatus` badge — it just threw the raw array away afterward. Added `cards: Card[]` to `StudentRow` so that history is already sitting in `students-directory.tsx`'s `items` prop by the time a row is clicked, no extra request needed. `StudentsTable`'s `onRowClick` now hands back the whole `StudentRow` instead of just the `Student`.
+
+### A card box, not a student field
+`CardBox` (`card-box.tsx`) deliberately isn't wired into the surrounding React Hook Form at all — linking or replacing a card saves immediately through its own two server actions (`linkCard`, `replaceCard`), completely independent of the form's own Save/Cancel. It owns a tiny local state machine (`idle | waiting | confirm`) and starts from the `cards` prop, then updates itself optimistically from whatever `Card` each action actually returns, rather than waiting on the parent to re-fetch — the actions' own `refresh()` call is still what keeps the *table's* badge in sync for whenever the drawer is reopened later. Only rendered when editing an existing student — a brand-new, not-yet-saved one has nothing to link a card to yet.
+
+### A real bug caught in the browser check: card serials didn't wrap at 360px
+Everything passed lint/typecheck/test/build, but the 360px pass caught the actual ID card box overflowing horizontally — a 7-byte hex serial (`04:99:F4:4F:AA:05:60`) is a long unbroken string, and neither the badge row nor the "Previous cards" line wrapped it. Fixed with `break-all` on each serial `<span>` and `flex-wrap` on their containing rows; re-checked at 360px afterward to confirm the fix, not just assumed from the CSS change.
+
+### What got built
+- `src/data/repositories/card-repository.ts` (+`.test.ts`) — `create`/`markLost`.
+- `src/features/students/card-serial.ts` (+`.test.ts`) — `generateCardSerial`, `isSerialAvailable`.
+- `src/features/students/card-actions.ts` — `linkCard`, `replaceCard` (session/role/school guards, `refresh()`).
+- `src/features/students/card-box.tsx` — the drawer's ID card section.
+- `search-students.ts` (+`.test.ts`) — `cards` on `StudentRow`.
+- `students-table.tsx`, `students-directory.tsx`, `student-drawer.tsx`, `student-form.tsx` — threaded `cards` through, `CardBox` rendered in edit mode.
+- `docs/DATA-ACCESS.md` updated; `docs/recipes/step-16-card-link-replace.md` (new — the owner asked to resume writing one recipe per step from here on, rather than only at Step 24).
+
+### Verified
+`lint`, `typecheck`, `test` (186, up from 176), `check:tokens` and `build` all pass. In the browser at 1280px and 360px, light and dark: linked a fresh card on a cardless student (toast, badge, serial all update immediately); replaced that same card (confirm → marked lost → simulate → new active card, old one correctly shown under "Previous cards"); confirmed the seed data's own lost-then-replaced student (Juan Cruz, `student-0001`) renders its real history correctly; confirmed the students table's badge reflects the change after closing the drawer, without a manual reload; teacher persona re-checked last — no "Add student" button, no clickable rows, no card box reachable at all, identical to Step 15. Console clean throughout.
+
+### Result
+All build tasks done. Waiting on the owner's review.

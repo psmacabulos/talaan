@@ -3,11 +3,13 @@ import type { CardRepository, StudentRepository } from "@/data/repositories";
 import { ageInYears } from "./age";
 import { deriveCardStatus, type CardFilterStatus } from "./card-status";
 import { STUDENTS_PAGE_SIZE, type StudentListParams } from "./search-params";
-import type { Student } from "./types";
+import type { Card, Student } from "./types";
 
 export interface StudentRow {
   student: Student;
   cardStatus: CardFilterStatus;
+  /** That student's full card history — active, lost and retired alike (Step 16's card-link drawer). */
+  cards: Card[];
 }
 
 export interface StudentSearchResult {
@@ -83,6 +85,7 @@ export async function searchStudents(
   const rows: StudentRow[] = filteredByGrade.map((student, index) => ({
     student,
     cardStatus: deriveCardStatus(cardsByStudent[index] ?? []),
+    cards: cardsByStudent[index] ?? [],
   }));
 
   const filteredByCard = params.card === "all" ? rows : rows.filter((row) => row.cardStatus === params.card);

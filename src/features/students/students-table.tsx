@@ -12,7 +12,6 @@ import { CardStatusBadge } from "./card-status-badge";
 import type { StudentListParams, StudentSortField } from "./search-params";
 import { studentListHref } from "./search-params";
 import type { StudentRow } from "./search-students";
-import type { Student } from "./types";
 
 function initials(row: StudentRow): string {
   return `${row.student.firstName[0]}${row.student.lastName[0]}`.toUpperCase();
@@ -58,13 +57,13 @@ export function StudentsTable({
   items: StudentRow[];
   taps: Tap[];
   params: StudentListParams;
-  /** When set, every row opens the student's edit drawer (Step 15) — omitted entirely for teachers, who stay read-only. */
-  onRowClick?: (student: Student) => void;
+  /** When set, every row opens the student's edit drawer (Step 15), with their card history (Step 16) — omitted entirely for teachers, who stay read-only. */
+  onRowClick?: (row: StudentRow) => void;
 }) {
-  function handleKeyDown(event: KeyboardEvent<HTMLTableRowElement>, student: Student) {
+  function handleKeyDown(event: KeyboardEvent<HTMLTableRowElement>, row: StudentRow) {
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
-    onRowClick?.(student);
+    onRowClick?.(row);
   }
 
   return (
@@ -84,8 +83,8 @@ export function StudentsTable({
           {items.map((row) => (
             <TableRow
               key={row.student.id}
-              onClick={onRowClick ? () => onRowClick(row.student) : undefined}
-              onKeyDown={onRowClick ? (event) => handleKeyDown(event, row.student) : undefined}
+              onClick={onRowClick ? () => onRowClick(row) : undefined}
+              onKeyDown={onRowClick ? (event) => handleKeyDown(event, row) : undefined}
               role={onRowClick ? "button" : undefined}
               tabIndex={onRowClick ? 0 : undefined}
               aria-label={onRowClick ? `Edit ${row.student.firstName} ${row.student.lastName}` : undefined}

@@ -1,7 +1,7 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████░░░░░░ 69%**  (46 of 67 tasks, 15 of 25 steps approved)
+**Overall progress: ██████████████░░░░░░ 70%**  (47 of 67 tasks, 15 of 25 steps approved)
 
 **Next up:** Step 15, Student form (ready for your review)
 
@@ -23,7 +23,7 @@
 | 13 | Dashboard | ██████████ 100% | Approved |
 | 14 | Students list | ██████████ 100% | Approved |
 | 15 | Student form | █████░░░░░  50% | Ready for your review |
-| 16 | Card link and replace | ░░░░░░░░░░   0% | Not started |
+| 16 | Card link and replace | █████░░░░░  50% | Ready for your review |
 | 17 | Attendance page | ░░░░░░░░░░   0% | Not started |
 | 18 | Staff page | ░░░░░░░░░░   0% | Not started |
 | 19 | Tap station | ░░░░░░░░░░   0% | Not started |
@@ -156,7 +156,7 @@ Commit: `feat(students): add student form drawer`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 16: Card link and replace
-- [ ] Link a card with a simulated tap, reject duplicate serials, and replace a lost card (old card marked lost, new card linked).
+- [x] Link a card with a simulated tap, reject duplicate serials, and replace a lost card (old card marked lost, new card linked).
 Done when: a lost card is flagged and one active card per student is enforced.
 Commit: `feat(students): add card link and replace flow`
 - [ ] Owner review: I checked it and said "approved"

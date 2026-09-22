@@ -9,6 +9,10 @@ export interface CardRepository {
   getActiveForStudent(studentId: string): Promise<Card | null>;
   /** Looks up whichever card a physical tap's serial currently belongs to. */
   getBySerial(serial: string): Promise<Card | null>;
+  /** Links a new card (Step 16's "Link card"/"Simulate a card tap"). Idempotent by `id`, same as `StudentRepository.create`. */
+  create(card: Card): Promise<Card>;
+  /** Marks a card lost (Step 16's "Replace a lost card"). Returns `null` if no card with that id exists. */
+  markLost(cardId: string): Promise<Card | null>;
 }
 
 export function createMockCardRepository(
@@ -29,6 +33,20 @@ export function createMockCardRepository(
     async getBySerial(serial) {
       await simulateLatency(latencyMs);
       return data.find((card) => card.serial === serial) ?? null;
+    },
+    async create(card) {
+      await simulateLatency(latencyMs);
+      if (!data.some((existing) => existing.id === card.id)) {
+        data.push(card);
+      }
+      return card;
+    },
+    async markLost(cardId) {
+      await simulateLatency(latencyMs);
+      const index = data.findIndex((existing) => existing.id === cardId);
+      if (index === -1) return null;
+      data[index] = { ...data[index], status: "lost" };
+      return data[index];
     },
   };
 }

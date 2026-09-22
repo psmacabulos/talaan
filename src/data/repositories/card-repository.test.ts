@@ -56,4 +56,36 @@ describe("createMockCardRepository", () => {
     const repo = createMockCardRepository(allCards, { latencyMs: 0 });
     await expect(repo.getBySerial("00:00:00:00:00:00:00")).resolves.toBeNull();
   });
+
+  it("creates a new card", async () => {
+    const repo = createMockCardRepository([activeCard], { latencyMs: 0 });
+    const newCard: Card = {
+      id: "card-new",
+      schoolId: "school-a",
+      studentId: "student-c",
+      serial: "04:AA:BB:CC:DD:EE:FF",
+      status: "active",
+      linkedAt: "2026-06-20T09:00:00Z",
+    };
+    await expect(repo.create(newCard)).resolves.toEqual(newCard);
+    await expect(repo.getBySerial("04:AA:BB:CC:DD:EE:FF")).resolves.toEqual(newCard);
+  });
+
+  it("is idempotent when creating with an id that already exists", async () => {
+    const repo = createMockCardRepository([activeCard], { latencyMs: 0 });
+    await repo.create({ ...activeCard, serial: "04:00:00:00:00:00:99" });
+    await expect(repo.getBySerial("04:11:22:33:44:55:66")).resolves.toEqual(activeCard);
+  });
+
+  it("marks a card lost", async () => {
+    const repo = createMockCardRepository([activeCard], { latencyMs: 0 });
+    const result = await repo.markLost("card-active");
+    expect(result?.status).toBe("lost");
+    await expect(repo.getActiveForStudent("student-a")).resolves.toBeNull();
+  });
+
+  it("returns null when marking an unknown card lost", async () => {
+    const repo = createMockCardRepository([activeCard], { latencyMs: 0 });
+    await expect(repo.markLost("nope")).resolves.toBeNull();
+  });
 });

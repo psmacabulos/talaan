@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SheetFooter } from "@/components/ui/sheet";
 import { createStudent, updateStudent } from "./actions";
 import { ageInYears } from "./age";
+import { CardBox } from "./card-box";
 import { STUDENT_FORM_MAX_BIRTH_DATE, studentFormSchema } from "./schemas";
-import type { GradeLevel, Student, StudentFormInput, StudentFormValues } from "./types";
+import type { Card, GradeLevel, Student, StudentFormInput, StudentFormValues } from "./types";
 
 const GRADE_LEVELS: readonly GradeLevel[] = [7, 8, 9, 10, 11, 12];
 
@@ -56,10 +57,13 @@ function valuesFrom(student: Student): StudentFormValues {
  */
 export function StudentForm({
   student,
+  cards,
   onSuccess,
   onCancel,
 }: {
   student?: Student;
+  /** Only meaningful when editing (`student` set) — a brand-new student has nothing to link a card to yet. */
+  cards?: Card[];
   onSuccess: () => void;
   onCancel: () => void;
 }) {
@@ -259,6 +263,8 @@ export function StudentForm({
             )}
           </div>
         </fieldset>
+
+        {student ? <CardBox studentId={student.id} cards={cards ?? []} /> : null}
       </div>
 
       <SheetFooter className="flex-row justify-end border-t border-border">
