@@ -2,7 +2,7 @@
 
 Step 8 built what a `Tap` *is* (`docs/DATA-MODEL.md`). Step 9 built how it gets *read* (`docs/DATA-ACCESS.md`). Step 13 builds the piece in between those and the screen: **turning a pile of tap records into "who is in school right now"**.
 
-This is a genuinely separate subsystem from both, and it's the one every attendance-shaped screen sits on — the dashboard (Step 13), the attendance page (Step 17), the tap station (Step 19 — still to come), and any report after that. See `docs/BUILD-LOG.md`'s Step 13 and Step 17 entries for the decisions as they were made; this document is the reference for how the mechanism works.
+This is a genuinely separate subsystem from both, and it's the one every attendance-shaped screen sits on — the dashboard (Step 13), the attendance page (Step 17), the tap station (Step 19), and any report after that. See `docs/BUILD-LOG.md`'s Step 13, Step 17 and Step 19 entries for the decisions as they were made; this document is the reference for how the mechanism works.
 
 ## The one idea to hold on to
 
@@ -166,6 +166,23 @@ Two things make this resolution non-trivial:
 
 The other wrinkle is the date. Every seed tap is dated to `DASHBOARD_NOW`'s day (`ATTENDANCE_SEED_DATE`, exported from `attendance-search-params.ts` so nothing hardcodes "2026-06-20" a second time) — so this page treats that one date as real and every other date as "no records", rather than trying to derive attendance for a day it has no data for at all. Picking any other date shows an empty state with a link straight back to the seed date, for the same class.
 
+## The tap station (Step 19): where a `Tap` actually comes from
+
+Every `Tap` used everywhere above this point — the dashboard, the attendance page, the seed data itself — has to originate somewhere. The tap station (`src/app/(app)/station/page.tsx`) is that origin point: a kiosk screen with four "Prototype controls" buttons standing in for a real card read (simulate-only, same confirmed scope as Step 16's card link — no manual serial entry or Web NFC), each producing one of the four results CLAUDE.md's domain rules describe.
+
+**Resolving is pure, on purpose.** `src/features/station/resolve-station-tap.ts`'s `resolveStationTap(kind, context, ids)` decides who/what a button press actually taps, given nothing but plain data (`students`, `taps`, `cards`, `now`) and the ids to stamp on whatever it creates. It never touches a repository or `next/cache` itself — which is what lets the exact same function run identically online (fed a fresh fetch by `station-actions.ts`) or offline (fed the kiosk's own already-loaded snapshot, client-side, in `tap-station-kiosk.tsx`).
+
+| Button | What it does | Writes |
+|---|---|---|
+| Valid card | Picks the first waiting student (`studentsWithoutTapToday`, same order the dashboard's own "Simulate a tap" uses) who has an active card. | A real `Tap`. |
+| Already tapped | Finds a student who already has a tap today and reports it back — CLAUDE.md's "repeated taps... are ignored" taken literally. | Nothing. |
+| Lost card | Finds a card on file marked `lost` and taps its original owner — same shape the seed data (`src/data/seed/taps.ts`) already established for exactly this scenario. | A `Tap` *and* an `Alert` (`lost_card_tapped`). |
+| Unknown card | Fabricates a serial that matches no card on file at all. | A `Tap` with `studentId: null` — `LiveTapFeed` already knew how to render this ("Unknown card", "Not linked to a student") before this step existed. |
+
+**The offline queue works because every press folds into the next one's input.** The kiosk keeps every "recorded" outcome from the current session in `recorded` state, and feeds `[...taps, ...recordedTapsFrom(recorded)]` into the *next* `resolveStationTap` call — so pressing "Valid card" twice in a row, online or offline, always picks two different students, without needing to ask the server in between. Going offline doesn't change *how* resolution happens at all, only *when* the result gets persisted: `syncStationTaps()` (`station-actions.ts`) never re-resolves anything, it only writes down outcomes the kiosk already decided — one at a time for an online tap, or several at once for a queue that's just reconnected.
+
+**One deliberate omission:** the "Lost card" result never names whose card it is, even though the resolved outcome carries that name. A kiosk screen at the gate is something anyone walking past can see — the name belongs to staff, in the dashboard's "Needs attention" panel, not broadcast publicly (CLAUDE.md: students are minors, collect the minimum).
+
 ## Quick recipes
 
 **I want to change when "late" starts.** Edit `LATE_CUTOFF_MINUTES` in `src/features/attendance/status.ts`. It's minutes since midnight (`8 * 60 + 5`). The unit tests in `status.test.ts` assert the boundary on both sides, so change those too — that's deliberate, it makes the rule impossible to change by accident.
@@ -181,3 +198,5 @@ The other wrinkle is the date. Every seed tap is dated to `DASHBOARD_NOW`'s day 
 **I'm adding real taps in Phase 2.** Replace `DASHBOARD_NOW` with the real current time and give `tapRepository` a database-backed implementation. Nothing in `status.ts` should need to change — it already takes `now` as a parameter and never reaches for a clock or a database itself.
 
 **I want a new screen that browses one class at a time (like the attendance page).** Reuse `classOptionsFromRoster()` and `resolveClassSelection()` from `src/features/attendance/attendance-search-params.ts` rather than writing new grade/section fallback logic — they already handle "the URL names a class that doesn't exist" and "this role is locked to one class" correctly.
+
+**I want to add a fifth kind of simulated tap station outcome.** Add it to `StationTapKind` and `resolveStationTap()` (`src/features/station/resolve-station-tap.ts`) — keep it a pure function of `{ students, taps, cards, now }`, so the kiosk can keep resolving it identically online and offline. Don't touch `station-actions.ts` unless the new outcome needs to write something `syncStationTaps()` doesn't already handle (a `Tap`, optionally an `Alert`).

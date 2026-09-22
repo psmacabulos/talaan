@@ -887,3 +887,56 @@ Reusing the same "a super admin with no school selected" empty state the dashboa
 
 ### Result
 All build tasks done. Waiting on the owner's review.
+
+---
+
+## Step 19: Tap station
+
+**Goal:** a kiosk screen with ready, success, duplicate, lost-card and unknown-card states, large touch targets, and an offline simulation with a real queue and a sync message.
+
+### The real design decision: does an offline tap need to be resolved twice?
+The obvious first design was two separate code paths — an online path that calls a server action to resolve-and-persist immediately, and an offline path that queues something simpler to replay later. That has a real bug hiding in it: replaying a queued item by re-resolving it server-side, after other taps have already been synced, can legitimately pick a *different* student than the one the kiosk showed the operator while they were offline — the picture on screen and what actually gets saved could disagree.
+
+Fixed by making `resolveStationTap()` (`src/features/station/resolve-station-tap.ts`) a **pure function of plain data**, with no repository or Next.js dependency at all. The kiosk resolves every press itself, online or offline, using its own running snapshot (the page's initial data plus every outcome it's already recorded this session) — so two "Valid card" presses in a row always pick two different students, with or without a network. The server's only job (`syncStationTaps()`, `station-actions.ts`) is to write down outcomes the kiosk already decided, never to re-decide them. This also collapsed "the online path" and "the offline sync path" into the exact same function, called with one outcome or several — simpler than the original two-path design, not just safer.
+
+### Three of the four outcomes write real data; matching an existing precedent rather than inventing one
+- **Valid card** creates a real `Tap` — same repositories the dashboard's Step 13 "Simulate a tap" already writes to.
+- **Lost card** creates a `Tap` *and* an `Alert`. This isn't a new decision: `src/data/seed/taps.ts` already has a hand-written comment explaining exactly this scenario (tapping a lost card doesn't erase who it used to belong to), and `NeedsAttention` (Step 13) already knows how to resolve an alert's `tapId` back to a student's name. The station just does at runtime what the seed data already demonstrated statically.
+- **Unknown card** creates a `Tap` with `studentId: null` — anticipated in `tapSchema`'s own comment since Step 8 ("`null` if the serial wasn't linked to anyone"), and `LiveTapFeed` already renders this case ("Unknown card", "Not linked to a student") without any change needed here.
+- **Already tapped** writes nothing at all — CLAUDE.md's "repeated taps... are ignored" taken at face value.
+
+### A privacy call: the kiosk never names whose card is lost
+The resolved outcome for "Lost card" does carry the original owner's name (needed for the `Alert` to be useful on the dashboard), but the kiosk's own result screen deliberately doesn't show it — just "Lost card. This card was reported lost. Please see the office." A screen at the gate is public in a way the dashboard isn't; the name is for staff, not for whoever's standing in line. Caught while writing the copy, not flagged by any review — worth being explicit about since it's an easy thing to get wrong by just using the data that happens to be sitting right there.
+
+### Small dedup along the way
+`MAIN_GATE_STATION_ID` existed only as a private constant inside `attendance/actions.ts`. Moved it to `status.ts` (next to `DASHBOARD_NOW`, the other fixed-demo-world constant) and exported it, so the station uses the exact same station id the dashboard's simulated taps already do, instead of a second hardcoded copy of the same string.
+
+### What got built
+- `src/features/station/resolve-station-tap.ts` (+ test) — the pure resolver, all four kinds.
+- `src/features/station/station-actions.ts` — `syncStationTaps()`.
+- `src/features/station/tap-station-kiosk.tsx` — the interactive kiosk: online/offline toggle, the result display with its own 5-second auto-reset, the offline queue.
+- `src/data/repositories/alert-repository.ts` (+ test) — added `create()`.
+- `src/features/attendance/status.ts` — exported `MAIN_GATE_STATION_ID`; `attendance/actions.ts` now imports it instead of declaring its own.
+- `src/app/(app)/station/page.tsx` — rewritten from the Step-10-era stub; fetches the roster, taps and every card (per-student fetch-and-flatten, same pattern as Step 17/18 — no school-wide "list every card" method exists).
+- `docs/ATTENDANCE-MODEL.md` — new "The tap station (Step 19)" section and a quick recipe.
+
+### Verified
+`lint`, `typecheck`, `test` (219, up from 208), `check:tokens` and `build` all pass. In the browser at 1280px and 360px, light and dark, across three schools (to reach both a school with a seeded lost card and two without): all four buttons produced the right result and colors; two "Valid card" presses in a row picked two different students; "Already tapped" correctly found Juan Cruz's real 7:56 AM seed tap; "Lost card" produced a real alert that showed up in the dashboard's "Needs attention" panel (confirmed by navigating there directly, not assumed) with the right name and time; "Lost card" on a school with no lost card on file showed the empty state instead of erroring; toggling offline and pressing "Valid card" twice showed "2 taps waiting to sync" and the "will sync later" copy, and "Go back online" produced "Back online. 2 saved taps were uploaded." with both taps then visible for real in the dashboard's live feed; the four simulate buttons measured exactly 44px tall at 360px (`getBoundingClientRect`, not eyeballed); as the teacher persona, `/station` wasn't in the sidebar and visiting it directly showed `AccessDenied`. Console clean throughout.
+
+### Result
+All build tasks done. Waiting on the owner's review.
+
+---
+
+## After Step 19: time-in/time-out design, decided but not built
+
+While reviewing Step 19, the owner asked a real question the "already tapped" demo button glossed over: a student who taps at 7:30 then taps again at 7:35 could mean a hardware glitch (ignore it) or the student actually leaving campus (a real second event) — the kiosk currently can't tell those apart, since "already tapped today" today means exactly that, with no time window at all.
+
+Two decisions came out of the conversation, both Phase 2 (not built now, since there's no real Tap API yet to hang them on):
+
+- **A 1-2 minute debounce window.** A second tap from the same student inside that window is a duplicate read, ignored. Past it, taps alternate: 1st = time in, 2nd = time out, 3rd = time in, and so on.
+- **Summary-by-default display**, not a full log by default: the attendance table shows Time in (first tap) / Time out (last tap); a student with more than two taps that day gets a small "N taps today" indicator that opens the full sequence, rather than every row showing every tap. Chosen over always showing the full sequence because the common case (one tap in, one tap out, if any) shouldn't pay for the rare one (a student leaving and returning more than once).
+
+**What made this easy to answer:** every physical tap already becomes its own `Tap` record today, with no per-day limit — Step 8's data model already keeps full history without anyone asking it to. Nothing needed to change there; only the *derivation* (turning that history into in/out labels) and the *display* (summary vs. detail) were actually open questions.
+
+**What changed:** `CLAUDE.md`'s Tap domain bullet now describes the debounce/alternating rule and the summary display, marked not-yet-built; `docs/PLAN.md`'s Phase 2 section gained two new bullets recording the same decisions with today's date, so they don't need re-deciding when Phase 2 actually gets to the Tap API. Doesn't change anything already built — Step 17's attendance page keeps its current single "Time in" column, Step 19's kiosk keeps its simpler no-time-window "already tapped" demo, until this is actually built.

@@ -278,6 +278,9 @@ Discussed while reviewing Step 8's ER diagram (`Tap.stationId`) — full write-u
 
 **Offline behavior:** a tap made while offline is generated and queued **on the device itself** (it already has its own ID, so it doesn't need the server to exist first) — it gets sent once the connection returns, and a parent notification only ever goes out *after* that.
 
+### How will "time in" and "time out" both show, if a student comes and goes more than once? (asked after Step 19)
+Full write-up: `docs/BUILD-LOG.md`'s "After Step 19" entry and `docs/PLAN.md`'s Phase 2 notes. Short version: nothing new needs to be *stored* — every tap is already its own record today, no per-day limit, so the full history already exists. What was actually missing was two decisions: (1) a 1-2 minute window to tell an accidental double-tap from a real second visit, past which taps just alternate in/out/in/out; (2) how to *show* it — decided to keep the table simple (just "Time in"/"Time out", the first and last tap) and only reveal the full list for the rare student who tapped more than twice, rather than showing every row's full tap history all the time.
+
 ---
 
 ## What is a "repository"? (Step 9)

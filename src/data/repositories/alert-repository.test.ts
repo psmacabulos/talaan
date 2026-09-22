@@ -23,4 +23,17 @@ describe("createMockAlertRepository", () => {
     const repo = createMockAlertRepository([alertA], { latencyMs: 0 });
     await expect(repo.listBySchool("school-none")).resolves.toEqual([]);
   });
+
+  it("creates a new alert", async () => {
+    const repo = createMockAlertRepository([alertA], { latencyMs: 0 });
+    const created: Alert = { ...alertB, id: "alert-new" };
+    await expect(repo.create(created)).resolves.toEqual(created);
+    await expect(repo.listBySchool("school-b")).resolves.toEqual([created]);
+  });
+
+  it("does not create a duplicate for an id that already exists", async () => {
+    const repo = createMockAlertRepository([alertA], { latencyMs: 0 });
+    await repo.create({ ...alertA, acknowledged: true });
+    await expect(repo.listBySchool("school-a")).resolves.toEqual([alertA]);
+  });
 });

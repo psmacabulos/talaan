@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████░░░░░░ 68%**  (52 of 77 tasks, 18 of 30 steps approved)
+**Overall progress: ██████████████░░░░░░ 70%**  (54 of 77 tasks, 19 of 30 steps approved)
 
-**Next up:** Step 18, Staff page (ready for your review)
+**Next up:** Step 19, Tap station (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -25,8 +25,8 @@
 | 15 | Student form | ██████████ 100% | Approved |
 | 16 | Card link and replace | ██████████ 100% | Approved |
 | 17 | Attendance page | ██████████ 100% | Approved |
-| 18 | Staff page | █████░░░░░  50% | Ready for your review |
-| 19 | Tap station | ░░░░░░░░░░   0% | Not started |
+| 18 | Staff page | ██████████ 100% | Approved |
+| 19 | Tap station | █████░░░░░  50% | Ready for your review |
 | 20 | Parent and notification domain | ░░░░░░░░░░   0% | Not started |
 | 21 | School notification settings | ░░░░░░░░░░   0% | Not started |
 | 22 | Parent signup, login and link a child | ░░░░░░░░░░   0% | Not started |
@@ -179,10 +179,10 @@ Commit: `feat(attendance): add attendance page`
 - [x] Staff list and invite drawer with validation (principal and super admin only).
 Done when: the invite appears in the list as "Invited".
 Commit: `feat(staff): add staff list and invite drawer`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 19: Tap station
-- [ ] Kiosk screen with ready, success, duplicate, lost-card and unknown-card states, large touch targets, and an offline simulation with a queue and a sync message.
+- [x] Kiosk screen with ready, success, duplicate, lost-card and unknown-card states, large touch targets, and an offline simulation with a queue and a sync message.
 Done when: all four results and the offline queue behave as in the prototype.
 Commit: `feat(station): add tap station screen`
 - [ ] Owner review: I checked it and said "approved"
@@ -254,7 +254,9 @@ Commit: `chore: final polish for phase 1`
 - Auth.js sign-in with hashed passwords and roles; the school always comes from the session.
 - Tenant-scoped data access, Postgres row-level security, and tests proving one school cannot read another's data.
 - Tap API with per-station keys, idempotent uploads and lost-card alerts. Keep the contract hardware-agnostic (a plain HTTP call authenticated by station key, not tied to a browser session) so a station can be a browser/Web NFC tablet or phone now, an external USB/Bluetooth NFC reader (keyboard-wedge input, works on any device/browser) or a dedicated fixed NFC reader (turnstile-style) later, without changing the API. Early stations may instead identify themselves by a logged-in staff session rather than a real station key — compatible with the same contract, just a different way of answering "which station/school."
-- Offline-first sync for tap stations: a tap made while offline is generated and queued on the device (its id already assigned client-side), then sent once connectivity returns. Parent notifications are sent only once a tap has actually reached the server, per each school's own preference (off / time-in only / time-in and time-out).
+- **Time-in/time-out derivation (decided 2026-09-23, not yet built):** a second tap from the same student within a 1-2 minute debounce window is a duplicate read and is ignored (Phase 1's tap station already does a simpler version of this — "already tapped" — with no time window, since there's no time-out concept yet to distinguish from). Past that window, taps alternate: 1st = time in, 2nd = time out, 3rd = time in, and so on — worked out fresh from the raw tap list each time, never stored as a label, the same "derive, don't store" approach `docs/ATTENDANCE-MODEL.md` already uses for present/late/absent. Every physical tap already becomes its own `Tap` record today with no per-day limit, so the full history this needs already exists in Phase 1's data model — only the derivation function and the UI are missing.
+- **Attendance page display for multiple taps a day (decided 2026-09-23):** summary by default. The class table shows Time in (first tap) and Time out (last tap), which covers the normal case; a student with more than two taps that day (left and came back) gets a small "N taps today" indicator that opens the full sequence, rather than every row showing a full log. Doesn't change Step 17's already-built single "Time in" column until this is actually built.
+- Offline-first sync for tap stations: a tap made while offline is generated and queued on the device (its id already assigned client-side), then sent once connectivity returns. Parent notifications are sent only once a tap has actually reached the server, per each school's own preference (off / time-in only / time-in and time-out) — the "time-out" preference depends on the derivation above existing first.
 - Real push notifications to replace Phase 1's simulated in-app feed: Web Push (VAPID) for the browser, plus a mobile push provider (Firebase Cloud Messaging or similar) once Phase 3's apps exist. No SMS provider — see "Plan history" at the top of this file.
 - Privacy: consent records, export and delete per school, audit log.
 - Deployment (Vercel plus managed Postgres), backups, monitoring.

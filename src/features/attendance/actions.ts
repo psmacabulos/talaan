@@ -3,9 +3,7 @@
 import { refresh } from "next/cache";
 import { getSession } from "@/lib/session";
 import { staffRepository, studentRepository, tapRepository, cardRepository } from "@/data/repositories";
-import { DASHBOARD_NOW, studentsWithoutTapToday } from "./status";
-
-const MAIN_GATE_STATION_ID = "station-main-gate";
+import { DASHBOARD_NOW, MAIN_GATE_STATION_ID, studentsWithoutTapToday } from "./status";
 
 /**
  * The dashboard's "Simulate a tap" button (docs/PLAN.md Step 13). Picks the

@@ -13,6 +13,9 @@ import type { Tap } from "./types";
  */
 export const DASHBOARD_NOW = "2026-06-20T09:15:00Z";
 
+/** The one tap station this demo has (CLAUDE.md's domain rules don't need more than one yet). Shared by the dashboard's "Simulate a tap" and the Step 19 tap station, so a tap from either always looks like it came from the same real place. */
+export const MAIN_GATE_STATION_ID = "station-main-gate";
+
 /**
  * On or before this time-of-day, a tap counts as on time; after, it's late.
  * 8:00 AM start plus a five-minute grace — which is also exactly what the
