@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████░░░░░░ 70%**  (54 of 77 tasks, 19 of 30 steps approved)
+**Overall progress: ██████████████░░░░░░ 71%**  (55 of 77 tasks, 20 of 30 steps approved)
 
-**Next up:** Step 19, Tap station (ready for your review)
+**Next up:** Step 20, Parent and notification domain (not started)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -26,7 +26,7 @@
 | 16 | Card link and replace | ██████████ 100% | Approved |
 | 17 | Attendance page | ██████████ 100% | Approved |
 | 18 | Staff page | ██████████ 100% | Approved |
-| 19 | Tap station | █████░░░░░  50% | Ready for your review |
+| 19 | Tap station | ██████████ 100% | Approved |
 | 20 | Parent and notification domain | ░░░░░░░░░░   0% | Not started |
 | 21 | School notification settings | ░░░░░░░░░░   0% | Not started |
 | 22 | Parent signup, login and link a child | ░░░░░░░░░░   0% | Not started |
@@ -185,7 +185,7 @@ Commit: `feat(staff): add staff list and invite drawer`
 - [x] Kiosk screen with ready, success, duplicate, lost-card and unknown-card states, large touch targets, and an offline simulation with a queue and a sync message.
 Done when: all four results and the offline queue behave as in the prototype.
 Commit: `feat(station): add tap station screen`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 20: Parent and notification domain
 - [ ] Types, Zod schemas, mock repositories and seed data for `Parent` and `ParentStudentLink` (many-to-many), plus a `Notification` record (student, kind, tap time, read/unread) that feeds the parent notification feed. Seed a few parent accounts already linked to existing seed students.
