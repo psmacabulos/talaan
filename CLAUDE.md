@@ -2,7 +2,10 @@
 
 @AGENTS.md
 
-Multi-school web app for Philippine high schools. Students tap an NFC ID card at a gate; attendance is recorded and shown to principals and teachers. First pilot: Balanga City National Science High School (about 500 students). Budgets are small, so the product must be cheap to run and easy to operate.
+Multi-school web app for Philippine high schools. Students tap an NFC ID card at a gate; attendance is recorded and shown to principals and teachers, and parents get notified through a companion app. First pilot: Balanga City National Science High School (about 500 students). Budgets are small, so the product must be cheap to run and easy to operate.
+
+## Plan history
+The original plan sent parent notifications by SMS. As of 2026-09-22 this changed: SMS is dropped entirely, replaced by free push/in-app notifications through a parent account. The end goal is companion iOS and Android apps (most likely wrapping this same Next.js app with Capacitor, a lower-cost path than a separate native rewrite — final tech choice still open when Phase 3 starts). Until those exist, the web app itself is the demo: parents sign up and link a child on the web, and notifications show as an in-app bell/feed rather than a real OS push. See `docs/PLAN.md`'s Phase 1 parent-portal steps and Phase 3.
 
 ## Current phase: front end only
 Build the complete, production-quality front end first, against a typed mock data layer. Do **not** build the database, real authentication or the tap API yet (Phase 2 in docs/PLAN.md). The owner is not a coder: explain things in plain language, and expect them to review every step before it is committed.
@@ -26,10 +29,11 @@ The owner creates the repository and makes **every** commit. You never run git c
 `docs/PLAN.md` starts with a progress block (overall bar and a table of every step). `scripts/progress.mjs` generates it from the checkboxes. Never edit between the `progress:start` and `progress:end` markers by hand, and never tick "Owner review" before I approve.
 
 ## Documentation
-Three docs in `docs/` get updated as part of finishing a step, not as an afterthought:
+Four docs get updated as part of finishing a step, not as an afterthought:
 - **`docs/BUILD-LOG.md`** — one `##` section per step: a developer-diary account of how it was actually built. Real commands run, real configuration chosen, and especially any conflict or error hit and exactly how it was resolved (what was checked, what alternative was picked, why).
 - **`docs/LEARNING-LOG.md`** — short, plain-language lessons for me, since I'm learning as this gets built. Treat every question I ask because I don't know something (a command, a tool, a design decision) as a trigger to add or update an entry here — don't wait to be asked. Organize by topic (a `## Contents` list near the top, `###` entries within each topic section), not chronologically. When a fuller write-up already exists (an Artifact, a `docs/<TOPIC>.md`), keep the entry short and link to it instead of duplicating the explanation.
 - **`docs/<TOPIC>.md`** — one per genuinely distinct technical subsystem (for example `STYLING-SYSTEM.md`, `COMPONENTS.md`), written when that subsystem is first built, not just noted in the build log. Explain how the mechanism works and how the files connect, with real code from the actual files and a diagram, ending in a "quick recipes" section for common future tasks. Before starting a new one, check whether an existing doc already covers that subsystem and extend it instead — only split into a new file when a step is a genuinely different topic (color tokens vs. the component library built on top of them, for example), not by default and not never. Link every new one from `README.md`'s project guide.
+- **`docs/recipes/step-NN-<name>.md`** — a literal, reproducible checklist for that one step: exact commands, exact file contents and why, a diagram, and any dead end tried before the corrected final answer (with a `docs/BUILD-LOG.md` pointer for the full story instead of repeating it). Written from the step's actual real diff once it's implemented, not drafted speculatively before the code exists. This is for my own developer education, separate from the narrative build log and the concept-level learning log. One recipe per step, every step, going forward.
 
 Update all of these before the step's review report, the same way `docs/PLAN.md` gets ticked and `npm run progress` gets run.
 
@@ -88,17 +92,18 @@ src/styles/      tokens.css, base.css
 - Small components, named exports, no `any`, no dead or commented-out code.
 
 ## Domain (for types, mocks and copy)
-- Roles: `super_admin` (all schools), `principal` (one school, full access), `teacher` (read-only, own advisory class).
+- Roles: `super_admin` (all schools), `principal` (one school, full access), `teacher` (read-only, own advisory class), `parent` (read-only, own linked children only — see below).
 - Multi-tenant: every record belongs to a school. Phase 2 enforces this on the server; keep `schoolId` on every type from the start.
 - Student: first, middle and last name, birth date (show age, never store age), optional LRN (12 digits), grade 7 to 12, section, guardian name and mobile, card status, optional photo (for a station's tap-confirmation display).
 - Card: unique NFC serial (uppercase hex with colons, for example `04:A3:5F:2B:91:C0:80`), status active, lost or retired. One active card per student. Replacing a card marks the old one lost. A lost card tapped at a station raises an alert.
 - Tap: idempotent by a device-made UUID, stores the student at tap time, and repeated taps within a few minutes are ignored. A station made while offline still generates its tap records locally (same device-made UUID) and queues them; they reach the server, and only then can a notification go out, once connectivity returns.
-- Notifications: each school sets one preference — off, time-in only, or time-in and time-out — set by its principal or super admin, never per parent. SMS is the primary channel (a paid provider, chosen later); push is a possible later addition under the same preference.
+- Parent account: name, mobile, email. Links to one or more students via `ParentStudentLink` (many-to-many — a parent can have several children at the school, and a child can have several linked guardians). A parent links a child by entering that student's LRN, last name and birth date; no link code to distribute. This is separate from `Student.guardianName`/`guardianMobile`, which stay as a plain contact fallback for a guardian who never creates an account.
+- Notifications: each school sets one preference — off, time-in only, or time-in and time-out — set by its principal or super admin, never per parent. Push through the parent app/web app is the only channel; SMS was dropped from the plan (see "Plan history" above). In Phase 1, "notified" means a new entry appears in the parent's in-app notification bell/feed, driven by the same simulated-tap mechanism the staff dashboard already uses.
 - Students are minors: collect the minimum, never put personal data on cards, keep names out of logs.
 - The DepEd logo is a client-supplied asset and permission is pending. Show it only when `showDepedLogo` is true, and default that to false outside the demo.
 
 ## Reference design
-`design/school-portal-prototype.html` is the approved clickable prototype; open it in a browser. Match its layout, hierarchy and behavior, not its code. Logos are in `design/assets/`. Screens: login, dashboard, attendance, students (list, add and edit drawer, card link and replace), staff, tap station (simulated), and schools for the super admin (add school with logo upload, color pickers and live preview).
+`design/school-portal-prototype.html` is the approved clickable prototype; open it in a browser. Match its layout, hierarchy and behavior, not its code. Logos are in `design/assets/`. Screens: login, dashboard, attendance, students (list, add and edit drawer, card link and replace), staff, tap station (simulated), and schools for the super admin (add school with logo upload, color pickers and live preview). The prototype predates the parent portal (notification settings, parent signup/login, link-a-child, parent dashboard, notification bell/feed) — those screens have no prototype reference and need design judgment applied directly, following this file's design system and UX quality bar.
 
 ## Other working rules
 - Never commit secrets. Keep `.env.example` current, and do not read or edit `.env` files.

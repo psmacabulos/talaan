@@ -16,6 +16,7 @@ Short, plain-language notes explaining things along the way — for whenever I w
 - [Seed data has a second job once real screens exist (Step 13)](#seed-data-has-a-second-job-once-real-screens-exist-step-13)
 - [Search, filters and sorting living in the URL (Step 14)](#search-filters-and-sorting-living-in-the-url-step-14)
 - [Forms: shared validation and writing data (Step 15)](#forms-shared-validation-and-writing-data-step-15)
+- [Turning a Next.js web app into an iOS/Android app](#turning-a-nextjs-web-app-into-an-iosandroid-app)
 
 ---
 
@@ -423,3 +424,15 @@ React Hook Form's usual `register("field")` only works on a real HTML input elem
 
 ### A "the button lives in one place, the click happens in another" problem
 The "Add student" button is up in the page header; clicking a table row does the same job (opens the same drawer) from a completely different part of the screen. Rather than pass the "please open the drawer" instruction back and forth awkwardly between separate pieces, both the header and the table are rendered by one shared piece of code that remembers "is the drawer open, and for whom" — so either one can just say "open it" and the drawer already knows what to show. See `docs/FORMS.md`'s "Why drawer state lives above both the trigger and the table" section.
+
+## Turning a Next.js web app into an iOS/Android app
+
+### Do we have to rewrite everything to get onto the App Store and Play Store? (owner question)
+Asked when the plan changed from SMS to a companion app. No — there are two real paths, and neither means throwing away what's already built:
+
+- **Capacitor** (the recommended path for this project) wraps the *existing* web app in a thin native shell — same Next.js/React code, packaged so it can be submitted to both stores, with plugins for native features like push notifications. One codebase.
+- **React Native** is a genuine rewrite: the logic (types, validation) can be shared, but every screen gets rebuilt with native components instead of the Tailwind/shadcn ones already in this project. Can feel more "native," but is a second UI to build and maintain — a lot more cost for a small pilot.
+
+Either way, a **real** push notification (one that arrives even with the app closed) still needs a server that holds each phone's push subscription and can trigger Apple/Google's push service — that's Phase 2/3 backend work, not something either wrapping approach gets around on its own.
+
+This is a real decision, but it's deliberately not locked into the docs yet — see the "Plan history" note in `CLAUDE.md` and `docs/PLAN.md`'s Phase 3 — because it's costly to reverse and there's no reason to commit to it this far ahead of actually starting that phase.

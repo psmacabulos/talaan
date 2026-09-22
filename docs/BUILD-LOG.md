@@ -791,3 +791,66 @@ Everything passed lint/typecheck/test/build, but the 360px pass caught the actua
 
 ### Result
 All build tasks done. Waiting on the owner's review.
+
+---
+
+## Between Step 16 and Step 17: plan change — SMS dropped, parent app added
+
+Before starting Step 17, the owner changed the plan: parent notifications will no longer go through a paid SMS API. Instead, parents get a free companion app (iOS App Store and Google Play Store), and near-term, everything is demoed on the web first — parents sign up and link a child on the web app, and see notifications as an in-app bell/feed instead of a real push, until the native apps exist.
+
+This was a planning conversation, not a build step, so it went through `superpowers:brainstorming` rather than the usual step protocol: classified as architectural (it changes the data model and the plan itself), clarifying questions asked one at a time rather than assumed —
+
+- **Parent-to-child linking**: verify with the student's LRN + last name + birth date (chosen over a distributed link code or a staff-approval queue — no extra artifact to print or hand out, and no manual step per parent).
+- **Cardinality**: many-to-many (`ParentStudentLink`) — a parent can have multiple children at the school, and a child can have multiple linked guardians (mother and father both notified), matching real families rather than a simplified one-to-one.
+- **What "notification" means in Phase 1**: an in-app notification bell/feed, not a real Web Push subscription — real push (Web Push/VAPID, then mobile push) is Phase 2/3 work once there's a server to hold subscriptions.
+- **SMS**: dropped entirely rather than kept as a fallback, since push removes the ongoing per-message cost that was the whole reason SMS needed a "paid provider, chosen later" line in the first place.
+- **Native app feasibility**: confirmed Next.js doesn't need to be abandoned to ship on the App/Play Store — Capacitor wraps the existing web app in a native shell (one codebase, plugins for push/camera/etc.), versus a React Native rewrite (separate native UI, more native-feeling, much more Phase-3 cost for a small pilot). Flagged as a real but *deferred* decision — not committed in the docs, since it's costly to reverse and there's no reason to lock it in this far ahead of Phase 3.
+
+**What changed:**
+- `CLAUDE.md`: new "Plan history" note; `parent` added to the roles list; `Parent`/`ParentStudentLink` described in the domain section (kept separate from `Student.guardianName`/`guardianMobile`, which stay as a no-app fallback contact); the notifications bullet rewritten around push/in-app only; the reference-design bullet now says the parent portal has no prototype to match, since `design/school-portal-prototype.html` was drawn up before this change.
+- `docs/PLAN.md`: new "Plan history" note; five new Phase 1 steps inserted after Step 19 (Tap station) — 20 Parent and notification domain, 21 School notification settings, 22 Parent signup/login and link a child, 23 Parent dashboard, 24 Notification feed. The previous Steps 20-24 (Schools management through Final polish) shifted down to 25-29 with no content change beyond a couple of steps now explicitly mentioning parent screens. Phase 2's SMS line replaced with real Web Push/mobile push infra; new Phase 3 section added for the native apps, goal-only, no tech choice committed.
+- `npm run progress` re-run afterward — 30 steps now instead of 25, so the percentage reads lower (61%) even though nothing already built changed.
+
+Nothing in `src/` changed. Step 17 (Attendance page) is still next in the build queue — these new parent steps come later, once 17-19 are done.
+
+---
+
+## Between the plan change and Step 17: `docs/recipes/` written into CLAUDE.md
+
+Before Step 17 started, the owner pointed out that Step 17's plan-mode proposal hadn't mentioned updating `docs/recipes/`, even though [[feedback_recipes_docs_deferred]] (a standing memory from partway through Step 16) already said a recipe gets written for every step going forward. The gap wasn't a missed step — it was that this rule lived only in memory, never in `CLAUDE.md` itself, so nothing in the plan-mode proposal surfaced it.
+
+Fixed by adding a fourth bullet to `CLAUDE.md`'s Documentation section, alongside `BUILD-LOG.md`/`LEARNING-LOG.md`/`docs/<TOPIC>.md`: `docs/recipes/step-NN-<name>.md`, one per step, written from the real diff once the step is built. Now a real standing instruction in the repo, not something that only persists across sessions because a memory file says so.
+
+---
+
+## Step 17: Attendance page
+
+**Goal:** date, grade and section filters, a class table, and an empty state for dates without data — teachers locked to their own class.
+
+### Reused the dashboard's derivation logic instead of re-deriving anything
+`docs/ATTENDANCE-MODEL.md` already establishes that attendance is *derived*, never stored, through `studentStatus`/`todaysTap`/`countByStatus` (Step 13). This page imports those functions as-is rather than writing parallel logic — the only genuinely new code is picking *which* class and *which* day to feed them, in `src/features/attendance/attendance-search-params.ts`.
+
+### The class picker has no "all" option — unlike the Students list
+The Students list's grade filter can be "all grades." This page can't: "pick a date and *class*" means it always shows exactly one class at a time, closer to the dashboard's `ClassRoll` than to a browsable roster. `resolveClassSelection()` always returns a real class — falling back to the first one that actually has students when the URL names a grade/section that doesn't exist (a stale link, nothing requested yet) — the same fallback shape as the prototype's own `if (!SECTIONS[grade].includes(section)) section = SECTIONS[grade][0]`, just written for a school where each grade doesn't necessarily have the same sections.
+
+### Teacher lock enforced server-side, not just hidden in the UI
+`resolveClassSelection()` takes an optional `lockedTo` (a teacher's advisory grade/section) that, when set, wins outright — the URL's `grade`/`section` params are never even consulted. Confirmed this in the browser by manually editing the URL to a different grade/section while signed in as a teacher: the page still only ever showed their own advisory class. Matches the same real guard `searchStudents(..., { restrictTo })` already uses for the Students list (Step 14), not a new pattern. The grade/section `Select`s are hidden entirely for a teacher (`AttendanceToolbar`'s `showClassPicker` prop) rather than shown-and-disabled — same precedent as `StudentsToolbar`'s `showGradeFilter`.
+
+### Only one date has real data, and the page says so honestly
+Every seed tap is dated to `DASHBOARD_NOW`'s day. Rather than pretend to derive attendance for a date with no taps at all (which would just show everyone as "not yet tapped" or "absent" with no way to tell that apart from a real empty day), the page checks the requested date against `ATTENDANCE_SEED_DATE` and shows a plain "no records for that date" empty state with a "jump to \<the real date\>" link back to the same class, if it isn't a match. This mirrors the prototype's own behavior ("Pick today's date to see the sample attendance") rather than inventing new copy for it.
+
+### No "Time out" column, unlike the prototype
+The prototype's attendance table has a "Time out" column. Talaan's `Tap` type doesn't model a time-out event at all yet — only the day's single earliest tap counts (`docs/ATTENDANCE-MODEL.md`) — so a "Time out" column would just be a permanent em dash with no real data behind it. Dropped rather than faked; the prototype is a layout/behavior reference, not a literal spec (CLAUDE.md's UX quality bar).
+
+### What got built
+- `src/features/attendance/attendance-search-params.ts` (+`.test.ts`) — `parseAttendanceDate`, `classOptionsFromRoster`, `resolveClassSelection`, `attendanceHref`, `formatAttendanceDateLabel`, `ATTENDANCE_SEED_DATE`.
+- `src/features/attendance/attendance-toolbar.tsx` — date input plus grade/section `Select`s, hidden for a locked-in teacher.
+- `src/features/attendance/attendance-table.tsx` — the class roll: Student, Time in, Status, Card.
+- `src/app/(app)/attendance/page.tsx` — rewritten from the Step-16-era stub; resolves session, class and date, composes the toolbar/legend/table or the relevant empty state.
+- `docs/ATTENDANCE-MODEL.md` — new "The attendance page (Step 17)" section and a quick recipe, explaining the class-resolution mechanism next to the derivation logic it's built on.
+
+### Verified
+`lint`, `typecheck`, `test` (200, up from 186), `check:tokens` and `build` all pass. In the browser at 1280px and 360px, light and dark: as principal, switching grade re-picks a valid section automatically and the URL updates (`/attendance?date=...&grade=...&section=...`); the legend and table counts agree with the dashboard's own numbers for the same class; a non-seed date shows the empty state with a working "jump to" link; as teacher, the grade/section selects are gone entirely, the page reads "Your advisory class, Grade 7 – Rizal," and hand-editing the URL to a different grade/section in the address bar has no effect — still the teacher's own class. Console clean throughout. Flagged, not fixed here (same class of issue already logged for the Students list at Step 14): the table needs horizontal scroll at 360px past Student/Time in/Status before Card is visible — left for the sitewide Step 29 polish pass rather than a one-off fix on this page alone.
+
+### Result
+All build tasks done. Waiting on the owner's review.
