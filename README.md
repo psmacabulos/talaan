@@ -56,5 +56,6 @@ Every color a school sees comes from a **theme preset** — never a hardcoded va
 - [`docs/DATA-ACCESS.md`](docs/DATA-ACCESS.md) — the repository pattern and the dev-only session: how data actually gets read, and where `getSession()`/`setDevSession()` fit in.
 - [`docs/APP-SHELL.md`](docs/APP-SHELL.md) — the sidebar, top bar, mobile drawer, role-based navigation and route guards: how they connect, and how to add a new page or nav item.
 - [`docs/ATTENDANCE-MODEL.md`](docs/ATTENDANCE-MODEL.md) — how a tap becomes "present"/"late"/"absent": the cutoffs, why attendance is calculated rather than stored, and how "Simulate a tap" works end to end.
+- [`docs/URL-DRIVEN-LISTS.md`](docs/URL-DRIVEN-LISTS.md) — how the Students list's search, filters, sort and pagination all live in the URL: the parse/build helpers, why sorting needs no client JavaScript, and how the search box's debounce works.
 - [`docs/OWNER-GUIDE.md`](docs/OWNER-GUIDE.md) — how the owner works with Claude on this project, step by step.
 - [`CLAUDE.md`](CLAUDE.md) — the standing instructions Claude follows for this project (stack, design system, code structure, workflow rules).

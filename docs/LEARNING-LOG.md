@@ -14,6 +14,7 @@ Short, plain-language notes explaining things along the way — for whenever I w
 - [CSS layout: Flexbox spacing gotchas](#css-layout-flexbox-spacing-gotchas)
 - [Multi-tenant apps: one customer's identity doesn't belong on a shared screen](#multi-tenant-apps-one-customers-identity-doesnt-belong-on-a-shared-screen)
 - [Seed data has a second job once real screens exist (Step 13)](#seed-data-has-a-second-job-once-real-screens-exist-step-13)
+- [Search, filters and sorting living in the URL (Step 14)](#search-filters-and-sorting-living-in-the-url-step-14)
 
 ---
 
@@ -387,3 +388,26 @@ Then Step 13 built the dashboard on top of it, and the same data suddenly said s
 
 ### A number on screen can be the clearest bug report you'll get
 The dashboard's first render said "0 Present, 7 Late" — every single student late. No error, no failing test, nothing a type-checker could catch. But the number was obviously wrong on sight, and it pointed straight at a cutoff time set to 7:30 AM when the sample taps (7:56-8:01, described in their own comments as "on time") assumed something closer to 8:05. Worth remembering that "the screen shows a number that can't be right" is real evidence, and often faster to act on than re-reading the code that produced it.
+
+---
+
+## Search, filters and sorting living in the URL (Step 14)
+
+### Why the address bar is the state, not React
+The Students list's search box, grade filter, card filter, sort column and page number are all read out of the URL's query string (`?q=cruz&sort=age&page=2`), not out of any component's own memory. That's what CLAUDE.md's "server-driven... kept in the URL" rule actually buys: reload the page and the same filters are still applied; copy the link to a colleague and they see the same list; click the back button and it steps back through what you'd actually done, one filter or sort change at a time. None of that works if the state only lives inside React. Full write-up: [`docs/URL-DRIVEN-LISTS.md`](URL-DRIVEN-LISTS.md).
+
+### Sorting a table needs zero client-side JavaScript
+Every column header is a plain link to a new URL (`/students?sort=age`) — clicking it is an ordinary page navigation, same as clicking any other link, and the server sends back the correctly-sorted page. No "sort state," no client component required for that part at all. The only place this list genuinely needs `"use client"` is the search box, because it has to react to individual keystrokes — everything else (selects, sort headers, pagination) works as plain server-rendered links.
+
+### `replace` vs `push`: not every URL change should be a back-button stop
+`router.push(url)` adds a new browser-history entry; `router.replace(url)` swaps the current one without adding a new entry. Typing "cruz" into the search box updates the URL after every debounced pause — using `push` for that would mean the back button has to click through "c", "cr", "cru", "cruz" one at a time to get back to where you started. The search box uses `replace`; changing a grade or card filter (a single, deliberate choice) uses `push`, so the back button treats it as one real step.
+
+### A lint rule caught a real React footgun: don't `setState` synchronously inside `useEffect`
+Syncing the search box's text when the URL changes from somewhere else (the back button, clicking a sort header) looks like an obvious job for `useEffect(() => setQuery(params.q), [params.q])` — but this project's lint config (`react-hooks/set-state-in-effect`) refused to build with that, because it causes React to render once with the old value and then immediately again with the new one. The fix is a pattern from React's own docs for "reset state when a prop changes": compare the incoming value to a tracked copy *during render* and call `setState` right there if they differ, instead of inside an effect. One render cheaper, and the lint rule was right to flag it.
+
+### Why clicking "Next page" shows a brief loading flash instead of feeling instant (owner question)
+Asked why paging/sorting/filtering the Students list shows a loading skeleton each time, when it feels like it should be instant since "the data's already there."
+
+It isn't already there. Nothing loads the whole student list into the browser up front — every click is a real request to the server for a fresh page, the same as clicking a link from page 1 to page 2 of any ordinary website, not a script filtering data that's already sitting in memory in the browser. Two things are stacked into that pause: the real request/response round trip itself, and a small *simulated* delay (`src/data/repositories/latency.ts`, ~150ms, added back in Step 9 on purpose) so that code never accidentally assumes data arrives instantly — a real database call over a real network never does, and Phase 2 replaces the mock data with exactly that. The loading skeleton itself is just Next.js's built-in behavior while a page waits on that round trip.
+
+Both halves are deliberate, not accidental: loading only the current page of students (rather than the whole roster) is what actually lets this scale to a real school with hundreds of students and a real database in Phase 2 without rebuilding the screen. Full mechanism: [`docs/URL-DRIVEN-LISTS.md`](URL-DRIVEN-LISTS.md#why-changing-a-page-filter-or-sort-shows-a-brief-loading-state).

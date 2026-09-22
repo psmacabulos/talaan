@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: █████████████░░░░░░░ 65%**  (43 of 66 tasks, 14 of 25 steps approved)
+**Overall progress: █████████████░░░░░░░ 67%**  (45 of 67 tasks, 15 of 25 steps approved)
 
-**Next up:** Step 14, Students list (not started)
+**Next up:** Step 15, Student form (not started)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -21,7 +21,7 @@
 | 11.5 | Responsive scaling, small screen to big screen | ██████████ 100% | Approved |
 | 12 | Login page | ██████████ 100% | Approved |
 | 13 | Dashboard | ██████████ 100% | Approved |
-| 14 | Students list | ░░░░░░░░░░   0% | Not started |
+| 14 | Students list | ██████████ 100% | Approved |
 | 15 | Student form | ░░░░░░░░░░   0% | Not started |
 | 16 | Card link and replace | ░░░░░░░░░░   0% | Not started |
 | 17 | Attendance page | ░░░░░░░░░░   0% | Not started |
@@ -144,10 +144,10 @@ Commit: `feat(dashboard): add attendance dashboard`
 - [x] Owner review: I checked it and said "approved"
 
 ### Step 14: Students list
-- [ ] Student table with server-driven search, filters, sort and pagination kept in the URL; loading and empty states; read-only for teachers.
+- [x] Student table with server-driven search, filters, sort and pagination kept in the URL; loading and empty states; read-only for teachers.
 Done when: filters survive a page reload and the back button works.
 Commit: `feat(students): add student list with search and filters`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 15: Student form
 - [ ] Add and edit drawer with React Hook Form and Zod, inline errors, computed age, and a server action against the mock repository.
@@ -206,6 +206,7 @@ Commit: `test: add end-to-end tests`
 ### Step 24: Final polish
 - [ ] Lighthouse pass on login and dashboard, 360px and 1280px review in light and dark, remove unused code, finish the README.
 - [ ] Sitewide spacing/alignment consistency pass across every screen built so far: generous, deliberate whitespace (not the prototype's literal values), and real box-centering checked by measurement, not just by eye. See CLAUDE.md's UX quality bar and docs/BUILD-LOG.md's Step 12 "review round 2" (the flexbox centering bug found this way).
+- [ ] Students list mobile layout (flagged in Step 14's review): at 360px the table only shows Student/LRN/part of Grade before you have to scroll sideways — Age, Card and Today sit off-screen with no hint they're there. Decide deliberately (not just shrink the desktop table) — e.g. fewer columns on phones with the rest in the row's expanded detail, or a card-style layout instead of a scrolling table.
 Done when: scores and the review are reported honestly, and lint, typecheck, test, build and check:tokens pass.
 Commit: `chore: final polish for phase 1`
 - [ ] Owner review: I checked it and said "approved"

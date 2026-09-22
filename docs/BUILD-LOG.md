@@ -664,3 +664,49 @@ Rows 1–3 are all the same underlying lesson, and it's worth naming: **the type
 
 ### Result
 All build tasks done. Waiting on the owner's review.
+
+---
+
+## Step 14: Students list
+
+**Goal:** a real, searchable Students list — text search, grade and card-status filters, sortable columns, pagination, all kept in the URL so the page is shareable and the back button works — plus a read-only variant scoped to a teacher's own advisory class.
+
+### Decided against adding TanStack Table
+CLAUDE.md's stack list names TanStack Table, and this is the first screen that could plausibly use it. Checked first: nothing in the repo has installed it yet, and everything list-like so far (`ClassRoll` on the dashboard) is a plain shadcn `Table` with manual `.map()`. Since every piece of state here — search, filters, sort, page — is server-driven through the URL rather than client-side table state, TanStack Table's actual value (managing that state in the browser) doesn't apply. Left it out; flagged the decision in the review report rather than deciding it silently, since it's a stack choice CLAUDE.md names explicitly.
+
+### Card status needed a join the Student repository doesn't have
+Card status (`active`/`lost`/`retired`) lives on `Card`, not `Student` — filtering or sorting the list by it needs both repositories. Rather than reshape `StudentRepository`'s interface for one screen's filter, `search-students.ts` composes `StudentRepository.listBySchool` with one `CardRepository.listByStudent` call per matching student, the same "small per-student lookup instead of a new repository method" precedent Step 13's dashboard already set (see `docs/DATA-ACCESS.md`). `deriveCardStatus()` then collapses a student's whole card history down to one of three states for display and filtering: an active card always wins (a replacement already resolves any earlier lost card), otherwise a lost card on file is surfaced as `"lost"`, otherwise `"none"`.
+
+### The search box, and the lint rule that caught a real footgun
+Typing needs a client component; sorting and pagination don't (see `docs/URL-DRIVEN-LISTS.md` for the full mechanism — this is the first step that needed it, and it's written to be reused by Step 17's Attendance page). The first version synced the search box's text with `useEffect(() => setQuery(params.q), [params.q])` for when the URL changes from elsewhere (the back button, a sort click) — `npm run lint` refused it: `react-hooks/set-state-in-effect` flags calling `setState` synchronously inside an effect body, since it causes an extra cascading render. Replaced it with React's own documented "adjust state during render" pattern (compare against a tracked previous value during render, call `setState` right there if it differs) instead of inside a `useEffect`. Full explanation in `docs/LEARNING-LOG.md`.
+
+### Age had nowhere to live yet
+CLAUDE.md: "show age, never store it." Nothing in the codebase computed it yet (the dashboard never displays age), so `age.ts`'s `ageInYears()` is new — a calendar-aware calculation (accounts for whether the birthday has happened yet this year) that defaults its "now" to the same fixed `DASHBOARD_NOW` the rest of the app already agrees on, rather than the real calendar date, so displayed ages don't quietly drift depending on which day this gets demoed.
+
+### Found, but did not fix here: every guardian name matches the student's own first name
+Building the table's guardian-name subtext (`row.student.guardianName`) surfaced something Step 8's seed data never showed, because nothing before this step ever rendered it: **every one of the 72 seed students' guardian first name is identical to their own first name** ("Reynaldo Abad"'s guardian shows as "Reynaldo Abad"). Traced it to `src/data/seed/names.ts`/`students.ts`: `guardianFirstName` is picked via `nameAt(index + 1000).firstName`, meant to land on a different name than the student's own `nameAt(index).firstName` — but `nameAt` picks a first name with `FIRST_NAMES[i % FIRST_NAMES.length]`, and `FIRST_NAMES.length` is exactly 40, so `+1000` (a multiple of 40) always lands on the exact same index modulo 40. The offset cancels itself out for every single student, not just some.
+
+This is Step 8's seed data, already approved, and the fix belongs to that file, not to anything this step touches — so it's left alone here and flagged in the review report instead, per the "separate commits per concern" rule, as a candidate for a small Step 8.5 (change the offset to something not a multiple of 40, e.g. `+7`, which is already how `nameAt`'s own last-name scramble avoids the same trap).
+
+### What got built
+- `src/features/students/age.ts` (+ 4 tests), `card-status.ts` (+ 4 tests), `card-status-badge.tsx`, `search-params.ts` (+ 10 tests), `search-students.ts` (+ 10 tests) — the parse/build/filter/sort/paginate logic, all unit-tested against small fixture repositories rather than the full 72-student seed.
+- `students-toolbar.tsx` (the one client component), `students-table.tsx` (sortable header links), `students-pagination.tsx`.
+- `src/app/(app)/students/page.tsx` — the real page, branching principal/super-admin vs. teacher the same way the dashboard does.
+- `docs/URL-DRIVEN-LISTS.md` (linked from `README.md`) — the subsystem reference for this mechanism, written so Step 17's Attendance page (and any future list) can reuse it directly.
+
+### Verified
+`lint`, `typecheck`, `test` (166, up from 139 — 27 new, across 4 new test files), `check:tokens` and `build` all pass. In the browser at 1280px and 360px, light and dark: search (debounced, focus preserved through the re-render), grade filter, card-status filter (confirmed "No card" against the three genuinely-cardless students, "Linked" against a student with a resolved lost-card history), every sortable column both directions, and pagination all correctly change the URL. Confirmed the back button specifically: typing in the search box (which uses `replace`) collapses to one history step, while each filter/sort/page change (`push`) is its own step — stepping back landed exactly where expected both times. Teacher persona: grade filter hidden, list pre-scoped to Grade 7 – Rizal only, "You can view but not edit" copy shown, Staff/Tap-station nav correctly absent (unrelated route guard, unaffected by this step). Console clean throughout every check.
+
+Also noticed a `.playwright-mcp/` folder (screenshots and page snapshots from the browser-driven checks above) sitting untracked in `git status` — not part of the app, so it was deleted and added to `.gitignore` rather than left for the owner to notice and wonder about.
+
+### Result
+All build tasks done. Waiting on the owner's review.
+
+### Review round 1: "why is there a loading flash when I change pages?"
+A fair question, not a bug report — the owner noticed a brief loading skeleton on every pagination/sort/filter click and asked whether that's normal, or whether all students should already be loaded in the browser. Answered directly: nothing here ever loads the full roster into the browser — every click is a genuine new request to the server, same as clicking a link to page 2 of any ordinary website, and only the current page's slice of students ever comes back. Two things stack into the pause: the real request/response round trip itself, and Step 9's deliberate simulated repository latency (~150ms), which exists specifically so code can't get away with assuming data arrives instantly, since a real database call over a real network never does. Both are on purpose — this is also exactly what lets the same code handle a school of 500 without ever asking a browser to hold 500 students' worth of data at once. Wrote this up properly rather than only answering in chat: a new "Why changing a page, filter or sort shows a brief loading state" section in `docs/URL-DRIVEN-LISTS.md`, plus a linked entry in `docs/LEARNING-LOG.md`.
+
+### Review round 2: mobile columns, deferred to Step 24
+The owner flagged that the Students table isn't polished on phones yet — at 360px, only Student/LRN and part of Grade fit before the table scrolls sideways, so Age, Card and Today sit off-screen with no visual hint they're there. Rather than patch it into this step (which would mean re-opening an already-reviewed step, or guessing at a mobile layout under time pressure), the owner asked for it to be logged as a specific to-do for Step 24 (Final polish), which already exists for exactly this kind of sitewide pass. Added as its own bullet under Step 24 in `docs/PLAN.md`, naming the concrete problem (not just "polish mobile") and two real directions to choose between (fewer columns with an expandable row detail, vs. a card-style layout) so it doesn't get re-diagnosed from scratch later.
+
+### Approved
+Owner said "approved" (via "let's create a conventional commit and we'll proceed to the next stage") once the loading-state question was answered and the mobile-column issue was logged for Step 24 rather than fixed here. Commit `feat(students): add student list with search and filters` — left for the owner to make, same as every step.
