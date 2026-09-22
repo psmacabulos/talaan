@@ -8,6 +8,8 @@ export interface StaffRepository {
   getById(id: string): Promise<Staff | null>;
   /** Every staff member, every school, plus the super admin — the Step 11 dev switcher's full persona list. */
   list(): Promise<Staff[]>;
+  /** Appends a newly invited staff member (Step 18). Idempotent by `id`, same shape as `StudentRepository.create`. */
+  create(staff: Staff): Promise<Staff>;
 }
 
 export function createMockStaffRepository(
@@ -28,6 +30,13 @@ export function createMockStaffRepository(
     async list() {
       await simulateLatency(latencyMs);
       return [...data];
+    },
+    async create(staff) {
+      await simulateLatency(latencyMs);
+      if (!data.some((existing) => existing.id === staff.id)) {
+        data.push(staff);
+      }
+      return staff;
     },
   };
 }

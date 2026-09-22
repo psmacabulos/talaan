@@ -16,7 +16,7 @@ export default async function StudentsPage({ searchParams }: PageProps<"/student
     return (
       <div className="flex flex-col gap-6">
         <PageHeader as="h2" title="Students" description="Everyone enrolled at this school." />
-        <NoSchoolSelected />
+        <NoSchoolSelected subject="student list" />
       </div>
     );
   }

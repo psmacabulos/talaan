@@ -854,3 +854,36 @@ The prototype's attendance table has a "Time out" column. Talaan's `Tap` type do
 
 ### Result
 All build tasks done. Waiting on the owner's review.
+
+---
+
+## Step 18: Staff page
+
+**Goal:** a staff list and an invite drawer with validation, principal and super admin only. Done when an invite appears in the list as "Invited".
+
+### Reused Step 15's whole drawer shape, invite-only
+`StaffDrawer`/`StaffForm` are `StudentDrawer`/`StudentForm`'s pattern almost unchanged — Sheet chrome, React Hook Form + `zodResolver`, the same `"use server"` action shape (session guard → `safeParse` → repository call → `refresh()`). The one real difference: this step only builds an invite, not an edit — so there's no `isEditing` branch, no `key` prop to force a remount between records, and no `defaultValues` derived from an existing row. Simpler on purpose, since editing an existing staff member isn't in this step's scope.
+
+### The role gate already existed — this step didn't add it
+`hasNavAccess(session.role, "staff")` (`nav-items.ts`'s `SCHOOL_STAFF_ROLES`) already blocked teachers from `/staff` since Step 10's app shell, and the Step 10-era stub already rendered `AccessDenied` for them. Confirmed this still holds rather than assuming it: as the teacher persona, `/staff` isn't even in the sidebar, and visiting it directly still shows "You don't have access to this page."
+
+### Advisory class only makes sense for a teacher, so the form only asks for it then
+`role === "teacher"` conditionally renders the "Advisory class (optional)" fieldset — a principal invite has nothing to put there. Made optional deliberately: the copy says "can be assigned later instead," since forcing a grade/section at invite time would block inviting someone before their exact assignment is finalized. `inviteStaff` only keeps `advisoryGradeLevel`/`advisorySection` on the created record when `role === "teacher"`, even if a client somehow submitted them for a principal.
+
+### A real gap found while wiring the school-less guard: `NoSchoolSelected`'s copy was dashboard-only
+Reusing the same "a super admin with no school selected" empty state the dashboard/students/attendance pages already show (`NoSchoolSelected`), its copy turned out to literally say "Pick a school to view its dashboard" — already slightly wrong on the Students and Attendance pages too, both already approved. Generalized it with an optional `subject` prop (defaulting to `"dashboard"` so the dashboard's own call site didn't need to change) and updated all three existing call sites (`students/page.tsx` → "student list", `attendance/page.tsx` → "attendance page", `staff/page.tsx` → "staff list") in the same change — a small, targeted fix directly required for this step's own copy to be correct, not a separate unrelated cleanup.
+
+### What got built
+- `src/features/staff/schemas.ts` — `staffInviteRoleSchema`, `staffFormSchema` (advisory section blanks transform to `undefined`, same shape as `studentFormSchema`'s optional fields).
+- `src/features/staff/actions.ts` — `inviteStaff`.
+- `src/data/repositories/staff-repository.ts` (+ test) — `create`, same idempotent-by-id shape as `StudentRepository.create`.
+- `src/features/staff/staff-status-badge.tsx` — Active/Invited, reusing the fixed status tokens (`status-present`/`status-late`) rather than inventing new colors.
+- `src/features/staff/staff-form.tsx`, `staff-drawer.tsx`, `staff-table.tsx`, `staff-directory.tsx`.
+- `src/app/(app)/staff/page.tsx` — rewritten from the Step-10-era stub.
+- `src/features/attendance/no-school-selected.tsx` — generalized with a `subject` prop; three call sites updated.
+
+### Verified
+`lint`, `typecheck`, `test` (208, up from 200), `check:tokens` and `build` all pass. In the browser at 1280px and 360px, light and dark: invited a teacher with an advisory class — appeared immediately as "Invited," with a toast, and correctly showed up in the Step 11 dev switcher labelled "(invited)"; submitting the form empty showed all three inline errors (first name, last name, email) at once; the Advisory class fieldset appeared and disappeared correctly when switching the Role select between Teacher and Principal; as the teacher persona, `/staff` wasn't in the sidebar and visiting it directly showed `AccessDenied`. Console clean throughout. Same known limitation as Students/Attendance, not fixed here: the table needs horizontal scroll at 360px before every column is visible — left for Step 29.
+
+### Result
+All build tasks done. Waiting on the owner's review.

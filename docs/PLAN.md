@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: █████████████░░░░░░░ 65%**  (50 of 77 tasks, 17 of 30 steps approved)
+**Overall progress: ██████████████░░░░░░ 68%**  (52 of 77 tasks, 18 of 30 steps approved)
 
-**Next up:** Step 17, Attendance page (ready for your review)
+**Next up:** Step 18, Staff page (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -24,8 +24,8 @@
 | 14 | Students list | ██████████ 100% | Approved |
 | 15 | Student form | ██████████ 100% | Approved |
 | 16 | Card link and replace | ██████████ 100% | Approved |
-| 17 | Attendance page | █████░░░░░  50% | Ready for your review |
-| 18 | Staff page | ░░░░░░░░░░   0% | Not started |
+| 17 | Attendance page | ██████████ 100% | Approved |
+| 18 | Staff page | █████░░░░░  50% | Ready for your review |
 | 19 | Tap station | ░░░░░░░░░░   0% | Not started |
 | 20 | Parent and notification domain | ░░░░░░░░░░   0% | Not started |
 | 21 | School notification settings | ░░░░░░░░░░   0% | Not started |
@@ -173,10 +173,10 @@ The plan originally sent parent notifications by SMS. As of 2026-09-22 this chan
 - [x] Date, grade and section filters, class table, empty state for dates without data.
 Done when: teachers are locked to their own class.
 Commit: `feat(attendance): add attendance page`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 18: Staff page
-- [ ] Staff list and invite drawer with validation (principal and super admin only).
+- [x] Staff list and invite drawer with validation (principal and super admin only).
 Done when: the invite appears in the list as "Invited".
 Commit: `feat(staff): add staff list and invite drawer`
 - [ ] Owner review: I checked it and said "approved"

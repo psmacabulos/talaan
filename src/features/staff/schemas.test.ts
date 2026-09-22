@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { staffSchema } from "./schemas";
+import { staffFormSchema, staffSchema } from "./schemas";
 
 describe("staffSchema", () => {
   it("accepts a principal scoped to a school", () => {
@@ -80,5 +80,72 @@ describe("staffSchema", () => {
       status: "active",
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("staffFormSchema", () => {
+  it("accepts a principal invite with no advisory class", () => {
+    const result = staffFormSchema.safeParse({
+      firstName: "Ana",
+      lastName: "Reyes",
+      email: "ana.reyes@example.com",
+      role: "principal",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts a teacher invite with an advisory class", () => {
+    const result = staffFormSchema.safeParse({
+      firstName: "Mark",
+      lastName: "Santos",
+      email: "mark.santos@example.com",
+      role: "teacher",
+      advisoryGradeLevel: 9,
+      advisorySection: "Rizal",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts a teacher invite with no advisory class yet", () => {
+    const result = staffFormSchema.safeParse({
+      firstName: "Mark",
+      lastName: "Santos",
+      email: "mark.santos@example.com",
+      role: "teacher",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a super admin invite — not a school-scoped role", () => {
+    const result = staffFormSchema.safeParse({
+      firstName: "Lea",
+      lastName: "Cruz",
+      email: "lea.cruz@example.com",
+      role: "super_admin",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a blank name or an invalid email", () => {
+    expect(
+      staffFormSchema.safeParse({ firstName: "", lastName: "Reyes", email: "ana@example.com", role: "principal" })
+        .success,
+    ).toBe(false);
+    expect(
+      staffFormSchema.safeParse({ firstName: "Ana", lastName: "Reyes", email: "not-an-email", role: "principal" })
+        .success,
+    ).toBe(false);
+  });
+
+  it("turns a blank advisory section into undefined, same as the student form's optional fields", () => {
+    const result = staffFormSchema.safeParse({
+      firstName: "Mark",
+      lastName: "Santos",
+      email: "mark.santos@example.com",
+      role: "teacher",
+      advisorySection: "   ",
+    });
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.advisorySection).toBeUndefined();
   });
 });

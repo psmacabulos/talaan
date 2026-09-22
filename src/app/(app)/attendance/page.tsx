@@ -36,7 +36,7 @@ export default async function AttendancePage({ searchParams }: PageProps<"/atten
   if (!session.schoolId) {
     return (
       <AttendancePageShell description="Pick a date and class to see who tapped in.">
-        <NoSchoolSelected />
+        <NoSchoolSelected subject="attendance page" />
       </AttendancePageShell>
     );
   }

@@ -54,4 +54,17 @@ describe("createMockStaffRepository", () => {
     const repo = createMockStaffRepository(allStaff, { latencyMs: 0 });
     await expect(repo.list()).resolves.toEqual(allStaff);
   });
+
+  it("creates a newly invited staff member", async () => {
+    const repo = createMockStaffRepository([principalA], { latencyMs: 0 });
+    const invited: Staff = { ...teacherB };
+    await expect(repo.create(invited)).resolves.toEqual(invited);
+    await expect(repo.getById("staff-teacher-b")).resolves.toEqual(invited);
+  });
+
+  it("does not overwrite an existing staff member with the same id", async () => {
+    const repo = createMockStaffRepository([principalA], { latencyMs: 0 });
+    await repo.create({ ...principalA, firstName: "Different" });
+    await expect(repo.getById("staff-principal-a")).resolves.toEqual(principalA);
+  });
 });
