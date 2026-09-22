@@ -580,3 +580,87 @@ Reported once more after round 5 landed — the three value props weren't animat
 
 ### Result
 Approved.
+
+---
+
+## Step 13: Dashboard
+
+**Goal:** the real attendance dashboard — a today summary with counts, an attendance-by-grade breakdown, a needs-attention list, a live tap feed, a working "Simulate a tap", and a separate teacher variant scoped to one advisory class. Built while the owner was asleep, with a design-review agent doing a visual pass at the end (their explicit instruction for this step).
+
+### The data layer had to come first, and it needed real decisions
+Attendance *status* isn't stored anywhere — `Tap` (Step 8) records that a card was tapped at a time, and `Student` has no "today" field. Present/late/absent/not-yet-tapped are all derived. So the step started with `src/features/attendance/status.ts`: a pure, unit-tested module (16 tests) that turns a roster plus a tap list plus a reference instant into statuses, counts, per-grade percentages, and the "who hasn't tapped yet" list the simulate button draws from.
+
+Three constants carry the real business rules, each documented in place:
+- `DASHBOARD_NOW = 2026-06-20T09:15:00Z` — Phase 1 has no clock to read (no live tap API until Phase 2) and every seed tap is dated 2026-06-20, so "today" has to agree with the sample data. A real `new Date()` here would show an empty dashboard on any other day.
+- `LATE_CUTOFF_MINUTES` — 8:05 AM (8:00 start, five-minute grace). **Set by reading the seed data's own comments, not by guessing:** taps.ts calls its 7:56-8:01 taps "on time" and its 8:16 one "late", which puts the boundary between them. The first build used 7:30 and the browser immediately showed "0 Present, 7 Late" — the number was the bug report.
+- `ABSENT_CUTOFF_MINUTES` — 9:00 AM. Before it, no tap means "not yet tapped"; after, "absent".
+
+Everything reads UTC fields deliberately (`getUTCHours`, not `getHours`): these timestamps represent the school's own wall-clock time written as if it were UTC, so converting to whatever timezone happens to run the code would show the wrong time to some readers.
+
+### Confirmed, not assumed: a Server Action that doesn't touch cookies does *not* refresh the page
+Step 11 established that a cookie mutation inside a Server Action re-renders the current page automatically. "Simulate a tap" mutates the in-memory tap list and touches no cookie, so the obvious question was whether the same free re-render applies. Checked Next's own docs (`node_modules/next/dist/docs/.../07-mutating-data.md`) rather than assume either way — and this Next.js version has a dedicated `refresh()` from `next/cache` documented for exactly this case, which only exists *because* it isn't automatic. Added it at the end of the action; verified in the browser that the counts, the grade bars and the feed all update on click (28 → 29 in school, Late 6 → 7, Absent 8 → 7, new tap at the top of the feed). Without that one line this step's own "Done when" would have silently failed.
+
+### Two problems only the browser could show, both in the seed data
+`npm run typecheck`/`lint`/`test` were green well before the dashboard was worth looking at. Opening it surfaced two real issues immediately:
+
+1. **All seven seed taps registered as "late"** — the cutoff, fixed above.
+2. **Four of six grades showed 0.0%.** Step 8's seed taps only ever covered 7 students, all in grades 7-8, because they were written to demonstrate the *tap record shape*, not to feed a dashboard. Against a real dashboard that reads as a school where two-thirds of the grades never showed up. Extended `src/data/seed/taps.ts` with a generated morning across every grade and all three schools, layered *around* the existing hand-written scenarios (which stay intact, lost-card alert included): every 7th student absent, every 5th late, everyone else on time, students with no active card skipped (no card, no tap — same as the real gate). Arithmetic rather than random, so the numbers are identical on every run and screenshots don't drift.
+
+Also trimmed the "group tapping in on time" scenario from five students to four, so that grade 7 Rizal — the seeded adviser's own class — has one student still to arrive. Without it the teacher's dashboard read 6 of 6 and "Simulate a tap" had nobody left to tap, which would have failed this step's "Done when" for the teacher specifically.
+
+**This reopens Step 8's approved seed file** — flagged in the review report rather than done quietly. The alternative was a dashboard that demos its own data as broken.
+
+### Honest states rather than convenient fakes
+- **Super admin** has `schoolId: null` (only a super admin can be school-less) and there's no "view school X as super admin" mechanism until Step 20. Rather than defaulting to some arbitrary school or crashing, the dashboard says "Pick a school to view its dashboard" and links to /schools.
+- **"Simulate a tap" when everyone's already in** used to toast "Tap recorded" while doing nothing. It now returns a typed result and says "Everyone with a card has already tapped in" — a true statement instead of a satisfying-looking lie.
+
+### The design-review pass
+Dispatched a design-review agent (acting as senior frontend designer, `frontend-design` skill, same token/status-color constraints) to review /dashboard at 1440px and 360px, light and dark, both personas. It made three changes, all measured rather than eyeballed: the hero's padding didn't match the cards below it (a 4px misalignment running down the page, found with `getBoundingClientRect()`); the bar and its legend sat as far from each other as from the headline, so they didn't read as a unit; and the class roll was double-framed inside its own card while the feed beside it sat flush.
+
+It also flagged — rather than fixed — a semantic problem it judged out of scope for a visual pass, and it was right: the grade bars turned `--status-late` amber below 92%, which borrows the per-student "late" color for a different meaning ("this grade has absences") and, against real numbers, made five of six bars amber. Fixed here by making every bar the brand color: the bar's length and the percentage beside it already carry the signal, and the page's one genuine alarm color is now reserved for the card that is genuinely an alarm.
+
+### What got built
+- `src/features/attendance/status.ts` (+ 16 tests) — the derivation rules, cutoffs, counts, per-grade percentages, tap-time formatting.
+- `src/features/attendance/actions.ts` — `simulateTap`, role-scoped, card-aware, idempotent-friendly, with `refresh()`.
+- `tap-repository.ts` — a `create()` method (+ 2 tests), idempotent by tap id like a real station's upload.
+- `attendance-hero.tsx`, `segmented-bar.tsx`, `grade-breakdown.tsx`, `needs-attention.tsx`, `live-tap-feed.tsx`, `class-roll.tsx`, `no-school-selected.tsx`, `simulate-tap-button.tsx`.
+- `src/app/(app)/dashboard/page.tsx` — the real page, branching principal/super-admin vs teacher.
+- `src/data/seed/taps.ts` — the generated morning described above.
+- `docs/ATTENDANCE-MODEL.md` (linked from `README.md`) — the subsystem reference: why attendance is calculated rather than stored, what the two cutoffs and the fixed `DASHBOARD_NOW` clock are for, how the aggregates work, the full "Simulate a tap" path, and quick recipes for the screens still to be built on top of it.
+
+### Verified
+`lint`, `typecheck`, `test` (139, up from 121 — 18 new), `check:tokens` and `build` all pass. In the browser at 1440px and 360px, light and dark: principal, teacher and super-admin variants all checked. Simulated a tap as principal (counts, grade bars and feed all moved) and as teacher (Carmen Sison went Absent → Late, class roll and class feed both updated), then clicked again with nobody left to confirm the honest "everyone has already tapped in" message. Console clean throughout.
+
+### Review round 1: "still one absent, but it says everyone has tapped in"
+Found by the owner testing as Crimson Ridge's adviser: their class showed 2 absent, one simulated tap brought it to 1, and the next click said "Everyone with a card has already tapped in" while a student sat visibly on Absent.
+
+Not a logic bug — Ricardo Marasigan has no ID card issued yet (`cards.ts` deliberately leaves every 9th student without one), so he genuinely cannot tap. Checked against the seed data rather than assumed, then confirmed in the live browser. The *message* was the bug: "everyone with a card" was technically true, but it made the reader spot a qualifier and infer the rest. Two fixes:
+
+- `simulateTap` now separates the two outcomes. "Nobody left at all" and "the only students left have no card" are different facts, so they return different results (`everyone-in` vs `no-card`, the latter carrying the names) and produce different messages — "Ricardo Marasigan has no ID card yet / They can't tap in until a card is linked to them."
+- The class roll said "No tap yet" for that student, which hides the same thing one level deeper — a teacher would see Absent every morning and never learn why. It now reads "No ID card linked yet" for students with no active card, so the reason is visible without clicking anything.
+
+The second fix is the more useful of the two: it turns a confusing demo moment into the app surfacing a real operational fact (this student needs a card linked — Step 16's flow).
+
+### Every problem hit in this step, and what fixed it
+
+The narrative above has the reasoning; this is the scannable version. Each row is a real thing that went wrong, not a hypothetical.
+
+| # | What went wrong | Why | The fix, in code |
+|---|---|---|---|
+| 1 | Every seed tap showed as **"Late"** — "0 Present, 7 Late" | `LATE_CUTOFF_MINUTES` was set to 7:30 AM, but the sample taps (7:56–8:01) are described in their own comments as "on time" | `status.ts` — cutoff moved to **8:05 AM** (8:00 start + 5 min grace), matching the data's own intent. Boundary asserted on both sides in `status.test.ts` |
+| 2 | **Four of six grades showed 0.0%**, school at 19% attendance | Step 8's seed taps only covered 7 students, all in grades 7–8 — written to demonstrate a tap *record*, never to fill a dashboard | `src/data/seed/taps.ts` — added a generated morning across every grade and all three schools, layered *around* the hand-written scenarios (which are untouched). Arithmetic, not random, so numbers are identical on every run |
+| 3 | Teacher's class read **6 of 6 present**, so "Simulate a tap" had nobody to tap — failing this step's own "Done when" for teachers | The adviser's section (grade 7 Rizal) was exactly the 6 students the Step 8 scenarios already tapped | `taps.ts` — the "group tapping in on time" scenario trimmed from 5 students to 4, leaving one student still to arrive in that class |
+| 4 | "Simulate a tap" would have **silently done nothing** visible | A Server Action only re-renders the page automatically when it changes a **cookie**. This one changes data, so it got no re-render | `actions.ts` — added **`refresh()`** from `next/cache`. Confirmed against Next's own docs first, not assumed |
+| 5 | Toast said **"Tap recorded"** even when no tap had happened | The action returned nothing, so the button couldn't tell success from a no-op | `actions.ts` — returns a typed `SimulateTapResult`; the button toasts per outcome |
+| 6 | The shorter card **stretched to match the taller one**, leaving a large empty area inside it | CSS grid stretches items to equal height by default | `dashboard/page.tsx` — `items-start` on both grids, so each card sizes to its own content |
+| 7 | Hero card's inner edge sat **4px off** from every card below it | Hero used `p-6 sm:p-7`, the cards used `p-5 sm:p-6` | `attendance-hero.tsx` — padding matched to `DashboardCard`. Found by measuring `getBoundingClientRect()`, not by eye |
+| 8 | Bar and legend **read as unrelated strips** | Both sat the same `gap-5` from each other as from the headline above | `attendance-hero.tsx` — bar + legend wrapped in their own `gap-3` group inside a `gap-6` section |
+| 9 | Legend items **didn't line up** at 360px | `flex-wrap` left each row's second item starting at a different x | `segmented-bar.tsx` — two even columns on phones (`grid-cols-2`), unchanged from `sm` up |
+| 10 | Class roll was **double-framed** inside its own card, and misaligned against the feed beside it | A bordered wrapper around a `Table` that already renders its own container | `class-roll.tsx` — wrapper removed, `px-0` on cells so the roll sits flush on the card's inner edge |
+| 11 | **Five of six grade bars were amber** — the card read as an alarm | Bars turned `--status-late` below 92%, which both borrows the per-student "late" color for a different meaning and trips constantly on small grades | `grade-breakdown.tsx` — every bar is now the brand color. Bar length + percentage already carry the signal; alarm color is reserved for the "Needs attention" card |
+| 12 | "**Everyone with a card has already tapped in**" while a student sat visibly on Absent | True but unhelpful — that student (Ricardo Marasigan) has no ID card issued, so he can't tap. The message made the reader infer that | `actions.ts` — separate `no-card` result carrying the names, with its own message; `class-roll.tsx` — that row now reads **"No ID card linked yet"** instead of "No tap yet", so the reason is visible without clicking |
+
+Rows 1–3 are all the same underlying lesson, and it's worth naming: **the type-checker, the linter and 139 tests were all green before any of them were visible.** Every one surfaced the moment the page was actually opened and the numbers were read.
+
+### Result
+All build tasks done. Waiting on the owner's review.

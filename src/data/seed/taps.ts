@@ -20,7 +20,7 @@ function timeAt(baseHour: number, baseMinute: number, offsetMinutes: number): st
 // seedStudents/seedCards: student-0001 (index 0) has its active card's
 // serial at `cardSerialAt(1000)` (see cards.ts) and its old, now-lost card
 // at `cardSerialAt(0)`.
-export const seedTaps: Tap[] = [
+const scenarioTaps: Tap[] = [
   // student-0001 tapping in normally, on their current active card.
   {
     id: "00000000-0000-4000-8000-000000000001",
@@ -30,8 +30,12 @@ export const seedTaps: Tap[] = [
     studentId: seedStudents[0].id,
     tappedAt: "2026-06-20T07:56:00Z",
   },
-  // students 0002-0006 (Rizal, grade 7) tapping in on time.
-  ...seedStudents.slice(1, 6).map(
+  // students 0002-0005 (Rizal, grade 7) tapping in on time. Deliberately
+  // stops short of the whole section: student-0006 is left with no tap, so
+  // the grade 7 Rizal adviser's own dashboard (Step 13's teacher variant)
+  // has someone still to arrive — otherwise their class reads 6 of 6 and
+  // "Simulate a tap" has nobody left to tap in.
+  ...seedStudents.slice(1, 5).map(
     (student, i): Tap => ({
       id: `00000000-0000-4000-8000-00000000000${i + 2}`,
       schoolId: "school-balanga",
@@ -62,6 +66,53 @@ export const seedTaps: Tap[] = [
     tappedAt: "2026-06-20T08:05:00Z",
   },
 ];
+
+/**
+ * The hand-written taps above cover the specific scenarios Step 8 needed
+ * (an ordinary tap, a group tapping on time, one late arrival, one
+ * lost-card tap). Step 13's dashboard needs something else on top of
+ * those: a *plausible whole morning*, across every grade and every school,
+ * or the attendance summary it's built on reads as a school where 4 of 6
+ * grades never showed up.
+ *
+ * So: from student index 7 onward, most students tap in, with a few
+ * deliberate gaps. The pattern is arithmetic rather than random so the
+ * dashboard shows the same numbers on every run (no flaky screenshots, no
+ * "it looked different a minute ago").
+ *
+ *   - every 7th student has no tap at all — the day's genuine absences
+ *   - every 5th student taps after the 8:05 cutoff — the late arrivals
+ *   - everyone else taps between 7:35 and 8:04
+ *
+ * Students with no active card (every 9th, see cards.ts) are skipped
+ * too — no card, no tap, exactly like the real gate.
+ */
+const BULK_TAPS_FROM_INDEX = 7;
+
+const bulkTaps: Tap[] = seedStudents.flatMap((student, index): Tap[] => {
+  if (index < BULK_TAPS_FROM_INDEX) return [];
+  if (index % 7 === 0) return []; // absent today
+  if (index % 9 === 0) return []; // no card issued yet (cards.ts), so nothing to tap with
+
+  const isLate = index % 5 === 0;
+  const tappedAt = isLate
+    ? `2026-06-20T${timeAt(8, 12, index % 20)}:00Z`
+    : `2026-06-20T${timeAt(7, 35, index % 29)}:00Z`;
+
+  return [
+    {
+      id: `00000000-0000-4000-8000-${String(index + 100).padStart(12, "0")}`,
+      schoolId: student.schoolId,
+      stationId: STATION_ID,
+      cardSerial: cardSerialAt(index),
+      studentId: student.id,
+      tappedAt,
+    },
+  ];
+});
+
+/** The named scenarios plus the generated morning around them. */
+export const seedTaps: Tap[] = [...scenarioTaps, ...bulkTaps];
 
 export const seedAlerts: Alert[] = [
   {

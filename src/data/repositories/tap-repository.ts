@@ -5,6 +5,13 @@ import { DEFAULT_LATENCY_MS, simulateLatency } from "./latency";
 export interface TapRepository {
   listBySchool(schoolId: string): Promise<Tap[]>;
   listByStudent(studentId: string): Promise<Tap[]>;
+  /**
+   * Appends a tap (Step 13's "Simulate a tap"). Idempotent by `id`, the
+   * same way a real station's tap would be (CLAUDE.md: "idempotent by a
+   * device-made UUID... repeated taps... are ignored") — calling this twice
+   * with the same `id` is a no-op the second time, not a duplicate.
+   */
+  create(tap: Tap): Promise<Tap>;
 }
 
 export function createMockTapRepository(
@@ -21,6 +28,13 @@ export function createMockTapRepository(
     async listByStudent(studentId) {
       await simulateLatency(latencyMs);
       return data.filter((tap) => tap.studentId === studentId);
+    },
+    async create(tap) {
+      await simulateLatency(latencyMs);
+      if (!data.some((existing) => existing.id === tap.id)) {
+        data.push(tap);
+      }
+      return tap;
     },
   };
 }

@@ -46,4 +46,24 @@ describe("createMockTapRepository", () => {
     const repo = createMockTapRepository(allTaps, { latencyMs: 0 });
     await expect(repo.listBySchool("school-none")).resolves.toEqual([]);
   });
+
+  it("create() appends a new tap, visible to subsequent lists", async () => {
+    const data = [tapA];
+    const repo = createMockTapRepository(data, { latencyMs: 0 });
+    const newTap: Tap = { ...tapB, id: "00000000-0000-4000-8000-000000000099" };
+
+    await repo.create(newTap);
+
+    await expect(repo.listBySchool("school-b")).resolves.toEqual([newTap]);
+  });
+
+  it("create() is idempotent by id — a repeated call doesn't duplicate the tap", async () => {
+    const data = [tapA];
+    const repo = createMockTapRepository(data, { latencyMs: 0 });
+
+    await repo.create(tapB);
+    await repo.create(tapB);
+
+    await expect(repo.listBySchool("school-b")).resolves.toEqual([tapB]);
+  });
 });
