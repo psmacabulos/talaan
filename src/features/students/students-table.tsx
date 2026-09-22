@@ -1,5 +1,8 @@
+"use client";
+
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import Link from "next/link";
+import type { KeyboardEvent } from "react";
 import { StatusPill } from "@/components/status-pill";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { studentStatus } from "@/features/attendance/status";
@@ -9,6 +12,7 @@ import { CardStatusBadge } from "./card-status-badge";
 import type { StudentListParams, StudentSortField } from "./search-params";
 import { studentListHref } from "./search-params";
 import type { StudentRow } from "./search-students";
+import type { Student } from "./types";
 
 function initials(row: StudentRow): string {
   return `${row.student.firstName[0]}${row.student.lastName[0]}`.toUpperCase();
@@ -49,11 +53,20 @@ export function StudentsTable({
   items,
   taps,
   params,
+  onRowClick,
 }: {
   items: StudentRow[];
   taps: Tap[];
   params: StudentListParams;
+  /** When set, every row opens the student's edit drawer (Step 15) — omitted entirely for teachers, who stay read-only. */
+  onRowClick?: (student: Student) => void;
 }) {
+  function handleKeyDown(event: KeyboardEvent<HTMLTableRowElement>, student: Student) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    onRowClick?.(student);
+  }
+
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
       <Table>
@@ -69,7 +82,15 @@ export function StudentsTable({
         </TableHeader>
         <TableBody>
           {items.map((row) => (
-            <TableRow key={row.student.id}>
+            <TableRow
+              key={row.student.id}
+              onClick={onRowClick ? () => onRowClick(row.student) : undefined}
+              onKeyDown={onRowClick ? (event) => handleKeyDown(event, row.student) : undefined}
+              role={onRowClick ? "button" : undefined}
+              tabIndex={onRowClick ? 0 : undefined}
+              aria-label={onRowClick ? `Edit ${row.student.firstName} ${row.student.lastName}` : undefined}
+              className={onRowClick ? "cursor-pointer focus-visible:bg-accent" : undefined}
+            >
               <TableCell>
                 <div className="flex items-center gap-3">
                   <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-foreground">

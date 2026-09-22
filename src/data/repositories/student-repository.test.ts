@@ -36,4 +36,29 @@ describe("createMockStudentRepository", () => {
     const repo = createMockStudentRepository([studentA], { latencyMs: 0 });
     await expect(repo.getById("nope")).resolves.toBeNull();
   });
+
+  it("creates a new student", async () => {
+    const repo = createMockStudentRepository([studentA], { latencyMs: 0 });
+    const created: Student = { ...studentB };
+    await expect(repo.create(created)).resolves.toEqual(created);
+    await expect(repo.getById("student-b")).resolves.toEqual(created);
+  });
+
+  it("is idempotent when creating with an id that already exists", async () => {
+    const repo = createMockStudentRepository([studentA], { latencyMs: 0 });
+    await repo.create({ ...studentA, firstName: "Different" });
+    await expect(repo.getById("student-a")).resolves.toEqual(studentA);
+  });
+
+  it("updates an existing student", async () => {
+    const repo = createMockStudentRepository([studentA], { latencyMs: 0 });
+    const updated: Student = { ...studentA, firstName: "Juanito" };
+    await expect(repo.update(updated)).resolves.toEqual(updated);
+    await expect(repo.getById("student-a")).resolves.toEqual(updated);
+  });
+
+  it("returns null when updating an unknown id", async () => {
+    const repo = createMockStudentRepository([studentA], { latencyMs: 0 });
+    await expect(repo.update(studentB)).resolves.toBeNull();
+  });
 });

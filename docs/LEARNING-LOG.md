@@ -15,6 +15,7 @@ Short, plain-language notes explaining things along the way — for whenever I w
 - [Multi-tenant apps: one customer's identity doesn't belong on a shared screen](#multi-tenant-apps-one-customers-identity-doesnt-belong-on-a-shared-screen)
 - [Seed data has a second job once real screens exist (Step 13)](#seed-data-has-a-second-job-once-real-screens-exist-step-13)
 - [Search, filters and sorting living in the URL (Step 14)](#search-filters-and-sorting-living-in-the-url-step-14)
+- [Forms: shared validation and writing data (Step 15)](#forms-shared-validation-and-writing-data-step-15)
 
 ---
 
@@ -411,3 +412,14 @@ Asked why paging/sorting/filtering the Students list shows a loading skeleton ea
 It isn't already there. Nothing loads the whole student list into the browser up front — every click is a real request to the server for a fresh page, the same as clicking a link from page 1 to page 2 of any ordinary website, not a script filtering data that's already sitting in memory in the browser. Two things are stacked into that pause: the real request/response round trip itself, and a small *simulated* delay (`src/data/repositories/latency.ts`, ~150ms, added back in Step 9 on purpose) so that code never accidentally assumes data arrives instantly — a real database call over a real network never does, and Phase 2 replaces the mock data with exactly that. The loading skeleton itself is just Next.js's built-in behavior while a page waits on that round trip.
 
 Both halves are deliberate, not accidental: loading only the current page of students (rather than the whole roster) is what actually lets this scale to a real school with hundreds of students and a real database in Phase 2 without rebuilding the screen. Full mechanism: [`docs/URL-DRIVEN-LISTS.md`](URL-DRIVEN-LISTS.md#why-changing-a-page-filter-or-sort-shows-a-brief-loading-state).
+
+## Forms: shared validation and writing data (Step 15)
+
+### Why the same validation rules are checked twice
+The add/edit drawer checks a submission in the browser (so a typo shows an error instantly, no waiting on the server) *and* checks it again on the server, right before saving. That's not duplicated work by accident — a form's own client-side check can always be skipped (a direct request, a browser extension, a bug), so the server never trusts that a submission it receives is actually valid just because it came from a form. Reusing the exact same Zod schema on both sides means there's only one set of rules to keep correct, even though it's checked in two places. Full write-up: [`docs/FORMS.md`](FORMS.md).
+
+### Wiring a dropdown into a form that isn't a plain `<input>`
+React Hook Form's usual `register("field")` only works on a real HTML input element. The shadcn "Select" dropdown is built differently (for its own accessibility/keyboard behavior) and doesn't support that directly — it needs a small adapter piece, React Hook Form's `Controller`, that manually connects the dropdown's selected value to the form. Any future dropdown/date-picker/toggle field in a form follows the same shape. See `docs/FORMS.md`'s "Wiring a non-native input" section.
+
+### A "the button lives in one place, the click happens in another" problem
+The "Add student" button is up in the page header; clicking a table row does the same job (opens the same drawer) from a completely different part of the screen. Rather than pass the "please open the drawer" instruction back and forth awkwardly between separate pieces, both the header and the table are rendered by one shared piece of code that remembers "is the drawer open, and for whom" — so either one can just say "open it" and the drawer already knows what to show. See `docs/FORMS.md`'s "Why drawer state lives above both the trigger and the table" section.

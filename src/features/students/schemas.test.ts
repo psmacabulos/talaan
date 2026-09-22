@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { cardSchema, cardSerialSchema, gradeLevelSchema, lrnSchema, phMobileSchema, studentSchema } from "./schemas";
+import {
+  cardSchema,
+  cardSerialSchema,
+  gradeLevelSchema,
+  lrnSchema,
+  phMobileSchema,
+  STUDENT_FORM_MAX_BIRTH_DATE,
+  studentFormSchema,
+  studentSchema,
+} from "./schemas";
 
 const validStudent = {
   id: "student-0001",
@@ -54,6 +63,57 @@ describe("studentSchema", () => {
     expect(phMobileSchema.safeParse("+639171234567").success).toBe(true);
     expect(phMobileSchema.safeParse("123456").success).toBe(false);
     expect(phMobileSchema.safeParse("08171234567").success).toBe(false);
+  });
+});
+
+describe("studentFormSchema", () => {
+  const validInput = {
+    firstName: "Juan",
+    middleName: "",
+    lastName: "Dela Cruz",
+    birthDate: "2012-03-14",
+    lrn: "",
+    gradeLevel: 8,
+    section: "Rizal",
+    guardianName: "Maria Dela Cruz",
+    guardianMobile: "09171234567",
+  };
+
+  it("accepts a valid submission and treats blank optional fields as not provided", () => {
+    const result = studentFormSchema.safeParse(validInput);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.middleName).toBeUndefined();
+      expect(result.data.lrn).toBeUndefined();
+    }
+  });
+
+  it("trims text fields", () => {
+    const result = studentFormSchema.safeParse({ ...validInput, firstName: "  Juan  " });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.firstName).toBe("Juan");
+  });
+
+  it("rejects a missing first or last name", () => {
+    expect(studentFormSchema.safeParse({ ...validInput, firstName: "" }).success).toBe(false);
+    expect(studentFormSchema.safeParse({ ...validInput, lastName: "" }).success).toBe(false);
+  });
+
+  it("rejects a birth date after today, and accepts today itself", () => {
+    expect(studentFormSchema.safeParse({ ...validInput, birthDate: "2999-01-01" }).success).toBe(false);
+    expect(
+      studentFormSchema.safeParse({ ...validInput, birthDate: STUDENT_FORM_MAX_BIRTH_DATE }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a provided LRN that isn't exactly 12 digits", () => {
+    expect(studentFormSchema.safeParse({ ...validInput, lrn: "12345" }).success).toBe(false);
+  });
+
+  it("accepts a valid 12-digit LRN", () => {
+    const result = studentFormSchema.safeParse({ ...validInput, lrn: "123456789012" });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.lrn).toBe("123456789012");
   });
 });
 

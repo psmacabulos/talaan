@@ -72,7 +72,26 @@ export const studentRepository = createMockStudentRepository();
 - **The factory function** (`createMockStudentRepository`) takes the data it serves as a parameter, defaulting to the real seed data — so a test can hand it three students instead of the full 72, and get a small, focused, fast test out of it, without touching the real seed data.
 - **The exported singleton** (`studentRepository`) is the one instance the rest of the app actually imports. It's just `createMockStudentRepository()` called once with no arguments — the real seed data, the default latency.
 
-**Read-only, deliberately.** None of the six repositories have a `create`/`update` method yet — only `list`/`get`. Step 9's own done-when criterion ("no UI code talks to seed data directly") only needs reads; nothing exists yet that needs to *write*. Steps 15, 16, 18 and 19 will each add exactly the write method they need when they need it (for example, Step 16 adds `CardRepository.markLost`/`create` for the actual card-replace flow) — extending an existing repository file when its feature step arrives is normal, expected growth, not scope creep.
+**Read-only until a step actually needs to write.** Through Step 14, none of the six repositories had a `create`/`update` method — only `list`/`get`. Step 9's own done-when criterion ("no UI code talks to seed data directly") only needed reads. Step 15 is the first to add one: `StudentRepository.create`/`update`, for the add/edit drawer. Steps 16, 18 and 19 will each add exactly the write method *they* need when they need it (for example, Step 16 adds `CardRepository.markLost`/`create` for the actual card-replace flow) — extending an existing repository file when its feature step arrives is normal, expected growth, not scope creep.
+
+```ts
+async create(student) {
+  await simulateLatency(latencyMs);
+  if (!data.some((existing) => existing.id === student.id)) {
+    data.push(student);
+  }
+  return student;
+},
+async update(student) {
+  await simulateLatency(latencyMs);
+  const index = data.findIndex((existing) => existing.id === student.id);
+  if (index === -1) return null;
+  data[index] = student;
+  return student;
+},
+```
+
+`create` is idempotent by `id` — the same shape `TapRepository.create` already used for Step 13's "Simulate a tap" button, so a repeated call (a real station's retried request, in Phase 2) is a no-op rather than a duplicate. `update` is stricter: it returns `null` when the id doesn't exist, rather than silently doing nothing, so a caller that got the id wrong finds out immediately instead of the write vanishing quietly.
 
 ## Simulated latency, and why tests don't wait for it
 

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DASHBOARD_NOW } from "@/features/attendance/status";
 
 /**
  * Grade 7 to 12 only (CLAUDE.md's domain rules). A literal union, not
@@ -49,6 +50,42 @@ export const studentSchema = z.object({
   // For a station's optional tap-confirmation display (a monitor showing
   // who's tapping) — not required, most schools won't have this on day one.
   photoUrl: z.url().optional(),
+});
+
+/** Same "today" `age.ts` already computes ages against, so a birth date the
+ * form calls "in the future" always agrees with the age the rest of the
+ * app would show for it. */
+const TODAY = DASHBOARD_NOW.slice(0, 10);
+
+/**
+ * The add/edit drawer's own schema (Step 15) — the same fields as
+ * `studentSchema`, minus `id`, `schoolId` (assigned by the server action)
+ * and `photoUrl` (no UI for it yet). Unlike the stored-record schema, an
+ * empty LRN or middle name from a blank form field means "not provided"
+ * rather than a validation failure, and a birth date can't be in the
+ * future (CLAUDE.md/the prototype's own rule for this form specifically).
+ */
+export const STUDENT_FORM_MAX_BIRTH_DATE = TODAY;
+
+export const studentFormSchema = z.object({
+  firstName: z.string().trim().min(1, "Enter a first name"),
+  middleName: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => (value ? value : undefined)),
+  lastName: z.string().trim().min(1, "Enter a last name"),
+  birthDate: z
+    .iso.date("Enter a birth date")
+    .refine((value) => value <= TODAY, "Birth date cannot be in the future"),
+  lrn: z
+    .union([lrnSchema, z.literal("")])
+    .optional()
+    .transform((value) => (value ? value : undefined)),
+  gradeLevel: gradeLevelSchema,
+  section: z.string().trim().min(1, "Enter a section"),
+  guardianName: z.string().trim().min(1, "Enter a guardian name"),
+  guardianMobile: phMobileSchema,
 });
 
 export const cardStatusSchema = z.enum(["active", "lost", "retired"]);

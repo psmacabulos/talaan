@@ -710,3 +710,45 @@ The owner flagged that the Students table isn't polished on phones yet — at 36
 
 ### Approved
 Owner said "approved" (via "let's create a conventional commit and we'll proceed to the next stage") once the loading-state question was answered and the mobile-column issue was logged for Step 24 rather than fixed here. Commit `feat(students): add student list with search and filters` — left for the owner to make, same as every step.
+
+---
+
+## Step 15: Student form
+
+**Goal:** the add/edit drawer — React Hook Form + Zod, inline errors, computed age, and a server action that actually writes to the mock repository. The first *write* path in the app; every repository built through Step 14 only ever reads.
+
+### Scope: only the learner and guardian fields, not the ID card box
+The reference prototype's student drawer also has an ID card section (link a card, replace a lost one). That's explicitly Step 16 in `docs/PLAN.md` ("Card link and replace"), a separate reviewable unit — so this step's drawer stops at the learner and guardian fieldsets, matching Step 15's own "Done when" line. Card status keeps showing as the existing read-only badge in the list; Step 16 is where it becomes interactive.
+
+### The repository's first write methods
+`docs/DATA-ACCESS.md` (Step 9) already called this out as expected, not scope creep: "Steps 15, 16, 18 and 19 will each add exactly the write method they need when they need it." `StudentRepository` got `create` (idempotent by `id`, same pattern `TapRepository.create` already established for Step 13's "Simulate a tap") and `update` (finds by `id`, replaces, returns `null` if the id doesn't exist — a small but real difference from `create`, so a bug that tries to update a student that was never actually loaded fails loudly instead of silently doing nothing). Both mutate the same closed-over `data` array the read methods already filter, behind the same simulated latency. Updated `docs/DATA-ACCESS.md`'s own "Read-only, deliberately" paragraph, which was about to go stale the moment this merged.
+
+### One schema, two shapes: input vs. output
+`studentFormSchema` (schemas.ts) reuses `studentSchema`'s field validators but isn't just `studentSchema.omit(...)` — a couple of fields needed real transforms: a blank LRN or middle name means "not provided," not "provided and invalid," so both `.optional().transform(v => v ? v : undefined)`. That transform means the schema's *input* shape (`middleName?: string`) and *output* shape (`middleName: string | undefined`, no longer optional-as-a-key) genuinely differ — TypeScript caught this immediately as a real `useForm` type error, not a false positive: React Hook Form's own field-values generic has to match what the form fields actually hold (the input shape), while the submit handler and the server action work with the parsed/transformed output shape. Fixed by giving `useForm` all three of its generics (`useForm<StudentFormValues, unknown, StudentFormInput>`) — React Hook Form 7.88 (already installed) supports exactly this split for schemas with a resolver that transforms. `types.ts` now exports both `StudentFormValues` (via `z.input<>`) and `StudentFormInput` (via `z.infer<>`, i.e. the output), each named for which side of the transform it's on.
+
+Also added a refine that `birthDate` can't be after "today" — reusing the same fixed `DASHBOARD_NOW` (sliced to a plain date) that `age.ts` already treats as "now" everywhere else, so the form's own idea of "in the future" can never disagree with the age the rest of the app would compute for the same date.
+
+### Wiring a shadcn Select into React Hook Form for the first time
+Every form built so far (just the login form, Step 12) only had plain text inputs, which `register()` handles directly. The grade field needed the shadcn `Select` (Radix-based, not a native `<select>`), which doesn't expose a ref `register()` can hook into — wired it through React Hook Form's `Controller` instead, converting between the Select's string value and the schema's numeric `GradeLevel` at the boundary (`onValueChange={(value) => field.onChange(Number(value))}`).
+
+### `watch()` vs `useWatch()` for the computed age hint
+First version used the form's own `watch("birthDate")` to drive the live "Age N" hint next to the birth date field. `npm run lint` flagged it: `watch()` returns a plain function that the React Compiler can't safely memoize, so any component consuming its result risks stale UI once compiled. Swapped to `useWatch({ control, name: "birthDate" })`, the hook-based equivalent designed to play correctly with memoization — same live value, no warning. No existing code in the repo used either yet, so this is the precedent for the next form that needs to react to its own field values.
+
+### Lifting drawer state above both the header button and the table
+The "Add student" button lives in the page header; the row-click-to-edit behavior lives in the table; both need to open the *same* drawer with different initial data. Rather than thread callbacks through multiple boundaries, `students-directory.tsx` is a new client component that owns the drawer's open/closed/which-student state and renders the header, toolbar, table and drawer itself — `page.tsx` stays a plain Server Component doing only session and data fetching, passing already-fetched, serializable props down. `students-table.tsx` picked up `"use client"` and an optional `onRowClick` prop as part of this — omitted entirely for teachers, so their table is exactly as non-interactive as before (verified: no `role="button"` on rows, no Add button, in the browser check below).
+
+### What got built
+- `src/data/repositories/student-repository.ts` (+`student-repository.test.ts`) — `create`/`update`.
+- `src/features/students/schemas.ts` (+`schemas.test.ts`) — `studentFormSchema`.
+- `src/features/students/types.ts` — `StudentFormValues`, `StudentFormInput`.
+- `src/features/students/actions.ts` — `createStudent`, `updateStudent` (session/role guard, server-side re-validation, `refresh()`).
+- `src/features/students/student-form.tsx`, `student-drawer.tsx`, `students-directory.tsx`.
+- `src/features/students/students-table.tsx` — `"use client"`, optional `onRowClick`.
+- `src/app/(app)/students/page.tsx` — now renders `StudentsDirectory` instead of the inline JSX.
+- `docs/DATA-ACCESS.md` updated; new `docs/FORMS.md` (linked from `README.md`) — the first drawer-based create/edit form backed by a server action, a pattern Steps 16, 18, 20 and 21 will all reuse.
+
+### Verified
+`lint` (one React Compiler warning, fixed by switching to `useWatch`, see above — clean after), `typecheck`, `test` (176, up from 166), `check:tokens` and `build` all pass. In the browser at 1280px and 360px, light and dark: "Add student" opens an empty drawer with focus already on "First name" (Radix's default dialog behavior, confirmed rather than assumed); submitting empty shows all seven inline errors at once and moves focus to the first invalid field; a valid submission saves, toasts "‹name› was added," closes the drawer, and the new student is immediately findable by search; the computed age hint updates live while typing a birth date; clicking a row opens it pre-filled with the student's real data and editing + saving updates the list. Teacher persona re-checked last: no "Add student" button, table rows are plain `row`s (no `role="button"`), identical to Step 14's read-only view. Console clean throughout.
+
+### Result
+All build tasks done. Waiting on the owner's review.

@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: █████████████░░░░░░░ 67%**  (45 of 67 tasks, 15 of 25 steps approved)
+**Overall progress: ██████████████░░░░░░ 69%**  (46 of 67 tasks, 15 of 25 steps approved)
 
-**Next up:** Step 15, Student form (not started)
+**Next up:** Step 15, Student form (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -22,7 +22,7 @@
 | 12 | Login page | ██████████ 100% | Approved |
 | 13 | Dashboard | ██████████ 100% | Approved |
 | 14 | Students list | ██████████ 100% | Approved |
-| 15 | Student form | ░░░░░░░░░░   0% | Not started |
+| 15 | Student form | █████░░░░░  50% | Ready for your review |
 | 16 | Card link and replace | ░░░░░░░░░░   0% | Not started |
 | 17 | Attendance page | ░░░░░░░░░░   0% | Not started |
 | 18 | Staff page | ░░░░░░░░░░   0% | Not started |
@@ -150,7 +150,7 @@ Commit: `feat(students): add student list with search and filters`
 - [x] Owner review: I checked it and said "approved"
 
 ### Step 15: Student form
-- [ ] Add and edit drawer with React Hook Form and Zod, inline errors, computed age, and a server action against the mock repository.
+- [x] Add and edit drawer with React Hook Form and Zod, inline errors, computed age, and a server action against the mock repository.
 Done when: invalid input shows clear errors, valid input saves, and focus is handled correctly.
 Commit: `feat(students): add student form drawer`
 - [ ] Owner review: I checked it and said "approved"
