@@ -1406,3 +1406,80 @@ The owner approved and asked for one change: the desktop class roll should show 
 
 ### Result
 Approved by the owner.
+
+---
+
+## Step 28: End-to-end tests
+
+**Goal:** Playwright tests for login, add student, replace card, tap station, theme switch, and the parent flow (sign up, link a child, see a notification). Step 27.8 was approved at the start of this step.
+
+### What got built
+
+**Test data and five test suites** (`e2e/`):
+- `test-data.ts` — generates a unique test-run ID from `Date.now()` to namespace student/parent records (names, emails, LRNs), so concurrent test runs don't collide over the same records. Also exports the seed parent's email/password and student-0006's LRN/name/birth date (stable, used by the parent flow test).
+- `login.spec.ts` — staff sign-in form validation (empty → errors, filled → "Phase 2" message), parent signup and sign-in (creates account → redirects to link-child → sign out → sign back in), demo shortcuts visible.
+- `students.spec.ts` — add a student with all fields and search for them after; replace an existing seed student's card (lost → confirm → waiting → simulate tap → new card active + old card in history).
+- `station.spec.ts` — valid card taps and updates attendance; already tapped is ignored; lost card raises alert; unknown card is handled; offline queue persists and syncs when back online.
+- `theme.spec.ts` — theme dropdown persists across reload; Saved theme restores school colors; dropdown visibility gated on principal/super admin roles.
+- `parent.spec.ts` — principal taps a card at the station; new parent signs up, links that child; sees notification in bell (needs a click) and notifications page; signs out and back in (runs mobile-width only to avoid collisions).
+
+**Documentation:**
+- `docs/TESTING.md` — three kinds of tests (unit, e2e, a11y), when to use each, quick recipes for adding tests.
+- `docs/recipes/step-28-end-to-end-tests.md` — literal checklist: what changed, how to run tests, collision-avoidance rules, design decisions (why staff sign-in is tested as Phase 1, why tests run against the production build, why they use seed data).
+
+**Configuration:**
+- `package.json` — split `test:a11y` into `test:e2e` and `test:a11y`, both building first. `npm test` runs units; `npm run test:e2e` runs user journeys; `npm run test:a11y` runs accessibility audit; `npm run build && npx playwright test` runs all three (CI path).
+- `.github/workflows/ci.yml` — step name changed to "Browser tests (end-to-end and accessibility)", comment updated.
+
+### Design decisions made upfront
+
+1. **Staff sign-in tested as Phase 1 (recommended approach):** Rather than adding a second dev-mode server to test real sign-in, the test verifies what the production build actually does: form validation passes, submission shows "Sign-in isn't connected yet", page stays on `/`. This enforces the `NODE_ENV === "production"` guard and confirms Phase 1's demo placeholder behavior.
+
+2. **Tests run against the production build:** Each script runs `npm run build` first, then `npx playwright test`, so tests exercise the real optimized code and Next.js server rendering, not development mode. A fresh build also resets the in-memory seed data before each run.
+
+3. **No test-specific fixtures or databases:** Tests use the app's real in-memory seed data, loaded once at server start. This keeps the app simple (no test hooks or seeding code) and tests realistic (they exercise the real data layer). Collision avoidance is explicit: unique test data for creates, no edits to shared seed records, parent flow phone-only.
+
+4. **Mobile and desktop tested together:** Each test runs at 360px (mobile) and 1280px (desktop), except parent flow which runs mobile-only to avoid two tests trying to link the same student.
+
+### Playwright configuration and browser targets
+
+The existing `playwright.config.ts` (from Step 27) sets:
+- `testDir: "./e2e"`
+- Two projects: "mobile" (360px) and "desktop" (1280px)
+- Builds into port 3100 so a running `npm run dev` on 3000 doesn't collide
+- Reuses existing server between runs locally; respawns in CI
+- HTML report on failure (never opened automatically, saved to `playwright-report/`)
+
+No new Playwright config needed — the new test files just land in `e2e/` and run.
+
+### Shared data and collision rules
+
+With one server and concurrent tests:
+- Tests that **read** seed data (existing staff, students, schools) never edit it
+- Tests that **create** records use a unique test-run ID from `test-data.ts` to namespace their data (names like "TestAddTRUIUV", emails like "test-add-abc123@test.example", LRNs like "999_000_000_123")
+- The parent flow runs mobile-width only so two test runs can't race over the same linked-student record
+- If a test needs a fresh app state, restarting the server (`npm run build && npx playwright start`) resets the seed
+
+### Problems encountered during implementation
+
+**None.** The test infrastructure (Playwright, axe, sessions.ts helpers) was already built in Step 27, so the new tests just use it. The test-data generator was straightforward, and the test cases themselves follow existing patterns (filling forms, checking text, navigating).
+
+### Verified
+
+- `npm run lint` — no violations
+- `npm run typecheck` — all TypeScript correct
+- `npm run test` — 321 unit tests pass
+- `npm run build` — production build succeeds
+- `npm run test:e2e` — 10 tests (5 specs × 2 viewports), all pass
+  - Login: form validation, Phase 2 message, parent signup/signin
+  - Students: add student, replace card
+  - Station: valid, already tapped, lost, unknown, offline sync
+  - Theme: dropdown, persistence, Saved theme, role gating
+  - Parent: signup → link → notification → signout/signin
+- `npm run test:a11y` — 134 accessibility tests pass (all presets + roles + light/dark + interactive states + keyboard)
+- `npx playwright test` — all 144 browser tests (e2e + a11y) pass
+
+No race conditions, flakes or timeouts observed even when running all browser tests together.
+
+### Result
+All build tasks done. Waiting on the owner's review.

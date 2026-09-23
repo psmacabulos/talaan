@@ -10,7 +10,8 @@
     "format": "prettier --write .",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "test:a11y": "npm run build && playwright test",
+    "test:e2e": "npm run build && playwright test 'e2e/(login|students|station|theme|parent).spec.ts'",
+    "test:a11y": "npm run build && playwright test e2e/a11y.spec.ts",
     "check:tokens": "node scripts/check-tokens.mjs",
     "progress": "node scripts/progress.mjs"
   },

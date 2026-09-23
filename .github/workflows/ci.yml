@@ -38,8 +38,8 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
-      # Runs axe on every screen against the build above (Step 27).
-      - name: Accessibility audit
+      # Runs end-to-end tests and accessibility audit (axe on every screen).
+      - name: Browser tests (end-to-end and accessibility)
         run: npx playwright test
 
       - name: Upload accessibility report
