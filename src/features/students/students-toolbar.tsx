@@ -5,11 +5,16 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import type { CardFilter, StudentListParams } from "./search-params";
 import { studentListHref } from "./search-params";
 import type { GradeLevel } from "./types";
 
 const GRADE_LEVELS: readonly GradeLevel[] = [7, 8, 9, 10, 11, 12];
+
+// On phones the filters share one row at full, thumb-sized height; from
+// 640px up they sit inline at their normal size.
+const FILTER_TRIGGER_CLASS = "w-full data-[size=default]:h-11 sm:w-fit sm:data-[size=default]:h-8";
 
 const CARD_FILTER_LABEL: Record<CardFilter, string> = {
   all: "All cards",
@@ -54,8 +59,13 @@ export function StudentsToolbar({
   }, [query]);
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-      <div className="relative sm:w-72">
+    <div
+      className={cn(
+        "grid gap-3 sm:flex sm:flex-wrap sm:items-center",
+        showGradeFilter ? "grid-cols-2" : "grid-cols-1",
+      )}
+    >
+      <div className="relative col-span-full sm:w-72">
         <Search
           className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
           aria-hidden="true"
@@ -66,7 +76,7 @@ export function StudentsToolbar({
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search by name or LRN"
           aria-label="Search students by name or LRN"
-          className="pl-8"
+          className="h-11 pl-8 sm:h-8"
         />
       </div>
 
@@ -79,7 +89,7 @@ export function StudentsToolbar({
             )
           }
         >
-          <SelectTrigger aria-label="Filter by grade">
+          <SelectTrigger aria-label="Filter by grade" className={FILTER_TRIGGER_CLASS}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -97,7 +107,7 @@ export function StudentsToolbar({
         value={params.card}
         onValueChange={(value) => router.push(studentListHref(params, { card: value as CardFilter, page: 1 }))}
       >
-        <SelectTrigger aria-label="Filter by card status">
+        <SelectTrigger aria-label="Filter by card status" className={FILTER_TRIGGER_CLASS}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

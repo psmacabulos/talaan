@@ -28,7 +28,10 @@ export function StudentDrawer({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="flex w-full flex-col gap-0 sm:max-w-md">
+      {/* data-[side=right]: prefixes match the Sheet's own width rules, so
+          these actually replace them (docs/RESPONSIVE-LISTS.md, section 5):
+          full width on a phone, 448px from 640px up. */}
+      <SheetContent className="flex flex-col gap-0 data-[side=right]:w-full data-[side=right]:sm:max-w-md">
         <SheetHeader className="border-b border-border">
           <SheetTitle>{isEditing ? "Edit student" : "Add student"}</SheetTitle>
           <SheetDescription>

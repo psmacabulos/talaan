@@ -5,8 +5,9 @@ import type { Staff } from "./types";
 
 /**
  * This school's staff on screens narrower than 768px (Step 27.6): one
- * compact row per person, so a long list is quick to scroll on a phone
- * instead of squeezing in the desktop table or stacking tall cards.
+ * short card per person, so a long list is quick to scroll on a phone
+ * instead of squeezing in the desktop table. Cards rather than one divided
+ * list since Step 27.7, to match the students page.
  *
  * Each row says only what tells people apart. The second line is what
  * they do ("Adviser, Grade 7 – Rizal"), which already implies the role, so
@@ -16,12 +17,15 @@ import type { Staff } from "./types";
  */
 export function StaffCompactList({ items, currentUserId }: { items: Staff[]; currentUserId: string }) {
   return (
-    <ul aria-label="Staff" className="divide-y divide-border rounded-lg border border-border bg-card">
+    <ul aria-label="Staff" className="flex flex-col gap-2">
       {items.map((staff) => (
-        <li key={staff.id} className="flex min-h-16 items-center gap-3 py-2 pr-1 pl-4">
+        <li
+          key={staff.id}
+          className="flex min-h-16 items-center gap-3 rounded-lg border border-border bg-card py-2 pr-1 pl-4"
+        >
           <StaffAvatar staff={staff} className="size-10" />
           <div className="min-w-0 flex-1 py-1">
-            <h3 className="text-sm leading-snug font-semibold wrap-break-word text-foreground">{staffName(staff)}</h3>
+            <h3 className="text-base leading-snug font-semibold wrap-break-word text-foreground">{staffName(staff)}</h3>
             {/* The Invited tag sits on this second line, not beside the name,
                 so the name keeps the row's full width on a narrow phone. */}
             <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">

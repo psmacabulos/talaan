@@ -358,23 +358,31 @@ test.describe("keyboard and focus", () => {
  * page never needs sideways scrolling (WCAG 1.4.10, Reflow).
  */
 test.describe("small screens", () => {
-  test("staff page fits the screen width", async ({
-    page,
-    context,
-    baseURL,
-  }, testInfo) => {
-    test.skip(testInfo.project.name !== "mobile", "phone layout only");
-    await signInAs(context, "principal", baseURL!);
-    await page.goto("/staff");
-    await expect(page.getByRole("list", { name: "Staff" })).toBeVisible();
-    await expect(page.getByRole("table")).toBeHidden();
+  const LIST_PAGES = [
+    { path: "/staff", list: "Staff" },
+    { path: "/students", list: "Students" },
+  ] as const;
 
-    const { scrollWidth, clientWidth } = await page.evaluate(() => ({
-      scrollWidth: document.documentElement.scrollWidth,
-      clientWidth: document.documentElement.clientWidth,
-    }));
-    expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
-  });
+  for (const listPage of LIST_PAGES) {
+    test(`${listPage.path} fits the screen width`, async ({
+      page,
+      context,
+      baseURL,
+    }, testInfo) => {
+      test.skip(testInfo.project.name !== "mobile", "phone layout only");
+      await signInAs(context, "principal", baseURL!);
+      await page.goto(listPage.path);
+      await expect(page.getByRole("list", { name: listPage.list })).toBeVisible();
+      await expect(page.getByRole("table")).toBeHidden();
+      await expectNoBlockingViolations(page);
+
+      const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+      }));
+      expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+    });
+  }
 });
 
 /** Step 27.5: the light/dark menu, on each kind of screen it lives on. */

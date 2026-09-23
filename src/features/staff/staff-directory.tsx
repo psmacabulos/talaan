@@ -31,9 +31,10 @@ export function StaffDirectory({ items, currentUserId }: { items: Staff[]; curre
         title="Staff"
         description="Principals and teachers who can sign in to this school. They cannot see any other school."
         actions={
-          <Button onClick={() => setDrawerOpen(true)}>
+          // Just "Invite" on phones, so it fits beside the title (Step 27.7).
+          <Button aria-label="Invite staff" onClick={() => setDrawerOpen(true)}>
             <Plus className="size-4" aria-hidden="true" />
-            Invite staff
+            Invite<span className="hidden sm:inline">staff</span>
           </Button>
         }
       />

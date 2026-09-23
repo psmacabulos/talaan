@@ -25,9 +25,10 @@ export function SchoolsDirectory({ items }: { items: SchoolRow[] }) {
         title="Schools"
         description="Each school has its own logo, colors and accounts. Open one to see it the way its principal does."
         actions={
-          <Button onClick={() => setDrawerOpen(true)}>
+          // Just "Add" on phones, so it fits beside the title (Step 27.7).
+          <Button aria-label="Add school" onClick={() => setDrawerOpen(true)}>
             <Plus className="size-4" aria-hidden="true" />
-            Add school
+            Add<span className="hidden sm:inline">school</span>
           </Button>
         }
       />

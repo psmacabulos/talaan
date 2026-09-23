@@ -63,7 +63,7 @@ export function CardBox({ studentId, cards: initialCards }: { studentId: string;
 
   return (
     <fieldset className="flex flex-col gap-4">
-      <legend className="font-heading text-sm font-semibold text-foreground">ID card</legend>
+      <legend className="mb-3 font-heading text-sm font-semibold text-foreground">ID card</legend>
 
       {mode === "waiting" ? (
         <div className="flex flex-col gap-3 rounded-lg border border-dashed border-border p-4">

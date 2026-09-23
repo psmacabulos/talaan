@@ -11,9 +11,12 @@ export function StudentsPagination({ params, total }: { params: StudentListParam
   const hasNext = params.page < pageCount;
 
   return (
-    <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
+    // One row at every width, as on a phone the count and the page buttons
+    // fit side by side; wraps only on the very narrowest screens.
+    <div className="flex flex-wrap items-center justify-between gap-3">
       <p className="text-sm text-muted-foreground">
-        Showing {start}&ndash;{end} of {total} student{total === 1 ? "" : "s"}
+        Showing {start}&ndash;{end} of {total}
+        <span className="hidden sm:inline"> student{total === 1 ? "" : "s"}</span>
       </p>
       <div className="flex items-center gap-2">
         <PageLink direction="previous" enabled={hasPrevious} params={params} />
@@ -38,7 +41,7 @@ function PageLink({
   const Icon = direction === "previous" ? ChevronLeft : ChevronRight;
   const label = direction === "previous" ? "Previous page" : "Next page";
   const className = cn(
-    "flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors",
+    "flex size-11 items-center justify-center rounded-lg border sm:size-8 border-border text-muted-foreground transition-colors",
     enabled ? "hover:bg-accent hover:text-accent-foreground" : "pointer-events-none opacity-40",
   );
 

@@ -9,6 +9,7 @@ import type { Tap } from "@/features/attendance/types";
 import type { StudentListParams } from "./search-params";
 import type { StudentRow } from "./search-students";
 import { StudentDrawer } from "./student-drawer";
+import { StudentsCardList } from "./students-card-list";
 import { StudentsPagination } from "./students-pagination";
 import { StudentsTable } from "./students-table";
 import { StudentsToolbar } from "./students-toolbar";
@@ -20,6 +21,9 @@ import type { Card, Student } from "./types";
  * needs client state — the "Add student" button, row clicks, and the
  * add/edit drawer they both open — lives here so the header button and
  * the table can share one piece of drawer state.
+ *
+ * Below 768px the table becomes cards (Step 27.7). Both are rendered and
+ * CSS shows one, the same as the staff page (docs/RESPONSIVE-LISTS.md).
  */
 export function StudentsDirectory({
   title,
@@ -44,6 +48,9 @@ export function StudentsDirectory({
     open: false,
     cards: [],
   });
+  const openStudent = canEdit
+    ? (row: StudentRow) => setDrawer({ open: true, student: row.student, cards: row.cards })
+    : undefined;
 
   return (
     <div className="flex flex-col gap-6">
@@ -53,9 +60,14 @@ export function StudentsDirectory({
         description={description}
         actions={
           canEdit ? (
-            <Button onClick={() => setDrawer({ open: true, student: undefined, cards: [] })}>
+            // Just "Add" on phones, so the button fits beside the title; the
+            // full name stays the accessible name everywhere.
+            <Button
+              aria-label="Add student"
+              onClick={() => setDrawer({ open: true, student: undefined, cards: [] })}
+            >
               <Plus className="size-4" aria-hidden="true" />
-              Add student
+              Add<span className="hidden sm:inline">student</span>
             </Button>
           ) : undefined
         }
@@ -67,12 +79,17 @@ export function StudentsDirectory({
         <EmptyState icon={Users} title="No students match" description="Try a different name, grade or card status." />
       ) : (
         <>
-          <StudentsTable
-            items={items}
-            taps={taps}
-            params={params}
-            onRowClick={canEdit ? (row) => setDrawer({ open: true, student: row.student, cards: row.cards }) : undefined}
-          />
+          <div className="md:hidden">
+            <StudentsCardList
+              items={items}
+              taps={taps}
+              subtitle={showGradeFilter ? "grade" : "time-in"}
+              onCardClick={openStudent}
+            />
+          </div>
+          <div className="hidden md:block">
+            <StudentsTable items={items} taps={taps} params={params} onRowClick={openStudent} />
+          </div>
           <StudentsPagination params={params} total={total} />
         </>
       )}

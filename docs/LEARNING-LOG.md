@@ -19,7 +19,7 @@ Short, plain-language notes explaining things along the way — for whenever I w
 - [Turning a Next.js web app into an iOS/Android app](#turning-a-nextjs-web-app-into-an-iosandroid-app)
 - [Two separate logins in one app, and a mock password (Step 22)](#two-separate-logins-in-one-app-and-a-mock-password-step-22)
 - [Accessibility: checking that everyone can use it (Step 27)](#accessibility-checking-that-everyone-can-use-it-step-27)
-- [Phones vs. desktops: one list, two layouts (Step 27.6)](#phones-vs-desktops-one-list-two-layouts-step-276)
+- [Phones vs. desktops: one list, two layouts (Steps 27.6–27.7)](#phones-vs-desktops-one-list-two-layouts-steps-276277)
 
 ---
 
@@ -527,7 +527,7 @@ Three of this step's first failures were the test being too quick or too literal
 Each was confirmed by looking at the actual page before the test was changed. The rule is to prove it's a test problem, never just loosen the test until it passes.
 
 
-## Phones vs. desktops: one list, two layouts (Step 27.6)
+## Phones vs. desktops: one list, two layouts (Steps 27.6–27.7)
 
 ### Why a table becomes a compact list on a phone
 A table is great on a desktop because your eye can run straight down one column ("which of these is still Invited?"). A phone has room for maybe two columns, so the rest ends up off-screen and you have to drag sideways, losing track of which row you were on. So on a phone each person becomes one short row: name, plus one line saying what they do. The switch happens at 768px wide (roughly a small tablet held upright).
@@ -538,6 +538,21 @@ The first try was a tall card per person showing *every* field with labels. It f
 - **Details one tap away.** The email moved into the ⋮ menu. It's rarely needed, so it doesn't earn a line on every row.
 
 Both versions are actually sent to the browser, and the styling shows only the one that fits the screen. That sounds wasteful, but it means the page arrives already correct for your device instead of loading the wrong one and jumping. The full explanation, with diagrams, is in [`docs/RESPONSIVE-LISTS.md`](RESPONSIVE-LISTS.md).
+
+### Using a sample design as a benchmark, not a blueprint (Step 27.7)
+The phone mockup you shared was a good guide to the *feel* you wanted: cards, the status easy to spot, and controls sized for a thumb. Some of its details would have worked against this app, though, so each one was checked before it was copied:
+- **A "Linked" tag on every card** is the same noise problem as "Active" on every staff row. Only the unusual ("No card", "Lost") is shown.
+- **Age and LRN on the list:** students are minors, so the list shows as little about them as it can.
+- **Scrolling filter pills** hide some choices off the edge of the screen, the same problem as a table you have to drag sideways.
+- **A bottom navigation bar** holds 4–5 tabs, and principals have 6 sections. It would need a "More" tab, and it changes every page, so it's a decision of its own. You chose not now.
+
+The full list of what was kept and why is in [`docs/RESPONSIVE-LISTS.md`](RESPONSIVE-LISTS.md) (section 3).
+
+### Cards vs. one divided list: the trade-off (Step 27.7)
+Both show the same short content. **Cards** (separate boxes with a gap) make each student feel like one tappable thing and match the mockup. **A divided list** (one box with thin lines) fits about one more row on the screen. You chose cards, and Staff switched too so the two pages look the same. Keeping the cards short (about 65px) is what keeps a long list quick to scroll.
+
+### "Add" on a phone, "Add student" on a computer (Step 27.7)
+On a phone the button next to the page title just says "Add", so it fits beside the title instead of dropping onto its own line. A screen reader still hears "Add student", because the button carries a hidden label with the full name. The visible word has to be the *start* of that hidden label, so someone using voice control can say "click Add" and it still works.
 
 ### A red button that failed only when hovered
 The automated audit caught something no one would spot by eye. The red "Remove" button's text passed the contrast rules normally, but when the mouse was over it the background turned a deeper pink and the text became too faint (4.12 instead of the required 4.5). It only surfaced because the confirmation box happened to open right under the mouse. It's fixed for every red button in the app: hovering now fills the button solid red with white text. It's a good example of why a test failure is investigated rather than silenced.

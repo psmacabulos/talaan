@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████████░░ 89%**  (77 of 87 tasks, 29 of 33 steps approved)
+**Overall progress: ██████████████████░░ 90%**  (83 of 92 tasks, 31 of 34 steps approved)
 
-**Next up:** Step 27.6, Mobile staff list and drawer (ready for your review)
+**Next up:** Step 27.8, Mobile cards everywhere else (not started)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -36,8 +36,9 @@
 | 26 | Appearance settings | ██████████ 100% | Approved |
 | 27 | Accessibility audit | ██████████ 100% | Approved |
 | 27.5 | Light and dark mode toggle | ██████████ 100% | Approved |
-| 27.6 | Mobile staff list and drawer | ████████░░  80% | Ready for your review |
-| 27.7 | Mobile lists and drawers everywhere else | ░░░░░░░░░░   0% | Not started |
+| 27.6 | Mobile staff list and drawer | ██████████ 100% | Approved |
+| 27.7 | Mobile students cards | ██████████ 100% | Approved |
+| 27.8 | Mobile cards everywhere else | ░░░░░░░░░░   0% | Not started |
 | 28 | End-to-end tests | ░░░░░░░░░░   0% | Not started |
 | 29 | Final polish | ░░░░░░░░░░   0% | Not started |
 
@@ -245,20 +246,30 @@ Commit: `feat(theme): add light and dark mode toggle`
 - [x] Owner review: I checked it and said "approved"
 
 ### Step 27.6: Mobile staff list and drawer
-Pulled forward from Step 29's "Mobile table layout" task at the owner's request (2026-09-23): polish first, end-to-end tests after. Staff sets the pattern; Step 27.7 applies it everywhere else.
+Pulled forward from Step 29's "Mobile table layout" task at the owner's request (2026-09-23): polish first, end-to-end tests after. Staff sets the pattern; Steps 27.7 (Students) and 27.8 apply it everywhere else.
 - [x] Below 768px the Staff table becomes a compact list, one ~64px row per person: initials, name, and one line saying what they do ("Principal", "Teacher", or "Adviser, Grade 7 – Rizal"), an "Invited" tag only for pending invites (an active account shows nothing), and a ⋮ menu whose top line is the email. No column labels. (Review round 1: the first version, tall cards with an email line and labelled Role | Advisory class | Status columns, was too big to scroll through a long list.) From 768px up the table stays as it was, plus a ⋮ column. No sideways scrolling at 320, 375, 390 or 428px.
 - [x] The ⋮ menu's first real actions: Resend invitation (pending invites only) and Remove (with an "Are you sure?" dialog; never your own account), against the mock data. One rule decides what each row offers, shared by the menu and the server actions.
 - [x] Red (destructive) buttons fill solid red on hover. The shadcn default tint measured 4.12:1 (light) and 3.87:1 (dark) contrast when hovered, below AA; found by the audit in review round 1.
 - [x] Invite drawer on phones: full screen width (was 75%), fields stacked one per row, the advisory-class explanation shortened behind an ⓘ toggle, and 44px Cancel/Invite buttons pinned at the bottom.
 Done when: no horizontal overflow at 320–1280px in light and dark with a very long name and email, the accessibility audit passes including the new menu and dialog, and lint, typecheck, test, build and check:tokens pass.
 Commit: `feat(staff): show staff as a compact list on small screens`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
-### Step 27.7: Mobile lists and drawers everywhere else
-- [ ] Apply Step 27.6's compact-list pattern (docs/RESPONSIVE-LISTS.md) to every other list that still scrolls sideways on a phone: Students, Schools, the Attendance table and the class roll. Planned in detail once Step 27.6 is approved.
-- [ ] Apply the same drawer treatment to every other drawer (add/edit student, add school, and any others): full width on phones, fields stacked, long helper text shortened, footer buttons pinned and thumb-sized.
+### Step 27.7: Mobile students cards
+Planned from a sample phone mockup the owner shared (2026-09-23), taking what fits this project and leaving the rest (docs/RESPONSIVE-LISTS.md section 3 says what and why). The owner chose separate cards over Step 27.6's divided list, and no bottom navigation bar for now. Split from the original "everywhere else" step so each is reviewable in one sitting.
+- [x] Below 768px the Students table becomes cards: initials, name, one line under it ("Grade 12 – Silang", or today's time in for a teacher, whose list is all one class), today's status badge on the right, and a card tag only for "No card" or "Lost". Age, LRN and guardian stay in the edit drawer. Tapping a card opens the edit drawer (principals and super admins only). Staff switches from its divided list to the same cards.
+- [x] Phone toolbar: full-width search, grade and card filters side by side below it, all 44px tall. Pagination stays on one row with 44px page buttons.
+- [x] Page headers keep the action button beside the title on phones ("Add", "Invite"), with the description full width underneath; from 640px up the button sits to the right as before.
+- [x] Add/edit student drawer on phones: full screen width (was 75%), fields stacked one per row, 44px Cancel/Save buttons pinned at the bottom.
+Done when: no horizontal overflow at 320–1280px in light and dark, the "small screens" audit test covers Students, and lint, typecheck, test, build and check:tokens pass.
+Commit: `feat(students): show students as cards on small screens`
+- [x] Owner review: I checked it and said "approved"
+
+### Step 27.8: Mobile cards everywhere else
+- [ ] Apply Step 27.7's card pattern to every other list that still scrolls sideways on a phone: Schools, the Attendance table and the dashboard class roll.
+- [ ] Apply the same drawer treatment to the Add school drawer (and any other drawer not yet done): full width on phones, fields stacked, footer buttons pinned and thumb-sized.
 Done when: the "small screens" audit test covers every list page, and lint, typecheck, test, build and check:tokens pass.
-Commit: `feat(ui): show lists compactly on small screens`
+Commit: `feat(ui): show lists as cards on small screens`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 28: End-to-end tests
@@ -270,7 +281,7 @@ Commit: `test: add end-to-end tests`
 ### Step 29: Final polish
 - [ ] Lighthouse pass on login and dashboard, 360px and 1280px review in light and dark, remove unused code, finish the README.
 - [ ] Sitewide spacing/alignment consistency pass across every screen built so far: generous, deliberate whitespace (not the prototype's literal values), and real box-centering checked by measurement, not just by eye. See CLAUDE.md's UX quality bar and docs/BUILD-LOG.md's Step 12 "review round 2" (the flexbox centering bug found this way).
-- [ ] Mobile table layout: moved out to Steps 27.6 (Staff, sets the pattern) and 27.7 (every other list and drawer) at the owner's request. Here, only re-check that no list added since still scrolls sideways at 360px.
+- [ ] Mobile table layout: moved out to Steps 27.6 (Staff, sets the pattern), 27.7 (Students) and 27.8 (every other list and drawer) at the owner's request. Here, only re-check that no list added since still scrolls sideways at 360px.
 Done when: scores and the review are reported honestly, and lint, typecheck, test, build and check:tokens pass.
 Commit: `chore: final polish for phase 1`
 - [ ] Owner review: I checked it and said "approved"

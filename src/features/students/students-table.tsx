@@ -12,10 +12,7 @@ import { CardStatusBadge } from "./card-status-badge";
 import type { StudentListParams, StudentSortField } from "./search-params";
 import { studentListHref } from "./search-params";
 import type { StudentRow } from "./search-students";
-
-function initials(row: StudentRow): string {
-  return `${row.student.firstName[0]}${row.student.lastName[0]}`.toUpperCase();
-}
+import { StudentAvatar, gradeAndSection, studentName } from "./student-display";
 
 function SortableHeader({
   field,
@@ -92,21 +89,15 @@ export function StudentsTable({
             >
               <TableCell>
                 <div className="flex items-center gap-3">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-foreground">
-                    {initials(row)}
-                  </span>
+                  <StudentAvatar student={row.student} />
                   <div>
-                    <p className="font-medium text-foreground">
-                      {row.student.firstName} {row.student.lastName}
-                    </p>
+                    <p className="font-medium text-foreground">{studentName(row.student)}</p>
                     <p className="text-sm text-muted-foreground">{row.student.guardianName}</p>
                   </div>
                 </div>
               </TableCell>
               <TableCell className="text-muted-foreground">{row.student.lrn ?? "—"}</TableCell>
-              <TableCell>
-                Grade {row.student.gradeLevel} &ndash; {row.student.section}
-              </TableCell>
+              <TableCell>{gradeAndSection(row.student)}</TableCell>
               <TableCell>{ageInYears(row.student.birthDate)}</TableCell>
               <TableCell>
                 <CardStatusBadge status={row.cardStatus} />

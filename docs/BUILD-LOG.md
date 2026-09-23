@@ -1290,3 +1290,49 @@ All build tasks done. Waiting on the owner's review.
 - A clean production server at 320, 375, 390, 428, 768 and 1280px, light and dark: `scrollWidth` equals the viewport width everywhere, and the ⋮ is 44×44.
 - `npx playwright test`: 129 passed, 3 skipped.
 - `lint`, `typecheck`, `check:tokens`, `test` (306) and `build` all pass.
+
+## Step 27.7: Mobile students cards
+
+**Goal:** the owner shared a sample phone mockup of the Students page (cards, a status badge on the right, scrolling filter pills, a bottom navigation bar) and asked for whatever fits the project to become the benchmark for every page that doesn't fit a phone. I compared each idea with the app and with Step 27.6, and proposed what to take, change or leave (the table is in `docs/RESPONSIVE-LISTS.md` section 3).
+
+**Owner decisions during planning:**
+- **Separate cards**, as in the mockup, over Step 27.6's divided list. I had recommended the divided list for density and said Staff would switch to cards too if the owner chose cards, so both change here.
+- **No bottom navigation bar for now.**
+- The original Step 27.7 ("every other list and drawer") was too big to review in one sitting, so it was split: Students plus the Staff card switch here, and Schools, Attendance and the class roll in a new Step 27.8.
+
+Step 27.6's "Owner review" box is still unticked. The owner committed it (72aba81) but hasn't written "approved", so it wasn't ticked.
+
+### What got built
+- **`src/features/students/student-display.tsx`:** `studentName`, `gradeAndSection` and an `aria-hidden` `StudentAvatar`, shared by the table and the cards. `students-table.tsx` now uses them instead of its own `initials()`.
+- **`src/features/students/students-card-list.tsx`:** `<ul aria-label="Students">` of `<li>` cards (`relative flex min-h-16 … rounded-lg border bg-card px-4 py-3`, `gap-2` apart). Each card shows the avatar, an `<h3>` name, and one line: `gradeAndSection()`, or for a teacher (`subtitle="time-in"`) "In at 7:12 AM" or "No tap yet" from `todaysTap`. Today's `StatusPill` sits on the right, with a `CardStatusBadge` under it only when the card status isn't `active`.
+  - When the viewer can edit, the name is a `<button aria-label="Edit …">` inside the `<h3>`, with `after:absolute after:inset-0` so the whole card is the tap target, and `has-focus-visible:ring-2` on the `<li>` for the focus ring.
+  - Why that way round: a `<button>` can't contain a heading, but a heading can contain a button.
+- **`students-directory.tsx`:** renders both views (`md:hidden` cards, `hidden md:block` table), with one `openStudent` handler that's undefined for teachers. The header button reads "Add" below 640px, with `aria-label="Add student"`.
+- **`students-toolbar.tsx`:**
+  - Layout is `grid` on phones (search `col-span-full`, filters `grid-cols-2`, or one column for a teacher) and `sm:flex` from 640px up, as before.
+  - Search is `h-11 sm:h-8`. The select triggers get `w-full data-[size=default]:h-11 sm:w-fit sm:data-[size=default]:h-8`.
+- **`students-pagination.tsx`:** one `flex flex-wrap justify-between` row. " students" is hidden below 640px, and the page buttons are `size-11 sm:size-8`.
+- **`src/components/page-header.tsx`:** now a `grid-cols-[minmax(0,1fr)_auto]` grid. The button sits beside the title on phones and the description spans full width under both. From 640px up the button sits right of both lines. It affects every page with a header button, so Staff ("Invite") and Schools ("Add") got the same short phone labels.
+- **Student drawer:**
+  - `SheetContent` now uses `data-[side=right]:w-full data-[side=right]:sm:max-w-md`. Its old `w-full sm:max-w-md` had been losing to the Sheet's own attribute-prefixed rules, the same bug Step 27.6 found in the staff drawer. It was 75% wide on phones and 384px, not 448px, on desktop.
+  - Field pairs are `grid-cols-1 sm:grid-cols-2`, legends get `mb-3` (also in `card-box.tsx`), and the footer buttons are 44px and share the width below 640px.
+- **Staff:** `staff-compact-list.tsx` swapped `divide-y` in one bordered box for `flex flex-col gap-2` with a border on each `<li>`, and names went from `text-sm` to `text-base` to match the student cards.
+- **Tests:**
+  - `students-card-list.test.tsx` (5 tests).
+  - The e2e "small screens" test now loops over `LIST_PAGES` (`/staff`, `/students`) and also runs axe on each.
+
+### Problems hit
+- **The desktop header put the description top right.** The first grid version used `sm:row-span-2` on the actions. In Tailwind v4, `row-span-2` compiles to `grid-row: span 2 / span 2`. That's the shorthand, so it reset the `row-start-1` set just before it. The button became auto-placed, and the auto-placed description took the free top-right cell. It showed up in the 1280px screenshot. Fixed with `sm:row-end-3`, which only sets `grid-row-end`, and with an explicit `col-start-1 row-start-2` on the description so it never relies on auto-placement. Re-screenshotted: title and description on the left, button on the right, centred across both lines.
+- **The teacher screenshot showed the principal's page.** The owner's running dev server (port 3000) listed only Maria Ramos on Staff. The teacher account had been removed from its in-memory mock data at some point (the Step 27.6 Remove action works against that data), so `resolveSession` fell back to the default staff id. Rather than restart the owner's server, I ran `npm run build` and `npx next start -p 3100` for fresh data, and the teacher view rendered correctly there. Restarting the dev server resets its data.
+- **Names wrap at 320px.** With the avatar and a status badge on the same line, "Reynaldo Abad" wraps to two lines at 320px, and at 360px "Jasmine Batumbakal" does too when a desktop-style scrollbar takes 15px. They wrap cleanly (`wrap-break-word`, `min-w-0`) and nothing overflows. The mockup has the same layout. Left as is and noted for review.
+
+### Verified
+- **Phone screenshots:** 360px (light and dark, principal and teacher), 320px (dark), and the edit drawer at 375px. The drawer measured the full viewport width with 44px footer buttons. Escape returned focus to the card's "Edit Reynaldo Abad" button.
+- **Sizes and overflow:** search, filters and page buttons measured 44px tall. `scrollWidth - clientWidth` was 0 on `/students`, `/staff`, `/schools`, `/parent` and `/parent/notifications` at 360px, and on `/students` and `/staff` at 1280px.
+- **Desktop:** at 1280px the table and header look as before, apart from the header fix above.
+- **Headers on other pages:** Staff (360px, light and dark), Schools (360px, still a sideways table, which is Step 27.8's job) and the parent home and notifications (360px), where the button now sits beside the title.
+- `npx playwright test` (against the fresh build on port 3100): **130 passed, 4 skipped** (phone- or desktop-only tests).
+- `lint`, `typecheck`, `check:tokens`, `test` (311) and `build` all pass.
+
+### Result
+All build tasks done. Waiting on the owner's review.

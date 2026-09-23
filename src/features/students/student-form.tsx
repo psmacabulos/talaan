@@ -112,9 +112,9 @@ export function StudentForm({
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-1 flex-col overflow-hidden">
       <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-4">
         <fieldset className="flex flex-col gap-4">
-          <legend className="font-heading text-sm font-semibold text-foreground">Learner</legend>
+          <legend className="mb-3 font-heading text-sm font-semibold text-foreground">Learner</legend>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
             <div className="flex flex-col gap-2">
               <Label htmlFor="student-first-name">First name</Label>
               <Input
@@ -150,7 +150,7 @@ export function StudentForm({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
             <div className="flex flex-col gap-2">
               <Label htmlFor="student-birth-date">Birth date</Label>
               <Input
@@ -190,7 +190,7 @@ export function StudentForm({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
             <div className="flex flex-col gap-2">
               <Label htmlFor="student-grade">Grade</Label>
               <Controller
@@ -230,7 +230,7 @@ export function StudentForm({
         </fieldset>
 
         <fieldset className="flex flex-col gap-4">
-          <legend className="font-heading text-sm font-semibold text-foreground">Parent or guardian</legend>
+          <legend className="mb-3 font-heading text-sm font-semibold text-foreground">Parent or guardian</legend>
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="student-guardian-name">Name</Label>
@@ -267,7 +267,7 @@ export function StudentForm({
         {student ? <CardBox studentId={student.id} cards={cards ?? []} /> : null}
       </div>
 
-      <SheetFooter className="flex-row justify-end border-t border-border">
+      <SheetFooter className="flex-row justify-end border-t border-border [&>button]:h-11 [&>button]:flex-1 sm:[&>button]:h-8 sm:[&>button]:flex-none">
         <Button type="button" variant="ghost" onClick={onCancel} disabled={busy}>
           Cancel
         </Button>
