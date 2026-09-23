@@ -1216,3 +1216,77 @@ None. The first full run passed.
 
 ### Result
 All build tasks done. Waiting on the owner's review.
+
+## Step 27.6: Mobile staff cards and drawer
+
+**Goal:** the first piece of the final polish, pulled forward ahead of Step 28's end-to-end tests at the owner's request. The owner viewed `/staff` at 375×667 (iPhone SE) in Chrome's device mode and found the table scrolling sideways, and supplied a mock-up: one card per person with an avatar, name, email and ⋮ menu, then Role | Advisory class | Status in three columns. They also asked for drawers where "everything is seen", with less important text hidden until tapped. Following the "separate commits per concern" rule, this became its own inserted step, with Step 27.7 carrying the same pattern to every other list and drawer. It was taken out of Step 29's "Mobile table layout" task.
+
+**Owner decisions during planning:**
+- The ⋮ menu should have **real actions**. None existed (the staff page was read-only apart from Invite), so this step adds Resend invitation and Remove.
+- Test in Chrome first. Downloading Playwright's WebKit (Safari engine) was approved but deferred.
+
+### Investigation before building
+- **Page width.** Measured the element chain from the `<table>` up to `<body>` at 375px with a throwaway Playwright script, first plain and then with `isMobile: true, hasTouch: true` (Chrome's phone emulation mode). Both times `document.documentElement.scrollWidth` was exactly 375. The table (575px) scrolled inside its own `overflow-x-auto` box, and the shell's existing `min-w-0` held. So in Chromium only the table scrolled, not the whole page. The owner's screenshot showed the top bar's theme button cut off too, which I couldn't reproduce. The likeliest explanation is DevTools' device preview being narrower than 375px when the DevTools panel takes up much of the window, but that's unconfirmed. The cards remove the wide element on phones either way, and the new audit test pins the page width.
+- **Drawer.** The invite Sheet measured **281px** wide at 375px. `StaffDrawer` passed `w-full`, but shadcn's `SheetContent` has `data-[side=right]:w-3/4`, and the attribute selector outranks a plain class. The same applies to our `sm:max-w-md` against the Sheet's `data-[side=right]:sm:max-w-sm`, so the desktop drawer had actually been 384px all along, not 448px.
+
+### What got built
+- **Mock data:** `StaffRepository.remove(id)`, a no-op for an unknown id, with two repository tests.
+- **`src/features/staff/row-actions.ts`:** `staffRowActions(staff, currentUserId)` returns `{ canResend: status === "invited", canRemove: id !== currentUserId }`. The ⋮ menu and the server actions both use it. Unit-tested.
+- **`actions.ts`:**
+  - A shared `findActionTarget` refuses a teacher, a school-less session or a staff member at another school.
+  - `resendStaffInvite` only re-checks that the invite is still pending, since no email exists in Phase 1, the same as `inviteStaff`.
+  - `removeStaff` refuses your own account, deletes and calls `refresh()`.
+- **`staff-display.tsx`:** `ROLE_LABEL`, `staffName`, `advisoryLabel` and `StaffAvatar`, moved out of `staff-table.tsx` so both views share one wording. The avatar is now `aria-hidden`, since the name always sits beside it.
+- **`staff-row-menu.tsx`:** the ⋮ `DropdownMenu` (`modal={false}`), with Resend and a destructive Remove that opens a confirmation `Dialog`. Renders nothing when a row has no actions. Menu items are `py-2.5 md:py-1` for thumbs.
+- **`staff-card-list.tsx`:** the card list. A `<ul>` of `<li>` cards with an `<h3>` name, `wrap-break-word` for names and `wrap-anywhere` for emails, a 44px ⋮ (`size-11 -mt-2 -mr-2`) and a `<dl>` for the three fields.
+- **`staff-table.tsx`:** uses the shared helpers, and gets a last `w-12` column (sr-only header "Actions") holding the same menu.
+- **`staff-directory.tsx`:** renders both, `md:hidden` for the cards and `hidden md:block` for the table. `page.tsx` now passes `session.userId` down.
+- **Drawer and form:**
+  - `data-[side=right]:w-full` on `SheetContent`.
+  - Field pairs `grid-cols-1 sm:grid-cols-2`.
+  - `AdvisoryHint`: "Can be assigned later." plus an ⓘ `aria-expanded` toggle revealing the old sentence.
+  - Legends get `mb-3`/`mb-1`.
+  - Footer buttons `[&>button]:h-11 [&>button]:flex-1` below `sm`.
+- **Tests:**
+  - `staff-card-list.test.tsx` (5 tests).
+  - `e2e/a11y.spec.ts`: "staff row menu and remove confirmation" (axe with the menu open and with the dialog open, then Cancel restores focus to ⋮; it cancels rather than confirming, so other parallel tests' shared data isn't touched) and a new "small screens" group checking that `/staff` at 360px shows the list, hides the table and has `scrollWidth <= clientWidth`.
+- **Docs:** new `docs/RESPONSIVE-LISTS.md`, linked from the README.
+
+### Problems hit
+- **Card details misaligned at 320px.** "Advisory class" wraps to two lines in its ~61px column, which pushed its "—" below the neighbouring badges. I first considered `grid-cols-[auto_1fr_auto]` to give the middle column more room, but rejected it: the dividers would sit at different positions on each card, because "Principal" and "Teacher" badges differ in width. Fixed with **subgrid** instead: each column is `row-span-2 grid grid-rows-subgrid` inside a `grid-rows-[auto_auto]` `<dl>`, so all three labels share one row and all three values the next. Verified in a 320px screenshot.
+- **Name too large.** `<h3>` picks up the global heading size. Set to `text-base leading-snug font-semibold`.
+- **Focus fell to `<body>` after a removal.** Measured with `document.activeElement` in the verification script. Radix returned focus to the ⋮ trigger, which then vanished with its row. `onCloseAutoFocus` now always `preventDefault`s. After a removal (tracked in a ref) it focuses `#main-content` (the skip link's target). Otherwise it focuses the trigger, because the menu item that opened the dialog no longer exists either. Re-measured: focus lands on `MAIN`.
+- **Legend spacing.** "Staff details" sat directly on "First name". A `<legend>` isn't a flex item of its fieldset, so `gap-4` never applied. It got its own margin. The Student form has the same pattern and is left for Step 27.7.
+- `npx prettier --check` flags these files but also untouched ones (`types.ts`, `staff-status-badge.tsx`), so the repo isn't Prettier-clean overall and CI doesn't run it. I didn't reformat unrelated files.
+
+### Verified
+- A Playwright script at 320, 375, 390, 428, 768 and 1280px, in light and dark, after inviting "Maria Concepcion Evangelista Dela Cruz-Villanueva" / `maria.concepcion.evangelista.delacruzvillanueva@balanga-science-high.deped.example` through the new form. `scrollWidth` equalled the viewport width at every size, and no visible element extended past the right edge.
+- The ⋮ trigger measured 44×44. The drawer measured 375px at 375 and still 384px at 1280.
+- Screenshots: cards at 320 (light) and 375 (dark), the open menu, the confirmation dialog, the invite drawer with the ⓘ expanded, and the desktop table with the ⋮ column (dark, 1280).
+- `npx playwright test`: **129 passed, 3 skipped** (phone- or desktop-only tests).
+- `lint`, `typecheck`, `check:tokens`, `test` (305) and `build` all pass.
+
+### Result
+All build tasks done. Waiting on the owner's review.
+
+### Review round 1: compact list instead of cards
+**Owner feedback:** the cards were still too big. With many staff, or once the same pattern reaches Students, it "will take ages to scroll". The email isn't needed on a phone. The Role / Advisory class / Status labels can go, since "Teacher, Grade 7 – Rizal" already implies the role. Status could be a small marker or dropped. The owner asked me to apply the frontend-design skill and UX judgement.
+
+**Design reasoning (frontend-design skill):** a stack of identical bordered cards is the generic "card kit" look, and labels repeated on every card are structure that carries no information. I kept the app's existing tokens and fonts, and changed what each row says:
+- **One summary line.** `staffSummary()` returns "Adviser, Grade 7 – Rizal" when there's an advisory class, otherwise the role. "Adviser" is the local school word and implies teacher.
+- **Status by exception.** Active shows nothing. Only "Invited" gets the existing amber `StaffStatusBadge`.
+- **Email in the ⋮ menu.** It's a `DropdownMenuLabel` with `md:hidden`, the menu is widened to `w-60`, and the address breaks with `wrap-anywhere`.
+- **One list.** A single bordered `<ul>` with `divide-y`, rows `min-h-16 py-2 pr-1 pl-4`, and the ⋮ in a fixed `size-11` box so text aligns whether or not a row has a menu. A row is about 64px, down from about 190px.
+
+`staff-card-list.tsx` was renamed to `staff-compact-list.tsx` (`StaffCompactList`), and its test was rewritten: 6 tests, covering no labels, the summary line, the role fallback, only Invited flagged, the email only in the menu, no menu on your own account, and the Remove confirmation.
+
+**Problems hit:**
+- **The Invited tag squeezed long names.** First placed between the name and the ⋮, it left the name about 80px at 320px, so "Maria Concepcion Evangelista Dela Cruz-Villanueva" took four lines. It moved to the second line, `flex flex-wrap` beside the summary, so the name has the full width. Re-screenshotted at 320px.
+- **A sample staff member disappeared from the dev server.** Jose Pascual was gone after my scripted checks, which raised the question of whether Remove deleted the wrong person. I reproduced it on a separate production server (`npx next start --port 3101`), signed in as the Balanga principal with the same cookie the audit uses, and listed names after invite and after remove, through both the phone list and the desktop table. Each time, only the invited person was removed and Jose stayed. The Playwright MCP browser had reported "already in use" earlier in the session, so something else was also driving the dev server. The dev server's in-memory data resets on restart.
+- **`TaskStop` didn't free the port.** Stopping the background `next start` task ended the shell but not its node child, so the port stayed taken and a second start failed with `EADDRINUSE`. The leftover server was found with `netstat -ano | grep :3101` and ended with `taskkill //PID <pid> //F //T`.
+- **Destructive button contrast on hover (a real bug, found by the audit).** The mobile "staff row menu and remove confirmation" test failed `color-contrast` on `.bg-destructive/10`. The audit already waits for animations, so it wasn't a mid-fade. A diagnostic script confirmed that the dialog's Remove button opened directly under the pointer that had just clicked the menu's Remove item. With `@axe-core/playwright` it measured 4.12:1 (light) and 3.87:1 (dark) while hovered, and none once the mouse moved away. So shadcn's `hover:bg-destructive/20` / `dark:hover:bg-destructive/30` fails AA for every destructive button in the app. The earlier card layout just never put the pointer there. **Fix** in `src/components/ui/button.tsx`: hover fills with the solid `bg-destructive text-destructive-foreground` token pair. Re-measured with no violations in either mode, hovered or not. The test was not loosened.
+
+**Verified (round 1):**
+- A clean production server at 320, 375, 390, 428, 768 and 1280px, light and dark: `scrollWidth` equals the viewport width everywhere, and the ⋮ is 44×44.
+- `npx playwright test`: 129 passed, 3 skipped.
+- `lint`, `typecheck`, `check:tokens`, `test` (306) and `build` all pass.

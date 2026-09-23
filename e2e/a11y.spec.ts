@@ -181,6 +181,32 @@ test.describe("interactive states", () => {
     await expectNoBlockingViolations(page);
   });
 
+  // Cancels instead of confirming, so the shared mock data other tests
+  // read is left alone.
+  test("staff row menu and remove confirmation", async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    await signInAs(context, "principal", baseURL!);
+    await page.goto("/staff");
+    const trigger = page.getByRole("button", {
+      name: "Actions for Jose Pascual",
+    });
+    await trigger.click();
+    await expect(page.getByRole("menu")).toBeVisible();
+    await expectNoBlockingViolations(page);
+
+    await page.getByRole("menuitem", { name: "Remove" }).click();
+    await expect(
+      page.getByRole("dialog", { name: "Remove Jose Pascual?" }),
+    ).toBeVisible();
+    await expectNoBlockingViolations(page);
+
+    await page.getByRole("button", { name: "Cancel" }).click();
+    await expect(trigger).toBeFocused();
+  });
+
   test("tap station results", async ({ page, context, baseURL }) => {
     await signInAs(context, "principal", baseURL!);
     await page.goto("/station");
@@ -324,6 +350,30 @@ test.describe("keyboard and focus", () => {
         .boundingBox();
       expect(box!.height, label).toBeGreaterThanOrEqual(44);
     }
+  });
+});
+
+/**
+ * Step 27.6: on a phone, a list shows compact rows instead of a table, and the
+ * page never needs sideways scrolling (WCAG 1.4.10, Reflow).
+ */
+test.describe("small screens", () => {
+  test("staff page fits the screen width", async ({
+    page,
+    context,
+    baseURL,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile", "phone layout only");
+    await signInAs(context, "principal", baseURL!);
+    await page.goto("/staff");
+    await expect(page.getByRole("list", { name: "Staff" })).toBeVisible();
+    await expect(page.getByRole("table")).toBeHidden();
+
+    const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }));
+    expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
   });
 });
 

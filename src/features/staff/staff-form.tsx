@@ -1,9 +1,9 @@
 "use client";
 
-import { useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { Info, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,9 +82,9 @@ export function StaffForm({ onSuccess, onCancel }: { onSuccess: () => void; onCa
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-1 flex-col overflow-hidden">
       <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-4">
         <fieldset className="flex flex-col gap-4">
-          <legend className="font-heading text-sm font-semibold text-foreground">Staff details</legend>
+          <legend className="mb-3 font-heading text-sm font-semibold text-foreground">Staff details</legend>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
             <div className="flex flex-col gap-2">
               <Label htmlFor="staff-first-name">First name</Label>
               <Input
@@ -156,13 +156,10 @@ export function StaffForm({ onSuccess, onCancel }: { onSuccess: () => void; onCa
 
         {role === "teacher" ? (
           <fieldset className="flex flex-col gap-4">
-            <legend className="font-heading text-sm font-semibold text-foreground">Advisory class (optional)</legend>
-            <p className="text-sm text-muted-foreground">
-              Can be assigned later instead — a teacher with no advisory class yet just won&apos;t see one on their
-              dashboard.
-            </p>
+            <legend className="mb-1 font-heading text-sm font-semibold text-foreground">Advisory class (optional)</legend>
+            <AdvisoryHint />
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="staff-advisory-grade">Grade</Label>
                 <Controller
@@ -196,7 +193,8 @@ export function StaffForm({ onSuccess, onCancel }: { onSuccess: () => void; onCa
         ) : null}
       </div>
 
-      <SheetFooter className="flex-row justify-end border-t border-border">
+      {/* Pinned below the scrolling fields, so the buttons stay in reach however long the form gets. On phones they share the width and are 44px tall for thumbs. */}
+      <SheetFooter className="flex-row justify-end border-t border-border [&>button]:h-11 [&>button]:flex-1 sm:[&>button]:h-8 sm:[&>button]:flex-none">
         <Button type="button" variant="ghost" onClick={onCancel} disabled={busy}>
           Cancel
         </Button>
@@ -212,5 +210,39 @@ export function StaffForm({ onSuccess, onCancel }: { onSuccess: () => void; onCa
         </Button>
       </SheetFooter>
     </form>
+  );
+}
+
+/**
+ * One short line, with the longer explanation behind an ⓘ button (Step
+ * 27.6), so the phone-width drawer isn't three lines of small print before
+ * the fields. It's a plain show/hide toggle, not a hover tooltip, since
+ * hover doesn't exist on a touch screen.
+ */
+function AdvisoryHint() {
+  const [open, setOpen] = useState(false);
+  const detailsId = useId();
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-1">
+        <p className="text-sm text-muted-foreground">Can be assigned later.</p>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label="More about advisory classes"
+          aria-expanded={open}
+          aria-controls={detailsId}
+          onClick={() => setOpen((value) => !value)}
+          className="text-muted-foreground"
+        >
+          <Info aria-hidden="true" />
+        </Button>
+      </div>
+      <p id={detailsId} hidden={!open} className="text-sm text-muted-foreground">
+        A teacher with no advisory class yet just won&apos;t see one on their dashboard.
+      </p>
+    </div>
   );
 }

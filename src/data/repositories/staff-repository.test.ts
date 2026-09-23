@@ -67,4 +67,16 @@ describe("createMockStaffRepository", () => {
     await repo.create({ ...principalA, firstName: "Different" });
     await expect(repo.getById("staff-principal-a")).resolves.toEqual(principalA);
   });
+
+  it("removes a staff member", async () => {
+    const repo = createMockStaffRepository([principalA, teacherB], { latencyMs: 0 });
+    await repo.remove("staff-teacher-b");
+    await expect(repo.list()).resolves.toEqual([principalA]);
+  });
+
+  it("ignores removing an unknown id", async () => {
+    const repo = createMockStaffRepository([principalA], { latencyMs: 0 });
+    await repo.remove("staff-missing");
+    await expect(repo.list()).resolves.toEqual([principalA]);
+  });
 });

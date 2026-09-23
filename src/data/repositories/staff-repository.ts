@@ -10,6 +10,8 @@ export interface StaffRepository {
   list(): Promise<Staff[]>;
   /** Appends a newly invited staff member (Step 18). Idempotent by `id`, same shape as `StudentRepository.create`. */
   create(staff: Staff): Promise<Staff>;
+  /** Removes a staff member's access (Step 27.6). A no-op for an unknown id, so a repeated click can't fail. */
+  remove(id: string): Promise<void>;
 }
 
 export function createMockStaffRepository(
@@ -37,6 +39,11 @@ export function createMockStaffRepository(
         data.push(staff);
       }
       return staff;
+    },
+    async remove(id) {
+      await simulateLatency(latencyMs);
+      const index = data.findIndex((staff) => staff.id === id);
+      if (index !== -1) data.splice(index, 1);
     },
   };
 }

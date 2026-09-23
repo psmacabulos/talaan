@@ -19,6 +19,7 @@ Short, plain-language notes explaining things along the way — for whenever I w
 - [Turning a Next.js web app into an iOS/Android app](#turning-a-nextjs-web-app-into-an-iosandroid-app)
 - [Two separate logins in one app, and a mock password (Step 22)](#two-separate-logins-in-one-app-and-a-mock-password-step-22)
 - [Accessibility: checking that everyone can use it (Step 27)](#accessibility-checking-that-everyone-can-use-it-step-27)
+- [Phones vs. desktops: one list, two layouts (Step 27.6)](#phones-vs-desktops-one-list-two-layouts-step-276)
 
 ---
 
@@ -525,3 +526,31 @@ Three of this step's first failures were the test being too quick or too literal
 
 Each was confirmed by looking at the actual page before the test was changed. The rule is to prove it's a test problem, never just loosen the test until it passes.
 
+
+## Phones vs. desktops: one list, two layouts (Step 27.6)
+
+### Why a table becomes a compact list on a phone
+A table is great on a desktop because your eye can run straight down one column ("which of these is still Invited?"). A phone has room for maybe two columns, so the rest ends up off-screen and you have to drag sideways, losing track of which row you were on. So on a phone each person becomes one short row: name, plus one line saying what they do. The switch happens at 768px wide (roughly a small tablet held upright).
+
+The first try was a tall card per person showing *every* field with labels. It fitted, but at about 190px per person a list of 30 staff (or 500 students) would take ages to scroll. The lesson is that a phone isn't a small desktop, so decide what each row is *for*:
+- **Say it once, in words.** "Adviser, Grade 7 – Rizal" says the role and the class in one line, so it needs no "Role:" or "Advisory class:" labels.
+- **Status by exception.** If almost everyone is "Active", showing it on every row is noise that hides the one "Invited" that matters. Only show the unusual.
+- **Details one tap away.** The email moved into the ⋮ menu. It's rarely needed, so it doesn't earn a line on every row.
+
+Both versions are actually sent to the browser, and the styling shows only the one that fits the screen. That sounds wasteful, but it means the page arrives already correct for your device instead of loading the wrong one and jumping. The full explanation, with diagrams, is in [`docs/RESPONSIVE-LISTS.md`](RESPONSIVE-LISTS.md).
+
+### A red button that failed only when hovered
+The automated audit caught something no one would spot by eye. The red "Remove" button's text passed the contrast rules normally, but when the mouse was over it the background turned a deeper pink and the text became too faint (4.12 instead of the required 4.5). It only surfaced because the confirmation box happened to open right under the mouse. It's fixed for every red button in the app: hovering now fills the button solid red with white text. It's a good example of why a test failure is investigated rather than silenced.
+
+### The ⋮ menu ("kebab" or "overflow" menu)
+The three dots hold the actions for one row: here, Resend invitation and Remove. It keeps each row tidy instead of showing several buttons on every line. Two rules it follows:
+- **It only offers what's actually possible.** Resend only appears for someone who hasn't accepted yet, and you can't remove yourself, so your own row has no ⋮ at all.
+- **Anything that deletes asks "Are you sure?" first.** The server double-checks the same rules, because a button being hidden doesn't stop someone from sending the request another way.
+
+### Why the drawer only filled three-quarters of the phone
+The ready-made drawer component (from shadcn/ui) has its own width rule: 75% of the screen. Our code said "full width", but the component's rule was written in a more specific way, and in CSS the more specific rule wins, even if ours comes later. The fix was to write ours in the same specific way. A useful habit: when a style you wrote "doesn't work", something more specific is usually overriding it. The browser's inspector shows which rule won.
+
+### Checking a phone layout in Chrome's device mode
+In Chrome, F12 opens DevTools, and the phone/tablet icon (or Ctrl+Shift+M) switches to device mode, where you pick a device such as "iPhone SE". Two things to know:
+- **The preview panel itself can be narrower than the device.** If the DevTools panel takes up a lot of the window, Chrome may crop or scroll the *preview*, which looks like the page is too wide when it isn't. Dragging DevTools narrower, or docking it to the bottom (⋮ menu in DevTools → Dock side), gives the preview room. This is my best guess for why the whole staff page looked cut off in your screenshot while my measurements showed it fitting. It isn't confirmed.
+- **Device mode is Chrome pretending.** It's a very good check for layout, but a real iPhone runs Safari's engine, which can differ in small ways. Before launch it's worth one look on a real phone.

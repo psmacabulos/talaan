@@ -33,5 +33,5 @@ export default async function StaffPage() {
 
   const staff = await staffRepository.listBySchool(session.schoolId);
 
-  return <StaffDirectory items={staff} />;
+  return <StaffDirectory items={staff} currentUserId={session.userId} />;
 }

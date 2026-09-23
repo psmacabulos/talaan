@@ -1,20 +1,16 @@
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ROLE_LABEL, StaffAvatar, advisoryLabel, staffName } from "./staff-display";
+import { StaffRowMenu } from "./staff-row-menu";
 import { StaffStatusBadge } from "./staff-status-badge";
 import type { Staff } from "./types";
 
-const ROLE_LABEL: Record<Staff["role"], string> = {
-  super_admin: "Super admin",
-  principal: "Principal",
-  teacher: "Teacher",
-};
-
-function initials(staff: Staff): string {
-  return `${staff.firstName[0]}${staff.lastName[0]}`.toUpperCase();
-}
-
-/** This school's staff — principals and teachers who can sign in to it. Read-only: no row click, nothing to edit yet (Step 18 only builds the invite flow). */
-export function StaffTable({ items }: { items: Staff[] }) {
+/**
+ * This school's staff on screens 768px and wider — built for scanning many
+ * rows at once. Below that, `StaffCompactList` shows the same records as
+ * compact rows instead (Step 27.6). The last column holds each row's ⋮ menu.
+ */
+export function StaffTable({ items, currentUserId }: { items: Staff[]; currentUserId: string }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
       <Table label="Staff">
@@ -24,6 +20,9 @@ export function StaffTable({ items }: { items: Staff[] }) {
             <TableHead>Role</TableHead>
             <TableHead>Advisory class</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead className="w-12">
+              <span className="sr-only">Actions</span>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -31,13 +30,9 @@ export function StaffTable({ items }: { items: Staff[] }) {
             <TableRow key={staff.id}>
               <TableCell>
                 <div className="flex items-center gap-3">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-foreground">
-                    {initials(staff)}
-                  </span>
+                  <StaffAvatar staff={staff} />
                   <div>
-                    <p className="font-medium text-foreground">
-                      {staff.firstName} {staff.lastName}
-                    </p>
+                    <p className="font-medium text-foreground">{staffName(staff)}</p>
                     <p className="text-sm text-muted-foreground">{staff.email}</p>
                   </div>
                 </div>
@@ -45,13 +40,12 @@ export function StaffTable({ items }: { items: Staff[] }) {
               <TableCell>
                 <Badge variant="outline">{ROLE_LABEL[staff.role]}</Badge>
               </TableCell>
-              <TableCell className="text-muted-foreground">
-                {staff.advisoryGradeLevel && staff.advisorySection
-                  ? `Grade ${staff.advisoryGradeLevel} – ${staff.advisorySection}`
-                  : "—"}
-              </TableCell>
+              <TableCell className="text-muted-foreground">{advisoryLabel(staff) ?? "—"}</TableCell>
               <TableCell>
                 <StaffStatusBadge status={staff.status} />
+              </TableCell>
+              <TableCell className="text-right">
+                <StaffRowMenu staff={staff} currentUserId={currentUserId} />
               </TableCell>
             </TableRow>
           ))}
