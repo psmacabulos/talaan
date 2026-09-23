@@ -13,6 +13,8 @@ export interface SchoolRepository {
   getById(id: string): Promise<School | null>;
   /** Replaces an existing school by `id` (Step 21's notification settings, and Step 26's appearance settings). Returns `null` if no school with that id exists. */
   update(school: School): Promise<School | null>;
+  /** Appends a newly added school (Step 25). Idempotent by `id`, same shape as `StaffRepository.create`. */
+  create(school: School): Promise<School>;
 }
 
 export function createMockSchoolRepository(
@@ -35,6 +37,13 @@ export function createMockSchoolRepository(
       const index = data.findIndex((existing) => existing.id === school.id);
       if (index === -1) return null;
       data[index] = school;
+      return school;
+    },
+    async create(school) {
+      await simulateLatency(latencyMs);
+      if (!data.some((existing) => existing.id === school.id)) {
+        data.push(school);
+      }
       return school;
     },
   };

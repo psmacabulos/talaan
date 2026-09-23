@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { School as SchoolIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/features/staff/types";
@@ -7,15 +8,30 @@ import { NavLinks } from "./nav-links";
 /**
  * Shared by the static sidebar (this file) and the mobile drawer
  * (mobile-nav.tsx) so the "who am I looking at" header is identical on
- * both. Every seed school is logo-less for now — Step 20 (logo upload)
- * decides how a real logo renders; until then this icon badge stands in.
+ * both. A school with an uploaded logo (Step 25) shows it here; otherwise
+ * an icon badge stands in.
  */
 export function SidebarBrand({ school }: { school: School | null }) {
   return (
     <div className="flex items-center gap-3 px-2">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-        <SchoolIcon className="size-5" aria-hidden="true" />
-      </span>
+      {school?.logoUrl ? (
+        // A Step 25 logo upload is stored as a data URL, which Next's
+        // image component detects and serves as-is (unoptimized) — there's
+        // nothing to optimize, and the fixed size box means no layout
+        // shift. The school's name sits right beside it, so the image
+        // itself is decorative.
+        <Image
+          src={school.logoUrl}
+          alt=""
+          width={40}
+          height={40}
+          className="size-10 shrink-0 rounded-lg border border-border bg-card object-contain"
+        />
+      ) : (
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+          <SchoolIcon className="size-5" aria-hidden="true" />
+        </span>
+      )}
       <div className="flex min-w-0 flex-col">
         <span className="truncate font-heading text-sm font-semibold text-foreground">
           {school?.name ?? "Talaan"}

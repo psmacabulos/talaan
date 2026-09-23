@@ -8,16 +8,23 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { updateNotificationPreference } from "./actions";
 import type { NotificationPreference } from "./types";
 
+/** Shared user-facing labels — the settings form here and the Step 25 schools list both show a school's preference. */
+export const NOTIFICATION_PREFERENCE_LABEL: Record<NotificationPreference, string> = {
+  off: "Off",
+  time_in_only: "Time in only",
+  time_in_and_time_out: "Time in and time out",
+};
+
 const OPTIONS: { value: NotificationPreference; label: string; description: string }[] = [
-  { value: "off", label: "Off", description: "No tap notifications are sent to parents." },
+  { value: "off", label: NOTIFICATION_PREFERENCE_LABEL.off, description: "No tap notifications are sent to parents." },
   {
     value: "time_in_only",
-    label: "Time in only",
+    label: NOTIFICATION_PREFERENCE_LABEL.time_in_only,
     description: "Notify parents when a student arrives.",
   },
   {
     value: "time_in_and_time_out",
-    label: "Time in and time out",
+    label: NOTIFICATION_PREFERENCE_LABEL.time_in_and_time_out,
     description: "Notify parents on arrival and on dismissal.",
   },
 ];

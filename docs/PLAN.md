@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: █████████████████░░░ 83%**  (64 of 77 tasks, 24 of 30 steps approved)
+**Overall progress: █████████████████░░░ 86%**  (66 of 77 tasks, 25 of 30 steps approved)
 
-**Next up:** Step 24, Notification feed (ready for your review)
+**Next up:** Step 25, Schools management (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -31,8 +31,8 @@
 | 21 | School notification settings | ██████████ 100% | Approved |
 | 22 | Parent signup, login and link a child | ██████████ 100% | Approved |
 | 23 | Parent dashboard | ██████████ 100% | Approved |
-| 24 | Notification feed | █████░░░░░  50% | Ready for your review |
-| 25 | Schools management | ░░░░░░░░░░   0% | Not started |
+| 24 | Notification feed | ██████████ 100% | Approved |
+| 25 | Schools management | █████░░░░░  50% | Ready for your review |
 | 26 | Appearance settings | ░░░░░░░░░░   0% | Not started |
 | 27 | Accessibility audit | ░░░░░░░░░░   0% | Not started |
 | 28 | End-to-end tests | ░░░░░░░░░░   0% | Not started |
@@ -215,10 +215,10 @@ Commit: `feat(parents): add parent dashboard`
 - [x] In-app notification bell/feed for parents, populated by the same simulated-tap mechanism the staff dashboard uses, honoring the school's notification preference (off / time-in only / both).
 Done when: simulating a tap for a linked child adds a notification for its parent(s), and the preference correctly suppresses or allows it.
 Commit: `feat(parents): add notification feed`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 25: Schools management
-- [ ] Schools list, open a school to see its theme, and add a school with logo upload.
+- [x] Schools list, open a school to see its theme, and add a school with logo upload.
 Done when: a super admin can add a school and view it with its own logo and colors.
 Commit: `feat(schools): add schools management`
 - [ ] Owner review: I checked it and said "approved"

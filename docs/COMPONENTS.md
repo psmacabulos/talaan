@@ -49,6 +49,16 @@ Per CLAUDE.md's code structure (`src/components/` = "shadcn primitives" in `ui/`
 
 Each has its own test (`*.test.tsx`) in Testing Library, matching the convention already used by `src/app/page.test.tsx`.
 
+## School logos: upload and render (Step 25)
+
+Phase 1 has no file storage, so a logo travels as a **data URL** (a text string that *is* the image, produced by `FileReader.readAsDataURL`) inside the form values and lands on the school record's `logoUrl`. Three feature-local pieces plus one shared change make the whole loop work:
+
+- **`LogoUploader`** (`src/features/schools/logo-uploader.tsx`) — a visually hidden `<input type="file" accept="image/*">` behind a button-styled `<label>` (`Button asChild`), reading the picked file to a data URL and handing it up through `onChange`. Client checks (image type, 1 MB cap — `MAX_LOGO_BYTES`) report through `onInvalid`; the schema re-checks size server-side with `z.url().max(1_500_000)` (1 MB binary ≈ 1.4 M base64 characters). The input's value is reset after each change so picking the same file again still fires.
+- **`SchoolLogo`** (`src/features/schools/school-logo.tsx`) — the one place that renders a school's brand mark outside the sidebar: the uploaded logo via `next/image`, or a two-letter initials monogram (`bg-primary text-primary-foreground`). Next detects `data:` sources and serves them unoptimized automatically (`node_modules/next/dist/shared/lib/get-img-props.js`), so `next/image` stays correct here; the image is decorative (`alt=""`) because the school name always sits beside it.
+- **`SidebarBrand`** (`src/components/app-shell/sidebar.tsx`) — the same logo-or-icon-badge choice inline in the shell, so a school with a logo sees it everywhere it identifies itself.
+
+**One Sheet behavior worth knowing** (it silently shapes every drawer in the app): the sheet base in `src/components/ui/sheet.tsx` sizes itself with `data-[side=right]:w-3/4` and `data-[side=right]:sm:max-w-sm`. Those attribute-variant utilities outrank any plain `w-full`/`sm:max-w-lg` a caller passes — tailwind-merge treats them as different modifier groups, and the attribute selector wins on specificity. So every drawer (staff included) renders ¾ of the screen on a phone and 384px on desktop. If a full-width mobile drawer or a wider drawer is ever wanted, change it once in `sheet.tsx` — not per drawer.
+
 ## Where to see all of this today
 
 `src/app/page.tsx`'s "Components (Step 6)" section shows one example of every new primitive and shared component, so it can be checked in a browser under every preset (`?preset=ocean`, etc.) and both color modes. This is explicitly **not** the real style guide — Step 7 builds a dedicated, dev-only `/design-system` page showing every token, component, and state properly, with a `check:tokens` script enforcing the no-raw-colors rule. Today's section on the demo page is scaffolding, the same way Step 5's `?preset=` links are.

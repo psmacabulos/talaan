@@ -52,4 +52,18 @@ describe("createMockSchoolRepository", () => {
     const repo = createMockSchoolRepository([schoolA], { latencyMs: 0 });
     await expect(repo.update(schoolB)).resolves.toBeNull();
   });
+
+  it("create() appends a new school", async () => {
+    const repo = createMockSchoolRepository([schoolA], { latencyMs: 0 });
+    await expect(repo.create(schoolB)).resolves.toEqual(schoolB);
+    await expect(repo.list()).resolves.toEqual([schoolA, schoolB]);
+  });
+
+  it("create() is idempotent by id", async () => {
+    const repo = createMockSchoolRepository([schoolA], { latencyMs: 0 });
+    const renamed: School = { ...schoolA, name: "School A Renamed" };
+    await repo.create(schoolA);
+    await repo.create(renamed);
+    await expect(repo.list()).resolves.toEqual([schoolA]);
+  });
 });

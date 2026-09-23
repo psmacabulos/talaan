@@ -40,3 +40,26 @@ export const schoolSchema = z.object({
   showDepedLogo: z.boolean(),
   notificationPreference: notificationPreferenceSchema,
 });
+
+/**
+ * Step 25's add-school form. Unlike `schoolSchema`, `id`, `showDepedLogo`
+ * and `notificationPreference` are assigned by the server action, not the
+ * form: a new school starts with the DepEd logo off (permission pending)
+ * and time-in-only notifications, which its principal can change later on
+ * the Settings page. The form does collect the principal's name and email
+ * so the action can create their invited account alongside the school
+ * (the prototype's "invite sent" behavior) — see `createSchool` in
+ * actions.ts.
+ */
+export const createSchoolSchema = z.object({
+  name: z.string().trim().min(1, "Enter a school name"),
+  principalFirstName: z.string().trim().min(1, "Enter the principal's first name"),
+  principalLastName: z.string().trim().min(1, "Enter the principal's surname"),
+  principalEmail: z.email("Enter a valid email address"),
+  presetId: z.enum(presetIds),
+  // A logo upload arrives as a data URL from the file picker (Step 25 has
+  // no real storage yet) — capped so a single huge file can't blow up the
+  // in-memory mock record. ~1.5M chars of base64 ≈ a 1 MB image, matching
+  // the client's own 1 MB check in logo-uploader.tsx.
+  logoUrl: z.url().max(1_500_000, "That logo file is too large — 1 MB or smaller").optional(),
+});

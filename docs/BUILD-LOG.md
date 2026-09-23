@@ -1068,3 +1068,33 @@ The bell test needs the dropdown content rendered (empty text, item text), which
 
 ### Result
 All build tasks done. Waiting on the owner's review.
+
+---
+
+## Step 25: Schools management
+
+**Goal:** the super admin's Schools screen — list every school, add a school with logo upload, and "Open" one to see it as its principal does. Step 24 was approved at the start of this step.
+
+**Two owner decisions up front (asked before planning):** "Open" means *switch into the school* (the prototype's behavior), so the add-school form also collects the principal's name and email and creates an **invited principal** — a brand-new school can be opened immediately. And no Status column: the school record stays minimal.
+
+### What got built
+- `src/features/schools/schools-table.tsx` — School (logo or initials monogram + name), Students and Staff counts, Theme (light+dark swatch dots for presets, brand dot for custom), Notifications (reusing Step 21's `NOTIFICATION_PREFERENCE_LABEL`), and a per-row `Open` button that runs the switch in a `useTransition`.
+- `src/features/schools/schools-directory.tsx` + `school-drawer.tsx` + `school-form.tsx` — the Step 18 shape: a client Directory owns the drawer; the form is RHF + Zod with inline errors, a toast on success, and disabled-while-submitting.
+- `src/features/schools/preset-picker.tsx` — the five named presets as radio cards, each with a mini swatch rendered through `presetToScopedCss` (one module-level `<style>` for all five, the design-system page's mechanism — no raw colors, `check:tokens` stays green). Custom colors are deliberately absent (Step 26's Appearance settings).
+- `src/features/schools/logo-uploader.tsx` — hidden file input behind a button-styled label; `FileReader.readAsDataURL` turns the pick into a data URL carried inside the form values (Phase 1 has no real storage), with client checks (image type, 1 MB cap) reported through `onInvalid` and re-checked server-side by the schema's `z.url().max(1_500_000)`.
+- `src/features/schools/school-logo.tsx` — one component for the logo-or-initials choice everywhere outside the sidebar; `src/components/app-shell/sidebar.tsx` renders a real logo in the brand slot when `school.logoUrl` exists.
+- `src/features/schools/actions.ts` — `createSchool` (super-admin guard → schema re-validation → school + invited principal via the two repositories → `refresh()`) and `openSchool` (guard → find that school's principal → `setDevSession` + `clearThemeOverride` + `redirect("/dashboard")` — the dev switcher's own swap plus navigation).
+- `src/data/repositories/school-repository.ts` — `create()`, idempotent by id like `StaffRepository.create`.
+- `src/app/(app)/schools/page.tsx` — replaces the stub: `hasNavAccess` guard, then the school list plus per-school student/staff counts via `Promise.all`.
+
+### Two real layout conflicts found during browser verification — and how they were resolved
+Verification was against the owner's running dev server (a second `npm run dev` correctly refused to start — port 3000 in use — so all checks ran against the existing server, which Turbopack hot-reloads):
+
+1. **The preset swatches cramped and mis-centered on a phone.** At 360px the two-column preset grid gives each card ~101px, and the shadcn `Label` base class carries `items-center` — my `flex-col` turned the label vertical but never overrode the centering, so the name and the 74px swatch both rendered *centered*, with the swatch overflowing its label box and nearly touching the card border (measured: swatch right edge 203.9px against card right edge 204.6px). Fixed by stacking the cards on phones (`grid-cols-1 sm:grid-cols-2`, the notification-settings form's single-column precedent) and an explicit `items-start` on the label (twMerge keeps it over the base's `items-center`). Re-measured after: swatch left-aligned with the name, fully inside the card at both breakpoints.
+2. **The drawer's width classes were dead code.** I wrote `w-full sm:max-w-lg` intending a wide drawer; the sheet base has `data-[side=right]:w-3/4` and `data-[side=right]:sm:max-w-sm`. Tailwind-merge doesn't consider a `data-[...]`-variant utility and a plain utility to conflict, and the attribute selector outranks the plain class — so the base wins at *every* width: the drawer measures 259px at a 360px viewport (¾ of the screen) and 384px at desktop (max-w-sm), exactly like the staff drawer, whose own `w-full sm:max-w-md` is equally overridden (Step 18, owner-approved). Rather than silently keeping dead classes, `school-drawer.tsx` now passes only `flex flex-col gap-0` with a comment stating the real behavior; a full-width mobile drawer would be a small app-wide `sheet.tsx` change if ever wanted.
+
+### Verified
+`lint`, `typecheck`, `test` (291, up from 283 — 6 new `createSchoolSchema` cases and 2 `schoolRepository.create` cases), `check:tokens` and `build` all pass; `/schools` appears in the production route list. Browser end-to-end at 360px and 1280px, light and dark, zero console errors: the 3 seed schools list with counts, theme dots and Open buttons; the page shows `AccessDenied` for a principal; invalid submits show inline errors; picking Crimson recolors the live preview to the preset's real token values (computed `--primary` on the preview matched `presets.ts` exactly); a non-image and a 1.1 MB file are both rejected with messages; creating "Rizal Memorial High School" (Crimson, `design/assets/balsci-logo.jpg` uploaded) toasts, closes the drawer, and adds the row — 0 students, 1 staff (the invited principal), logo rendering from its data URL; Open lands on `/dashboard` with `--primary` on `<html>` set to the crimson token server-side, the sidebar showing the school's logo and name, and the new "Principal, Maria Santos (invited)" appearing in the dev switcher; switching back to the super admin works; the table scrolls inside its container at 360px with no page overflow, and the drawer's form scrolls with its footer pinned.
+
+### Result
+All build tasks done. Waiting on the owner's review.

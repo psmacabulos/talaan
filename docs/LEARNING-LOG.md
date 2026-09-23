@@ -249,6 +249,11 @@ The third one is the trap: "Simulate a tap" saves a new tap and the page should 
 
 **The general habit worth keeping:** when something *seems* like it should happen automatically because a similar thing does, that's the moment to go read the documentation rather than build on the assumption. Wrong guesses here don't crash — they just quietly do nothing, which is much harder to notice.
 
+### A logo with no database: `FileReader` → data URL → the school record (Step 25)
+Phase 1 has no real file storage, so an uploaded logo has nowhere to "go" — except inside the form itself. The add-school form does exactly that: when a file is picked, JavaScript's `FileReader.readAsDataURL()` reads it on the visitor's own computer and turns the image into a **data URL** — a text string that *is* the whole image, base64-encoded, looking like `data:image/jpeg;base64,/9j/4AAQ...`. That string travels with the rest of the form values and lands on the school record's `logoUrl` field, so every screen that shows the logo just shows that same string. It works because logos are small (the form caps them at 1 MB); this exact trick would be a terrible idea for photos or documents at scale, and Phase 2's real storage will replace it without touching the screens.
+
+Two things make it safe with Next's `next/image` (checked in `node_modules/next/dist/shared/lib/get-img-props.js` rather than assumed): Next detects a `data:` source and automatically serves it **unoptimized** (there's nothing to compress — the full bytes are already in the page) and disables lazy loading. So `next/image` is still the right component for data-URL logos — no plain `<img>` needed, and lint stays happy. The size guard lives in two layers: the picker rejects files over 1 MB client-side, and `createSchoolSchema` re-checks with `z.url().max(1_500_000)` (a 1 MB binary file is ~1.4 M characters once base64-encoded).
+
 ---
 
 ## Domain modeling: types vs. schemas
@@ -343,6 +348,9 @@ The whole app right now runs on **make-believe data** — a handful of fake scho
 
 The **dev switcher** (the "Principal, Balanga City..." menu in the top bar) exists purely because of that choice. There's no real login yet, so there's no ordinary way to check "does a teacher see a different screen than a principal?" The switcher is a stand-in: pick a name from the list, and the app pretends that's who's signed in — same students, same screens, just viewed as a different role. It's marked "dev only" and is coded to vanish completely once the app goes live for real, because by then real logins will do this job instead.
 
+### "Open a school" (Step 25) is the dev switcher's own swap, borrowed
+The schools list's **Open** button needs to show a super admin *that school's app* — its colors, its logo, its principal's view — without a real multi-account login yet. The dev switcher already knows how to become someone else, so `openSchool()` reuses exactly that machinery instead of inventing a new mechanism: `setDevSession(principal.id)` (switch the pretend-signed-in user to that school's principal), `clearThemeOverride()` (drop the theme-override cookie so the *school's own* preset applies), then `redirect("/dashboard")`. Three existing building blocks; the only new part is finding the school's principal first via `staffRepository.listBySchool()`. That's also why the add-school form collects the principal's name and email: a brand-new school has no principal to switch into unless creating the school creates an **invited** principal account at the same time. (In Phase 2, "Open a school" could become a real super-admin privilege backed by a real session — the same three building blocks, minus the dev-cookie part.)
+
 ---
 
 ## CSS layout: Flexbox spacing gotchas
@@ -373,6 +381,15 @@ The app already has one global rule (`base.css`) that neutralizes motion for any
 The login page's desktop version has a big decorative left panel (logo, headline, tagline). Below the point where the screen switches to one column, that whole panel was stacking *above* the sign-in form, in full — same size, same content, just moved. It technically worked (no errors, nothing broken, checked every round), but it meant a phone had to scroll past a large decorative block before reaching the one thing it opened the page to do: sign in.
 
 **The fix wasn't smaller spacing — it was different content.** Below that breakpoint, the decorative panel disappears completely (`hidden lg:flex` — gone, not shrunk), replaced by a small heading with just the words "Attendance portal," so the sign-in form is the first real thing on the screen. **The lesson:** "does this render correctly on a small screen" and "does this make sense on a small screen" are two different questions — the first is what a quick check confirms, the second needs someone to actually ask "does the *first* screen's worth of content on this device do the visitor's actual job."
+
+### Two quiet "wins" over my own classes, both found by measuring (Step 25)
+Both of these look fine on a desktop and only show at a phone width — and neither throws an error, so the browser console gives no hint:
+
+1. **A base class you don't see can out-live your additions.** shadcn's `Label` component ships with `items-center` baked in. The preset-picker made the label `flex-col` (stacked name-over-swatch) but never overrode that centering, so both children rendered *centered* — and the 74px swatch, wider than its 49px label box on a phone, overflowed it on both sides, nearly touching the card's border (measured, not guessed: swatch right edge 203.9px against the card's 204.6px). The fix had two parts: an explicit `items-start` (tailwind-merge keeps it over the base's `items-center`) *and* stacking the preset cards on phones (`grid-cols-1 sm:grid-cols-2`) so each card is wide enough for the swatch at all.
+
+2. **A `data-[…]`-variant utility outranks a plain one — and tailwind-merge won't tell you.** The drawer's `SheetContent` base classes include `data-[side=right]:w-3/4` and `data-[side=right]:sm:max-w-sm`. I added plain `w-full sm:max-w-lg`, expecting them to win. They didn't: tailwind-merge only merges classes in the same *modifier group* (a `data-[side=right]:`-prefixed utility and a bare one are different groups, so both stay), and in the browser the attribute selector `[data-side=right]` beats a plain class on specificity. Result: the drawer renders ¾ of the screen on a phone and 384px on desktop no matter what width classes the caller passes — which is also true of the (owner-approved) staff drawer, so nothing was broken app-wide. The fix here was honesty, not CSS: the dead classes were removed and the comment now states the real behavior. If a full-width mobile drawer is ever wanted, it's one small change in `sheet.tsx`, not per-drawer.
+
+**The general habit from both:** when a class you wrote appears to do nothing (or does something *slightly* off from what you wrote), measure the rendered box and read the component's base classes — the answer is usually a base class or variant you never saw winning quietly.
 
 ---
 

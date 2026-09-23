@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { notificationPreferenceSchema, schoolSchema } from "./schemas";
+import { createSchoolSchema, notificationPreferenceSchema, schoolSchema } from "./schemas";
 
 const validSchool = {
   id: "school-balanga",
@@ -7,6 +7,14 @@ const validSchool = {
   theme: { kind: "preset" as const, presetId: "school" },
   showDepedLogo: false,
   notificationPreference: "time_in_only" as const,
+};
+
+const validCreateSchool = {
+  name: "Sta. Rita National High School",
+  principalFirstName: "Maria",
+  principalLastName: "Santos",
+  principalEmail: "maria.santos@example.com",
+  presetId: "ocean" as const,
 };
 
 describe("schoolSchema", () => {
@@ -62,5 +70,42 @@ describe("notificationPreferenceSchema", () => {
   it("rejects anything else", () => {
     expect(notificationPreferenceSchema.safeParse("time_out_only").success).toBe(false);
     expect(notificationPreferenceSchema.safeParse("on").success).toBe(false);
+  });
+});
+
+describe("createSchoolSchema", () => {
+  it("accepts a valid new school without a logo", () => {
+    expect(createSchoolSchema.safeParse(validCreateSchool).success).toBe(true);
+  });
+
+  it("accepts a data-URL logo", () => {
+    const result = createSchoolSchema.safeParse({
+      ...validCreateSchool,
+      logoUrl: "data:image/png;base64,iVBORw0KGgo=",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a school with no name", () => {
+    const result = createSchoolSchema.safeParse({ ...validCreateSchool, name: "  " });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an invalid principal email", () => {
+    const result = createSchoolSchema.safeParse({ ...validCreateSchool, principalEmail: "not-an-email" });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an unknown preset id", () => {
+    const result = createSchoolSchema.safeParse({ ...validCreateSchool, presetId: "sunset" });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an oversize logo data URL", () => {
+    const result = createSchoolSchema.safeParse({
+      ...validCreateSchool,
+      logoUrl: `data:image/png;base64,${"A".repeat(1_500_001)}`,
+    });
+    expect(result.success).toBe(false);
   });
 });

@@ -30,7 +30,8 @@
       "Bash(rm -f step24-notifications-page-1280-light.png step24-page-1280.jpg)",
       "Bash(ls step24-*)",
       "Bash(wc -l docs/BUILD-LOG.md docs/LEARNING-LOG.md docs/recipes/step-23-parent-dashboard.md README.md)",
-      "Bash(ls docs/recipes/)"
+      "Bash(ls docs/recipes/)",
+      "mcp__plugin_playwright_playwright__browser_file_upload"
     ],
     "deny": [
       "Bash(git add)",
@@ -79,7 +80,8 @@
       "Edit(./.env.local)"
     ],
     "additionalDirectories": [
-      "C:\\Users\\aqua_flask\\AppData\\Local\\Temp\\claude\\d--Repositories-talaan-starter-talaan\\f40f0ab3-06d6-4b68-a959-983ea92fd559\\scratchpad"
+      "C:\\Users\\aqua_flask\\AppData\\Local\\Temp\\claude\\d--Repositories-talaan-starter-talaan\\f40f0ab3-06d6-4b68-a959-983ea92fd559\\scratchpad",
+      "\\tmp"
     ]
   }
 }
