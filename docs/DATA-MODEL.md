@@ -20,6 +20,11 @@ erDiagram
     STUDENT ||--o{ CARD : "has, over time"
     STUDENT |o--o{ TAP : "recorded as, at tap time"
     TAP ||--o| ALERT : "may raise"
+    SCHOOL ||--o{ PARENT : "has accounts for"
+    PARENT ||--o{ PARENT_STUDENT_LINK : "linked via"
+    STUDENT ||--o{ PARENT_STUDENT_LINK : "linked via"
+    SCHOOL ||--o{ NOTIFICATION : "sends"
+    STUDENT ||--o{ NOTIFICATION : "receives"
 
     SCHOOL {
         string id PK
@@ -70,6 +75,29 @@ erDiagram
         AlertType type "only lost_card_tapped exists so far"
         boolean acknowledged
     }
+    PARENT {
+        string id PK
+        string schoolId FK "one school only — no cross-school parents"
+        string firstName
+        string lastName
+        string mobile "PH mobile, 09... or +639..."
+        string email
+    }
+    PARENT_STUDENT_LINK {
+        string id PK
+        string schoolId FK
+        string parentId FK
+        string studentId FK
+        datetime linkedAt
+    }
+    NOTIFICATION {
+        string id PK
+        string schoolId FK
+        string studentId FK
+        NotificationKind kind "time_in, time_out"
+        datetime tappedAt "flat copy of the tap — no tapId FK"
+        boolean read
+    }
 ```
 
 **How to read the symbols:** `||` means "exactly one," `o{` / `o|` means "zero-or-many" / "zero-or-one" (the `{` crow's foot is what means "many"), and the symbol touching an entity describes that entity's own count in the relationship. Two lines deliberately use "zero-or-one" instead of "exactly one," both for real reasons already in the schemas: `SCHOOL |o--o{ STAFF` (a `super_admin`'s `schoolId` is `null` — see `docs/BUILD-LOG.md`'s Step 8 entry) and `STUDENT |o--o{ TAP` (an unrecognized card tapped at a station has `studentId: null`).
@@ -88,6 +116,12 @@ erDiagram
 Do this every time a card is lost over a student's whole 4-5 years, and you end up with a full, permanent history of every card that student has ever had — one `active` at any given moment, any number of `lost`/`retired` ones behind it, all still there and queryable. This is exactly what Step 16 ("Card link and replace") will build as an actual button/flow — the data shape to support it already exists today, which is what the seed-data row above proves.
 
 One honest caveat, visible if you look closely at the diagram: `TAP.cardSerial` matches `CARD.serial` — a **value** match, not a link by `id` the way `Card.studentId` links to `Student.id`. That's deliberate: a tap station only ever reads a serial off a physical card, it has no idea what a database `id` even is. A repository (Step 9) will be the thing that looks up "which card currently has this serial" when a tap comes in.
+
+## The parent side (Step 20): a many-to-many link, and a flat-copy notification
+
+`PARENT`, `PARENT_STUDENT_LINK` and `NOTIFICATION` are new in Step 20. The shape worth noticing is the **two** relationships on `PARENT_STUDENT_LINK` — `PARENT ||--o{ PARENT_STUDENT_LINK` and `STUDENT ||--o{ PARENT_STUDENT_LINK`. That's how a many-to-many reads in an ER diagram: neither the parent nor the student holds the other's id (either would force "one child per parent" or "one guardian per child"). A third record carries both ids instead, and "a parent's children" / "a child's guardians" are each just a query over that one record.
+
+`NOTIFICATION` deliberately stores a **flat copy** of the tap (`studentId`, `tappedAt`) plus a derived `kind`, rather than a `tapId` foreign key. That's an intentional deferral, not an oversight: a `tapId` can be added in Phase 2 once there's a real Tap API to join against. Until then the notification carries everything a feed needs on its own, and a later join can be introduced without invalidating any existing record.
 
 ## The shape of it, in one picture: which files define what
 

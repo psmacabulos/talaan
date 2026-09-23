@@ -1,9 +1,24 @@
 import { describe, expect, it } from "vitest";
 import { alertSchema, tapSchema } from "@/features/attendance/schemas";
+import {
+  notificationSchema,
+  parentSchema,
+  parentStudentLinkSchema,
+} from "@/features/parents/schemas";
 import { schoolSchema } from "@/features/schools/schemas";
 import { staffSchema } from "@/features/staff/schemas";
 import { cardSchema, studentSchema } from "@/features/students/schemas";
-import { seedAlerts, seedCards, seedSchools, seedStaff, seedStudents, seedTaps } from "./index";
+import {
+  seedAlerts,
+  seedCards,
+  seedNotifications,
+  seedParents,
+  seedParentStudentLinks,
+  seedSchools,
+  seedStaff,
+  seedStudents,
+  seedTaps,
+} from "./index";
 
 /**
  * Every seed record must actually satisfy its own domain schema — this is
@@ -44,6 +59,30 @@ describe("seed data matches its own schemas", () => {
   it("every alert is valid", () => {
     for (const alert of seedAlerts) {
       expect(alertSchema.safeParse(alert).success, `alert ${alert.id}`).toBe(true);
+    }
+  });
+
+  it("every parent is valid", () => {
+    for (const parent of seedParents) {
+      expect(parentSchema.safeParse(parent).success, `parent ${parent.id}`).toBe(true);
+    }
+  });
+
+  it("every parent-student link is valid", () => {
+    for (const link of seedParentStudentLinks) {
+      expect(
+        parentStudentLinkSchema.safeParse(link).success,
+        `link ${link.id}`,
+      ).toBe(true);
+    }
+  });
+
+  it("every notification is valid", () => {
+    for (const notification of seedNotifications) {
+      expect(
+        notificationSchema.safeParse(notification).success,
+        `notification ${notification.id}`,
+      ).toBe(true);
     }
   });
 });
@@ -106,5 +145,45 @@ describe("seed data shape", () => {
 
     const matchingAlert = seedAlerts.find((alert) => alert.tapId === lostCardTap?.id);
     expect(matchingAlert?.type).toBe("lost_card_tapped");
+  });
+
+  it("gives every parent a schoolId matching a real seed school", () => {
+    const schoolIds = new Set(seedSchools.map((s) => s.id));
+    for (const parent of seedParents) {
+      expect(schoolIds.has(parent.schoolId), `parent ${parent.id}`).toBe(true);
+    }
+  });
+
+  it("links every parent and student to a real record at the same school", () => {
+    const parentById = new Map(seedParents.map((p) => [p.id, p]));
+    const studentById = new Map(seedStudents.map((s) => [s.id, s]));
+    for (const link of seedParentStudentLinks) {
+      const parent = parentById.get(link.parentId);
+      const student = studentById.get(link.studentId);
+      expect(parent, `link ${link.id} parent`).toBeDefined();
+      expect(student, `link ${link.id} student`).toBeDefined();
+      expect(link.schoolId, `link ${link.id} school`).toBe(parent?.schoolId);
+      expect(link.schoolId, `link ${link.id} school`).toBe(student?.schoolId);
+    }
+  });
+
+  it("notifications reference a real student at a matching school", () => {
+    const studentById = new Map(seedStudents.map((s) => [s.id, s]));
+    for (const notification of seedNotifications) {
+      const student = studentById.get(notification.studentId);
+      expect(student, `notification ${notification.id} student`).toBeDefined();
+      expect(notification.schoolId, `notification ${notification.id} school`).toBe(
+        student?.schoolId,
+      );
+    }
+  });
+
+  it("demonstrates both directions of the parent-student many-to-many", () => {
+    // one parent, several children
+    const childrenOfBalanga1 = seedParentStudentLinks.filter((l) => l.parentId === "parent-balanga-1");
+    expect(childrenOfBalanga1.length).toBeGreaterThan(1);
+    // one child, several guardians
+    const guardiansOfStudent1 = seedParentStudentLinks.filter((l) => l.studentId === "student-0001");
+    expect(guardiansOfStudent1.length).toBeGreaterThan(1);
   });
 });

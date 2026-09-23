@@ -265,6 +265,11 @@ They're related on purpose in this project: the schema is written once, and the 
 
 **Front end or back end?** Neither — no screen changed, still no database or server. It's the shared vocabulary both sides will eventually use: the fake seed data is built to match it now, and the real Phase 2 database code will agree on the same shapes later.
 
+### Why a parent↔student link needs its own "join" record (Step 20)
+Everything built so far connects one record to another by putting a single id on one of them (a Card has one `studentId`). A parent and a student aren't like that: one parent can have several children, and one child can have several linked guardians (a mother and father both notified). Neither "put the student's id on the parent" nor "put the parent's id on the student" can express that without forcing an artificial one-of-them limit.
+
+The standard answer is a third record — `ParentStudentLink` — that exists only to say "this parent is connected to this student." A parent's children are just "every link carrying their id"; a student's guardians are "every link carrying the student's id." It's the same trick a real database uses for any many-to-many relationship (students ↔ subjects, a person ↔ the groups they belong to), and it's why the link is its own thing here rather than fields on either Parent or Student. See [`docs/DATA-MODEL.md`](DATA-MODEL.md) for the diagram version, and note the related flat-copy choice for `Notification` there too.
+
 ---
 
 ## Tap stations and notifications (Phase 2 planning)

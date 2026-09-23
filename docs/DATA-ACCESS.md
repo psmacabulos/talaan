@@ -15,7 +15,7 @@ flowchart TB
     subgraph repos["src/data/repositories/"]
         Latency["latency.ts<br/>simulateLatency()"]
         StudentRepo["student-repository.ts<br/>StudentRepository interface +<br/>createMockStudentRepository()"]
-        OtherRepos["school-, staff-, card-,<br/>tap-, alert-repository.ts<br/>(same shape)"]
+        OtherRepos["school-, staff-, card-, tap-, alert-,<br/>parent-, parent-student-link-,<br/>notification-repository.ts (same shape)"]
         Index["index.ts<br/>re-exports every singleton"]
     end
 
@@ -73,6 +73,8 @@ export const studentRepository = createMockStudentRepository();
 - **The exported singleton** (`studentRepository`) is the one instance the rest of the app actually imports. It's just `createMockStudentRepository()` called once with no arguments — the real seed data, the default latency.
 
 **Read-only until a step actually needs to write.** Through Step 14, none of the six repositories had a `create`/`update` method — only `list`/`get`. Step 9's own done-when criterion ("no UI code talks to seed data directly") only needed reads. Step 15 added `StudentRepository.create`/`update` for the add/edit drawer. Step 16 added `CardRepository.create`/`markLost` — `markLost` rather than a generic `update`, since a card's only ever-mutated field is `status`, and naming the method after the actual business action ("mark lost") reads better at every call site than a generic setter would. Steps 18 and 19 will each add exactly the write method *they* need when they need it — extending an existing repository file when its feature step arrives is normal, expected growth, not scope creep.
+
+Step 20 added three more repositories the same way, all read-only: `parent-repository` (`listBySchool`, `getById`), `parent-student-link-repository` (`listByParent`, `listByStudent`, `listBySchool` — the two directions of the many-to-many join), and `notification-repository` (`listBySchool`, `listByStudent`, `getById`). Parent signup/login (Step 22) and the notification feed (Step 24) will add their write/read methods when those steps actually need them, the same as every earlier step.
 
 ```ts
 async create(student) {

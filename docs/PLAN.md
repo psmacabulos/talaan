@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████░░░░░░ 71%**  (55 of 77 tasks, 20 of 30 steps approved)
+**Overall progress: ███████████████░░░░░ 73%**  (56 of 77 tasks, 20 of 30 steps approved)
 
-**Next up:** Step 20, Parent and notification domain (not started)
+**Next up:** Step 20, Parent and notification domain (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -27,7 +27,7 @@
 | 17 | Attendance page | ██████████ 100% | Approved |
 | 18 | Staff page | ██████████ 100% | Approved |
 | 19 | Tap station | ██████████ 100% | Approved |
-| 20 | Parent and notification domain | ░░░░░░░░░░   0% | Not started |
+| 20 | Parent and notification domain | █████░░░░░  50% | Ready for your review |
 | 21 | School notification settings | ░░░░░░░░░░   0% | Not started |
 | 22 | Parent signup, login and link a child | ░░░░░░░░░░   0% | Not started |
 | 23 | Parent dashboard | ░░░░░░░░░░   0% | Not started |
@@ -188,7 +188,7 @@ Commit: `feat(station): add tap station screen`
 - [x] Owner review: I checked it and said "approved"
 
 ### Step 20: Parent and notification domain
-- [ ] Types, Zod schemas, mock repositories and seed data for `Parent` and `ParentStudentLink` (many-to-many), plus a `Notification` record (student, kind, tap time, read/unread) that feeds the parent notification feed. Seed a few parent accounts already linked to existing seed students.
+- [x] Types, Zod schemas, mock repositories and seed data for `Parent` and `ParentStudentLink` (many-to-many), plus a `Notification` record (student, kind, tap time, read/unread) that feeds the parent notification feed. Seed a few parent accounts already linked to existing seed students.
 Done when: types and schemas compile, schema tests pass, and no UI code talks to the seed data directly.
 Commit: `feat(data): add parent and notification domain`
 - [ ] Owner review: I checked it and said "approved"

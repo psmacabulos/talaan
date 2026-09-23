@@ -940,3 +940,27 @@ Two decisions came out of the conversation, both Phase 2 (not built now, since t
 **What made this easy to answer:** every physical tap already becomes its own `Tap` record today, with no per-day limit — Step 8's data model already keeps full history without anyone asking it to. Nothing needed to change there; only the *derivation* (turning that history into in/out labels) and the *display* (summary vs. detail) were actually open questions.
 
 **What changed:** `CLAUDE.md`'s Tap domain bullet now describes the debounce/alternating rule and the summary display, marked not-yet-built; `docs/PLAN.md`'s Phase 2 section gained two new bullets recording the same decisions with today's date, so they don't need re-deciding when Phase 2 actually gets to the Tap API. Doesn't change anything already built — Step 17's attendance page keeps its current single "Time in" column, Step 19's kiosk keeps its simpler no-time-window "already tapped" demo, until this is actually built.
+
+---
+
+## Step 20: Parent and notification domain
+
+**Goal:** types, Zod schemas, mock repositories and seed data for `Parent` and `ParentStudentLink` (many-to-many), plus a `Notification` record — the data layer for the parent side of the app, with no UI. Two decisions were confirmed with the owner before writing any code: a parent belongs to exactly one school (no cross-school parents), and `Parent` uses `firstName`/`lastName` (not a single `name`), matching `Student`/`Staff`.
+
+### What got built
+- `src/features/parents/schemas.ts` + `types.ts` — `parentSchema`, `parentStudentLinkSchema`, `notificationKindSchema`, `notificationSchema`. The notification stores `studentId` + `tappedAt` as a flat copy of the tap and a derived `kind` (`time_in` | `time_out`); no `tapId` foreign key, which is deliberate — a `tapId` can be added in Phase 2 once there's a real Tap API to join against.
+- `src/data/repositories/parent-repository.ts`, `parent-student-link-repository.ts`, `notification-repository.ts` (+ tests) — read-only, the same interface + `createMock*` factory + singleton shape as every other repository. The link repository exposes both directions of the join (`listByParent`, `listByStudent`) plus `listBySchool`.
+- `src/data/seed/parents.ts`, `parent-student-links.ts`, `notifications.ts` — 6 parents across the 3 schools, 7 links (deliberately showing one parent → two children *and* one child → two parents), and 3 sample notifications aligned to the existing seed taps.
+- `seed.test.ts` extended with per-record validity plus shape invariants (links reference real parents/students at the same school; notifications reference real students).
+
+### A real bug, avoided rather than hit
+Seed parents use `nameAt(index + 500)`. The `+500` offset is deliberately NOT a multiple of 40, because `FIRST_NAMES.length` is 40 and `nameAt` picks `FIRST_NAMES[index % 40]` — an offset divisible by 40 (like the student guardian names' `+1000`) silently lands on the *same* first name as the student it's paired with. Step 14 already caught this exact trap in the guardian names; parent seeding sidestepped it from the start.
+
+### A real lint problem hit, and how it was resolved
+The first draft of `schemas.test.ts` tested "missing required field" with a `const { schoolId: _schoolId, ...withoutSchool }` destructure. `npm run lint` flagged the underscore-renamed variable as unused (`@typescript-eslint/no-unused-vars`). Rather than suppress it, matched the codebase's own convention (`students/schemas.test.ts` / `staff/schemas.test.ts` never omit a key — they test an *invalid value* instead, e.g. `{ ...validParent, schoolId: "" }`). Rewrote both tests that way; lint clean with no disable comment.
+
+### Verified
+`lint`, `typecheck`, `test` (247, up from 219 — 28 new), `check:tokens` and `build` all pass. No browser check — nothing renders yet; the step is data-layer only.
+
+### Result
+All build tasks done. Waiting on the owner's review.
