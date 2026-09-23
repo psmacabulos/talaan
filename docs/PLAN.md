@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ████████████████░░░░ 78%**  (60 of 77 tasks, 22 of 30 steps approved)
+**Overall progress: ████████████████░░░░ 81%**  (62 of 77 tasks, 23 of 30 steps approved)
 
-**Next up:** Step 22, Parent signup, login and link a child (ready for your review)
+**Next up:** Step 23, Parent dashboard (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -29,8 +29,8 @@
 | 19 | Tap station | ██████████ 100% | Approved |
 | 20 | Parent and notification domain | ██████████ 100% | Approved |
 | 21 | School notification settings | ██████████ 100% | Approved |
-| 22 | Parent signup, login and link a child | █████░░░░░  50% | Ready for your review |
-| 23 | Parent dashboard | ░░░░░░░░░░   0% | Not started |
+| 22 | Parent signup, login and link a child | ██████████ 100% | Approved |
+| 23 | Parent dashboard | █████░░░░░  50% | Ready for your review |
 | 24 | Notification feed | ░░░░░░░░░░   0% | Not started |
 | 25 | Schools management | ░░░░░░░░░░   0% | Not started |
 | 26 | Appearance settings | ░░░░░░░░░░   0% | Not started |
@@ -203,10 +203,10 @@ Commit: `feat(schools): add notification settings`
 - [x] Parent signup and login (separate from staff login), and a "link a child" flow verified by LRN, last name and birth date, with clear errors for no match or an already-linked child.
 Done when: a new parent account can sign up, link a real seed student, and sign back in to see that link still there.
 Commit: `feat(parents): add parent signup, login and child linking`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 23: Parent dashboard
-- [ ] A parent's home screen: list of linked children, each with a read-only attendance summary and history.
+- [x] A parent's home screen: list of linked children, each with a read-only attendance summary and history.
 Done when: a parent with two linked children sees both, and each child's attendance matches that child's real records.
 Commit: `feat(parents): add parent dashboard`
 - [ ] Owner review: I checked it and said "approved"

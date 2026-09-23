@@ -1015,3 +1015,22 @@ Unlike everything else in Phase 1, this had to be genuinely real, not a demo sho
 
 ### Result
 All build tasks done. Waiting on the owner's review.
+
+---
+
+## Step 23: Parent dashboard
+
+**Goal:** replace Step 22's placeholder "your linked children" list (names and grade/section only) with the real parent home screen: each linked child with a read-only attendance summary and history. Step 22 was approved at the start of this step.
+
+### What got built
+- `src/features/parents/child-summary-card.tsx` — one card per linked child: today's `StatusPill` (reusing `studentStatus()` from `src/features/attendance/status.ts`, the exact same function the staff dashboard and attendance page already use, so a parent and a teacher can never see a different answer for the same student) plus a plain "Attendance history" list of every tap on record for that child (`tapRepository.listByStudent()`, which already existed — no repository change needed), newest first.
+- `src/app/parent/(protected)/page.tsx` — now fetches each linked child's taps alongside the student record and renders a `ChildSummaryCard` per child, replacing the old bare `<li>` list. The empty state (no linked children yet) is unchanged from Step 22.
+
+### A real scope decision: "history" against one day of seed data
+`docs/ATTENDANCE-MODEL.md` fixes the whole app's sample data to a single day (`DASHBOARD_NOW = "2026-06-20T09:15:00Z"`) — there is no multi-day seed data to show a real week of history against yet. Rather than inventing fake extra days (which would misrepresent what Phase 1 actually has), the history list is written generically against *every* tap `tapRepository.listByStudent()` returns, sorted newest first — honest today (one entry per normal student), and it will start showing real multi-day history with zero code changes once Phase 2's real Tap API starts producing taps on different days. One linked child (`student-0001` / Juan Cruz) incidentally has *two* taps on record from Step 8's seed data (a normal tap plus the lost-card scenario tap, still attributed to the same student per CLAUDE.md's card rules) — a free, real demonstration that the list already handles more than one row correctly.
+
+### Verified
+`lint`, `typecheck`, `test`, `check:tokens` and `build` all pass (no new tests needed — no new logic, just composing `studentStatus()` and `listByStudent()`, both already tested by `status.test.ts` and `tap-repository.test.ts`). Browser-checked at 360px and 1280px, light and dark, signed in as `parent-one@balanga.example` (two linked children, Juan Cruz and Maria Ramos): both show "Present" with correct times, Juan Cruz's two taps both list correctly (8:05 AM and 7:56 AM), Maria Ramos's single tap lists correctly (7:57 AM). No console errors.
+
+### Result
+All build tasks done. Waiting on the owner's review.
