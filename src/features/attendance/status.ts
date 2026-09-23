@@ -1,4 +1,5 @@
 import type { AttendanceStatus } from "@/components/status-pill";
+import type { NotificationKind } from "@/features/parents/types";
 import type { Student } from "@/features/students/types";
 import type { Tap } from "./types";
 
@@ -47,6 +48,30 @@ export function todaysTap(studentId: string, taps: Tap[], now: string = DASHBOAR
   return taps
     .filter((tap) => tap.studentId === studentId && isSameDate(tap.tappedAt, now))
     .sort((a, b) => a.tappedAt.localeCompare(b.tappedAt))[0];
+}
+
+/**
+ * What kind of notification a tap produces — the time-in/time-out
+ * alternation decided for Phase 2 (docs/PLAN.md's "derive, don't store"
+ * note), applied now: a student's taps on one day alternate, so the 1st is
+ * a time in, the 2nd a time out, the 3rd a time in again, and so on. The
+ * count is of taps that come strictly *before* this one (same-day, same
+ * timestamp broken by id), so the result never changes whether the new tap
+ * is already persisted or not. Phase 1's tap producers (the dashboard's
+ * "Simulate a tap" and the station) only ever create first-of-day taps, so
+ * this always returns `time_in` in the running app today — the alternation
+ * is exercised by the unit tests and by Step 24's seeded `time_out`
+ * notification, not by the demo buttons.
+ */
+export function deriveTapKind(tap: Tap, allStudentTaps: Tap[]): NotificationKind {
+  const priorSameDay = allStudentTaps.filter(
+    (other) =>
+      other.studentId === tap.studentId &&
+      other.id !== tap.id &&
+      isSameDate(other.tappedAt, tap.tappedAt) &&
+      (other.tappedAt < tap.tappedAt || (other.tappedAt === tap.tappedAt && other.id < tap.id)),
+  );
+  return priorSameDay.length % 2 === 0 ? "time_in" : "time_out";
 }
 
 export function studentStatus(studentId: string, taps: Tap[], now: string = DASHBOARD_NOW): AttendanceStatus {

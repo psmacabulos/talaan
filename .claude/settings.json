@@ -19,7 +19,18 @@
       "Bash(node -e \"console.log\\(require\\('@testing-library/jest-dom/package.json'\\).exports\\)\")",
       "Bash(git check-ignore *)",
       "Bash(rm -rf node_modules .next)",
-      "Bash(npm ci *)"
+      "Bash(npm ci *)",
+      "Bash(node -e ' *)",
+      "mcp__plugin_playwright_playwright__browser_fill_form",
+      "Bash(ls -la step24-*.png)",
+      "Bash(file step24-notifications-page-1280-light.png)",
+      "Bash(dir step24-*.png)",
+      "mcp__plugin_playwright_playwright__browser_press_key",
+      "Bash(grep -rn \"Jose Pascual\" src/data/seed/)",
+      "Bash(rm -f step24-notifications-page-1280-light.png step24-page-1280.jpg)",
+      "Bash(ls step24-*)",
+      "Bash(wc -l docs/BUILD-LOG.md docs/LEARNING-LOG.md docs/recipes/step-23-parent-dashboard.md README.md)",
+      "Bash(ls docs/recipes/)"
     ],
     "deny": [
       "Bash(git add)",

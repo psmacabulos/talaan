@@ -3,8 +3,8 @@ import { formatTapTime, studentStatus } from "@/features/attendance/status";
 import type { Tap } from "@/features/attendance/types";
 import type { Student } from "@/features/students/types";
 
-/** A tap's own date, e.g. "June 20, 2026" — read as UTC fields, matching `formatTapTime` (see status.ts's comment: these timestamps represent the school's own wall-clock time written as if it were UTC). */
-function formatTapDate(iso: string): string {
+/** A tap's own date, e.g. "June 20, 2026" — read as UTC fields, matching `formatTapTime` (see status.ts's comment: these timestamps represent the school's own wall-clock time written as if it were UTC). Exported since Step 24's notification list also groups by day. */
+export function formatTapDate(iso: string): string {
   const date = new Date(iso);
   return date.toLocaleDateString("en-US", {
     year: "numeric",

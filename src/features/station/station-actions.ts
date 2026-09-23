@@ -1,8 +1,9 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { alertRepository, tapRepository } from "@/data/repositories";
+import { alertRepository, tapRepository, schoolRepository, notificationRepository } from "@/data/repositories";
 import { getSession } from "@/lib/session";
+import { notifyParentsForTap } from "@/features/attendance/notify-parents";
 import type { StationTapOutcome } from "./resolve-station-tap";
 
 async function assertStationAccess(): Promise<void> {
@@ -32,6 +33,16 @@ export async function syncStationTaps(outcomes: StationTapOutcome[]): Promise<{ 
     if (outcome.status !== "recorded") continue;
 
     await tapRepository.create(outcome.tap);
+    if (outcome.kind === "valid") {
+      // Only a valid tap notifies parents (Step 24). A lost-card tap raises
+      // the alert below instead — pinging parents about it would read as a
+      // normal arrival — and an unknown-card tap has no student to notify.
+      await notifyParentsForTap(outcome.tap, {
+        schoolRepository,
+        tapRepository,
+        notificationRepository,
+      });
+    }
     if (outcome.kind === "lost") {
       await alertRepository.create({
         id: outcome.alert.id,

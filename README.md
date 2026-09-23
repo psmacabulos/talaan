@@ -57,6 +57,7 @@ Every color a school sees comes from a **theme preset** — never a hardcoded va
 - [`docs/AUTH.md`](docs/AUTH.md) — the two independent sign-in mechanisms: staff's dev-only demo session and the parent portal's real signup/login/link-a-child, why they don't share code, and where a parent's password actually lives in Phase 1.
 - [`docs/APP-SHELL.md`](docs/APP-SHELL.md) — the sidebar, top bar, mobile drawer, role-based navigation and route guards: how they connect, and how to add a new page or nav item.
 - [`docs/ATTENDANCE-MODEL.md`](docs/ATTENDANCE-MODEL.md) — how a tap becomes "present"/"late"/"absent": the cutoffs, why attendance is calculated rather than stored, and how "Simulate a tap" works end to end.
+- [`docs/NOTIFICATIONS.md`](docs/NOTIFICATIONS.md) — how a tap becomes a parent notification: the fan-out helper, the school preference gate, time-in/time-out derivation, and the shared-read simplification.
 - [`docs/URL-DRIVEN-LISTS.md`](docs/URL-DRIVEN-LISTS.md) — how the Students list's search, filters, sort and pagination all live in the URL: the parse/build helpers, why sorting needs no client JavaScript, and how the search box's debounce works.
 - [`docs/FORMS.md`](docs/FORMS.md) — how the add/edit drawer works: one Zod schema shared by client and server validation, shared drawer state, wiring a shadcn `Select` into React Hook Form, and the Server Action shape every future write form reuses.
 - [`docs/OWNER-GUIDE.md`](docs/OWNER-GUIDE.md) — how the owner works with Claude on this project, step by step.

@@ -1034,3 +1034,37 @@ All build tasks done. Waiting on the owner's review.
 
 ### Result
 All build tasks done. Waiting on the owner's review.
+
+---
+
+## Step 24: Notification feed
+
+**Goal:** make Step 20's notification records real: the in-app bell + feed for parents, populated whenever a tap is recorded — the same simulated-tap mechanism the staff dashboard uses — honoring each school's notification preference (off / time-in only / both). SMS stays dropped (plan change of 2026-09-22); this is the in-app channel only. Step 23 was approved at the start of this step.
+
+### The seed gap discovered during planning (the step's real "Done when" was impossible)
+"Simulating a tap for a linked child adds a notification" required a linked child the simulate button could actually tap — and there wasn't one. The button only taps students with no tap today *and* an active card, but every linked student was untappable: 0001/0002/0038/0056 already tapped in the seed morning, 0037/0055 cardless. The owner approved adding three seed links, each to the **first** student the simulate button picks at that school (verified by slot math, `src/data/seed/students.ts`'s `SECTION_SLOTS` ordering): `student-0006` (Balanga — deliberately left untapped by taps.ts for the Rizal teacher's demo; pref both → notification fires), `student-0043` (Oceanview — 0037 is cardless; pref time-in-only → time-in fires), `student-0057` (Crimsonridge — 0055 is cardless; pref off → demonstrates suppression end to end). One click per demo, no card juggling.
+
+### What got built
+- `src/features/attendance/status.ts` — `deriveTapKind(tap, allStudentTaps)`: counts that student's same-day taps strictly before this one (id tiebreak), even → `time_in`, odd → `time_out`. Phase 2's decided alternating rule applied now; 7 unit tests including the tiebreak.
+- `src/features/attendance/notify-parents.ts` — `notifyParentsForTap(tap, deps)`: skip null studentId → school lookup → skip `off` → derive kind → skip time-out under `time_in_only` → create one notification (`read: false`). Deps-injected so tests use fresh mock repos (the `resolveSession(staffId, repository)` convention). 7 tests covering every preference/kind outcome plus both skips, using the three seed schools (which conveniently hold all three preferences).
+- `src/data/repositories/notification-repository.ts` — `create` (idempotent by id, same shape as `tapRepository.create`) + `markRead` (findIndex + replace, like `schoolRepository.update`); 4 tests. Exactly what `docs/DATA-ACCESS.md` already anticipated for this step.
+- `src/features/attendance/actions.ts` — `simulateTap` now fans out right after `tapRepository.create`; `src/features/station/station-actions.ts` — `syncStationTaps` fans out **only for `outcome.kind === "valid"`** (lost-card taps raise an Alert instead; unknown-card taps have no student).
+- `src/features/parents/notifications-data.ts` — `getParentNotifications(parentId)` (links → students + notifications in parallel, newest first), `countUnreadNotifications`, `notificationKindLabel`.
+- `src/features/parents/notification-actions.ts` — `markNotificationRead` / `markAllNotificationsRead`, both gated on session + link membership + schoolId match (result-object convention from `auth-actions.ts`).
+- `src/features/parents/notifications-bell.tsx` — the header bell: badge (capped "9+", hidden at 0, count in the trigger's aria-label), dropdown with the 5 newest items, per-item mark-read that keeps the menu open (`event.preventDefault()` on Radix's `onSelect`), "Mark all as read", "View all" → `/parent/notifications`, and an empty message. Wired into `src/app/parent/(protected)/layout.tsx`, which fetches once and passes items down.
+- `src/features/parents/notification-list.tsx` + `mark-all-read-button.tsx` + `src/app/parent/(protected)/notifications/page.tsx` (+ `loading.tsx`) — the full feed, day-grouped, unread rows are buttons with an accent background and a primary dot; "Mark all as read" only shows while something is unread (a dead button otherwise). `formatTapDate` exported from `child-summary-card.tsx` for the day grouping.
+
+### A real lint/typecheck round worth recording
+Three genuine catches, each fixed without a disable comment:
+- `react/no-unescaped-entities` flagged the bell's empty-state apostrophes ("you'll see your child's taps") — rewrote the copy to avoid apostrophes entirely, and matched the page's `EmptyState` copy to the same wording so bell and page never drift.
+- TypeScript rejected `startTransition(() => markNotificationRead(id))` — the callback must return void, and the arrow's body *was* the promise (`VoidOrUndefinedOnly`). Wrapped in a block body in both the bell and the list.
+- The bell test's fixture helper typed overrides as `Partial<ParentNotificationItem>`, which only makes the *outer* fields optional — nested `notification`/`student` overrides failed `tsc`. Switched to nested `Partial`s per field.
+
+### A test-environment finding, not a workaround
+The bell test needs the dropdown content rendered (empty text, item text), which means actually opening Radix in jsdom. Two facts made that reliable instead of flaky: Radix's trigger opens on `pointerdown` only for a plain left click (`event.button === 0 && event.ctrlKey === false` — read from the installed `@radix-ui/react-dropdown-menu` source), and jsdom's fallback `Event` leaves `ctrlKey` *undefined*, so the init had to pass `ctrlKey: false` explicitly. Plus a no-op `ResizeObserver` stub (Radix's popper measures with it; jsdom doesn't implement it). The server actions are `vi.mock`ed out so `next/cache` and the repositories stay out of the component test's graph — the bell test tests the bell.
+
+### Verified
+`lint`, `typecheck`, `test` (283, up from 260 — 23 new: 7 `deriveTapKind`, 7 fan-out, 4 repository, 5 bell), `check:tokens` and `build` all pass; `/parent/notifications` appears in the production route list. Browser-checked end to end at 360px and 1280px, light and dark: **Balanga** (pref both) — simulate once (toast: Carmen Sison, student-0006) → `parent-one@balanga.example` sees 3 unread → bell lists the new "tapped in 9:15 AM" plus the seeded time-out → Mark all → badge clears → "View all" → day-grouped page. **Oceanview** (time-in-only) — simulate (Jose Pascual, 0043) → parent sees 1 unread → unread row is a button with the accent background → clicking it marks it read and the "Mark all as read" action disappears. **Crimsonridge** (off) — simulate (Eduardo Tiongson, 0057) → the tap appears in the child's history but the parent's bell stays badge-less and the feed shows the empty state. Keyboard pass on the bell: Enter opens, arrows walk the items, Esc closes and returns focus to the trigger. Zero console errors or warnings throughout.
+
+### Result
+All build tasks done. Waiting on the owner's review.

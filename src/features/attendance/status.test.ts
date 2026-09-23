@@ -4,6 +4,7 @@ import type { Tap } from "./types";
 import {
   attendanceByGrade,
   countByStatus,
+  deriveTapKind,
   formatTapTime,
   studentStatus,
   studentsWithoutTapToday,
@@ -105,6 +106,46 @@ describe("studentsWithoutTapToday", () => {
     const students = [student("s1", 7), student("s2", 7)];
     const taps = [tap("s1", "2026-06-20T07:00:00Z")];
     expect(studentsWithoutTapToday(students, taps, NOW).map((s) => s.id)).toEqual(["s2"]);
+  });
+});
+
+describe("deriveTapKind", () => {
+  const newTap = tap("s1", "2026-06-20T09:15:00Z");
+
+  it("is a time in with no same-day tap before it", () => {
+    expect(deriveTapKind(newTap, [])).toBe("time_in");
+  });
+
+  it("alternates: 2nd same-day tap is a time out", () => {
+    const prior = tap("s1", "2026-06-20T07:56:00Z");
+    expect(deriveTapKind(newTap, [prior, newTap])).toBe("time_out");
+  });
+
+  it("alternates back: 3rd same-day tap is a time in again", () => {
+    const prior = [tap("s1", "2026-06-20T07:56:00Z"), tap("s1", "2026-06-20T08:30:00Z")];
+    expect(deriveTapKind(newTap, [...prior, newTap])).toBe("time_in");
+  });
+
+  it("ignores another student's taps", () => {
+    const other = tap("s2", "2026-06-20T07:00:00Z");
+    expect(deriveTapKind(newTap, [other])).toBe("time_in");
+  });
+
+  it("ignores taps from a previous day", () => {
+    const yesterday = tap("s1", "2026-06-19T16:00:00Z");
+    expect(deriveTapKind(newTap, [yesterday])).toBe("time_in");
+  });
+
+  it("does not count the tap itself when it is already in the list", () => {
+    const prior = tap("s1", "2026-06-20T07:56:00Z");
+    expect(deriveTapKind(newTap, [prior, newTap])).toBe("time_out");
+  });
+
+  it("breaks a same-timestamp tie by id", () => {
+    const sameMomentA = { ...newTap, id: "tap-s1-a" };
+    const sameMomentB = { ...newTap, id: "tap-s1-b" };
+    expect(deriveTapKind(sameMomentB, [sameMomentA, sameMomentB])).toBe("time_out");
+    expect(deriveTapKind(sameMomentA, [sameMomentA, sameMomentB])).toBe("time_in");
   });
 });
 

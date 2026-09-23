@@ -9,7 +9,7 @@ Short, plain-language notes explaining things along the way — for whenever I w
 - [Components and libraries (shadcn/ui)](#components-and-libraries-shadcnui)
 - [Next.js as a full-stack framework](#nextjs-as-a-full-stack-framework)
 - [Domain modeling: types vs. schemas](#domain-modeling-types-vs-schemas)
-- [Tap stations and notifications (Phase 2 planning)](#tap-stations-and-notifications-phase-2-planning)
+- [Tap stations and notifications](#tap-stations-and-notifications)
 - [App shell and navigation (Step 10)](#app-shell-and-navigation-step-10)
 - [CSS layout: Flexbox spacing gotchas](#css-layout-flexbox-spacing-gotchas)
 - [Multi-tenant apps: one customer's identity doesn't belong on a shared screen](#multi-tenant-apps-one-customers-identity-doesnt-belong-on-a-shared-screen)
@@ -273,7 +273,10 @@ The standard answer is a third record — `ParentStudentLink` — that exists on
 
 ---
 
-## Tap stations and notifications (Phase 2 planning)
+## Tap stations and notifications
+
+### Why notifications are created at tap time, not derived at read time (Step 24)
+The first big build of this topic — the parent bell and feed — lives in [`docs/NOTIFICATIONS.md`](NOTIFICATIONS.md). The one contrast worth keeping in mind next to the attendance model: attendance *is* derived at read time (nothing stores "present"; it's computed from raw taps), but notifications are the **opposite** — a `Notification` row is written the moment a tap happens, and the bell/feed just read rows back. That's because a school's preference ("notify on time-in only") is a moment-in-time decision: if the principal turns notifications off tomorrow, yesterday's "your child tapped in" should still be in the feed. The parent was told; the record of being told should survive the setting change. So the read path has nothing to compute — it only joins, sorts, and counts unread rows.
 
 ### Does a tap station need a native app, or a login, to use an NFC reader?
 Discussed while reviewing Step 8's ER diagram (`Tap.stationId`) — full write-up in [`docs/DATA-MODEL.md`](DATA-MODEL.md) and the [[project-tap-api-hardware-agnostic]] / parent-notifications planning notes, kept short here.

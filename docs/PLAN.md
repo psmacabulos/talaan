@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ████████████████░░░░ 81%**  (62 of 77 tasks, 23 of 30 steps approved)
+**Overall progress: █████████████████░░░ 83%**  (64 of 77 tasks, 24 of 30 steps approved)
 
-**Next up:** Step 23, Parent dashboard (ready for your review)
+**Next up:** Step 24, Notification feed (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -30,8 +30,8 @@
 | 20 | Parent and notification domain | ██████████ 100% | Approved |
 | 21 | School notification settings | ██████████ 100% | Approved |
 | 22 | Parent signup, login and link a child | ██████████ 100% | Approved |
-| 23 | Parent dashboard | █████░░░░░  50% | Ready for your review |
-| 24 | Notification feed | ░░░░░░░░░░   0% | Not started |
+| 23 | Parent dashboard | ██████████ 100% | Approved |
+| 24 | Notification feed | █████░░░░░  50% | Ready for your review |
 | 25 | Schools management | ░░░░░░░░░░   0% | Not started |
 | 26 | Appearance settings | ░░░░░░░░░░   0% | Not started |
 | 27 | Accessibility audit | ░░░░░░░░░░   0% | Not started |
@@ -209,10 +209,10 @@ Commit: `feat(parents): add parent signup, login and child linking`
 - [x] A parent's home screen: list of linked children, each with a read-only attendance summary and history.
 Done when: a parent with two linked children sees both, and each child's attendance matches that child's real records.
 Commit: `feat(parents): add parent dashboard`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 24: Notification feed
-- [ ] In-app notification bell/feed for parents, populated by the same simulated-tap mechanism the staff dashboard uses, honoring the school's notification preference (off / time-in only / both).
+- [x] In-app notification bell/feed for parents, populated by the same simulated-tap mechanism the staff dashboard uses, honoring the school's notification preference (off / time-in only / both).
 Done when: simulating a tap for a linked child adds a notification for its parent(s), and the preference correctly suppresses or allows it.
 Commit: `feat(parents): add notification feed`
 - [ ] Owner review: I checked it and said "approved"

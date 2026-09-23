@@ -2,8 +2,16 @@
 
 import { refresh } from "next/cache";
 import { getSession } from "@/lib/session";
-import { staffRepository, studentRepository, tapRepository, cardRepository } from "@/data/repositories";
+import {
+  staffRepository,
+  studentRepository,
+  tapRepository,
+  cardRepository,
+  schoolRepository,
+  notificationRepository,
+} from "@/data/repositories";
 import { DASHBOARD_NOW, MAIN_GATE_STATION_ID, studentsWithoutTapToday } from "./status";
+import { notifyParentsForTap } from "./notify-parents";
 
 /**
  * The dashboard's "Simulate a tap" button (docs/PLAN.md Step 13). Picks the
@@ -59,14 +67,18 @@ export async function simulateTap(): Promise<SimulateTapResult> {
       continue;
     }
 
-    await tapRepository.create({
+    const tap = {
       id: crypto.randomUUID(),
       schoolId: session.schoolId,
       stationId: MAIN_GATE_STATION_ID,
       cardSerial: card.serial,
       studentId: student.id,
       tappedAt: DASHBOARD_NOW,
-    });
+    };
+    await tapRepository.create(tap);
+    // The tap is in — fan it out to the student's linked parents (Step 24),
+    // honoring the school's notification preference.
+    await notifyParentsForTap(tap, { schoolRepository, tapRepository, notificationRepository });
 
     refresh();
     return { tapped: true, studentName: `${student.firstName} ${student.lastName}` };

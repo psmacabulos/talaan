@@ -3,6 +3,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Nfc } from "lucide-react";
 import { getParentSession } from "@/lib/parent-session";
+import { NotificationsBell } from "@/features/parents/notifications-bell";
+import { getParentNotifications } from "@/features/parents/notifications-data";
 import { SignOutButton } from "@/features/parents/sign-out-button";
 
 /**
@@ -19,6 +21,11 @@ export default async function ParentProtectedLayout({ children }: { children: Re
   const session = await getParentSession();
   if (!session) redirect("/parent/login");
 
+  // The bell's items come from this layout so every parent page has them
+  // without each page re-fetching; the server actions' `refresh()`
+  // re-renders this layout too, which is how the badge updates after a mark-read.
+  const notifications = await getParentNotifications(session.parentId);
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="flex items-center justify-between border-b border-border px-4 py-3 sm:px-6">
@@ -28,7 +35,10 @@ export default async function ParentProtectedLayout({ children }: { children: Re
           </span>
           <span className="font-heading text-base font-semibold text-foreground">Talaan</span>
         </Link>
-        <SignOutButton />
+        <div className="flex items-center gap-1">
+          <NotificationsBell items={notifications} />
+          <SignOutButton />
+        </div>
       </header>
       <main className="flex flex-1 flex-col">{children}</main>
     </div>
