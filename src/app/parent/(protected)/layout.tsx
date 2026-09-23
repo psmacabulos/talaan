@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { Nfc } from "lucide-react";
 import { getParentSession } from "@/lib/parent-session";
 import { MAIN_CONTENT_ID, SkipLink } from "@/components/skip-link";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationsBell } from "@/features/parents/notifications-bell";
 import { getParentNotifications } from "@/features/parents/notifications-data";
 import { SignOutButton } from "@/features/parents/sign-out-button";
@@ -38,6 +39,7 @@ export default async function ParentProtectedLayout({ children }: { children: Re
           <span className="font-heading text-base font-semibold text-foreground">Talaan</span>
         </Link>
         <div className="flex items-center gap-1">
+          <ThemeToggle />
           <NotificationsBell items={notifications} />
           <SignOutButton />
         </div>

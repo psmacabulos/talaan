@@ -1,6 +1,7 @@
 import type { Role, Staff } from "@/features/staff/types";
 import type { School } from "@/features/schools/types";
 import type { ThemeSelection } from "@/lib/theme/presets";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { MobileNav } from "./mobile-nav";
 import { TopbarTitle } from "./topbar-title";
 import { DevSwitcher } from "./dev-switcher";
@@ -38,9 +39,14 @@ export function Topbar({
     <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-card px-4 sm:px-6">
       <MobileNav role={role} school={school} />
       <TopbarTitle />
+      {/* Light/dark stays at every width (Step 27.5): it's a per-person
+          reading preference, as useful on a phone as on a desktop. */}
+      <div className="ml-auto shrink-0">
+        <ThemeToggle />
+      </div>
       {/* Dropped below sm so the page title always has room to breathe on
           a phone-width top bar — same reasoning as Step 10's identity chip. */}
-      <div className="ml-auto hidden shrink-0 items-center gap-2 sm:flex">
+      <div className="hidden shrink-0 items-center gap-2 sm:flex">
         {role !== "teacher" && <ThemeDropdown selection={themeSelection} hasSchool={school !== null} />}
         {isDev ? (
           <DevSwitcher userId={userId} role={role} school={school} staff={staff} schools={schools} />

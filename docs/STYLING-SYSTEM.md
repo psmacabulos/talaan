@@ -25,7 +25,7 @@ flowchart TB
     end
 
     TP["src/components/theme-provider.tsx<br/>wraps next-themes"]
-    TT["src/components/theme-toggle.tsx<br/>the button"]
+    TT["src/components/theme-toggle.tsx<br/>the light/dark menu"]
     Tok["src/styles/tokens.css<br/>:root and .dark variable values"]
     Base["src/styles/base.css<br/>body/heading font, focus ring"]
     Globals["src/app/globals.css<br/>imports + @theme inline mapping"]
@@ -132,33 +132,47 @@ This component doesn't touch any of our CSS. Its entire job is: (a) on first loa
 
 The critical bit for "no flash of the wrong theme": `next-themes` injects a tiny `<script>` into the page that runs synchronously, before the browser paints anything, and sets the class immediately. That's a different, older technique than `useEffect` (which would run *after* the first paint and cause a visible flash) — see `node_modules/next/dist/docs/01-app/02-guides/preventing-flash-before-hydration.md` for Next.js's own explanation of exactly this problem, which `next-themes` implements for us.
 
-### 5. `src/components/theme-toggle.tsx` — the button that calls `setTheme`
+### 5. `src/components/theme-toggle.tsx`: the menu that calls `setTheme`
+
+Until Step 27.5 this was a plain text button that only appeared on `/design-system`. It's now a sun/moon icon that opens a three-option menu (Light, Dark, Match device), placed in the staff top bar, the parent portal header and the corner of the three login pages:
 
 ```tsx
 "use client";
-import { useEffect, useState } from "react";
+import { Monitor, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 
+const MODES = [
+  { value: "light", label: "Light", Icon: Sun },
+  { value: "dark", label: "Dark", Icon: Moon },
+  { value: "system", label: "Match device", Icon: Monitor },
+] as const;
+
 export function ThemeToggle() {
-  const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => { setMounted(true); }, []);
-
-  if (!mounted) return <button disabled>Toggle theme</button>;
-
-  const isDark = resolvedTheme === "dark";
+  const { theme, setTheme } = useTheme();
   return (
-    <button onClick={() => setTheme(isDark ? "light" : "dark")}>
-      {isDark ? "Switch to light mode" : "Switch to dark mode"}
-    </button>
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon-lg" aria-label="Light or dark mode">
+          <Sun className="dark:hidden" aria-hidden="true" />
+          <Moon className="hidden dark:block" aria-hidden="true" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuLabel>Light or dark</DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={theme ?? "system"} onValueChange={setTheme}>
+          {MODES.map(({ value, label, Icon }) => ( /* one radio item each */ ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 ```
 
-`useTheme()` is a React hook from `next-themes` that reads whatever `ThemeProvider` currently knows (it works via React Context — `ThemeProvider` is a *provider*, `useTheme()` is a *consumer*, standard React data-flow, nothing custom-built here). `setTheme("dark")` is the one function call that actually changes things: it updates `next-themes`' internal state, which re-runs the class-toggling logic from `theme-provider.tsx`, which adds/removes `.dark` on `<html>`, which changes which cascade rule wins in `tokens.css`, which changes what every `var(--...)` resolves to, which is why the whole page repaints — **no component other than this button ever has to know a color changed.** That's the entire point of building it this way: color logic lives in exactly one place (the CSS), and React only ever flips a class name.
+The old version needed a `mounted` flag, because it read `resolvedTheme` to pick its label, and that value isn't known on the server. The new trigger avoids the problem entirely. It renders *both* icons and lets CSS pick one: `dark:hidden` on the sun, `hidden dark:block` on the moon. The server and the browser produce identical HTML, so there's nothing to mismatch and no flicker. The menu itself only renders when opened, by which time `theme` holds the saved choice.
 
-The `mounted` dance (disabled placeholder button until `useEffect` fires once) exists because the *server* has no idea what the user's saved preference is — it always renders not knowing yet. If this component tried to show "Switch to light/dark mode" immediately, the very first thing it says on the server might not match what the browser decides once it actually reads `localStorage`, and React would throw a hydration-mismatch warning. Waiting one tick (`mounted`) sidesteps that by rendering something theme-neutral until the real answer is known. This is `next-themes`' own documented pattern, not something invented for this project.
+`theme` is what the person *chose* (`"light"`, `"dark"` or `"system"`). `resolvedTheme` is what's actually showing. The radio group uses `theme`, so "Match device" stays ticked even while the device happens to be dark.
+
+`useTheme()` is a React hook from `next-themes` that reads whatever `ThemeProvider` currently knows (it works via React Context — `ThemeProvider` is a *provider*, `useTheme()` is a *consumer*, standard React data-flow, nothing custom-built here). `setTheme("dark")` is the one function call that actually changes things: it updates `next-themes`' internal state, which re-runs the class-toggling logic from `theme-provider.tsx`, which adds/removes `.dark` on `<html>`, which changes which cascade rule wins in `tokens.css`, which changes what every `var(--...)` resolves to, which is why the whole page repaints — **no component other than this menu ever has to know a color changed.** That's the entire point of building it this way: color logic lives in exactly one place (the CSS), and React only ever flips a class name.
 
 ### 6. `src/app/layout.tsx` — where it all actually gets plugged in
 

@@ -76,6 +76,7 @@ Two details matter:
 | Presets | Login and dashboard under school, ocean, emerald, crimson and violet, light and dark. |
 | Interactive states | Mobile nav drawer, Add student drawer before and after a failed submit, Edit student drawer and the card replace confirmation, Add school drawer, all four tap station results, parent login and link-a-child errors, and the notification bell menu. |
 | Keyboard | Skip link first and working (staff and parent), Tab kept inside a drawer, Esc closes it and focus goes back to the button *or table row* that opened it, mobile nav focus return, and tap station buttons at least 44px tall. |
+| Light/dark toggle | The menu open in the staff top bar, the parent header and on the login page (axe), and choosing Dark with only the keyboard, surviving a reload, then "Match device" going back. |
 
 Not covered: `/design-system`. It is dev-only, so the production build returns "not found" for it.
 

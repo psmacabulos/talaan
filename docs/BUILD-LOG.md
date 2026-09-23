@@ -1185,3 +1185,34 @@ A side effect worth knowing: every labelled table is now one Tab stop, even at d
 
 ### Result
 All build tasks done. Waiting on the owner's review.
+
+## Step 27.5: Light and dark mode toggle
+
+**Goal:** a visible light/dark control. The owner noticed during Step 27's review that there wasn't one. The app followed each device's own setting, and the only toggle (`ThemeToggle`, from Step 4) was rendered only on the dev-only `/design-system` page. The prototype has no toggle either, which is probably how the plan missed it, even though CLAUDE.md asks for "a separate per-user toggle". Step 27 was approved at the start of this step. Following the "separate commits per concern" rule, this went in as its own inserted step instead of being folded into Step 27 or 28. The owner approved my proposed placement and behavior as-is.
+
+### What got built
+- `src/components/theme-toggle.tsx` was rewritten, with the same name and export so `/design-system` keeps working unchanged. It is now a ghost `icon-lg` (36px) button labelled "Light or dark mode", opening a `DropdownMenu modal={false}` with a `DropdownMenuRadioGroup`: Light (Sun), Dark (Moon) and Match device (Monitor, `"system"`). `onValueChange={setTheme}`. `ThemeProvider` already had `defaultTheme="system"`, so "Match device" is the default with no config change.
+- **The `mounted` workaround is gone.** The old button read `resolvedTheme` to choose its label, which is unknown on the server, so it rendered a disabled placeholder until a `useEffect` ran (with an eslint-disable). The new trigger renders both icons and lets the existing `@custom-variant dark` pick one (`dark:hidden` / `hidden dark:block`). The server HTML and the first client render are identical, and the icon is right from the first paint, because next-themes' blocking script sets `.dark` before paint. The radio group reads `theme`, not `resolvedTheme`, so "Match device" stays ticked on a dark device. It only renders once the menu opens, after next-themes has read `localStorage`.
+- **Non-modal** for the same reason as Step 27's notification bell: a modal menu `aria-hidden`s the page while its links stay tabbable (axe `aria-hidden-focus`).
+- **Placement:**
+  - `topbar.tsx`: in its own `ml-auto` wrapper, *outside* the `hidden sm:flex` group. That group (theme dropdown, dev switcher or identity) is hidden on phones, and light/dark should be available at every width. The group lost its `ml-auto`, since the toggle now pushes both right.
+  - `parent/(protected)/layout.tsx`: first in the header's right cluster, before the bell.
+  - `/`, `/parent/login`, `/parent/signup`: `<main>` became `relative`, and the toggle sits in `absolute top-4 right-4 z-10`. On desktop that's the form column's corner. On a phone it's above the compact header card: the section's `py-16` leaves 64px, and the 36px button ends at 52px.
+- `e2e/a11y.spec.ts` gained a `"light and dark mode toggle"` group:
+  - An axe check with the menu open in each of the three places.
+  - A keyboard-only test: focus the trigger, press Enter, focus "Dark", press Enter, and `<html>` gets `.dark`. It survives `page.reload()`, "Dark" shows as checked, and choosing "Match device" returns to light, since Playwright's default color scheme is light.
+- `docs/STYLING-SYSTEM.md` section 5 was rewritten for the new component, dropping the outdated `mounted` explanation, and its diagram label was updated.
+
+### Problems hit
+None. The first full run passed.
+
+### Verified
+- `npx playwright test`: **126 passed, 2 skipped** (the 118 from Step 27 plus 4 new tests × 2 sizes).
+- `lint`, `typecheck`, `check:tokens`, `test` (296) and `build` all pass.
+- Screenshots at 360px and 1280px, light and dark:
+  - The top bar with the menu open. On a phone, the icon sits right of the page title with the dropdown menu below it. On desktop it's left of "Saved theme".
+  - The parent header: moon, bell, Sign out.
+  - The staff login corner, clear of the mobile header card and of the desktop form.
+
+### Result
+All build tasks done. Waiting on the owner's review.

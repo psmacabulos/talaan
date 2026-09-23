@@ -510,6 +510,13 @@ It's invisible until you press Tab on a page. Then it's the first thing you reac
 ### Landmarks: a table of contents for screen readers
 Screen readers can list a page's regions (header, navigation, main content, sidebar) and jump straight to one. Those regions come from HTML tags like `<main>`, `<nav>` and `<aside>`, not from how the page looks. The login screens had no `<main>`, so a screen reader user couldn't jump straight to the form.
 
+### Why the light/dark button was missing, and why it has three choices (Step 27.5)
+Until this step, Talaan simply copied your phone's or computer's own light/dark setting, with no button to change it. The prototype never had a button, so the plan never listed one. Now a sun (or moon, in dark mode) icon opens a small menu:
+- **Light** or **Dark** lock the app to that look on this browser, whatever the device does.
+- **Match device** (the default) keeps following the device's own setting, which is how it behaved before.
+
+A plain one-click switch can't express "go back to following my device" once you've clicked it, which is why there are three choices instead of two. The choice is remembered by the browser, not by the school or your account, so a teacher's phone and their office PC can differ. It's separate from the school's color theme (Settings > Appearance): that one changes the *colors*, and this one only changes light vs. dark. How it works under the hood is in [`docs/STYLING-SYSTEM.md`](STYLING-SYSTEM.md) section 5.
+
 ### When a test failure isn't a bug in the app
 Three of this step's first failures were the test being too quick or too literal, not the app being wrong:
 - A result card was checked while it was still fading in, so it read as low contrast.

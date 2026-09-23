@@ -3,6 +3,7 @@ import { LoginArtPanel } from "@/features/auth/login-art-panel";
 import { LoginMobileHeader } from "@/features/auth/login-mobile-header";
 import { LoginForm } from "@/features/auth/login-form";
 import { DemoShortcuts } from "@/features/auth/demo-shortcuts";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 /**
  * The login screen (docs/PLAN.md Step 12) — now the site's entry point,
@@ -21,7 +22,12 @@ export default function LoginPage() {
   const signInEnabled = process.env.NODE_ENV !== "production";
 
   return (
-    <main className="grid min-h-screen flex-1 lg:grid-cols-[1.05fr_1fr]">
+    <main className="relative grid min-h-screen flex-1 lg:grid-cols-[1.05fr_1fr]">
+      {/* Light/dark before sign-in too (Step 27.5), in the form column's
+          top corner, clear of both the art panel and the form. */}
+      <div className="absolute top-4 right-4 z-10">
+        <ThemeToggle />
+      </div>
       <LoginArtPanel />
 
       <section className="flex flex-col items-center justify-center bg-background px-6 py-16 sm:px-12 sm:py-20 lg:px-16">

@@ -326,3 +326,50 @@ test.describe("keyboard and focus", () => {
     }
   });
 });
+
+/** Step 27.5: the light/dark menu, on each kind of screen it lives on. */
+test.describe("light and dark mode toggle", () => {
+  const PLACES = [
+    { name: "staff top bar", path: "/dashboard", as: "principal" },
+    { name: "parent header", path: "/parent", as: "parent" },
+    { name: "login page", path: "/", as: "anonymous" },
+  ] as const;
+
+  for (const place of PLACES) {
+    test(`menu is accessible (${place.name})`, async ({
+      page,
+      context,
+      baseURL,
+    }) => {
+      await signInAs(context, place.as, baseURL!);
+      await page.goto(place.path);
+      await page.getByRole("button", { name: "Light or dark mode" }).click();
+      await expect(page.getByRole("menu")).toBeVisible();
+      await expectNoBlockingViolations(page);
+    });
+  }
+
+  test("choosing dark with the keyboard sticks after a reload", async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    await signInAs(context, "principal", baseURL!);
+    await page.goto("/dashboard");
+    await page.getByRole("button", { name: "Light or dark mode" }).focus();
+    await page.keyboard.press("Enter");
+    await page.getByRole("menuitemradio", { name: "Dark" }).focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+
+    await page.reload();
+    await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+
+    await page.getByRole("button", { name: "Light or dark mode" }).click();
+    await expect(
+      page.getByRole("menuitemradio", { name: "Dark" }),
+    ).toBeChecked();
+    await page.getByRole("menuitemradio", { name: "Match device" }).click();
+    await expect(page.locator("html")).not.toHaveClass(/\bdark\b/);
+  });
+});

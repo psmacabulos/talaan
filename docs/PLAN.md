@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████████░░ 91%**  (70 of 77 tasks, 27 of 30 steps approved)
+**Overall progress: ██████████████████░░ 91%**  (72 of 79 tasks, 28 of 31 steps approved)
 
-**Next up:** Step 27, Accessibility audit (ready for your review)
+**Next up:** Step 27.5, Light and dark mode toggle (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -34,7 +34,8 @@
 | 24 | Notification feed | ██████████ 100% | Approved |
 | 25 | Schools management | ██████████ 100% | Approved |
 | 26 | Appearance settings | ██████████ 100% | Approved |
-| 27 | Accessibility audit | █████░░░░░  50% | Ready for your review |
+| 27 | Accessibility audit | ██████████ 100% | Approved |
+| 27.5 | Light and dark mode toggle | █████░░░░░  50% | Ready for your review |
 | 28 | End-to-end tests | ░░░░░░░░░░   0% | Not started |
 | 29 | Final polish | ░░░░░░░░░░   0% | Not started |
 
@@ -233,6 +234,12 @@ Commit: `feat(theme): add appearance settings`
 - [x] Run axe on every screen, including the parent portal, fix issues, and check keyboard use and focus handling.
 Done when: no serious or critical axe violations remain.
 Commit: `fix(a11y): resolve accessibility audit findings`
+- [x] Owner review: I checked it and said "approved"
+
+### Step 27.5: Light and dark mode toggle
+- [x] A visible light/dark control, which the plan had missed (the only toggle lived on the dev-only `/design-system` page). A sun/moon icon button opens a small menu: Light, Dark, Match device (the default). It sits in the staff top bar at every width, in the parent portal header next to the bell, and in the top-right corner of the login, parent login and parent signup pages. The choice is saved per browser (next-themes), as CLAUDE.md specifies. It's covered by the Step 27 accessibility audit.
+Done when: the control works on every screen at 360px and 1280px, the choice survives a reload, and the accessibility audit still passes.
+Commit: `feat(theme): add light and dark mode toggle`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 28: End-to-end tests
