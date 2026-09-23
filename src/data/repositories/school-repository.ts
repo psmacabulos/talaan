@@ -11,6 +11,8 @@ export interface SchoolRepository {
   /** Every school (super admins need the cross-school view). */
   list(): Promise<School[]>;
   getById(id: string): Promise<School | null>;
+  /** Replaces an existing school by `id` (Step 21's notification settings, and Step 26's appearance settings). Returns `null` if no school with that id exists. */
+  update(school: School): Promise<School | null>;
 }
 
 export function createMockSchoolRepository(
@@ -27,6 +29,13 @@ export function createMockSchoolRepository(
     async getById(id) {
       await simulateLatency(latencyMs);
       return data.find((school) => school.id === id) ?? null;
+    },
+    async update(school) {
+      await simulateLatency(latencyMs);
+      const index = data.findIndex((existing) => existing.id === school.id);
+      if (index === -1) return null;
+      data[index] = school;
+      return school;
     },
   };
 }

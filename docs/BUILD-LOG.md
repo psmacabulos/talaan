@@ -964,3 +964,29 @@ The first draft of `schemas.test.ts` tested "missing required field" with a `con
 
 ### Result
 All build tasks done. Waiting on the owner's review.
+
+---
+
+## Step 21: School notification settings
+
+**Goal:** a Settings > Notifications page (principal and super admin only) where a school picks off / time-in only / time-in and time-out, saved to the school record — the first write to the `School` record. A naming correction came with it: several earlier comments had labelled the theme "Custom" picker "Step 21", but that feature is actually Step 26, so those comments were corrected here.
+
+### What got built
+- `SchoolRepository.update` (school-repository.ts) — a full-record replace, same shape as `StudentRepository.update` (returns `null` for an unknown id); Step 26's appearance settings will reuse it.
+- `src/features/schools/actions.ts` — `updateNotificationPreference`, the schools feature's first server action: session gate → `notificationPreferenceSchema` re-validation → `schoolRepository.update({ ...school, notificationPreference })` → `refresh()`.
+- `src/features/schools/notification-settings-form.tsx` — a controlled radio group (three options with descriptions) plus a Save button (disabled until something changes). One enum field, no text input, so React Hook Form would be overkill; plain `useState` + `useTransition` is enough.
+- `src/components/ui/radio-group.tsx` — a new shadcn primitive, hand-written to match the codebase's unified `radix-ui`/`cn` import style rather than `npx shadcn add` (which would emit `@radix-ui/react-radio-group` imports that don't match what the other `ui/` files use).
+- `src/app/(app)/settings/page.tsx` — gated with the same `hasNavAccess` → `AccessDenied` / `NoSchoolSelected` pattern as `/staff` and `/station`.
+- `nav-items.ts` — a `settings` segment, `roles: [super_admin, principal]`.
+
+### A real decision: one /settings page, not nested
+The owner chose a single nav item "Settings" → `/settings` showing the Notifications form now, rather than a nested `/settings/notifications` route — Step 26 adds an "Appearance" section to the same page instead of introducing sub-navigation the flat sidebar doesn't have yet.
+
+### A real test failure caught by the suite
+Adding `settings` to `NAV_ITEMS` broke two `nav-items.test.ts` assertions that pin the exact segment list per role. Expected — those tests lock the role→section map — so they were updated to include `settings` for super admin/principal, plus explicit "teacher can't reach settings / principal can" assertions. Nothing deeper was wrong.
+
+### Verified
+`lint`, `typecheck`, `test` (249, up from 247), `check:tokens` and `build` all pass, and `/settings` appears in the production route list. The save path is unit-covered (`school-repository.test.ts`: update persists, returns `null` for an unknown id). The on-screen behavior — save each of the three options and confirm it persists on reload, teacher blocked with `AccessDenied`, school-less super admin shown `NoSchoolSelected` — is the owner's browser-review step, since this session has no interactive browser.
+
+### Result
+All build tasks done. Waiting on the owner's review.

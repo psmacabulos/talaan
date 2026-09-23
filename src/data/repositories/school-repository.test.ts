@@ -40,4 +40,16 @@ describe("createMockSchoolRepository", () => {
     result.push(schoolB);
     await expect(repo.list()).resolves.toEqual([schoolA]);
   });
+
+  it("updates an existing school", async () => {
+    const repo = createMockSchoolRepository([schoolA], { latencyMs: 0 });
+    const updated: School = { ...schoolA, notificationPreference: "time_in_and_time_out" };
+    await expect(repo.update(updated)).resolves.toEqual(updated);
+    await expect(repo.getById("school-a")).resolves.toEqual(updated);
+  });
+
+  it("returns null when updating an unknown school", async () => {
+    const repo = createMockSchoolRepository([schoolA], { latencyMs: 0 });
+    await expect(repo.update(schoolB)).resolves.toBeNull();
+  });
 });

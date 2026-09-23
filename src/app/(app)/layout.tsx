@@ -26,7 +26,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       ? await Promise.all([staffRepository.list(), schoolRepository.list()])
       : [[], []];
 
-  // The theme dropdown only offers the 5 named presets (Step 21 adds a
+  // The theme dropdown only offers the 5 named presets (Step 26 adds a
   // real "Custom" picker) — a school already on a custom brand color has
   // no exact match here, so this falls back to the app default rather
   // than guessing. No seed school is on "custom" yet, so this doesn't

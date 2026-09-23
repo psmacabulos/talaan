@@ -11,7 +11,7 @@ import { setThemeOverride } from "@/lib/theme/theme-override-actions";
  * CLAUDE.md's design-system rule 4). A live, per-browser preview: picking
  * one recolors everything immediately with no flash (setThemeOverride sets
  * a cookie, which Next re-renders the page for automatically), but nothing
- * is saved to the school's own record yet — that's Step 21's job. Matches
+ * is saved to the school's own record yet — that's Step 26's job. Matches
  * design/school-portal-prototype.html's own `theme(t)` handler, which is
  * equally ephemeral.
  */

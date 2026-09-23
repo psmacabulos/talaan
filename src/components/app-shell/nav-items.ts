@@ -1,7 +1,7 @@
-import { CalendarCheck, IdCard, LayoutDashboard, Nfc, School, Users, type LucideIcon } from "lucide-react";
+import { CalendarCheck, IdCard, LayoutDashboard, Nfc, School, Settings, Users, type LucideIcon } from "lucide-react";
 import type { Role } from "@/features/staff/types";
 
-export type NavSegment = "schools" | "dashboard" | "attendance" | "students" | "staff" | "station";
+export type NavSegment = "schools" | "dashboard" | "attendance" | "students" | "staff" | "station" | "settings";
 
 export type NavItem = {
   segment: NavSegment;
@@ -26,6 +26,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { segment: "students", href: "/students", label: "Students", icon: Users, roles: ALL_ROLES },
   { segment: "staff", href: "/staff", label: "Staff", icon: IdCard, roles: SCHOOL_STAFF_ROLES },
   { segment: "station", href: "/station", label: "Tap station", icon: Nfc, roles: SCHOOL_STAFF_ROLES },
+  { segment: "settings", href: "/settings", label: "Settings", icon: Settings, roles: SCHOOL_STAFF_ROLES },
 ];
 
 export function navItemsForRole(role: Role): NavItem[] {
