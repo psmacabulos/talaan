@@ -15,6 +15,7 @@ import { LiveTapFeed } from "@/features/attendance/live-tap-feed";
 import { NeedsAttention } from "@/features/attendance/needs-attention";
 import { NoSchoolSelected } from "@/features/attendance/no-school-selected";
 import { attendanceByGrade, countByStatus } from "@/features/attendance/status";
+import { deriveCardStatus } from "@/features/students/card-status";
 
 /** A plain bordered panel with a heading — the dashboard's repeated container. */
 function DashboardCard({
@@ -76,12 +77,15 @@ export default async function DashboardPage() {
     // One lookup per student rather than a new repository method — an
     // advisory class is a handful of students, and this keeps the change
     // inside Step 13 instead of reopening Step 9's repository interfaces.
-    const activeCards = await Promise.all(
-      classStudents.map((student) => cardRepository.getActiveForStudent(student.id)),
+    // The full card history, not just the active card, so a phone can tell
+    // "No card" from "Lost" (Step 27.8), the same as the Attendance page.
+    const cardsByStudent = await Promise.all(
+      classStudents.map((student) => cardRepository.listByStudent(student.id)),
     );
-    const studentIdsWithoutCard = new Set(
-      classStudents.filter((_, index) => activeCards[index] === null).map((student) => student.id),
-    );
+    const rollRows = classStudents.map((student, index) => ({
+      student,
+      cardStatus: deriveCardStatus(cardsByStudent[index] ?? []),
+    }));
 
     return (
       <div className="flex flex-col gap-6">
@@ -106,11 +110,7 @@ export default async function DashboardPage() {
             large empty area inside it. */}
         <div className="grid items-start gap-6 xl:grid-cols-[1.2fr_1fr]">
           <DashboardCard title="Class roll">
-            <ClassRoll
-              students={classStudents}
-              taps={classTaps}
-              studentIdsWithoutCard={studentIdsWithoutCard}
-            />
+            <ClassRoll rows={rollRows} taps={classTaps} />
           </DashboardCard>
           <DashboardCard title="Live taps in your class">
             <LiveTapFeed taps={classTaps} students={classStudents} />

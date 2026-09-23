@@ -114,7 +114,7 @@ export function SchoolForm({ onSuccess, onCancel }: { onSuccess: () => void; onC
         </div>
 
         <fieldset className="flex flex-col gap-4">
-          <legend className="font-heading text-sm font-semibold text-foreground">School details</legend>
+          <legend className="mb-3 font-heading text-sm font-semibold text-foreground">School details</legend>
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="school-name">School name</Label>
@@ -132,7 +132,7 @@ export function SchoolForm({ onSuccess, onCancel }: { onSuccess: () => void; onC
           </div>
 
           <fieldset className="flex flex-col gap-2">
-            <legend className="text-sm font-medium text-foreground">Logo (optional)</legend>
+            <legend className="mb-2 text-sm font-medium text-foreground">Logo (optional)</legend>
             <LogoUploader
               id="school-logo"
               value={logoUrl}
@@ -145,7 +145,7 @@ export function SchoolForm({ onSuccess, onCancel }: { onSuccess: () => void; onC
         </fieldset>
 
         <fieldset className="flex flex-col gap-4">
-          <legend className="font-heading text-sm font-semibold text-foreground">Colors</legend>
+          <legend className="mb-1 font-heading text-sm font-semibold text-foreground">Colors</legend>
           <p className="text-sm text-muted-foreground">
             Pick the preset this school starts on — its principal can change it later in Settings.
           </p>
@@ -157,13 +157,13 @@ export function SchoolForm({ onSuccess, onCancel }: { onSuccess: () => void; onC
         </fieldset>
 
         <fieldset className="flex flex-col gap-4">
-          <legend className="font-heading text-sm font-semibold text-foreground">Principal</legend>
+          <legend className="mb-1 font-heading text-sm font-semibold text-foreground">Principal</legend>
           <p className="text-sm text-muted-foreground">
             Their account starts as invited so this school can be opened right away. No real email is
             sent in this demo.
           </p>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
             <div className="flex flex-col gap-2">
               <Label htmlFor="school-principal-first-name">First name</Label>
               <Input
@@ -212,7 +212,7 @@ export function SchoolForm({ onSuccess, onCancel }: { onSuccess: () => void; onC
         </fieldset>
       </div>
 
-      <SheetFooter className="flex-row justify-end border-t border-border">
+      <SheetFooter className="flex-row justify-end border-t border-border [&>button]:h-11 [&>button]:flex-1 sm:[&>button]:h-8 sm:[&>button]:flex-none">
         <Button type="button" variant="ghost" onClick={onCancel} disabled={busy}>
           Cancel
         </Button>

@@ -1,15 +1,13 @@
 "use client";
 
-import { useTransition } from "react";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getThemePreset } from "@/lib/theme/presets";
-import { openSchool } from "./actions";
 import { NOTIFICATION_PREFERENCE_LABEL } from "./notification-settings-form";
 import { SchoolLogo } from "./school-logo";
 import type { School, SchoolRow } from "./types";
+import { useOpenSchool } from "./use-open-school";
 
 function ThemeCell({ school }: { school: School }) {
   if (school.theme.kind === "custom") {
@@ -47,23 +45,10 @@ function ThemeCell({ school }: { school: School }) {
 }
 
 function OpenSchoolButton({ schoolId }: { schoolId: string }) {
-  const [isPending, startTransition] = useTransition();
+  const { isPending, open } = useOpenSchool(schoolId);
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      disabled={isPending}
-      onClick={() => {
-        startTransition(async () => {
-          // On success `openSchool` redirects to /dashboard as that
-          // school's principal — this promise never settles, so only
-          // failure paths show a toast here.
-          const result = await openSchool(schoolId);
-          if (!result.ok) toast.error(result.formError);
-        });
-      }}
-    >
+    <Button variant="outline" size="sm" disabled={isPending} onClick={open}>
       {isPending ? (
         <>
           <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
@@ -77,8 +62,9 @@ function OpenSchoolButton({ schoolId }: { schoolId: string }) {
 }
 
 /**
- * The Step 25 schools list (super admin only). The table scrolls inside
- * its own container on narrow screens, the same as `StudentsTable` — every
+ * The Step 25 schools list (super admin only), from 768px up; phones get
+ * `SchoolsCardList` instead (Step 27.8). Between 768px and a wide screen
+ * the table still scrolls inside its own container if it has to, so every
  * column stays reachable without the page itself scrolling sideways.
  */
 export function SchoolsTable({ items }: { items: SchoolRow[] }) {

@@ -3,7 +3,8 @@ import Link from "next/link";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { cardRepository, staffRepository, studentRepository, tapRepository } from "@/data/repositories";
-import { AttendanceTable, type AttendanceRow } from "@/features/attendance/attendance-table";
+import { AttendanceList } from "@/features/attendance/attendance-list";
+import type { AttendanceRow } from "@/features/attendance/attendance-table";
 import {
   ATTENDANCE_SEED_DATE,
   attendanceHref,
@@ -14,7 +15,6 @@ import {
 } from "@/features/attendance/attendance-search-params";
 import { AttendanceToolbar } from "@/features/attendance/attendance-toolbar";
 import { NoSchoolSelected } from "@/features/attendance/no-school-selected";
-import { AttendanceLegend } from "@/features/attendance/segmented-bar";
 import { countByStatus } from "@/features/attendance/status";
 import { deriveCardStatus } from "@/features/students/card-status";
 import { getSession } from "@/lib/session";
@@ -117,12 +117,8 @@ export default async function AttendancePage({ searchParams }: PageProps<"/atten
       cardStatus: deriveCardStatus(cardsByStudent[index] ?? []),
     }));
 
-    body = (
-      <>
-        <AttendanceLegend counts={countByStatus(classStudents, taps, `${date}T09:15:00Z`)} />
-        <AttendanceTable rows={rows} taps={taps} now={`${date}T09:15:00Z`} />
-      </>
-    );
+    const now = `${date}T09:15:00Z`;
+    body = <AttendanceList rows={rows} taps={taps} now={now} counts={countByStatus(classStudents, taps, now)} />;
   }
 
   return (

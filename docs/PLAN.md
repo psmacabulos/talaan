@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████████░░ 90%**  (83 of 92 tasks, 31 of 34 steps approved)
+**Overall progress: ███████████████████░ 94%**  (87 of 93 tasks, 32 of 34 steps approved)
 
-**Next up:** Step 27.8, Mobile cards everywhere else (not started)
+**Next up:** Step 28, End-to-end tests (not started)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -38,7 +38,7 @@
 | 27.5 | Light and dark mode toggle | ██████████ 100% | Approved |
 | 27.6 | Mobile staff list and drawer | ██████████ 100% | Approved |
 | 27.7 | Mobile students cards | ██████████ 100% | Approved |
-| 27.8 | Mobile cards everywhere else | ░░░░░░░░░░   0% | Not started |
+| 27.8 | Mobile cards everywhere else | ██████████ 100% | Approved |
 | 28 | End-to-end tests | ░░░░░░░░░░   0% | Not started |
 | 29 | Final polish | ░░░░░░░░░░   0% | Not started |
 
@@ -266,11 +266,16 @@ Commit: `feat(students): show students as cards on small screens`
 - [x] Owner review: I checked it and said "approved"
 
 ### Step 27.8: Mobile cards everywhere else
-- [ ] Apply Step 27.7's card pattern to every other list that still scrolls sideways on a phone: Schools, the Attendance table and the dashboard class roll.
-- [ ] Apply the same drawer treatment to the Add school drawer (and any other drawer not yet done): full width on phones, fields stacked, footer buttons pinned and thumb-sized.
+Attendance is laid out after a second sample phone screen the owner shared (2026-09-23), in this app's own styling (docs/RESPONSIVE-LISTS.md section 3 says what was taken).
+- [x] Apply Step 27.7's card pattern to every other list that still scrolls sideways on a phone: Schools, the Attendance table and the dashboard class roll.
+  - Schools: one card per school, with the name, "36 students · 4 staff", and a "Notifications off" tag only when they're off. Tapping a card opens the school.
+  - Attendance: date full width, grade and section side by side (all 44px), the four counts as boxed tiles, a "Students · N total" heading, and cards with today's status on the right and the time in under it. There's no LRN on the card, and a "No card" or "Lost" tag only when it's the exception.
+  - Class roll (teacher dashboard): the same layout as divided rows inside its panel, not boxes inside a box. On desktop too, a student without a card now gets the "No card" (or "Lost") tag instead of "No ID card linked yet" (owner review).
+- [x] Apply the same drawer treatment to the Add school drawer (and any other drawer not yet done): full width on phones, fields stacked, footer buttons pinned and thumb-sized.
+- [x] Borders with no color of their own (table row lines, the drawer's edge, the dialog footer line) were drawn in the text color, dark navy in light mode, instead of the light border color. Every border now defaults to the border token, the rule shadcn's own setup adds. Found while measuring this step and fixed here at the owner's request. It lightens the desktop table lines too.
 Done when: the "small screens" audit test covers every list page, and lint, typecheck, test, build and check:tokens pass.
 Commit: `feat(ui): show lists as cards on small screens`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 28: End-to-end tests
 - [ ] Playwright tests for login, add student, replace card, tap station, theme switch, and the parent flow (sign up, link a child, see a notification).
@@ -281,7 +286,7 @@ Commit: `test: add end-to-end tests`
 ### Step 29: Final polish
 - [ ] Lighthouse pass on login and dashboard, 360px and 1280px review in light and dark, remove unused code, finish the README.
 - [ ] Sitewide spacing/alignment consistency pass across every screen built so far: generous, deliberate whitespace (not the prototype's literal values), and real box-centering checked by measurement, not just by eye. See CLAUDE.md's UX quality bar and docs/BUILD-LOG.md's Step 12 "review round 2" (the flexbox centering bug found this way).
-- [ ] Mobile table layout: moved out to Steps 27.6 (Staff, sets the pattern), 27.7 (Students) and 27.8 (every other list and drawer) at the owner's request. Here, only re-check that no list added since still scrolls sideways at 360px.
+- [ ] Mobile table layout: moved out to Steps 27.6 (Staff, sets the pattern), 27.7 (Students) and 27.8 (every other list and drawer) at the owner's request. Here, only re-check that no list added since still scrolls sideways at 360px (Step 27.8's measuring script checked every page, every role, at 320, 360 and 375px).
 Done when: scores and the review are reported honestly, and lint, typecheck, test, build and check:tokens pass.
 Commit: `chore: final polish for phase 1`
 - [ ] Owner review: I checked it and said "approved"

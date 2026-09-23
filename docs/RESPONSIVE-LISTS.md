@@ -1,6 +1,6 @@
 # Responsive lists and drawers
 
-How a list of records (staff, students, schools…) changes shape between a phone and a desktop, and how drawers fit on a phone. Built on the Staff page in Step 27.6, turned into cards and applied to Students in Step 27.7; Step 27.8 carries it to every other list.
+How a list of records (staff, students, schools…) changes shape between a phone and a desktop, and how drawers fit on a phone. Built on the Staff page in Step 27.6, turned into cards and applied to Students in Step 27.7, and carried to Schools, Attendance and the dashboard's class roll in Step 27.8.
 
 ## 1. The idea
 
@@ -13,14 +13,22 @@ So below 768px the same records become **cards**: one short card per record, say
 
 ```mermaid
 flowchart TB
-    Page["page.tsx (Server Component)<br/>fetches data + session"] --> Dir["StaffDirectory / StudentsDirectory"]
-    Dir -->|"md:hidden (below 768px)"| List["StaffCompactList / StudentsCardList<br/>&lt;ul&gt; of cards"]
-    Dir -->|"hidden md:block (768px and up)"| Table["StaffTable / StudentsTable<br/>&lt;table&gt;"]
+    Page["page.tsx (Server Component)<br/>fetches data + session"] --> Dir["StaffDirectory / StudentsDirectory /<br/>SchoolsDirectory / AttendanceList / ClassRoll"]
+    Dir -->|"md:hidden (below 768px)"| List["StaffCompactList / StudentsCardList /<br/>SchoolsCardList / AttendanceCardList<br/>&lt;ul&gt; of cards"]
+    Dir -->|"hidden md:block (768px and up)"| Table["StaffTable / StudentsTable /<br/>SchoolsTable / AttendanceTable<br/>&lt;table&gt;"]
     List --> Shared["staff-display.tsx / student-display.tsx<br/>names · labels · avatar"]
     Table --> Shared
-    List --> Open["Staff: ⋮ menu (StaffRowMenu)<br/>Students: tap the card → edit drawer"]
+    List --> Open["Staff: ⋮ menu (StaffRowMenu)<br/>Students: tap the card → edit drawer<br/>Schools: tap the card → open the school"]
     Table --> Open
 ```
+
+| Page | Phone view | Its one line under the name | Tag (exception only) | Tapping it |
+|---|---|---|---|---|
+| Staff | `StaffCompactList` | "Adviser, Grade 7 – Rizal" | Invited | ⋮ menu |
+| Students | `StudentsCardList` | "Grade 12 – Silang", or a teacher's "In at 7:12 AM" | No card, Lost | Edit drawer (principal) |
+| Schools | `SchoolsCardList` | "36 students · 4 staff" | Notifications off | Opens the school |
+| Attendance | `AttendanceCardList` (cards) | nothing: the time in sits under the status on the right | No card, Lost | Nothing |
+| Class roll | `AttendanceCardList` (`variant="rows"`) | same as Attendance | No card, Lost | Nothing |
 
 ## 2. Swapping with CSS, not JavaScript
 
@@ -77,6 +85,20 @@ Why not measure the screen in JavaScript and render only one? Because the server
 | Count and page buttons on one row | Taken | With 44px buttons. |
 | Bottom navigation bar | Not now (owner's decision) | Principals have 6 sections and super admins 7, more than a bottom bar holds. |
 
+**A second sample, for Attendance (Step 27.8).** The owner shared another phone screen and asked for its **layout**, in this app's own styling (not its colors or uppercase labels):
+
+| Sample idea | Decision | Why |
+|---|---|---|
+| Date full width, Grade and Section side by side, thumb-sized | Taken | Same as the Students toolbar. |
+| Four boxed count tiles, two by two | Taken | `AttendanceCountTiles`. The desktop keeps its one-line legend. |
+| "Student taps · 6 total" heading above the list | Taken, as "Students · 6 total" | In the app's existing small uppercase label style, the one the parent dashboard uses. |
+| Status badge top right, time in under it | Taken | The times line up in a column down the list. |
+| LRN under the name | Left out (owner's decision) | Students are minors. A "No card" or "Lost" tag uses that spot, only when it applies. |
+| Green uppercase field labels, uppercase badges | Left out (owner's decision) | Every other form uses "Date", and every badge "Present". |
+| Taller cards | Left out | Cards stay short (`min-h-16`, 8px apart). With the status and time stacked on the right, these measured 74px. |
+| "Pending" | Kept "Not yet tapped" | The status name used everywhere else. |
+| Bottom navigation bar, dark green colors | Not taken | Not now, and the colors are only the sample's theme. |
+
 The rules each card follows:
 
 - **Say what tells records apart, once.** A student's second line is `gradeAndSection()` ("Grade 12 – Silang"). A teacher's list is all one class, where that line would repeat on every card, so `subtitle="time-in"` shows "In at 7:12 AM" or "No tap yet" instead. A staff member's is `staffSummary()` ("Adviser, Grade 7 – Rizal"), which already implies the role. No column labels, because the content explains itself.
@@ -89,6 +111,13 @@ Details that matter:
 - **The whole student card is tappable, but the name stays a heading.** A `<button>` can't contain a heading, so the button sits *inside* the `<h3>`, and its invisible `::after` is stretched over the whole card (`after:absolute after:inset-0` with `relative` on the `<li>`). A tap anywhere on the card lands on the button. Its accessible name is "Edit Reynaldo Abad", the same as the desktop table rows. The focus ring is drawn on the card with `has-focus-visible:ring-2`, since the button itself is only as big as the name. Teachers get plain text with no button, because they can't edit.
 - **Long text wraps rather than widening the page.** Names use `wrap-break-word`, and the text column is `min-w-0 flex-1`: without `min-w-0` a flex child refuses to shrink below its content's width, and wrapping never happens.
 - **The staff ⋮ sits in a fixed 44×44px box at the card's edge** (`size-11`), even when a card has no menu, so every card's text lines up. It stays 32px in the desktop table, where it's clicked with a mouse.
+- **A card that goes somewhere gets a ›.** A school card opens that school, so it has a chevron in the same 44px box (a spinner while it opens). A student card opens a drawer over the same page, so it doesn't. Both use the stretched button described above. The school card's button is named "Open Balanga City National Science High School", the same action as the desktop's Open button. Both call one `useOpenSchool` hook, so they can't behave differently.
+
+### A list inside a panel: rows, not cards
+
+The teacher dashboard's class roll sits inside a bordered "Class roll" panel, with the "Live taps" list under it. Cards there would be boxes inside a box, and the panel's own padding would leave each name about 40px narrower than on the Students page. So `AttendanceCardList` takes `variant="rows"`: the same content, separated by thin `divide-border` lines, like "Live taps". The owner agreed. Separate cards are for a list that is the page. A list inside a panel uses rows.
+
+A dash stands in for a missing time in (`—`, `aria-hidden`), with "No tap yet" as screen-reader-only text, so a screen reader never just says "dash". The time in has "In at" in the same hidden way.
 
 ## 4. The ⋮ row menu
 
@@ -115,7 +144,8 @@ Details that matter:
 - **Fields stack one per row** (`grid-cols-1 sm:grid-cols-2`), so a select's placeholder ("Select a grade") is never cut off.
 - **Long helper text goes behind an ⓘ toggle.** A plain show/hide button (`aria-expanded`, `aria-controls`), not a hover tooltip, because touch screens have no hover.
 - **Footer buttons are pinned and thumb-sized.** The form is `flex-1 overflow-hidden` with its own scrolling body, so Cancel and Submit stay visible however long the form gets. On phones they share the width and are 44px tall: `[&>button]:h-11 [&>button]:flex-1 sm:[&>button]:h-8 sm:[&>button]:flex-none` on the footer.
-- **Fieldset legends need their own margin** (`mb-3`). A `<legend>` doesn't take part in its fieldset's flex `gap`, so without one it sits right on top of the first field.
+- **Fieldset legends need their own margin.** A `<legend>` doesn't take part in its fieldset's flex `gap`, so without one it sits right on top of the first field. Use `mb-3` when a field follows, and `mb-1` when a one-line description follows, so the description stays with its heading ("Colors", "Principal" in the Add school form, "Advisory class" in the staff form). A small nested legend over one control ("Logo (optional)") gets `mb-2`, matching the gap between a label and its input.
+- **Every drawer is done:** staff (27.6), student (27.7) and Add school (27.8). The navigation drawer that slides in from the left is a menu, not a form, and stays at three-quarters width so a strip of the page shows beside it.
 
 ## 6. Header, toolbar and pagination on a phone
 
@@ -135,8 +165,28 @@ Added in Step 27.7, so the whole Students screen fits a phone, not just the list
 - **Short button labels on phones.** "Add student" shows as "Add" (`Add<span className="hidden sm:inline">student</span>`), with `aria-label="Add student"` so screen readers and voice control still get the full name. The visible "Add" is the start of the label, which WCAG 2.5.3 (Label in Name) requires.
 - **Toolbar.** Search spans the full width. The grade and card filters share the row below it (`grid-cols-2`, or one column for a teacher, who has no grade filter), and all three are 44px tall on phones. Select triggers need `data-[size=default]:h-11`, not `h-11`, for the same "more specific rule wins" reason as the drawer width in section 5.
 - **Pagination** stays on one row (`flex flex-wrap justify-between`) with 44px page buttons. "Showing 1–10 of 36" drops the word "students" below 640px to make room. It only wraps on the very narrowest screens.
+- **The Attendance toolbar** (Step 27.8) keeps its visible "Date", "Grade" and "Section" labels. On phones the date spans the row (`col-span-full`, `h-11`) and grade and section share the row under it (`grid-cols-2`), each with `min-w-0` so a long section name truncates instead of widening the page. A teacher only has the date (`grid-cols-1`). From 640px up it's the inline row it always was.
 
-## 7. Red buttons and hover contrast
+  ```tsx
+  <div className={cn("grid gap-3 sm:flex sm:flex-row sm:flex-wrap sm:items-end",
+                     showClassPicker ? "grid-cols-2" : "grid-cols-1")}>
+    <label className="col-span-full …"><Input className="h-11 sm:h-8 sm:w-44" … /></label>
+    <div className="flex min-w-0 flex-col …"><SelectTrigger className={cn(FIELD_TRIGGER_CLASS, "sm:w-36")} /></div>
+  ```
+
+## 7. Border colors and red buttons
+
+**Borders default to the border token (Step 27.8).** Tailwind v4 draws a border with no color class in the text color. shadcn's table rows (`border-b`), the drawer's edge and the dialog footer line don't name a color, so they came out dark navy in light mode. `src/styles/base.css` now sets the default that shadcn's own setup normally adds:
+
+```css
+*, ::after, ::before, ::backdrop, ::file-selector-button {
+  border-color: var(--border);
+}
+```
+
+It's in `@layer base`, so any `border-*` color class still wins. Before adding it, a scan of every class string showed that only those three shadcn parts relied on the default. Every other border names its color.
+
+**Red buttons and hover contrast.**
 
 The audit found that shadcn's destructive button darkened its translucent red tint on hover, dropping the text to 4.12:1 (light) and 3.87:1 (dark), below AA's 4.5:1. It only showed up once the confirmation dialog happened to open under the pointer. `src/components/ui/button.tsx` now fills the button with the solid `destructive`/`destructive-foreground` token pair on hover, which passes in both modes and reads clearly as "this is the dangerous one".
 
@@ -152,6 +202,18 @@ The audit found that shadcn's destructive button darkened its translucent red ti
 - `e2e/a11y.spec.ts`:
   - "staff row menu and remove confirmation": axe with the menu open and with the dialog open, then Cancel returns focus to ⋮.
   - "small screens › /staff and /students fit the screen width": at 360px the list is shown, the table is hidden, axe finds nothing blocking, and `scrollWidth <= clientWidth`. A new list page is one more entry in `LIST_PAGES`.
+- `src/features/schools/schools-card-list.test.tsx` checks:
+  - The name and "36 students · 4 staff" ("1 student" in the singular), with no theme.
+  - The "Notifications off" tag only when they're off.
+  - Tapping calls `openSchool` and the button waits, disabled, while it opens.
+- `src/features/attendance/attendance-card-list.test.tsx` checks:
+  - Name, status and time in, with no LRN or class.
+  - "In at" and "No tap yet" for screen readers.
+  - The tag only when the card isn't linked.
+  - Today is measured against the date given.
+  - The list is named, so the class roll reads as its own list.
+- `src/features/attendance/class-roll.test.tsx` checks the desktop class roll's second line: "In at", "No tap yet", or the "No card" or "Lost" tag (it said "No ID card linked yet" before Step 27.8's review).
+- The "small screens" test's `LIST_PAGES` now names a role per page: Staff, Students and Attendance as a principal, Attendance as a teacher, Schools as a super admin, and the dashboard's "Class roll" as a teacher.
 - `src/features/students/students-card-list.test.tsx` checks:
   - Name, grade and section, and today's status, with no LRN, age or guardian.
   - The card tag only when the card isn't linked.
@@ -175,6 +237,12 @@ Pass it as `actions` to `PageHeader`, and if its label is more than one short wo
 1. Add a `can…` flag to the feature's row-actions rule, with a unit test.
 2. Add a server action that re-checks the session, the school and that same rule.
 3. Add a `DropdownMenuItem` shown only when the flag is true. If it's destructive, open a confirmation `Dialog` instead of acting directly.
+
+**Make a card that goes somewhere (like Schools)**
+Put the action in a hook both views call (`useOpenSchool`), stretch a button over the card as for Students, and put a `ChevronRight` in a `size-11` box at the card's edge, swapped for `Loader2` while it's pending.
+
+**Show a list inside a bordered panel**
+Use rows, not cards: `divide-y divide-border` on the `<ul>` and `py-3 first:pt-0 last:pb-0` on each `<li>` (`AttendanceCardList variant="rows"`).
 
 **Fix a drawer that's cramped on a phone**
 Add `data-[side=right]:w-full` to its `SheetContent`, stack paired fields with `grid-cols-1 sm:grid-cols-2`, and put the footer-button classes above on its `SheetFooter`.

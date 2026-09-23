@@ -153,7 +153,7 @@ export type SimulateTapResult =
   | { tapped: false; reason: "no-card"; studentNames: string[] };
 ```
 
-Three different things can happen, and the person clicking deserves to know which. The first version always said "Tap recorded", including when it had tapped nobody — which is how a student with no ID card ended up looking like a bug (`docs/BUILD-LOG.md`, Step 13 review round 1). Now a card-less student is named, and the class roll says "No ID card linked yet" on that row instead of "No tap yet", so the reason is visible before anyone clicks anything.
+Three different things can happen, and the person clicking deserves to know which. The first version always said "Tap recorded", including when it had tapped nobody — which is how a student with no ID card ended up looking like a bug (`docs/BUILD-LOG.md`, Step 13 review round 1). Now a card-less student is named, and the class roll shows a "No card" (or "Lost") tag on that row instead of "No tap yet", so the reason is visible before anyone clicks anything. (It said "No ID card linked yet" until Step 27.8, which switched it to the same tag every other list uses.)
 
 ## The attendance page (Step 17): picking one class, one day
 

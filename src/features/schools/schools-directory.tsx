@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { SchoolDrawer } from "./school-drawer";
+import { SchoolsCardList } from "./schools-card-list";
 import { SchoolsTable } from "./schools-table";
 import type { SchoolRow } from "./types";
 
@@ -40,7 +41,16 @@ export function SchoolsDirectory({ items }: { items: SchoolRow[] }) {
           description="Add the first school to get started."
         />
       ) : (
-        <SchoolsTable items={items} />
+        // Both views render and CSS shows one, so the server's HTML is right
+        // for every screen from the first paint (docs/RESPONSIVE-LISTS.md).
+        <>
+          <div className="md:hidden">
+            <SchoolsCardList items={items} />
+          </div>
+          <div className="hidden md:block">
+            <SchoolsTable items={items} />
+          </div>
+        </>
       )}
 
       <SchoolDrawer open={drawerOpen} onOpenChange={setDrawerOpen} onSuccess={() => setDrawerOpen(false)} />

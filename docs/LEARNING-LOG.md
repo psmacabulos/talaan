@@ -19,7 +19,7 @@ Short, plain-language notes explaining things along the way — for whenever I w
 - [Turning a Next.js web app into an iOS/Android app](#turning-a-nextjs-web-app-into-an-iosandroid-app)
 - [Two separate logins in one app, and a mock password (Step 22)](#two-separate-logins-in-one-app-and-a-mock-password-step-22)
 - [Accessibility: checking that everyone can use it (Step 27)](#accessibility-checking-that-everyone-can-use-it-step-27)
-- [Phones vs. desktops: one list, two layouts (Steps 27.6–27.7)](#phones-vs-desktops-one-list-two-layouts-steps-276277)
+- [Phones vs. desktops: one list, two layouts (Steps 27.6–27.8)](#phones-vs-desktops-one-list-two-layouts-steps-276278)
 
 ---
 
@@ -527,7 +527,7 @@ Three of this step's first failures were the test being too quick or too literal
 Each was confirmed by looking at the actual page before the test was changed. The rule is to prove it's a test problem, never just loosen the test until it passes.
 
 
-## Phones vs. desktops: one list, two layouts (Steps 27.6–27.7)
+## Phones vs. desktops: one list, two layouts (Steps 27.6–27.8)
 
 ### Why a table becomes a compact list on a phone
 A table is great on a desktop because your eye can run straight down one column ("which of these is still Invited?"). A phone has room for maybe two columns, so the rest ends up off-screen and you have to drag sideways, losing track of which row you were on. So on a phone each person becomes one short row: name, plus one line saying what they do. The switch happens at 768px wide (roughly a small tablet held upright).
@@ -547,6 +547,16 @@ The phone mockup you shared was a good guide to the *feel* you wanted: cards, th
 - **A bottom navigation bar** holds 4–5 tabs, and principals have 6 sections. It would need a "More" tab, and it changes every page, so it's a decision of its own. You chose not now.
 
 The full list of what was kept and why is in [`docs/RESPONSIVE-LISTS.md`](RESPONSIVE-LISTS.md) (section 3).
+
+For the second sample (Attendance, Step 27.8), you said what it was for: the **layout**, not its colors or uppercase labels. That's a useful thing to say with any sample. The layout came across: the full-width date, grade and section side by side, the four count tiles, the "Students · 6 total" heading, and the time under the status. The styling stayed this app's own: sentence-case labels, the school's theme colors and the same badges as every other page. A sample made in another tool almost always carries that tool's look, and copying the look page by page would slowly turn the app into a patchwork.
+
+### What is the "class roll"? (owner question, Step 27.8)
+It's the list a **teacher** sees on their **Dashboard**, the first page after a teacher signs in. It's a box titled "Class roll" with every student in the teacher's own advisory class and whether each one has arrived today. ("Roll" as in "taking the roll" or "roll call".) Principals don't see it; they get "Attendance by grade level" instead. To see it: switch to the teacher with the dev switcher and open Dashboard.
+
+On a phone it's the same layout as the Attendance cards, but as rows with thin lines between them rather than separate boxes. It already sits inside a bordered box, and boxes inside a box look cluttered and leave the names less room. Rule of thumb: **cards for a list that is the whole page, rows for a list inside a panel.**
+
+### Dark lines that nobody chose (Step 27.8)
+The lines between table rows, the drawer's left edge and the line above a dialog's buttons were dark navy in light mode. It looked like a design decision, but nobody had made it. In Tailwind v4, a border without a color gets the **text** color, and shadcn's setup normally adds one line saying "every border uses the border color". That line was missing here. It was found by measuring the actual color on screen (dark, `oklch(0.252…)`) and comparing it with the border color (light, `oklch(0.923…)`), not by eye. Before adding the missing line, every border in the code was checked so that nothing else would change by surprise. The lesson: when something "has always looked like that", check whether it was chosen or is just a default.
 
 ### Cards vs. one divided list: the trade-off (Step 27.7)
 Both show the same short content. **Cards** (separate boxes with a gap) make each student feel like one tappable thing and match the mockup. **A divided list** (one box with thin lines) fits about one more row on the screen. You chose cards, and Staff switched too so the two pages look the same. Keeping the cards short (about 65px) is what keeps a long list quick to scroll.

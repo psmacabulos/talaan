@@ -43,6 +43,35 @@ export function AttendanceSegmentedBar({ counts }: { counts: StatusCounts }) {
   );
 }
 
+/**
+ * The same four counts as boxed tiles, two by two, for the Attendance page
+ * on a phone (Step 27.8, from the owner's sample screen). The number sits
+ * above its label on screen, but the label comes first in the markup, so a
+ * screen reader hears "Present, 5" and the list stays a valid `dl`.
+ */
+export function AttendanceCountTiles({ counts }: { counts: StatusCounts }) {
+  return (
+    <dl className="grid grid-cols-2 gap-2">
+      {ORDER.map((key) => (
+        <div
+          key={key}
+          className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 rounded-lg border border-border bg-card px-4 py-3"
+        >
+          {/* row-end, not row-span: row-span would throw away row-start. */}
+          <span
+            className={cn("col-start-1 row-start-1 row-end-3 size-2.5 rounded-full", FILL_CLASS[key])}
+            aria-hidden="true"
+          />
+          <dt className="col-start-2 row-start-2 text-sm text-muted-foreground">{LABEL[key]}</dt>
+          <dd className="col-start-2 row-start-1 font-heading text-2xl leading-tight font-semibold text-foreground">
+            {counts[key]}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 /** The four counts spelled out under the bar, each with its own color dot. */
 export function AttendanceLegend({ counts }: { counts: StatusCounts }) {
   return (

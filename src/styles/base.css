@@ -50,6 +50,23 @@
     margin-right: 0px !important;
   }
 
+  /*
+   * Tailwind v4 draws a border with no color class in the text color
+   * (currentColor), so shadcn's table rows, the drawer's edge and the
+   * dialog footer line came out dark navy instead of the light divider the
+   * prototype uses (Step 27.8). This is the rule shadcn's own setup adds:
+   * every border defaults to the border token, and any border-* color
+   * class still wins, since utilities sit in a later layer. Same selector
+   * list as Tailwind's own border reset.
+   */
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--border);
+  }
+
   body {
     background: var(--background);
     color: var(--foreground);

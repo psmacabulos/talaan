@@ -1336,3 +1336,73 @@ Step 27.6's "Owner review" box is still unticked. The owner committed it (72aba8
 
 ### Result
 All build tasks done. Waiting on the owner's review.
+
+## Step 27.8: Mobile cards everywhere else
+
+**Goal:** carry Step 27.7's phone pattern (cards, 44px controls, full-width drawers) to the lists and drawer still missing it: Schools, Attendance, the teacher dashboard's class roll and the Add school drawer. Then measure every other page for anything still overflowing or cramped.
+
+### Investigation before planning
+Rather than guess, I ran `npm run build` and `npx next start -p 3100` for fresh mock data, then a throwaway Playwright script over all 19 screens (anonymous, principal, teacher, super admin and parent) at 320, 360 and 375px. For each it recorded:
+- `document.documentElement.scrollWidth` against `clientWidth`;
+- every element with `overflow-x: auto|scroll` whose own `scrollWidth` exceeded its `clientWidth` (a table scrolling inside its box);
+- any visible element whose right edge poked past the viewport and wasn't clipped by a scroll container.
+
+Results:
+- **No page scrolled sideways as a whole**, anywhere.
+- Two inner scrollers: **Attendance** (416px of table in a 326px box at 360px, so Status was cut off and Card hidden) and **Schools** (763px in 326px, with only the name visible).
+- **Class roll** fit, but was still a table with a "Student | Today" header and a local `initials()`.
+- **Add school drawer** measured 270px (the Sheet's `w-3/4`), with 32px buttons, the "School details" legend touching "School name", and first name and surname squeezed side by side.
+- Screenshots of the dashboard, settings, tap station, login and parent screens showed nothing else cramped.
+
+**Found while measuring:** table row lines looked dark. `getComputedStyle(tr).borderBottomColor` was `oklch(0.252 0.061 262.8)`, the foreground, against the border token's `oklch(0.923 0.016 257.2)`. Tailwind v4's preflight resets borders to `0 solid` with no color, so a bare `border-b` uses `currentColor`. shadcn's setup normally adds `* { @apply border-border }`, and this project's `base.css` didn't have it. The prototype uses a light line (`var(--line-2)`), so it wasn't a design choice.
+
+**Owner decisions during planning:**
+- The owner shared a **second sample phone screen** for Attendance, asking for its layout, not its colors or uppercase labels, in the app's own styling. Taken: the full-width date, grade and section side by side, four boxed count tiles, a "Students · N total" heading, and the time in under the status badge. Left out: the LRN (the minors decision), uppercase green labels and badges, taller cards, the bottom bar. The table is in `docs/RESPONSIVE-LISTS.md` section 3.
+- **Class roll:** rows inside its panel, not cards. The owner first asked what the class roll is (now in the learning log), then agreed.
+- **The border fix:** "you can do it now". I read that as fixing it inside this step, not as a new Step 27.9, and listed it as its own task under Step 27.8 in the plan.
+
+### What got built
+- **`src/styles/base.css`:** `*, ::after, ::before, ::backdrop, ::file-selector-button { border-color: var(--border); }` in `@layer base`, the same selector list as Tailwind's reset. Before adding it, a script scanned every class string in `src/**/*.tsx` for a border-width utility with no border color in the same string. Only `dialog.tsx` (footer `border-t`), `sheet.tsx` (edge) and `table.tsx` (row `border-b`) relied on the default. The tap station result box has `border-2` without a color in its template string, but its `RESULT_STYLE` map adds `border-status-*` or `border-border`, so it's unaffected.
+- **Schools:**
+  - `use-open-school.ts` holds the `useTransition` plus `openSchool` plus error toast that used to live inside the table's button. `OpenSchoolButton` now calls it.
+  - `schools-card-list.tsx`: `SchoolCard` per `<li>` (a hook per card, so each has its own pending state). It uses the Students stretched-button pattern, named `Open {name}` (`Opening {name}…` and disabled while pending), `SchoolLogo` at `size-10`, and `schoolCounts()` ("36 students · 4 staff", singular "1 student"). A `BellOff` "Notifications off" tag (idle status tokens) shows only when the preference is `off`; new schools start on `time_in_only`. A `ChevronRight`, or `Loader2` while pending, sits in a `size-11` box.
+  - `schools-directory.tsx` renders `md:hidden` cards and the `hidden md:block` table.
+- **Attendance:**
+  - `attendance-card-list.tsx` lays out the sample: avatar, an `<h4>` name, and a tag (`CardStatusBadge`) under it only when `cardStatus !== "active"`. The right column holds the `StatusPill` with the time under it. That's `<time>` with a screen-reader-only "In at ", or an `aria-hidden` "—" with screen-reader-only "No tap yet". There's no LRN and no class. It has `now?` (the page's date at 9:15) and `label`, and a `variant` of `"cards"` (`gap-2`, bordered `min-h-16` cards) or `"rows"` (`divide-y divide-border`).
+  - `segmented-bar.tsx` gets `AttendanceCountTiles`. A `<dl>` of four bordered tiles, each a small grid: the dot spans both rows (`row-start-1 row-end-3`, never `row-span`), the `<dt>` label comes first in the markup (`row-start-2`) and the `<dd>` number sits above it on screen (`row-start-1`). A screen reader hears "Present, 5", and every `dt`/`dd` stays a direct child of a `div` inside the `dl`, as axe's `dlitem` rule requires.
+  - `attendance-list.tsx`: tiles or legend, and cards under a `<section aria-labelledby>` with an `<h3>` "Students" in the parent dashboard's uppercase label style (`text-xs font-medium tracking-wide uppercase text-muted-foreground`) plus "N total", or the table. The page now renders `<AttendanceList>` in place of the legend and table.
+  - `attendance-table.tsx` uses `StudentAvatar` and `studentName` instead of its own `initials()`. The desktop output is the same apart from `aria-hidden` on the initials.
+  - `attendance-toolbar.tsx` is a `grid` on phones: the date `col-span-full h-11`, grade and section `grid-cols-2` with `min-w-0` and `w-full data-[size=default]:h-11`, or `grid-cols-1` for a teacher. From `sm:` it's the old flex row with the old widths.
+- **Class roll:**
+  - `class-roll.tsx` now takes `rows: AttendanceRow[]`. Below 768px it's `AttendanceCardList variant="rows" label="Class roll"`. From 768px it's the old table, using `StudentAvatar` and `studentName`, and still saying "No ID card linked yet".
+  - `dashboard/page.tsx` fetches `cardRepository.listByStudent` and runs `deriveCardStatus`, so a phone can say "No card" or "Lost". It used to fetch `getActiveForStudent`, which could only say "no active card". `cardStatus !== "active"` is exactly the old "no active card" (active wins in `deriveCardStatus`), so the desktop wording is unchanged.
+- **Add school drawer:**
+  - `data-[side=right]:w-full`, with the Sheet's own `sm:max-w-sm` keeping 384px on desktop.
+  - First name and surname `grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3`.
+  - Legends `mb-3` before a field ("School details"), `mb-1` before a description ("Colors", "Principal", matching the staff form's "Advisory class"), and `mb-2` for the nested "Logo (optional)", matching the label-to-input gap.
+  - The footer uses the same `[&>button]:h-11 [&>button]:flex-1 sm:…` classes as the other drawers.
+- **Tests:**
+  - `schools-card-list.test.tsx` has 4 tests and `attendance-card-list.test.tsx` has 5.
+  - The e2e "small screens" `LIST_PAGES` gained an `as` role per entry and now covers `/attendance` (principal and teacher, list "Students"), `/schools` (super admin) and `/dashboard` (teacher, "Class roll").
+
+### Problems hit
+- **The school card's heading wasn't named what the test expected.** The first test looked for a heading named "Open Balanga City…", the button's `aria-label`. Testing Library's name computation gave the heading the school name instead, taken from the button's text. The heading being just the school name is what's wanted, so the test was changed to match. I didn't check what a real screen reader announces for that heading itself. The button is still named "Open …", as the tap test confirms.
+- **The "no tap" dash looked like an underscore** in the 360px screenshot. A 3× zoomed screenshot showed the `—` sitting at mid-height, so it only looked low at 1×. Kept.
+
+### Verified
+- **Every page fits the screen:** the measuring script, re-run on the new build over all 19 screens at 320, 360 and 375px (57 checks), found no page overflow, no inner sideways scroller and nothing past the right edge.
+- **Screenshots:** Attendance (principal and teacher), teacher dashboard, Schools and Students at 320, 360, 375 and 1280px, in light and dark (40 screenshots). Attendance cards measured 74px each.
+- **Add school drawer:** 320px and 375px wide at those widths, with 140×44 and 167×44 buttons. The name fields stacked and nothing scrolled sideways. At 1280px it's still 384px, with the 32px buttons and the names side by side.
+- **Desktop at 1280px** looks as before, apart from the lighter row lines. I had no "before" screenshots at 1280px to compare pixel by pixel. The desktop code changes are the shared avatar and name helpers (same output) and the moved Open logic, and the screenshots match.
+- `npx playwright test` against the build on port 3100: **134 passed, 8 skipped**. The 8 skips are phone-only tests on the desktop project and the reverse, 4 more than before because of the 4 new list pages.
+- `lint`, `typecheck`, `check:tokens`, `test` (320) and `build` all pass. The port 3100 server was stopped afterwards.
+
+### Owner review
+The owner approved and asked for one change: the desktop class roll should show "No card" where it said "No ID card linked yet". The table's second line is now the `CardStatusBadge` tag ("No card", or "Lost" for a lost card, the same tag every other list uses) whenever the student has no active card and no tap today. A tap still wins, as before.
+- **Unit test:** `class-roll.test.tsx` checks one row of each kind in the table's region: tapped, no tap yet, no card and lost. The old wording must be gone.
+- **In the browser:** on a fresh `next start -p 3100`, marking Carmen Sison's card lost as the principal (Students → Edit → "Card lost? Replace it" → "Yes, replace card") put a "Lost" tag on her row in the teacher's class roll at 1280px (light and dark) and at 360px. "No ID card linked yet" appeared nowhere.
+- **Checks:** `npx playwright test` against that server (with the lost card in place, so axe saw the tag): 134 passed, 8 skipped. `lint`, `typecheck`, `check:tokens`, `test` (321) and `build` all pass.
+- `docs/ATTENDANCE-MODEL.md`'s note on card-less students and this step's recipe were updated to match.
+
+### Result
+Approved by the owner.

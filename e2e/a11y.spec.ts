@@ -359,18 +359,22 @@ test.describe("keyboard and focus", () => {
  */
 test.describe("small screens", () => {
   const LIST_PAGES = [
-    { path: "/staff", list: "Staff" },
-    { path: "/students", list: "Students" },
+    { path: "/staff", list: "Staff", as: "principal" },
+    { path: "/students", list: "Students", as: "principal" },
+    { path: "/attendance", list: "Students", as: "principal" },
+    { path: "/attendance", list: "Students", as: "teacher" },
+    { path: "/schools", list: "Schools", as: "super_admin" },
+    { path: "/dashboard", list: "Class roll", as: "teacher" },
   ] as const;
 
   for (const listPage of LIST_PAGES) {
-    test(`${listPage.path} fits the screen width`, async ({
+    test(`${listPage.path} fits the screen width (${listPage.as})`, async ({
       page,
       context,
       baseURL,
     }, testInfo) => {
       test.skip(testInfo.project.name !== "mobile", "phone layout only");
-      await signInAs(context, "principal", baseURL!);
+      await signInAs(context, listPage.as, baseURL!);
       await page.goto(listPage.path);
       await expect(page.getByRole("list", { name: listPage.list })).toBeVisible();
       await expect(page.getByRole("table")).toBeHidden();
