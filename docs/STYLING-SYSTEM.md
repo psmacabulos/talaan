@@ -470,3 +470,81 @@ No flash, and no client-side script needed to apply it — per Next's own Server
 **I want to add a Server Action a Client Component will import directly:** give it its own file with `"use server"` on the very first line, not inline inside the function — see `session-actions.ts` or `theme-override-actions.ts` for the pattern. Inline `"use server"` is only for an action a Server Component defines locally and passes down as a prop.
 
 **I want to preview a theme without saving it anywhere:** that's exactly what `setThemeOverride`/the top-bar dropdown already do — a cookie, not a repository write. Don't add a `SchoolRepository.update` method for this; that belongs to Step 21, when there's an actual "Save" action to attach it to.
+
+## Step 26: Appearance settings — saving a theme to the school record
+
+Step 11 left one thing unfinished: the top-bar dropdown could only *preview* a theme (a cookie, per browser). Step 26 adds the real, saved version on **Settings > Appearance**, where a principal or super admin picks a preset or a custom brand color and saves it to the school record. Everyone at that school gets it on their next page load, because `(app)/layout.tsx` already renders `resolveActiveTheme(school, override)` on every request (Step 11). No new rendering mechanism was needed. Step 26 only adds a way to *write* `school.theme`.
+
+```mermaid
+flowchart TD
+    Form["AppearanceSettingsForm (client)<br/>preset cards + Custom"] -->|"picked preset / typed color"| Preview["ThemePreview<br/>light tile + dark tile<br/>(tokensToScopedCss)"]
+    Form -->|"custom color"| Check["checkCustomBrandColor<br/>(contrast.ts)"]
+    Check --> Notice["✓ passes, or ⚠ 'darkened' +<br/>before/after samples"]
+    Form -->|"Save"| Action["updateSchoolTheme (server)<br/>role check → schoolThemeSchema → repo.update"]
+    Action --> Clear["clearThemeOverride()"]
+    Action --> Refresh["refresh()"]
+    Refresh --> Layout["(app)/layout.tsx<br/>resolveActiveTheme(school, no override)"]
+    Layout --> Html["&lt;style&gt; :root:root{…}<br/>every page, every user of the school"]
+```
+
+### The preview: two tiles, each with its own copy of the variables
+
+`src/features/schools/theme-preview.tsx` draws the same small sample screen twice. Each tile has its own scoped copy of one mode's tokens, from a new helper in `apply-preset.ts`:
+
+```ts
+export function tokensToScopedCss(tokens: ThemeColorTokens, selector: string): string {
+  return `${selector}{${declarationsFor(tokens)}}`;
+}
+```
+
+`presetToScopedCss` (Step 5) always pairs light with a `.dark` variant, so a tile using it follows the page's own mode. The dark tile needs to stay dark even when the page is light, so each tile uses a plain single-mode selector (`[data-theme-preview-tile="dark"]`).
+
+**The rule that makes the tiles work:** every element in a tile sets its own color utility (`text-foreground`, `text-card-foreground`…) instead of inheriting one. A CSS variable is resolved *where the property is declared*. If the tile simply inherited `color` from the page, the page would have already turned `var(--foreground)` into the page theme's color, and the tile's own variables would be ignored.
+
+`presetToScopedCss` also now accepts any `{ light, dark }` pair, not only a named preset, so the "Custom" gallery card's swatch can show a palette generated while the user is typing.
+
+### The contrast check: correct and say so, reject only what isn't a color
+
+`generateCustomPalette` (Step 5) already guarantees AA by nudging lightness. Step 26 adds a reporting helper so the correction is visible to the principal:
+
+```ts
+// src/lib/theme/contrast.ts
+export function checkCustomBrandColor(brandColor: string): CustomBrandColorCheck {
+  const brand = parseOklch(brandColor);
+  const { light } = generateCustomPalette(brandColor);
+  const button = parseOklch(light.primary);
+  return {
+    buttonColor: light.primary,
+    buttonTextColor: light.primaryForeground,
+    ratio: contrastRatio(light.primary, light.primaryForeground),
+    adjusted: Math.abs(brand.l - button.l) > VISIBLE_LIGHTNESS_CHANGE,
+  };
+}
+```
+
+- **Invalid text** (`#12`, `blue`) is **rejected**: `schoolThemeSchema`'s hex regex, shown inline, blocks Save. The same schema runs again in `updateSchoolTheme` on the server.
+- **A valid but too-light color** (the highlight yellow `#F9E321`, pure white) is **corrected, not rejected**: buttons use a darker shade of the same hue, and the form shows "Your color" next to "Buttons use" with the real contrast ratio. `adjusted` compares OKLCH *lightness* only, because lightness is what `nudgeLightnessUntilReadable` changes.
+
+### The top-bar dropdown now has a "Saved theme" option
+
+Before Step 26 the dropdown's value was always one of the five preset ids. That broke once a school could save a custom color: the dropdown showed "School colors" while a completely different palette was on screen. Its value is now a `ThemeSelection`:
+
+```ts
+// src/lib/theme/presets.ts
+export type ThemeSelection = ThemePresetId | "saved";
+
+// src/app/(app)/layout.tsx
+const themeSelection = overridePresetId ?? (school ? "saved" : DEFAULT_THEME_PRESET_ID);
+```
+
+Choosing "Saved theme" calls `clearThemeOverride()`, which removes the preview. The `school` preset option is now just "School", its own name, since "School colors" wrongly suggested "whatever this school saved". A super admin with no school in view has nothing saved, so that option is hidden for them.
+
+Saving on Settings > Appearance **also clears the preview cookie**. Otherwise a principal who previewed Violet in the top bar and then saved Ocean would still see Violet, and would reasonably think the save had failed.
+
+## Quick recipes (Step 26 additions)
+
+**I want to show a theme's light and dark look side by side, whatever mode the page is in:** `tokensToScopedCss(theme.light, sel1) + tokensToScopedCss(theme.dark, sel2)`, and give every element inside an explicit color utility. See `theme-preview.tsx`.
+
+**I want to know whether a custom brand color will be changed before it is used:** `checkCustomBrandColor(hex).adjusted`, with `.buttonColor` for what buttons will actually use.
+
+**I want to change a school's saved theme from code (a seed, a test):** `schoolRepository.update({ ...school, theme: { kind: "custom", brandColor: "#…" } })`. Nothing else needs to change; the layout resolves it on the next request.

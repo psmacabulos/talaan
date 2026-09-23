@@ -3,6 +3,7 @@ import { hasNavAccess } from "@/components/app-shell/nav-items";
 import { PageHeader } from "@/components/page-header";
 import { schoolRepository } from "@/data/repositories";
 import { NoSchoolSelected } from "@/features/attendance/no-school-selected";
+import { AppearanceSettingsForm } from "@/features/schools/appearance-settings-form";
 import { NotificationSettingsForm } from "@/features/schools/notification-settings-form";
 import { getSession } from "@/lib/session";
 
@@ -35,6 +36,19 @@ export default async function SettingsPage() {
         title="Settings"
         description={school ? `School-wide settings for ${school.name}.` : "School-wide settings."}
       />
+
+      {school ? (
+        <section className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 sm:p-6">
+          <div className="flex flex-col gap-1">
+            <h3 className="font-heading text-base font-semibold text-foreground">Appearance</h3>
+            <p className="text-sm text-muted-foreground">
+              Choose this school&apos;s color theme. Everyone at the school sees it once you save; light or dark
+              mode stays each person&apos;s own choice.
+            </p>
+          </div>
+          <AppearanceSettingsForm currentTheme={school.theme} />
+        </section>
+      ) : null}
 
       <section className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 sm:p-6">
         <div className="flex flex-col gap-1">

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { Role, Staff } from "@/features/staff/types";
 import type { School } from "@/features/schools/types";
-import type { ThemePresetId } from "@/lib/theme/presets";
+import type { ThemeSelection } from "@/lib/theme/presets";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 
@@ -11,7 +11,7 @@ export function AppShell({
   school,
   staff,
   schools,
-  activePresetId,
+  themeSelection,
   children,
 }: {
   userId: string;
@@ -19,7 +19,7 @@ export function AppShell({
   school: School | null;
   staff: Staff[];
   schools: School[];
-  activePresetId: ThemePresetId;
+  themeSelection: ThemeSelection;
   children: ReactNode;
 }) {
   return (
@@ -32,7 +32,7 @@ export function AppShell({
           role={role}
           staff={staff}
           schools={schools}
-          activePresetId={activePresetId}
+          themeSelection={themeSelection}
         />
         {/* Below 2xl (1536px), full width — unchanged from Step 10. At 2xl
             and up, padding grows a step further and content stops at a

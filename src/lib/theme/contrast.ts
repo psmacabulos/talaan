@@ -170,3 +170,40 @@ export function generateCustomPalette(brandColor: string): CustomPalette {
 
   return { light, dark };
 }
+
+export type CustomBrandColorCheck = {
+  /** The shade light-mode buttons actually use — generateCustomPalette's primary. */
+  buttonColor: string;
+  /** The button text color that sits on it. */
+  buttonTextColor: string;
+  /** Contrast of that pair — always AA or better. */
+  ratio: number;
+  /**
+   * True when the brand color itself couldn't be used as-is for buttons and
+   * was darkened (never just left failing) — Step 26 shows the school both
+   * colors side by side when this happens, so the change is never silent.
+   */
+  adjusted: boolean;
+};
+
+// How far (OKLCH lightness, 0–1) the button shade may drift from the brand
+// color before it counts as a visible change worth telling the school about.
+const VISIBLE_LIGHTNESS_CHANGE = 0.02;
+
+/**
+ * Step 26's contrast check for a "Custom" brand color: what buttons will
+ * really look like, how readable they are, and whether the color had to be
+ * corrected to get there. Throws for a string that isn't a color at all —
+ * callers validate the hex format first (schoolThemeSchema).
+ */
+export function checkCustomBrandColor(brandColor: string): CustomBrandColorCheck {
+  const brand = parseOklch(brandColor);
+  const { light } = generateCustomPalette(brandColor);
+  const button = parseOklch(light.primary);
+  return {
+    buttonColor: light.primary,
+    buttonTextColor: light.primaryForeground,
+    ratio: contrastRatio(light.primary, light.primaryForeground),
+    adjusted: Math.abs(brand.l - button.l) > VISIBLE_LIGHTNESS_CHANGE,
+  };
+}

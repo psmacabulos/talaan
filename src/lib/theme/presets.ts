@@ -247,6 +247,21 @@ const violetPreset: ThemePreset = {
 
 export const DEFAULT_THEME_PRESET_ID: ThemePresetId = "school";
 
+/**
+ * The starting color for Step 26's "Custom" theme picker when a school has
+ * never saved one — the pilot school's own brand blue, the same color the
+ * `school` preset is built around. Lives here, not in the component, since
+ * this is the one directory allowed to hold real color values.
+ */
+export const DEFAULT_CUSTOM_BRAND_COLOR = "#223060";
+
+/**
+ * The top-bar theme dropdown's current value: one of the named presets as a
+ * per-browser preview, or "saved" — no preview, showing the school's own
+ * saved theme (a named preset or a Step 26 custom brand color).
+ */
+export type ThemeSelection = ThemePresetId | "saved";
+
 export const themePresets: ThemePreset[] = [
   schoolPreset,
   oceanPreset,

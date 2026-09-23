@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: █████████████████░░░ 86%**  (66 of 77 tasks, 25 of 30 steps approved)
+**Overall progress: ██████████████████░░ 90%**  (69 of 77 tasks, 27 of 30 steps approved)
 
-**Next up:** Step 25, Schools management (ready for your review)
+**Next up:** Step 27, Accessibility audit (not started)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -32,8 +32,8 @@
 | 22 | Parent signup, login and link a child | ██████████ 100% | Approved |
 | 23 | Parent dashboard | ██████████ 100% | Approved |
 | 24 | Notification feed | ██████████ 100% | Approved |
-| 25 | Schools management | █████░░░░░  50% | Ready for your review |
-| 26 | Appearance settings | ░░░░░░░░░░   0% | Not started |
+| 25 | Schools management | ██████████ 100% | Approved |
+| 26 | Appearance settings | ██████████ 100% | Approved |
 | 27 | Accessibility audit | ░░░░░░░░░░   0% | Not started |
 | 28 | End-to-end tests | ░░░░░░░░░░   0% | Not started |
 | 29 | Final polish | ░░░░░░░░░░   0% | Not started |
@@ -221,13 +221,13 @@ Commit: `feat(parents): add notification feed`
 - [x] Schools list, open a school to see its theme, and add a school with logo upload.
 Done when: a super admin can add a school and view it with its own logo and colors.
 Commit: `feat(schools): add schools management`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 26: Appearance settings
-- [ ] Settings > Appearance for principal and super admin: preset gallery with live preview, a "Custom" brand color with generated palette, contrast check, and saving to the school record.
+- [x] Settings > Appearance for principal and super admin: preset gallery with live preview, a "Custom" brand color with generated palette, contrast check, and saving to the school record.
 Done when: a saved preset shows for every user of that school on the next load, and a failing custom color is corrected or rejected with a clear message.
 Commit: `feat(theme): add appearance settings`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 27: Accessibility audit
 - [ ] Run axe on every screen, including the parent portal, fix issues, and check keyboard use and focus handling.
@@ -244,7 +244,7 @@ Commit: `test: add end-to-end tests`
 ### Step 29: Final polish
 - [ ] Lighthouse pass on login and dashboard, 360px and 1280px review in light and dark, remove unused code, finish the README.
 - [ ] Sitewide spacing/alignment consistency pass across every screen built so far: generous, deliberate whitespace (not the prototype's literal values), and real box-centering checked by measurement, not just by eye. See CLAUDE.md's UX quality bar and docs/BUILD-LOG.md's Step 12 "review round 2" (the flexbox centering bug found this way).
-- [ ] Students list mobile layout (flagged in Step 14's review): at 360px the table only shows Student/LRN/part of Grade before you have to scroll sideways — Age, Card and Today sit off-screen with no hint they're there. Decide deliberately (not just shrink the desktop table) — e.g. fewer columns on phones with the rest in the row's expanded detail, or a card-style layout instead of a scrolling table.
+- [ ] Mobile table layout, sitewide (flagged in Step 14's review, widened in Step 25's): every data table (Students, Staff, Schools, and any other list built since) still scrolls sideways at 360px instead of fitting the screen. Owner direction (2026-09-23): limit horizontal scrolling as much as possible — turn each row into a small card instead, so every field for that entry is visible without scrolling sideways. Research the recommended mobile pattern for this (a stacked "label: value" card per row is the common approach; decide on iconography/visual treatment as part of this step) and apply it consistently across every list, not table-by-table. Covers Students (Step 14), Staff (Step 18) and Schools (Step 25) at minimum.
 Done when: scores and the review are reported honestly, and lint, typecheck, test, build and check:tokens pass.
 Commit: `chore: final polish for phase 1`
 - [ ] Owner review: I checked it and said "approved"

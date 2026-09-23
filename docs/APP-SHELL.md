@@ -167,7 +167,7 @@ function switchTo(staffId: string) {
 
 The `topbar.tsx` server component decides whether `DevSwitcher` renders **at all** — `process.env.NODE_ENV !== "production"` — the same belt-and-suspenders pattern `assertDevSessionMutationAllowed` already used inside the action itself (Step 9): the UI not rendering a button is never treated as the actual security boundary, only as a convenience on top of one.
 
-**`ThemeDropdown`** is unrelated to the dev/production split — CLAUDE.md calls for keeping it in real, "demo" builds, since a school truly will get theme control eventually (Step 21 just hasn't wired up saving yet). It renders whenever `role !== "teacher"`, in production or not. Its own Server Action (`setThemeOverride`) checks the role server-side too, independently of the UI — see `docs/STYLING-SYSTEM.md`'s Step 11 section for what it actually does to the page's colors.
+**`ThemeDropdown`** is unrelated to the dev/production split — CLAUDE.md calls for keeping it in real, "demo" builds, since it is a real way for a principal to try themes. Saving happens separately, on Settings > Appearance (Step 26), and the dropdown's first option, "Saved theme", drops any preview and goes back to what the school saved. It renders whenever `role !== "teacher"`, in production or not. Its own Server Action (`setThemeOverride`) checks the role server-side too, independently of the UI — see `docs/STYLING-SYSTEM.md`'s Step 11 section for what it actually does to the page's colors.
 
 **Both controls disappear below `sm` (640px)**, same reasoning as Step 10's original identity chip: a 360px top bar only has room for the menu button and the page title before things start truncating.
 

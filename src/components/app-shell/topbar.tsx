@@ -1,6 +1,6 @@
 import type { Role, Staff } from "@/features/staff/types";
 import type { School } from "@/features/schools/types";
-import type { ThemePresetId } from "@/lib/theme/presets";
+import type { ThemeSelection } from "@/lib/theme/presets";
 import { MobileNav } from "./mobile-nav";
 import { TopbarTitle } from "./topbar-title";
 import { DevSwitcher } from "./dev-switcher";
@@ -18,14 +18,14 @@ export function Topbar({
   role,
   staff,
   schools,
-  activePresetId,
+  themeSelection,
 }: {
   userId: string;
   school: School | null;
   role: Role;
   staff: Staff[];
   schools: School[];
-  activePresetId: ThemePresetId;
+  themeSelection: ThemeSelection;
 }) {
   // The dev switcher is a stand-in for real login (Phase 2) — never
   // rendered in production, checked here (not just by which button a
@@ -41,7 +41,7 @@ export function Topbar({
       {/* Dropped below sm so the page title always has room to breathe on
           a phone-width top bar — same reasoning as Step 10's identity chip. */}
       <div className="ml-auto hidden shrink-0 items-center gap-2 sm:flex">
-        {role !== "teacher" && <ThemeDropdown presetId={activePresetId} />}
+        {role !== "teacher" && <ThemeDropdown selection={themeSelection} hasSchool={school !== null} />}
         {isDev ? (
           <DevSwitcher userId={userId} role={role} school={school} staff={staff} schools={schools} />
         ) : (

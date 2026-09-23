@@ -1098,3 +1098,39 @@ Verification was against the owner's running dev server (a second `npm run dev` 
 
 ### Result
 All build tasks done. Waiting on the owner's review.
+
+## Step 26: Appearance settings
+
+**Goal:** Settings > Appearance for principals and super admins: a preset gallery with live preview, a "Custom" brand color with a generated palette, a contrast check, and saving to the school record. Step 25 was approved at the start of this step.
+
+**Owner decision up front:** also fix the top-bar theme dropdown in this step. I flagged during planning that it only knew the five presets, so a school on a saved custom color would see "School colors" in the dropdown while a different palette was on screen.
+
+### What got built
+- `src/features/schools/appearance-settings-form.tsx`: a client component. It has a `RadioGroup` of the five presets plus "Custom". Custom opens a panel with a native `<input type="color">` and a hex text box, both editing the same value. The contrast status sits in an `aria-live="polite"` region and the Save button is disabled until something changes. A controlled radio group was enough, so there is no React Hook Form (same reasoning as Step 21's notification form). Hex text is validated with the real `schoolThemeSchema`, so the browser and the server show the same message. `brandColor` holds the last *valid* color, so the preview doesn't flicker while a half-typed value like `#12` sits in the box.
+- `src/features/schools/theme-preview.tsx`: a sample screen drawn twice, a light tile and a dark tile, each with its own scoped copy of one mode's variables.
+- `src/lib/theme/apply-preset.ts`: new `tokensToScopedCss`, one mode with no `.dark` variant. `presetToScopedCss` now accepts any `{ light, dark }` pair, not only a named `ThemePreset`.
+- `src/lib/theme/contrast.ts`: new `checkCustomBrandColor(hex)` returning `{ buttonColor, buttonTextColor, ratio, adjusted }`.
+- `src/features/schools/actions.ts`: new `updateSchoolTheme`. It checks the role (no teacher, must have a school), re-validates with `schoolThemeSchema`, runs `repo.update`, then `clearThemeOverride()` and `refresh()`.
+- `src/features/schools/preset-picker.tsx`: the swatch markup and its scoped CSS moved into an exported `PresetSwatch` / `PRESET_SWATCH_CSS` / `presetSwatchSelector`. The Appearance gallery reuses them instead of copying the four-chip markup.
+- `src/lib/theme/presets.ts`: `DEFAULT_CUSTOM_BRAND_COLOR` (the starting value for Custom; it lives here because only theme files may hold color literals) and `ThemeSelection = ThemePresetId | "saved"`.
+- Dropdown fix: `theme-dropdown.tsx` gains a "Saved theme" option (shown only when a school is in view) that calls `clearThemeOverride`. `(app)/layout.tsx` → `app-shell.tsx` → `topbar.tsx` now pass `themeSelection` instead of `activePresetId`. The `school` option is labelled "School" (its preset name) rather than "School colors". The toast now says "Previewing the X theme." to make clear that nothing was saved.
+- `src/app/(app)/settings/page.tsx`: the Appearance section, above Notifications, rendered only when a school is in view.
+
+### Problems hit during the build, and how they were resolved
+1. **`check:tokens` failed on a comment.** A doc comment explaining the three-digit to six-digit hex expansion used example values that matched the scanner's hex pattern. The scanner is a plain text search (Step 7) and can't tell comments from code, which is by design. Reworded the comment in words instead of adding an exemption.
+2. **A `useMemo` needed an eslint-disable, so I removed it.** My first draft memoized the preview theme on a hand-computed dependency and silenced `react-hooks/exhaustive-deps`. Replaced it with two honest memos keyed on `brandColor` (custom palette generation loops, so it's worth caching) and a plain call for presets (a lookup).
+3. **Two controls shared the accessible name "Color theme".** Found by querying `[aria-label="Color theme"]` in the browser while checking why a Playwright `innerText` came back empty. That turned out to be a timing quirk: `textContent` showed "Saved theme" correctly. The duplicate name was still real, so the gallery became "School color theme".
+4. **On a phone, the preview sat *below* Save.** The first layout was two columns: choices plus Save on the left, preview on the right. Stacked at 360px, that put the preview after the button, so you would save before seeing the result. Changed it to three grid items in phone order (choices, preview, Save). From `lg` up, the preview moves into column 2 across both rows (`lg:col-start-2 lg:row-span-2 lg:row-start-1`) and Save returns under the choices. `lg:grid-rows-[auto_1fr]` lets the second row absorb extra preview height so Save doesn't drift downward. Measured with `getBoundingClientRect` after the change: phone order was gallery at y=313, preview at 1173, Save at 1765. Desktop had the gallery and preview both starting at y=273, with Save under the custom panel.
+
+### Verified
+`lint`, `typecheck`, `test` (296: 4 new `checkCustomBrandColor` cases, 1 new `tokensToScopedCss` case), `check:tokens` and `build` all pass. Checked in the browser against the owner's running dev server at 1280px and 360px, light and dark, with no console errors:
+- The gallery shows six cards. Picking Custom and typing `#F9E321` shows the warning with the "Your color" and "Buttons use" samples at 7.4:1, and both preview tiles recolor.
+- Typing `#12` shows "Enter a hex color like #223060" and disables Save.
+- Saving toasts "Appearance saved…". After a reload, `--primary` on `<html>` is the corrected olive `oklch(45.0% 0.094 102.0)` and Custom is still selected.
+- Switching to Teacher, Jose Pascual (same school) gives the same `--primary` on `/dashboard`, and the teacher has no theme dropdown.
+- Back as principal, the dropdown lists Saved theme plus the five presets. Previewing Emerald recolors the app. Choosing "Saved theme" returns to the saved custom color. Previewing Violet, then saving Ocean, leaves the dropdown on "Saved theme" with Ocean's `--primary`, so the save cleared the preview.
+- There is no sideways page scroll at 360px.
+- Afterwards I reset the pilot school to its original School preset and the browser back to light mode.
+
+### Result
+All build tasks done. Waiting on the owner's review.

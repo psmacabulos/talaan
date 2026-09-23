@@ -6,12 +6,16 @@ import { schoolRepository, staffRepository } from "@/data/repositories";
 import { getSession } from "@/lib/session";
 import { setDevSession } from "@/lib/session-actions";
 import { clearThemeOverride } from "@/lib/theme/theme-override-actions";
-import { createSchoolSchema, notificationPreferenceSchema } from "./schemas";
-import type { CreateSchoolFormInput, NotificationPreference } from "./types";
+import { createSchoolSchema, notificationPreferenceSchema, schoolThemeSchema } from "./schemas";
+import type { CreateSchoolFormInput, NotificationPreference, SchoolTheme } from "./types";
 
 export type NotificationSettingsActionResult =
   | { ok: true }
   | { ok: false; formError?: string };
+
+export type AppearanceSettingsActionResult =
+  | { ok: true }
+  | { ok: false; formError: string };
 
 export type CreateSchoolFieldErrors = Partial<Record<keyof CreateSchoolFormInput, string>>;
 
@@ -59,6 +63,43 @@ export async function updateNotificationPreference(
   }
 
   await schoolRepository.update({ ...school, notificationPreference: parsed.data });
+
+  refresh();
+  return { ok: true };
+}
+
+/**
+ * Step 26's "Save" on Settings > Appearance. Re-validates the theme with
+ * the same `schoolThemeSchema` the form already checked (CLAUDE.md:
+ * "validated on both sides") — a bad hex color is rejected here too, not
+ * just in the browser. A valid but hard-to-read custom color is not
+ * rejected: generateCustomPalette corrects it wherever it's applied, and
+ * the form has already shown the school what the correction looks like.
+ *
+ * Also clears the top-bar dropdown's preview cookie, so the principal sees
+ * the theme they just saved rather than whatever they were previewing.
+ */
+export async function updateSchoolTheme(theme: SchoolTheme): Promise<AppearanceSettingsActionResult> {
+  const session = await getSession();
+  if (!session.schoolId || session.role === "teacher") {
+    return { ok: false, formError: "You don't have permission to change this school's theme." };
+  }
+
+  const parsed = schoolThemeSchema.safeParse(theme);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      formError: parsed.error.issues[0]?.message ?? "That isn't a valid theme.",
+    };
+  }
+
+  const school = await schoolRepository.getById(session.schoolId);
+  if (!school) {
+    return { ok: false, formError: "Your school could not be found." };
+  }
+
+  await schoolRepository.update({ ...school, theme: parsed.data });
+  await clearThemeOverride();
 
   refresh();
   return { ok: true };

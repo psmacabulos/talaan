@@ -1,6 +1,12 @@
 import { displayable } from "culori";
 import { describe, expect, it } from "vitest";
-import { contrastRatio, generateCustomPalette, meetsAA, pickReadableForeground } from "./contrast";
+import {
+  checkCustomBrandColor,
+  contrastRatio,
+  generateCustomPalette,
+  meetsAA,
+  pickReadableForeground,
+} from "./contrast";
 import type { ThemeColorTokens } from "./presets";
 
 describe("contrastRatio", () => {
@@ -86,4 +92,32 @@ describe("generateCustomPalette", () => {
       }
     },
   );
+});
+
+describe("checkCustomBrandColor", () => {
+  it("keeps a dark brand color as-is and reports a passing ratio", () => {
+    const check = checkCustomBrandColor("#223060");
+    expect(check.adjusted).toBe(false);
+    expect(meetsAA(check.ratio)).toBe(true);
+  });
+
+  it("darkens a too-light brand color and says so", () => {
+    const check = checkCustomBrandColor("#F9E321");
+    expect(check.adjusted).toBe(true);
+    expect(meetsAA(check.ratio)).toBe(true);
+    // The corrected button shade must itself be darker than the input.
+    expect(contrastRatio(check.buttonColor, "oklch(100% 0 0)")).toBeGreaterThan(
+      contrastRatio("#F9E321", "oklch(100% 0 0)"),
+    );
+  });
+
+  it("always lands on an AA pair, even for pure white", () => {
+    const check = checkCustomBrandColor("#FFFFFF");
+    expect(check.adjusted).toBe(true);
+    expect(meetsAA(check.ratio)).toBe(true);
+  });
+
+  it("throws for something that isn't a color", () => {
+    expect(() => checkCustomBrandColor("not a color")).toThrow();
+  });
 });

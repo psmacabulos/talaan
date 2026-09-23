@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { presetToCss, presetToScopedCss } from "./apply-preset";
+import { presetToCss, presetToScopedCss, tokensToScopedCss } from "./apply-preset";
 import { themePresets } from "./presets";
 
 const schoolPreset = themePresets.find((preset) => preset.id === "school");
@@ -36,5 +36,14 @@ describe("presetToScopedCss", () => {
     expect(css).toContain("[data-preset-preview]{");
     expect(css).toContain(".dark [data-preset-preview]{");
     expect(css).not.toContain(":root");
+  });
+});
+
+describe("tokensToScopedCss", () => {
+  it("scopes one mode's declarations with no .dark variant", () => {
+    const css = tokensToScopedCss(schoolPreset.dark, '[data-preview-tile="dark"]');
+    expect(css.startsWith('[data-preview-tile="dark"]{')).toBe(true);
+    expect(css).toContain(`--primary: ${schoolPreset.dark.primary};`);
+    expect(css).not.toContain(".dark");
   });
 });

@@ -26,13 +26,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       ? await Promise.all([staffRepository.list(), schoolRepository.list()])
       : [[], []];
 
-  // The theme dropdown only offers the 5 named presets (Step 26 adds a
-  // real "Custom" picker) — a school already on a custom brand color has
-  // no exact match here, so this falls back to the app default rather
-  // than guessing. No seed school is on "custom" yet, so this doesn't
-  // come up in practice today.
-  const activePresetId =
-    overridePresetId ?? (school?.theme.kind === "preset" ? school.theme.presetId : DEFAULT_THEME_PRESET_ID);
+  // What the top-bar theme dropdown shows: the preset being previewed, if
+  // any; otherwise "saved" — the school's own saved theme, which may be a
+  // Step 26 custom brand color no named preset matches. A super admin with
+  // no school in view has nothing saved, so it shows the app default.
+  const themeSelection = overridePresetId ?? (school ? "saved" : DEFAULT_THEME_PRESET_ID);
 
   return (
     <>
@@ -43,7 +41,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         school={school}
         staff={staff}
         schools={schools}
-        activePresetId={activePresetId}
+        themeSelection={themeSelection}
       >
         {children}
       </AppShell>

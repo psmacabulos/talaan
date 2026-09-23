@@ -1,4 +1,4 @@
-import type { ThemeColorTokens, ThemePreset } from "./presets";
+import type { ThemeColorTokens } from "./presets";
 
 /** Anything with a resolved light/dark token pair — a named preset, or a school's custom brand-color palette (contrast.ts's CustomPalette). */
 type ResolvedThemeTokens = { light: ThemeColorTokens; dark: ThemeColorTokens };
@@ -46,6 +46,15 @@ export function presetToCss(preset: ResolvedThemeTokens): string {
  * Step 5 demo-page preview (see src/app/page.tsx) so a preset can be shown
  * without touching the real document root.
  */
-export function presetToScopedCss(preset: ThemePreset, selector: string): string {
+export function presetToScopedCss(preset: ResolvedThemeTokens, selector: string): string {
   return `${selector}{${declarationsFor(preset.light)}}.dark ${selector}{${declarationsFor(preset.dark)}}`;
+}
+
+/**
+ * One mode's tokens, scoped to a selector with no `.dark` variant at all —
+ * for Step 26's Appearance preview, which shows a light tile and a dark
+ * tile side by side whichever mode the page itself is in.
+ */
+export function tokensToScopedCss(tokens: ThemeColorTokens, selector: string): string {
+  return `${selector}{${declarationsFor(tokens)}}`;
 }

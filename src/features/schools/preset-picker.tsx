@@ -11,16 +11,37 @@ import { themePresets, type ThemePresetId } from "@/lib/theme/presets";
 // values without hardcoding any color in this file (keeps check:tokens
 // green). The swatch chips below use plain token utilities (bg-primary
 // etc.), which read the variables this style block defines for them.
-const PREVIEW_CSS = themePresets
-  .map((preset) => presetToScopedCss(preset, `[data-preset-swatch="${preset.id}"]`))
+export const PRESET_SWATCH_CSS = themePresets
+  .map((preset) => presetToScopedCss(preset, presetSwatchSelector(preset.id)))
   .join("");
+
+/** The selector a swatch's colors are scoped to — also used by Step 26's "Custom" swatch, whose palette is generated at runtime. */
+export function presetSwatchSelector(id: string): string {
+  return `[data-preset-swatch="${id}"]`;
+}
+
+/** Four chips of one theme's colors: primary, accent, background and the shared highlight. */
+export function PresetSwatch({ id }: { id: string }) {
+  return (
+    <span
+      data-preset-swatch={id}
+      aria-hidden="true"
+      className="flex items-center gap-1 rounded-md border border-border p-1.5"
+    >
+      <span className="size-3 rounded-full bg-primary" />
+      <span className="size-3 rounded-full bg-accent" />
+      <span className="size-3 rounded-full border border-border bg-background" />
+      <span className="size-3 rounded-full bg-highlight" />
+    </span>
+  );
+}
 
 /**
  * Step 25's theme choice inside the add-school form: the five named
  * presets as radio cards, each carrying a small swatch of its own colors.
- * Custom brand colors are deliberately not here — they arrive with
- * Step 26's Appearance settings, where a principal changes a school's
- * theme (including "Custom") after it exists.
+ * Custom brand colors are deliberately not here — a principal sets one
+ * later on Settings > Appearance (Step 26's appearance-settings-form.tsx,
+ * which reuses `PresetSwatch` below).
  */
 export function PresetPicker({
   value,
@@ -33,7 +54,7 @@ export function PresetPicker({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <style dangerouslySetInnerHTML={{ __html: PREVIEW_CSS }} />
+      <style dangerouslySetInnerHTML={{ __html: PRESET_SWATCH_CSS }} />
       <RadioGroup
         value={value}
         onValueChange={(next) => onValueChange(next as ThemePresetId)}
@@ -54,16 +75,7 @@ export function PresetPicker({
               className="flex min-w-0 flex-1 cursor-pointer flex-col items-start gap-1.5"
             >
               <span className="text-sm text-foreground">{preset.name}</span>
-              <span
-                data-preset-swatch={preset.id}
-                aria-hidden="true"
-                className="flex items-center gap-1 rounded-md border border-border p-1.5"
-              >
-                <span className="size-3 rounded-full bg-primary" />
-                <span className="size-3 rounded-full bg-accent" />
-                <span className="size-3 rounded-full border border-border bg-background" />
-                <span className="size-3 rounded-full bg-highlight" />
-              </span>
+              <PresetSwatch id={preset.id} />
             </Label>
           </div>
         ))}

@@ -164,6 +164,17 @@ The trick reused from Steps 4-5: the same `<style>` tag mechanism can be rendere
 ### Why "make it grow forever" isn't actually the goal on a big screen (Step 11.5)
 Asked for the site to visibly grow as the screen gets bigger, on a real monitor. The instinct might be "let it stretch to fill however wide the screen is" — but that's not actually what good, professional software does, and it's worth knowing why before assuming a bigger number is always better: a paragraph of text (or a wide table) that stretches across a 32" ultrawide monitor edge to edge becomes *harder* to read, not easier — your eyes have to travel further per line, and it's easy to lose your place. The fix real products use (and the one built here): let content grow generously with the screen, but stop it at a sane width once it's already comfortably large, and put any *extra* room to use as more columns or more items, not a longer line length. That's why the app's main content area is capped at 1600px past a certain screen width instead of just being told "always 100% wide" — full details, with a diagram, in `docs/APP-SHELL.md`'s Step 11.5 section.
 
+### "Preview" vs. "save", and why a color gets corrected instead of refused (Step 26)
+There are two ways to change colors, and they do different jobs:
+- **The top-bar dropdown is a preview.** It is like holding a paint card up to a wall: only you see it, only in this browser, and nothing about the school changes. "Saved theme" puts the card down again.
+- **Settings > Appearance is the real paint job.** Clicking Save stores the choice on the school's record, and every teacher and principal at that school sees it on their next page load. Saving also puts down any paint card you were holding, so you see what you actually saved.
+
+A **custom color** always gets checked for readability (WCAG AA: text must stand out from its background by at least 4.5:1). Two different things can go wrong, and they are handled differently:
+- **It isn't a color at all** (a typo like `#12`): refused, with a message, and Save stays greyed out.
+- **It's a real color but too light for white button text** (a bright yellow, say): *corrected*, not refused. Buttons use a darker shade of the same color, and the page shows your color and the corrected one side by side, so nothing changes behind your back. Refusing would force the school to guess a darker shade themselves; the app can compute one that is guaranteed to pass.
+
+Full mechanism, with a diagram: [`docs/STYLING-SYSTEM.md`](STYLING-SYSTEM.md)'s Step 26 section.
+
 ---
 
 ## Components and libraries (shadcn/ui)
