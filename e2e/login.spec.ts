@@ -6,13 +6,13 @@ test.describe("Login", () => {
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
     // Errors jump focus to the first invalid field, so it should be focused.
     await expect(page.locator(":focus")).toHaveAttribute("aria-invalid", "true");
-    await expect(page.getByText(/Email.*required/i)).toBeVisible();
+    await expect(page.getByText(/Enter a valid email address/i)).toBeVisible();
   });
 
   test("staff sign-in with valid email and password shows phase 2 message", async ({ page }) => {
     await page.goto("/");
     await page.getByLabel("Email").fill("principal@example.com");
-    await page.getByLabel("Password").fill("password123");
+    await page.getByLabel("Password", { exact: true }).fill("password123");
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
     // Phase 1 hasn't connected real accounts yet, so the button shows this.
     await expect(
@@ -33,7 +33,7 @@ test.describe("Login", () => {
     await page.goto("/parent/login");
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
     await expect(page.locator(":focus")).toHaveAttribute("aria-invalid", "true");
-    await expect(page.getByText(/Email.*required/i)).toBeVisible();
+    await expect(page.getByText(/Enter a valid email address/i)).toBeVisible();
   });
 
   test("parent sign-in redirects to link-child for a new parent", async ({
@@ -46,8 +46,10 @@ test.describe("Login", () => {
     await page.getByLabel("Last name").fill("Parent");
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Mobile number").fill("09171234567");
-    await page.getByLabel("Your child's school").selectOption("school-balanga");
-    await page.getByLabel("Password").fill("testpass123");
+    // A Radix/shadcn Select (a button, not a native <select>).
+    await page.getByLabel("Your child's school").click();
+    await page.getByRole("option", { name: "Balanga City National Science High School" }).click();
+    await page.getByLabel("Password", { exact: true }).fill("testpass123");
     await page.getByLabel("Confirm password").fill("testpass123");
     await page.getByRole("button", { name: "Create account" }).click();
     // After signup, redirected to link-child.
@@ -61,7 +63,7 @@ test.describe("Login", () => {
 
     await page.goto("/parent/login");
     await page.getByLabel("Email").fill(email);
-    await page.getByLabel("Password").fill("testpass123");
+    await page.getByLabel("Password", { exact: true }).fill("testpass123");
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
     // A signed-in parent sees the dashboard (Step 23).
     await expect(page).toHaveURL("/parent");

@@ -68,8 +68,12 @@ export const seedStudents: Student[] = SECTION_SLOTS.flatMap((slot, slotIndex) =
   Array.from({ length: STUDENTS_PER_SECTION }, (_, seatIndex) => {
     const index = slotIndex * STUDENTS_PER_SECTION + seatIndex;
     const { firstName, lastName } = nameAt(index);
-    // Guardians share the student's own surname (usually a parent).
-    const guardianFirstName = nameAt(index + 1000).firstName;
+    // Guardians share the student's own surname (usually a parent). The
+    // offset must not be a multiple of FIRST_NAMES.length (40) — it was
+    // 1000 before, which silently made every guardian's first name equal
+    // the student's own (found visually in Step 29's review: every row's
+    // second line was an exact duplicate of the name above it).
+    const guardianFirstName = nameAt(index + 13).firstName;
 
     const student: Student = {
       id: `student-${String(index + 1).padStart(4, "0")}`,

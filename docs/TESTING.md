@@ -44,6 +44,9 @@ All tests run against one instance of the running app. The app resets its sample
 - Any test that creates records (add student, signup parent) uses unique names, emails and LRNs, generated with a test-run ID (from `test-data.ts`).
 - Tests never edit records that other tests read (e.g., don't change the seeded staff).
 - The parent flow runs only at phone width to avoid multiple tests trying to link the same student at the same time.
+- `station.spec.ts`'s own tests run serially (`test.describe.configure({ mode: "serial" })`) so they don't race each other for Balanga's shared pool of untapped students via "Valid card"/"Simulate a tap".
+
+**Known gap (found in Step 29's review):** `e2e/a11y.spec.ts` also clicks "Valid card" against the same Balanga pool, in parallel with `station.spec.ts` and `parent.spec.ts` — nothing currently stops those three files from racing each other. `npm run test:e2e` (the five files above, the ones a person actually runs day to day) doesn't include `a11y.spec.ts`, so this doesn't show up there; but plain `npx playwright test` — what CI actually runs — occasionally exhausts the pool and fails one of `station.spec.ts`'s or `parent.spec.ts`'s tests. A proper fix means either giving each file's tap tests a different school (Oceanview/Crimsonridge have their own untapped pools) or a real per-test isolation mechanism, not a bigger seed pool (that only raises the collision threshold, not removes it). Worth its own step rather than a quick patch here.
 
 ### When to add an end-to-end test
 

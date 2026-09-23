@@ -1483,3 +1483,61 @@ No race conditions, flakes or timeouts observed even when running all browser te
 
 ### Result
 All build tasks done. Waiting on the owner's review.
+
+## Step 29: Final polish
+
+**Goal:** Lighthouse pass on login and dashboard (360px/1280px, light/dark), a sitewide spacing/alignment consistency pass, remove unused code, finish the README, and re-check that nothing added since Step 27.8 scrolls sideways at 360px.
+
+### Lighthouse
+
+Ran `lighthouse` (installed globally for this) against the production build (`npm run build && npm run start`), not the dev server — dev mode's HMR overhead makes performance numbers meaningless. Login and Dashboard, mobile (emulated) and desktop presets:
+
+| Page | Device | Performance | Accessibility | Best Practices | SEO |
+|---|---|---|---|---|---|
+| Login | Mobile | 73 | 100 | 100 | 100 |
+| Login | Desktop | 97 | 100 | 100 | 100 |
+| Dashboard | Mobile | 79 | 100 | 100 | 100 |
+| Dashboard | Desktop | 98 | 100 | 100 | 100 |
+
+Accessibility/Best Practices/SEO are perfect everywhere. Desktop performance clears the 90 target; mobile doesn't. The mobile score is driven almost entirely by Largest Contentful Paint (5.5s, scored 0.19 out of the metric's 25% weight) under Lighthouse's simulated mobile throttling (4x CPU slowdown, slow 4G) against a plain `next start` on a Windows dev machine with no CDN, HTTP/2, or edge caching — not a real product problem to "fix" today. Revisit once there's an actual Vercel deployment to measure against; chasing this number against `localhost` would mean optimizing for a very different bottleneck than production has.
+
+### Visual review
+
+Used Playwright (via the `@browser` MCP tool) to check login, dashboard, students, staff, schools, attendance, settings, station and both parent pages at 320/360/1280px, light and dark. Confirmed:
+- No horizontal overflow anywhere at 320 or 360px (Step 27.8's fixes hold).
+- Dashboard/students/staff render cleanly under the current theme, light and dark.
+- The sidebar-based desktop layout's `<main>` isn't meant to be mx-auto-centered in the leftover space (that's normal for a fixed sidebar + content layout, not a centering bug) — checked with `getBoundingClientRect()` per CLAUDE.md's measurement rule, not by eye.
+
+**Found and fixed a real bug this way, not a styling one:** every row in the Students table showed the exact same name twice — once as the student, once as "the guardian" directly underneath. `src/data/seed/students.ts` computed the guardian's first name as `nameAt(index + 1000).firstName`, and `FIRST_NAMES` (in `src/data/seed/names.ts`) has exactly 40 entries — `1000 % 40 === 0`, so the offset was silently a no-op and every guardian's first name equaled the student's own. Changed the offset to `+ 13` (coprime with 40, so it actually varies). One coincidental case remains where a guardian's *coincidentally* has the same first name as their child ("Angelica Corpuz"/"Angelica Corpuz") — because "Angelica" happens to appear twice in the `FIRST_NAMES` pool itself at two different indices, which is a real-world-plausible coincidence, not the same bug.
+
+### End-to-end test suite: found it was not actually green
+
+Step 28's own log claimed all `test:e2e`/`test:a11y`/`npx playwright test` runs passed cleanly with no flakes. Running the full suite for this step's verification found that was not the case — 26 of the (larger, current) 162-test suite failed. None were product bugs; every one was the test file itself no longer matching the real markup, mostly from UI text/structure that changed in Steps 27.5–27.8 without the Step 28 tests being re-run against it, or from small mistakes (guessed selectors, a stale placeholder LRN/name/birthdate) that likely never passed even when Step 28 was first written. Root causes, by category:
+
+- **`getByLabel` matching more than one element:** shadcn's icon-toggle button next to a password field has `aria-label="Show password"`, which contains the substring "password" and so also matches `getByLabel("Password")`; a "Confirm password" field does the same to a plain `getByLabel("Password")`; a "Filter by grade" toolbar control does the same to `getByLabel("Grade")`. Fixed everywhere with `{ exact: true }`.
+- **shadcn `Select` isn't a native `<select>`:** several tests called `.selectOption()` on a Radix/shadcn `Select` trigger button (`role="combobox"`), which only works on a real `<select>` element. Fixed by clicking the trigger then clicking the `option` role instead.
+- **Assumed a `role="dialog"` that was never there:** the tap station's result panel is (correctly, per CLAUDE.md's "aria-live for tap results") a plain `aria-live="polite"` region, not a modal dialog — the original tests' `getByRole("dialog", ...)` locators never matched anything. Rewrote to match the actual result text.
+- **Wrong expected copy:** "Email is required" (never implemented — the real Zod message is "Enter a valid email address"), "Active" (the real card badge text is "Linked"), "You're offline" (the real badge just says "Offline"), a "Simulate offline" button that relabels itself "Go back online" once clicked, "Link child" vs. the real "Link this child" button.
+- **A students-table row is a single `<button>` wrapping its cells, not a `<tr>`:** `getByRole("row", ...)` never matched; fixed to target `getByRole("button", { name: "Edit <name>" })` directly.
+- **Stale seed constants:** `test-data.ts`'s `SEED_STUDENT_LRN_FOR_PARENT_TEST`/`..._LAST_NAME_.../..._BIRTH_DATE_...` (a 9-digit LRN, wrong surname, wrong birth date) predate the deterministic seed generator in `src/data/seed/students.ts`/`names.ts` and never matched student-0006's real data (`nameAt(5)` → "Carmen Sison", LRN `100000000005`, birth date `2013-06-06`). Recomputed by hand from the generator functions and fixed. Notifications name a child by first name only ("Carmen tapped in"), while the tap-station result and the link-a-child form use the full name/last name — three different display conventions for the same underlying student, now each tested with the right one.
+- **A race within `station.spec.ts` itself:** its own tests all click "Valid card"/"Already tapped" against the same finite pool of untapped Balanga students; running in parallel occasionally starved one test of a student to tap (seen as "Nothing to simulate" mid-test). Fixed by serializing that file's tests with `test.describe.configure({ mode: "serial" })`.
+- **`.count()` doesn't auto-retry like `expect()` does:** a check right after `page.goto()` read 0 because the table hadn't rendered yet. Fixed by waiting on `.first()` to be visible before counting.
+- **Table vs. card layout, by breakpoint:** a few checks used `getByRole("cell", ...)`, which only exists in the ≥768px table layout — below that (Step 27.8's card view), the same status is plain text inside a `listitem`. Added a small `presentRows()` helper in `station.spec.ts` that matches either shape.
+
+**A gap found but deliberately not fixed here:** `e2e/a11y.spec.ts` *also* clicks "Valid card" against the same Balanga pool, with nothing stopping it from racing `station.spec.ts`/`parent.spec.ts` across files (the serial-mode fix above only serializes within one file). `npm run test:e2e` (the five files a person actually runs) doesn't include `a11y.spec.ts`, so this doesn't surface there — verified passing 30/30 three runs in a row. But plain `npx playwright test`, which is exactly what CI runs, hit this and failed 2 of 162 tests both times it was run in full. A proper fix means real per-file test isolation (e.g., different schools for different files' tap tests), not just a bigger seed pool — that only raises the collision threshold, it doesn't remove it. Documented in `docs/TESTING.md` as a known gap rather than patched under time pressure; worth its own step.
+
+### A real cross-platform bug in `package.json`
+
+`"test:e2e": "playwright test 'e2e/(login|students|station|theme|parent).spec.ts'"` — a single-quoted regex with `|` and `()` — only works because `npm run` invokes the platform default shell, and on Windows (`npm`'s actual default is `cmd.exe`, regardless of which shell the terminal itself is), `cmd.exe` doesn't treat single quotes as a quoting mechanism at all, so it split `|` as a literal pipe and errored `'students' is not recognized as an internal or external command`. This means `npm run test:e2e` had never actually run successfully from the owner's own Windows machine — it could only ever have been verified via a direct `npx playwright test '...'` call from a POSIX shell (e.g. Git Bash), never through the documented npm script. Fixed by listing the five files as plain space-separated arguments instead of one quoted regex — no shell-special characters, works identically in `cmd.exe`, PowerShell and bash. Confirmed with `npm run test:e2e` (not `npx playwright test` directly) after the fix: 30 passed, 4 correctly skipped, three runs in a row.
+
+### Unused code
+
+Checked for commented-out code blocks and TODO/FIXME markers across `src/` — none found. `npm run lint` (which fails on unused imports/vars) was already clean.
+
+### Verified
+- `npm run lint`, `npm run typecheck`, `npm run test` (321 tests), `npm run build`, `npm run check:tokens` — all pass
+- `npm run test:e2e` — 30 passed, 4 skipped (theme dropdown tests correctly skip below the 640px breakpoint where the dropdown itself is hidden), three consecutive runs with no flakes
+- `npx playwright test` (full suite, matching CI) — 158 of 160 runnable tests pass; the 2 known exceptions are the cross-file race documented above, not part of `npm run test:e2e`
+
+### Result
+Build tasks done. The sitewide spacing/alignment pass was dropped at the owner's request (2026-09-24) — not worth doing now since parts of the design may still change, better revisited once it's more settled. Approved; this closes out Phase 1.

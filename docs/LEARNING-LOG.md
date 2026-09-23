@@ -20,6 +20,7 @@ Short, plain-language notes explaining things along the way — for whenever I w
 - [Two separate logins in one app, and a mock password (Step 22)](#two-separate-logins-in-one-app-and-a-mock-password-step-22)
 - [Accessibility: checking that everyone can use it (Step 27)](#accessibility-checking-that-everyone-can-use-it-step-27)
 - [Phones vs. desktops: one list, two layouts (Steps 27.6–27.8)](#phones-vs-desktops-one-list-two-layouts-steps-276278)
+- [End-to-end tests can quietly go stale (Step 29)](#end-to-end-tests-can-quietly-go-stale-step-29)
 
 ---
 
@@ -82,6 +83,9 @@ It created `.mcp.json` in the repo root — a project-scoped config so anyone wo
 It also added `shadcn` as a devDependency in `package.json` (the CLI package itself).
 
 MCP servers only load when a Claude Code session *starts* — so after adding one, you need to close and reopen the session (or start a new one) before Claude can actually use it.
+
+### An `npm run` script that only worked in Git Bash, not from a real Windows terminal (Step 29)
+`package.json`'s `test:e2e` script was written as `playwright test 'e2e/(login|students|...).spec.ts'` — one quoted argument, using `|` to mean "or" inside the file pattern. That syntax only means "or" to a shell that understands single quotes as quoting and `()`/`|` as regex characters once inside them — Bash, the shell Claude's own terminal tool uses. But `npm run <script>` doesn't run in whatever shell you happen to be typing into; on Windows, npm always hands the command to `cmd.exe` specifically, and `cmd.exe` doesn't treat single quotes as quoting *at all* — it just sees a literal `|`, which it always treats as "pipe this into the next command," breaking the whole line. So the script had likely never worked when actually run as `npm run test:e2e` from a plain Windows terminal — only a direct Bash-run `npx playwright test '...'` could ever have passed. Fixed by writing the file list as five plain space-separated arguments instead of one quoted pattern — no quoting or shell-special characters needed, so it means the same thing in `cmd.exe`, PowerShell and Bash alike. **Lesson:** when an npm script needs to work on Windows, avoid quoting tricks that only one shell understands — prefer syntax that needs no special shell behavior at all.
 
 ---
 
@@ -579,3 +583,23 @@ The ready-made drawer component (from shadcn/ui) has its own width rule: 75% of 
 In Chrome, F12 opens DevTools, and the phone/tablet icon (or Ctrl+Shift+M) switches to device mode, where you pick a device such as "iPhone SE". Two things to know:
 - **The preview panel itself can be narrower than the device.** If the DevTools panel takes up a lot of the window, Chrome may crop or scroll the *preview*, which looks like the page is too wide when it isn't. Dragging DevTools narrower, or docking it to the bottom (⋮ menu in DevTools → Dock side), gives the preview room. This is my best guess for why the whole staff page looked cut off in your screenshot while my measurements showed it fitting. It isn't confirmed.
 - **Device mode is Chrome pretending.** It's a very good check for layout, but a real iPhone runs Safari's engine, which can differ in small ways. Before launch it's worth one look on a real phone.
+
+---
+
+## End-to-end tests can quietly go stale (Step 29)
+A passing test suite (Step 28) doesn't mean it stays accurate forever — if the app's real text or structure changes later and nobody reruns the tests against it, they can drift into checking for things that no longer exist while still technically "having passed once." Running the whole suite fresh during Step 29's final polish found 26 of 162 tests failing this way. None were bugs in the app — every one was the test guessing at markup that either never matched, or stopped matching once Steps 27.5–27.8 changed real button/badge text.
+
+### A screen-reader label can accidentally match more than one thing
+Playwright's `getByLabel("Password")` doesn't just find the field labeled "Password" — by default it matches *any* accessible name containing "password" as a substring, case-insensitively. The little eye icon that shows/hides a password has `aria-label="Show password"`, which contains "password" too, so the same locator matched both and Playwright refused to guess which one you meant ("strict mode violation"). A "Confirm password" field has the same problem with a plain "Password" search. The fix is `{ exact: true }` wherever the label needs to match *only* itself, not a phrase containing it.
+
+### shadcn's dropdown isn't a real `<select>`, so `.selectOption()` silently can't drive it
+shadcn/ui's `Select` component (built on Radix UI) renders as a button with `role="combobox"` that opens a floating list on click — nothing like the browser's native `<select>` element, even though it looks and behaves like one to a person using it. Playwright's `.selectOption()` command only works on a genuine `<select>`; pointed at a shadcn Select, it just times out waiting for something that will never happen. Driving one from a test means doing what a person does: click the button to open it, then click the option you want (`page.getByRole("option", { name: "..." }).click()`).
+
+### An `aria-live` region isn't a dialog, even though both "pop up" a result
+The tap station shows its result (name, time, status) in a plain `<div aria-live="polite">` — the right choice for a small updating status message a screen reader should announce automatically, and exactly what CLAUDE.md's accessibility rules ask for. But the original tests assumed it was a modal `role="dialog"`, since visually it looks like one "appears." `aria-live` and `role="dialog"` are unrelated: a dialog is a thing you enter and must explicitly close (and expects a focus trap); an aria-live region just quietly announces a change in place. Testing it means matching the actual text that appears, not a dialog role that isn't there.
+
+### When copy changes, only the actual rendered words are the source of truth
+Several failures were just wrong expected text: a test checking for "Email is required" when the real message has always been "Enter a valid email address"; "Active" when the badge has always said "Linked"; a button whose test expected it to still say "Simulate offline" after being clicked, when it relabels itself "Go back online". None of these were typos introduced later — they were the test's original guess never having matched the real component. **Lesson:** when writing a test's expected text, copy it from the actual rendered page (or the component's source), never from memory of what it "should" say.
+
+### The same student can be described three different ways depending on which screen you're on
+While fixing the parent-flow test, found that the tap-station result and the "link a child" form both use a student's full name or last name, but the parent's notification bell only ever shows the first name ("Carmen tapped in") — three genuinely different, all-correct conventions for naming the same person depending on the audience (staff needing to identify exactly who, vs. a parent who already knows). A test written against the wrong one of the three will fail even though nothing is broken.

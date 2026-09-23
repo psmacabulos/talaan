@@ -45,6 +45,13 @@ export function testStudentName(purpose: string): string {
  */
 export const SEED_PARENT_EMAIL = "parent-one@balanga.example";
 export const SEED_PARENT_PASSWORD = "password123"; // Hardcoded in seed (step 22)
-export const SEED_STUDENT_LRN_FOR_PARENT_TEST = "100000006"; // student-0006
-export const SEED_STUDENT_LAST_NAME_FOR_PARENT_TEST = "Abad"; // matches student-0006
-export const SEED_STUDENT_BIRTH_DATE_FOR_PARENT_TEST = "2012-07-18"; // matches student-0006
+// student-0006 is index 5 in src/data/seed/students.ts: nameAt(5) is
+// { firstName: "Carmen", lastName: "Sison" }, lrnAt(5) is the 12-digit
+// "100000000005", and birthDateAt(7, 5) is "2013-06-06". These three were
+// stale placeholders from before the deterministic seed generator existed
+// (found while fixing Step 29's e2e test run — they never matched the
+// real seed data, so this link-a-child step always would have failed).
+export const SEED_STUDENT_LRN_FOR_PARENT_TEST = "100000000005"; // student-0006
+export const SEED_STUDENT_FIRST_NAME_FOR_PARENT_TEST = "Carmen"; // matches student-0006
+export const SEED_STUDENT_LAST_NAME_FOR_PARENT_TEST = "Sison"; // matches student-0006
+export const SEED_STUDENT_BIRTH_DATE_FOR_PARENT_TEST = "2013-06-06"; // matches student-0006

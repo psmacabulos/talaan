@@ -31,7 +31,16 @@
       "Bash(ls step24-*)",
       "Bash(wc -l docs/BUILD-LOG.md docs/LEARNING-LOG.md docs/recipes/step-23-parent-dashboard.md README.md)",
       "Bash(ls docs/recipes/)",
-      "mcp__plugin_playwright_playwright__browser_file_upload"
+      "mcp__plugin_playwright_playwright__browser_file_upload",
+      "Bash(npx ts-unused-exports *)",
+      "Bash(netstat -ano 2>nul | find \"3000\" || echo \"Port 3000 not found, checking 3001...\")",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(lighthouse http://localhost:3000 --chrome-flags=\"--headless=new --no-sandbox\" --output=json --output-path=/tmp/lh-login.json --emulated-form-factor=mobile)",
+      "Read(//c/Users/aqua_flask/AppData/Local/Temp/**)",
+      "Bash(grep -A 50 '\"categories\"' /c/Users/aqua_flask/AppData/Local/Temp/lh-login.json | head -60)",
+      "Bash(grep -o '\"performance\":\\\\s*{\\\\s*\"[^}]*\"score\":\\\\s*[0-9.]*' /c/Users/aqua_flask/AppData/Local/Temp/lh-login.json | head -1)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/)",
+      "Bash(npx playwright *)"
     ],
     "deny": [
       "Bash(git add)",
@@ -81,7 +90,8 @@
     ],
     "additionalDirectories": [
       "C:\\Users\\aqua_flask\\AppData\\Local\\Temp\\claude\\d--Repositories-talaan-starter-talaan\\f40f0ab3-06d6-4b68-a959-983ea92fd559\\scratchpad",
-      "\\tmp"
+      "\\tmp",
+      "D:\\Repositories\\talaan-starter\\talaan"
     ]
   }
 }
