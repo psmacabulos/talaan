@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { LoginArtPanel } from "@/features/auth/login-art-panel";
 import { LoginMobileHeader } from "@/features/auth/login-mobile-header";
 import { LoginForm } from "@/features/auth/login-form";
@@ -37,6 +38,13 @@ export default function LoginPage() {
 
           <LoginForm signInEnabled={signInEnabled} />
           <DemoShortcuts signInEnabled={signInEnabled} />
+
+          <p className="text-center text-sm text-muted-foreground">
+            Parent or guardian?{" "}
+            <Link href="/parent/login" className="text-link underline underline-offset-2">
+              Sign in here
+            </Link>
+          </p>
 
           <p className="text-center text-sm text-muted-foreground">
             Talaan (placeholder product name)

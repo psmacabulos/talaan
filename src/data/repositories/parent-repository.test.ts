@@ -37,4 +37,47 @@ describe("createMockParentRepository", () => {
     const repo = createMockParentRepository(allParents, { latencyMs: 0 });
     await expect(repo.getById("nope")).resolves.toBeNull();
   });
+
+  it("finds a parent by email, case-insensitively", async () => {
+    const repo = createMockParentRepository(allParents, { latencyMs: 0 });
+    await expect(repo.findByEmail("MARIA@example.com")).resolves.toEqual(parentA);
+  });
+
+  it("returns null when finding an unknown email", async () => {
+    const repo = createMockParentRepository(allParents, { latencyMs: 0 });
+    await expect(repo.findByEmail("nope@example.com")).resolves.toBeNull();
+  });
+
+  it("creates a new parent with a password and can then find it", async () => {
+    const repo = createMockParentRepository([], { latencyMs: 0 });
+    const created: Parent = {
+      id: "parent-c",
+      schoolId: "school-a",
+      firstName: "Ana",
+      lastName: "Reyes",
+      mobile: "09171112222",
+      email: "ana@example.com",
+    };
+    await expect(repo.create(created, "hunter2ok")).resolves.toEqual(created);
+    await expect(repo.getById("parent-c")).resolves.toEqual(created);
+  });
+
+  it("verifies a correct password", async () => {
+    const repo = createMockParentRepository([], { latencyMs: 0, seedPassword: "irrelevant" });
+    const created: Parent = { ...parentA, id: "parent-c", email: "ana@example.com" };
+    await repo.create(created, "hunter2ok");
+    await expect(repo.verifyPassword("ana@example.com", "hunter2ok")).resolves.toEqual(created);
+  });
+
+  it("rejects an incorrect password", async () => {
+    const repo = createMockParentRepository([], { latencyMs: 0 });
+    const created: Parent = { ...parentA, id: "parent-c", email: "ana@example.com" };
+    await repo.create(created, "hunter2ok");
+    await expect(repo.verifyPassword("ana@example.com", "wrong")).resolves.toBeNull();
+  });
+
+  it("rejects a password check for an unknown email", async () => {
+    const repo = createMockParentRepository(allParents, { latencyMs: 0 });
+    await expect(repo.verifyPassword("nope@example.com", "anything")).resolves.toBeNull();
+  });
 });

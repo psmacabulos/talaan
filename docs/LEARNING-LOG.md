@@ -17,6 +17,7 @@ Short, plain-language notes explaining things along the way — for whenever I w
 - [Search, filters and sorting living in the URL (Step 14)](#search-filters-and-sorting-living-in-the-url-step-14)
 - [Forms: shared validation and writing data (Step 15)](#forms-shared-validation-and-writing-data-step-15)
 - [Turning a Next.js web app into an iOS/Android app](#turning-a-nextjs-web-app-into-an-iosandroid-app)
+- [Two separate logins in one app, and a mock password (Step 22)](#two-separate-logins-in-one-app-and-a-mock-password-step-22)
 
 ---
 
@@ -444,3 +445,13 @@ Asked when the plan changed from SMS to a companion app. No — there are two re
 Either way, a **real** push notification (one that arrives even with the app closed) still needs a server that holds each phone's push subscription and can trigger Apple/Google's push service — that's Phase 2/3 backend work, not something either wrapping approach gets around on its own.
 
 This is a real decision, but it's deliberately not locked into the docs yet — see the "Plan history" note in `CLAUDE.md` and `docs/PLAN.md`'s Phase 3 — because it's costly to reverse and there's no reason to commit to it this far ahead of actually starting that phase.
+
+---
+
+## Two separate logins in one app, and a mock password (Step 22)
+
+### Why parents get their own cookie instead of reusing staff's session
+The staff login (`/`) was never a real login — it always signs in as a fixed demo persona, no password actually checked (that's Phase 2). The parent login had to be genuinely real for this step to mean anything (sign up, sign back in, still see the link), so it couldn't reuse that same mechanism. Rather than stretch the staff `Session` type to cover two very different kinds of "who's signed in," they got their own separate browser cookie (`talaan-parent-session`) and their own small set of helper functions — completely independent, so neither login can accidentally interfere with the other. A browser can be signed in as staff and as a parent at the same time, in the same window, because they're stored separately.
+
+### Storing a password with no real database yet
+Phase 1 has no database — every "table" is really just a JavaScript array of seed data sitting in memory, and it resets whenever the server restarts. Given that, hashing a password (the real, secure way — see `docs/AUTH.md` once Phase 2 writes it) would be Phase 2 work applied to something that isn't Phase 2 yet. Instead, this step keeps passwords in a small in-memory lookup right next to that same array, in plain text, clearly labeled as a placeholder. It's not a real security concern *yet* because there's no real data behind it to protect — but it's exactly the kind of shortcut that must not survive into Phase 2, which is why every place it appears in the code says so in a comment.

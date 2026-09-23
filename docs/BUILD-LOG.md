@@ -990,3 +990,28 @@ Adding `settings` to `NAV_ITEMS` broke two `nav-items.test.ts` assertions that p
 
 ### Result
 All build tasks done. Waiting on the owner's review.
+
+---
+
+## Step 22: Parent signup, login and link a child
+
+**Goal:** a real parent signup and sign-in (separate from staff's demo login), plus "link a child" verified by LRN, last name and birth date, with clear errors for no match or an already-linked child. Steps 20 and 21 were approved at the start of this step (both had been sitting "ready for review" — ticked and `npm run progress` re-run before starting, per the plan's own "first step not approved" rule).
+
+### A real design decision, confirmed before writing code: school chosen at signup
+Unlike everything else in Phase 1, this had to be genuinely real, not a demo shortcut — a parent needs to actually sign back in later and see the same linked child, so it needed a real (if mock) account with a real password check. That raised a multi-tenant question the plan didn't spell out: a `Parent` belongs to exactly one school (Step 20's own schema comment), but nothing yet tells the app *which* school a brand-new parent belongs to. Two options: (a) search for the matching student across every school at "link a child" time, or (b) have the parent pick their school at signup, once, from a plain dropdown of names. Went with (b) — it's simpler (`findForLink` only ever searches one school), and it doesn't violate the "no school branding pre-auth" rule, because that rule is about the app never *assuming* a school (a login screen defaulting to Balanga's own logo), not about a parent never being *asked* — picking your own child's school from a plain text list is the parent's own active choice, the same way an airline app lets you pick a departure airport.
+
+### What got built
+- `src/features/parents/auth-schemas.ts` + `types.ts` additions — `parentSignupSchema` (with a password-confirmation `.refine`), `parentLoginSchema`, `linkChildSchema` (reusing `lrnSchema` from `students/schemas.ts`).
+- `src/lib/parent-session.ts` + `parent-session-actions.ts` — a second, independent session mechanism from staff's `src/lib/session.ts`, with its own cookie (`talaan-parent-session`). Deliberately *not* a variant of the staff `Session` type: staff's session has a dev-only production guard because signing in as a demo persona is a shortcut being disabled outside development; this is the real feature, so it carries no such guard and works the same in every environment.
+- `ParentRepository.findByEmail` / `.create` / `.verifyPassword` (parent-repository.ts) — Phase 1 has no database, so passwords live in a plain in-memory `Map` alongside the mock data, seeded with a fixed demo password (`SEED_PARENT_PASSWORD = "Talaan123!"`) for every existing seed parent, so the owner can also sign in as one of Step 20's pre-linked demo accounts, not just a freshly-signed-up one. Real hashing is a Phase 2 (Auth.js) concern.
+- `ParentStudentLinkRepository.create` and `StudentRepository.findForLink` (school + LRN + last name + birth date, case-insensitive on the name) — both follow the existing mock repositories' "idempotent by id" `create` shape.
+- `src/features/parents/auth-actions.ts` — `signUpParent`, `signInParent`, `signOutParent`, `linkChild`, all re-validating with the same Zod schemas the client already checked. `linkChild` returns the "no match" and "already linked" errors CLAUDE.md's domain rules ask for as a `formError`, the same convention `card-actions.ts` uses for its duplicate-serial check.
+- `src/features/parents/{signup,login,link-child}-form.tsx` + `sign-out-button.tsx` — React Hook Form + Zod, same field-error/form-error pattern as `staff-form.tsx`/`student-form.tsx`.
+- Routes: `/parent/signup`, `/parent/login` (public, reusing `LoginArtPanel`/`LoginMobileHeader` from the staff login — both already generic/no-school-branding by design), and a `(protected)` route group for `/parent` and `/parent/link-child`, guarded by `getParentSession()` redirecting to `/parent/login`. `/parent` is a deliberately bare "your linked children" list (names + grade/section only) — just enough to prove a link survives a sign-out/sign-in, which Step 23 replaces with the real dashboard.
+- A one-line cross-link added to the staff login page (`/`) pointing parents to `/parent/login`, and vice versa on the parent forms.
+
+### Verified
+`lint`, `typecheck`, `test` (260, up from 249 — 11 new: `parent-repository.test.ts` signup/email-lookup/password checks, `parent-student-link-repository.test.ts` create + idempotency, `student-repository.test.ts` `findForLink`), `check:tokens` and `build` all pass. Browser-checked the full flow at 360px and 1280px, light and dark: signed up a new parent (picking Balanga), landed on "link a child", linked a real seed student by LRN/last name/birth date, saw it appear on the home page, signed out, signed back in with the same password and confirmed the link was still there. Also checked the two required error messages (wrong LRN/name/birth date combination → "no match"; linking the same student twice → "already linked to your account"), the unauthenticated redirect (`/parent` → `/parent/login` when signed out), and signing in as a seeded demo parent (`parent-one@balanga.example` / `Talaan123!`) to confirm Step 20's pre-existing links still show. No console errors at any point.
+
+### Result
+All build tasks done. Waiting on the owner's review.

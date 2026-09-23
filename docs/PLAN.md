@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ███████████████░░░░░ 74%**  (57 of 77 tasks, 20 of 30 steps approved)
+**Overall progress: ████████████████░░░░ 78%**  (60 of 77 tasks, 22 of 30 steps approved)
 
-**Next up:** Step 20, Parent and notification domain (ready for your review)
+**Next up:** Step 22, Parent signup, login and link a child (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -27,9 +27,9 @@
 | 17 | Attendance page | ██████████ 100% | Approved |
 | 18 | Staff page | ██████████ 100% | Approved |
 | 19 | Tap station | ██████████ 100% | Approved |
-| 20 | Parent and notification domain | █████░░░░░  50% | Ready for your review |
-| 21 | School notification settings | █████░░░░░  50% | Ready for your review |
-| 22 | Parent signup, login and link a child | ░░░░░░░░░░   0% | Not started |
+| 20 | Parent and notification domain | ██████████ 100% | Approved |
+| 21 | School notification settings | ██████████ 100% | Approved |
+| 22 | Parent signup, login and link a child | █████░░░░░  50% | Ready for your review |
 | 23 | Parent dashboard | ░░░░░░░░░░   0% | Not started |
 | 24 | Notification feed | ░░░░░░░░░░   0% | Not started |
 | 25 | Schools management | ░░░░░░░░░░   0% | Not started |
@@ -191,16 +191,16 @@ Commit: `feat(station): add tap station screen`
 - [x] Types, Zod schemas, mock repositories and seed data for `Parent` and `ParentStudentLink` (many-to-many), plus a `Notification` record (student, kind, tap time, read/unread) that feeds the parent notification feed. Seed a few parent accounts already linked to existing seed students.
 Done when: types and schemas compile, schema tests pass, and no UI code talks to the seed data directly.
 Commit: `feat(data): add parent and notification domain`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 21: School notification settings
 - [x] Settings > Notifications page (principal and super admin only): off / time-in only / time-in and time-out, saved to the school record.
 Done when: a saved preference shows for every user of that school on the next load.
 Commit: `feat(schools): add notification settings`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 22: Parent signup, login and link a child
-- [ ] Parent signup and login (separate from staff login), and a "link a child" flow verified by LRN, last name and birth date, with clear errors for no match or an already-linked child.
+- [x] Parent signup and login (separate from staff login), and a "link a child" flow verified by LRN, last name and birth date, with clear errors for no match or an already-linked child.
 Done when: a new parent account can sign up, link a real seed student, and sign back in to see that link still there.
 Commit: `feat(parents): add parent signup, login and child linking`
 - [ ] Owner review: I checked it and said "approved"

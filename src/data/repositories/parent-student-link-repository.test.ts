@@ -49,4 +49,17 @@ describe("createMockParentStudentLinkRepository", () => {
     await expect(repo.listByParent("nope")).resolves.toEqual([]);
     await expect(repo.listByStudent("nope")).resolves.toEqual([]);
   });
+
+  it("creates a new link and it shows up for both sides", async () => {
+    const repo = createMockParentStudentLinkRepository([], { latencyMs: 0 });
+    await expect(repo.create(link1)).resolves.toEqual(link1);
+    await expect(repo.listByParent("parent-a")).resolves.toEqual([link1]);
+    await expect(repo.listByStudent("student-a")).resolves.toEqual([link1]);
+  });
+
+  it("is idempotent when creating with an id that already exists", async () => {
+    const repo = createMockParentStudentLinkRepository([link1], { latencyMs: 0 });
+    await repo.create({ ...link1, studentId: "student-different" });
+    await expect(repo.listByParent("parent-a")).resolves.toEqual([link1]);
+  });
 });

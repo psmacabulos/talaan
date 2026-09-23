@@ -78,6 +78,8 @@ Step 20 added three more repositories the same way, all read-only: `parent-repos
 
 Step 21 added the school record's first write — `SchoolRepository.update`, a full-record replace (same shape as `StudentRepository.update`) — for Settings > Notifications; Step 26's appearance settings will reuse it.
 
+Step 22 gave `ParentRepository` its first write methods — `findByEmail`, `create`, `verifyPassword` — and `ParentStudentLinkRepository.create`, plus a new lookup on the existing student repository, `StudentRepository.findForLink(schoolId, { lrn, lastName, birthDate })`, for "link a child." `verifyPassword` is the one method on any repository so far that isn't a plain CRUD operation — it exists because Phase 1 has no database to hold a real `password_hash` column, so the mock `create` also takes a plain-text password and keeps it in a separate in-memory `Map` next to the parent records (never on the `Parent` type itself, so a parent record can still be safely read and rendered anywhere without filtering out a secret field first). See `docs/LEARNING-LOG.md`'s "Two separate logins in one app, and a mock password" entry for why this is fine for now and what Phase 2 replaces it with.
+
 ```ts
 async create(student) {
   await simulateLatency(latencyMs);

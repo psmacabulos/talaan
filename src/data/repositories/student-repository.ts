@@ -9,6 +9,19 @@ export interface StudentRepository {
   create(student: Student): Promise<Student>;
   /** Replaces an existing student by `id`. Returns `null` if no student with that id exists. */
   update(student: Student): Promise<Student | null>;
+  /**
+   * Step 22's "link a child" lookup — the three details CLAUDE.md's domain
+   * rules say a parent already has on hand (LRN, last name, birth date),
+   * scoped to the school the parent chose at signup (a parent belongs to
+   * exactly one school, so there's never a cross-school search). A student
+   * with no LRN on file (some seed students have none — see
+   * seed/students.ts's `lrnAt`) can never match here; that's an accepted
+   * Phase 1 gap, not a bug.
+   */
+  findForLink(
+    schoolId: string,
+    details: { lrn: string; lastName: string; birthDate: string },
+  ): Promise<Student | null>;
 }
 
 export function createMockStudentRepository(
@@ -39,6 +52,19 @@ export function createMockStudentRepository(
       if (index === -1) return null;
       data[index] = student;
       return student;
+    },
+    async findForLink(schoolId, { lrn, lastName, birthDate }) {
+      await simulateLatency(latencyMs);
+      const normalizedLastName = lastName.trim().toLowerCase();
+      return (
+        data.find(
+          (student) =>
+            student.schoolId === schoolId &&
+            student.lrn === lrn &&
+            student.birthDate === birthDate &&
+            student.lastName.trim().toLowerCase() === normalizedLastName,
+        ) ?? null
+      );
     },
   };
 }

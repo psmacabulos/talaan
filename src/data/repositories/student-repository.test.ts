@@ -61,4 +61,28 @@ describe("createMockStudentRepository", () => {
     const repo = createMockStudentRepository([studentA], { latencyMs: 0 });
     await expect(repo.update(studentB)).resolves.toBeNull();
   });
+
+  it("finds a student for linking by school, LRN, last name and birth date", async () => {
+    const withLrn: Student = { ...studentA, lrn: "100000000001" };
+    const repo = createMockStudentRepository([withLrn, studentB], { latencyMs: 0 });
+    await expect(
+      repo.findForLink("school-a", { lrn: "100000000001", lastName: "dela cruz", birthDate: "2012-03-14" }),
+    ).resolves.toEqual(withLrn);
+  });
+
+  it("does not find a student for linking in the wrong school", async () => {
+    const withLrn: Student = { ...studentA, lrn: "100000000001" };
+    const repo = createMockStudentRepository([withLrn], { latencyMs: 0 });
+    await expect(
+      repo.findForLink("school-b", { lrn: "100000000001", lastName: "dela cruz", birthDate: "2012-03-14" }),
+    ).resolves.toBeNull();
+  });
+
+  it("does not find a student for linking with a mismatched detail", async () => {
+    const withLrn: Student = { ...studentA, lrn: "100000000001" };
+    const repo = createMockStudentRepository([withLrn], { latencyMs: 0 });
+    await expect(
+      repo.findForLink("school-a", { lrn: "100000000001", lastName: "dela cruz", birthDate: "2012-03-15" }),
+    ).resolves.toBeNull();
+  });
 });
