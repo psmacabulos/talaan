@@ -10,6 +10,7 @@
     "format": "prettier --write .",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
+    "test:a11y": "npm run build && playwright test",
     "check:tokens": "node scripts/check-tokens.mjs",
     "progress": "node scripts/progress.mjs"
   },
@@ -30,6 +31,8 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",

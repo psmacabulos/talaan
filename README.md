@@ -31,6 +31,7 @@ There are no environment variables required yet in Phase 1 — see [`.env.exampl
 | `npm run format`    | Reformat all files with Prettier.                                               |
 | `npm run typecheck` | Check TypeScript types without emitting output.                                 |
 | `npm run test`      | Run the test suite once with Vitest.                                            |
+| `npm run test:a11y` | Build the app, then run the accessibility audit (axe on every screen, plus keyboard and focus checks) in a real browser with Playwright. |
 | `npm run check:tokens` | Fail if a raw color (hex/rgb/hsl/oklch or a Tailwind palette class) shows up outside the theme files. |
 | `npm run progress`  | Regenerate the progress table at the top of `docs/PLAN.md` from its checkboxes. |
 
@@ -60,6 +61,7 @@ Every color a school sees comes from a **theme preset** — never a hardcoded va
 - [`docs/NOTIFICATIONS.md`](docs/NOTIFICATIONS.md) — how a tap becomes a parent notification: the fan-out helper, the school preference gate, time-in/time-out derivation, and the shared-read simplification.
 - [`docs/URL-DRIVEN-LISTS.md`](docs/URL-DRIVEN-LISTS.md) — how the Students list's search, filters, sort and pagination all live in the URL: the parse/build helpers, why sorting needs no client JavaScript, and how the search box's debounce works.
 - [`docs/FORMS.md`](docs/FORMS.md) — how the add/edit drawer works: one Zod schema shared by client and server validation, shared drawer state, wiring a shadcn `Select` into React Hook Form, and the Server Action shape every future write form reuses.
+- [`docs/ACCESSIBILITY.md`](docs/ACCESSIBILITY.md) — the automated accessibility audit (axe + Playwright, in CI) and the shared pieces that carry accessibility for every screen: the skip link, landmarks, keyboard-scrollable tables, drawers that return focus. Ends with recipes like "audit a new screen".
 - [`docs/OWNER-GUIDE.md`](docs/OWNER-GUIDE.md) — how the owner works with Claude on this project, step by step.
 - [`docs/recipes/`](docs/recipes/) — a literal, reproducible checklist per plan step (exact commands, file contents and why, in order), for rebuilding a step from scratch rather than just reading about it. Skips any dead ends a step originally hit — each recipe gives the corrected, final answer directly, with a pointer to `docs/BUILD-LOG.md` for anyone who wants the full story. Piloted with [Step 1](docs/recipes/step-01-scaffold.md) and [Step 2](docs/recipes/step-02-tooling.md); written alongside every step from [Step 16](docs/recipes/step-16-card-link-replace.md) onward.
 - [`CLAUDE.md`](CLAUDE.md) — the standing instructions Claude follows for this project (stack, design system, code structure, workflow rules).

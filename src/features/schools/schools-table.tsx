@@ -84,7 +84,7 @@ function OpenSchoolButton({ schoolId }: { schoolId: string }) {
 export function SchoolsTable({ items }: { items: SchoolRow[] }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
-      <Table>
+      <Table label="Schools">
         <TableHeader>
           <TableRow>
             <TableHead>School</TableHead>

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Role, Staff } from "@/features/staff/types";
 import type { School } from "@/features/schools/types";
 import type { ThemeSelection } from "@/lib/theme/presets";
+import { MAIN_CONTENT_ID, SkipLink } from "@/components/skip-link";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 
@@ -24,6 +25,7 @@ export function AppShell({
 }) {
   return (
     <div className="flex min-h-dvh bg-background">
+      <SkipLink />
       <Sidebar role={role} school={school} className="hidden lg:flex" />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar
@@ -41,7 +43,11 @@ export function AppShell({
             hugs the left edge (no mx-auto), matching the top bar above it
             rather than becoming a centered island. See docs/APP-SHELL.md's
             "Big screens" section for why capped-and-left, not infinite. */}
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8 2xl:px-12 2xl:py-10">
+        <main
+          id={MAIN_CONTENT_ID}
+          tabIndex={-1}
+          className="flex-1 outline-none px-4 py-6 sm:px-6 lg:px-8 lg:py-8 2xl:px-12 2xl:py-10"
+        >
           <div className="w-full 2xl:max-w-[1600px]">{children}</div>
         </main>
       </div>

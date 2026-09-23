@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Nfc } from "lucide-react";
 import { getParentSession } from "@/lib/parent-session";
+import { MAIN_CONTENT_ID, SkipLink } from "@/components/skip-link";
 import { NotificationsBell } from "@/features/parents/notifications-bell";
 import { getParentNotifications } from "@/features/parents/notifications-data";
 import { SignOutButton } from "@/features/parents/sign-out-button";
@@ -28,6 +29,7 @@ export default async function ParentProtectedLayout({ children }: { children: Re
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <SkipLink />
       <header className="flex items-center justify-between border-b border-border px-4 py-3 sm:px-6">
         <Link href="/parent" className="flex items-center gap-2">
           <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -40,7 +42,13 @@ export default async function ParentProtectedLayout({ children }: { children: Re
           <SignOutButton />
         </div>
       </header>
-      <main className="flex flex-1 flex-col">{children}</main>
+      <main
+        id={MAIN_CONTENT_ID}
+        tabIndex={-1}
+        className="flex flex-1 flex-col outline-none"
+      >
+        {children}
+      </main>
     </div>
   );
 }

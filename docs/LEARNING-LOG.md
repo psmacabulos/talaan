@@ -18,6 +18,7 @@ Short, plain-language notes explaining things along the way — for whenever I w
 - [Forms: shared validation and writing data (Step 15)](#forms-shared-validation-and-writing-data-step-15)
 - [Turning a Next.js web app into an iOS/Android app](#turning-a-nextjs-web-app-into-an-iosandroid-app)
 - [Two separate logins in one app, and a mock password (Step 22)](#two-separate-logins-in-one-app-and-a-mock-password-step-22)
+- [Accessibility: checking that everyone can use it (Step 27)](#accessibility-checking-that-everyone-can-use-it-step-27)
 
 ---
 
@@ -486,3 +487,34 @@ The staff login (`/`) was never a real login — it always signs in as a fixed d
 
 ### Storing a password with no real database yet
 Phase 1 has no database — every "table" is really just a JavaScript array of seed data sitting in memory, and it resets whenever the server restarts. Given that, hashing a password (the real, secure way — see `docs/AUTH.md` once Phase 2 writes it) would be Phase 2 work applied to something that isn't Phase 2 yet. Instead, this step keeps passwords in a small in-memory lookup right next to that same array, in plain text, clearly labeled as a placeholder. It's not a real security concern *yet* because there's no real data behind it to protect — but it's exactly the kind of shortcut that must not survive into Phase 2, which is why every place it appears in the code says so in a comment.
+
+## Accessibility: checking that everyone can use it (Step 27)
+
+The full write-up, with code and a diagram, is [`docs/ACCESSIBILITY.md`](ACCESSIBILITY.md). These are the short versions.
+
+### What axe is, and what "serious" and "critical" mean
+axe is a free checker that reads a web page the way assistive technology does and lists anything that breaks a known accessibility rule: text too faint to read, a button with no name, a form field with no label. Every finding comes with an impact level. **Critical** means some people can't use that part at all. **Serious** means it's very hard for them. **Moderate** and **minor** are real, but they're annoyances rather than blockers. Step 27's rule, "no serious or critical findings", is the usual line for "ready to ship". axe can't judge everything (for example, whether a heading actually describes its section), which is why keyboard behavior was checked separately.
+
+### Why the checks open a real browser instead of reading the code
+Most accessibility problems only exist once a page is drawn: colors on top of other colors, a table too wide for a phone, a drawer that's open. Playwright opens a real Chromium browser, signs in as each role by setting the same cookie the dev switcher sets, and visits every screen at phone and desktop width, in light and dark. axe then checks what's actually on screen.
+
+### A table you can't scroll with a keyboard
+On a phone, the Attendance and Staff tables are wider than the screen and scroll sideways inside their own box. With a mouse or finger that's fine. With only a keyboard, you can only scroll something that can take focus, and those tables had nothing focusable inside them, so the right-hand columns were unreachable. The fix makes the table's scroll box itself focusable and gives it a name ("Attendance"), so Tab lands on it and the arrow keys scroll it.
+
+### Where keyboard focus goes when a drawer closes
+Focus is the "you are here" marker for keyboard and screen reader users, and the ring you see when you press Tab. When a drawer closes, focus should go back to whatever opened it, so the person carries on from where they were. Our add/edit drawers are opened from code instead of the library's own "trigger" button, so the library didn't know where to send focus back. It fell to the top of the page, and a keyboard user would have had to Tab through the whole sidebar again. The shared drawer component now remembers the opener itself.
+
+### The "Skip to main content" link
+It's invisible until you press Tab on a page. Then it's the first thing you reach, and pressing Enter jumps past the sidebar or header straight to the page content. Without it, a keyboard user would have to Tab through every navigation link on every page they visit.
+
+### Landmarks: a table of contents for screen readers
+Screen readers can list a page's regions (header, navigation, main content, sidebar) and jump straight to one. Those regions come from HTML tags like `<main>`, `<nav>` and `<aside>`, not from how the page looks. The login screens had no `<main>`, so a screen reader user couldn't jump straight to the form.
+
+### When a test failure isn't a bug in the app
+Three of this step's first failures were the test being too quick or too literal, not the app being wrong:
+- A result card was checked while it was still fading in, so it read as low contrast.
+- A button was checked while it was still fading back from "disabled".
+- A test expected form errors to use one announcement pattern when the forms use another, equally valid one.
+
+Each was confirmed by looking at the actual page before the test was changed. The rule is to prove it's a test problem, never just loosen the test until it passes.
+

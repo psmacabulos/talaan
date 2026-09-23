@@ -25,7 +25,7 @@ function initials(student: Student): string {
 export function AttendanceTable({ rows, taps, now }: { rows: AttendanceRow[]; taps: Tap[]; now: string }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
-      <Table>
+      <Table label="Attendance">
         <TableHeader>
           <TableRow>
             <TableHead>Student</TableHead>

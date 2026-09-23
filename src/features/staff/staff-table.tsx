@@ -17,7 +17,7 @@ function initials(staff: Staff): string {
 export function StaffTable({ items }: { items: Staff[] }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
-      <Table>
+      <Table label="Staff">
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>

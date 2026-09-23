@@ -51,7 +51,11 @@ export function NotificationsBell({ items }: { items: ParentNotificationItem[] }
   }
 
   return (
-    <DropdownMenu>
+    // Not modal: a modal menu hides the rest of the page from screen readers
+    // (aria-hidden) while its links stay tabbable, which axe reports as a
+    // serious aria-hidden-focus violation (Step 27). Esc, Tab and clicking
+    // outside still close it.
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"

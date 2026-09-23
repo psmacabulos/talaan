@@ -54,7 +54,8 @@ export function Sidebar({
   className?: string;
 }) {
   return (
-    <div
+    <aside
+      aria-label="Sidebar"
       className={cn(
         "w-64 shrink-0 flex-col gap-6 border-r border-border bg-card px-4 py-6",
         className,
@@ -62,6 +63,6 @@ export function Sidebar({
     >
       <SidebarBrand school={school} />
       <NavLinks role={role} className="flex-1" />
-    </div>
+    </aside>
   );
 }

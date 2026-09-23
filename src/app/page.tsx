@@ -21,7 +21,7 @@ export default function LoginPage() {
   const signInEnabled = process.env.NODE_ENV !== "production";
 
   return (
-    <div className="grid min-h-screen flex-1 lg:grid-cols-[1.05fr_1fr]">
+    <main className="grid min-h-screen flex-1 lg:grid-cols-[1.05fr_1fr]">
       <LoginArtPanel />
 
       <section className="flex flex-col items-center justify-center bg-background px-6 py-16 sm:px-12 sm:py-20 lg:px-16">
@@ -51,6 +51,6 @@ export default function LoginPage() {
           </p>
         </div>
       </section>
-    </div>
+    </main>
   );
 }

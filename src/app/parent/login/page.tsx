@@ -5,7 +5,7 @@ import { ParentLoginForm } from "@/features/parents/login-form";
 /** Step 22's parent sign-in — a separate flow from the staff login at `/`. */
 export default function ParentLoginPage() {
   return (
-    <div className="grid min-h-screen flex-1 lg:grid-cols-[1.05fr_1fr]">
+    <main className="grid min-h-screen flex-1 lg:grid-cols-[1.05fr_1fr]">
       <LoginArtPanel />
 
       <section className="flex flex-col items-center justify-center bg-background px-6 py-16 sm:px-12 sm:py-20 lg:px-16">
@@ -20,6 +20,6 @@ export default function ParentLoginPage() {
           <ParentLoginForm />
         </div>
       </section>
-    </div>
+    </main>
   );
 }

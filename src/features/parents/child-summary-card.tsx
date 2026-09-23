@@ -30,9 +30,9 @@ export function ChildSummaryCard({ student, taps }: { student: Student; taps: Ta
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="font-heading text-base font-semibold text-foreground">
+          <h2 className="font-heading text-base font-semibold text-foreground">
             {student.firstName} {student.lastName}
-          </p>
+          </h2>
           <p className="text-sm text-muted-foreground">
             Grade {student.gradeLevel} – {student.section}
           </p>

@@ -32,7 +32,7 @@ export function ClassRoll({
     // container, and a bordered box inside the card's own border double-frames
     // this list against the flush "Live taps" list in the next card. px-0 on
     // every cell keeps the roll on the card's inner left edge, same as that list.
-    <Table>
+    <Table label="Class roll">
       <TableHeader>
         <TableRow>
           <TableHead className="px-0 text-xs text-muted-foreground">Student</TableHead>

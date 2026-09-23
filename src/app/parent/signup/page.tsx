@@ -14,7 +14,7 @@ export default async function ParentSignupPage() {
   const schools = await schoolRepository.list();
 
   return (
-    <div className="grid min-h-screen flex-1 lg:grid-cols-[1.05fr_1fr]">
+    <main className="grid min-h-screen flex-1 lg:grid-cols-[1.05fr_1fr]">
       <LoginArtPanel />
 
       <section className="flex flex-col items-center justify-center bg-background px-6 py-16 sm:px-12 sm:py-20 lg:px-16">
@@ -31,6 +31,6 @@ export default async function ParentSignupPage() {
           <ParentSignupForm schools={schools.map((school) => ({ id: school.id, name: school.name }))} />
         </div>
       </section>
-    </div>
+    </main>
   );
 }

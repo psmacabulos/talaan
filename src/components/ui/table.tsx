@@ -3,11 +3,19 @@
 import * as React from "react"
 import { cn } from "cn"
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+/**
+ * `label` names the scroll container as a keyboard-focusable region, so a
+ * table wider than a phone screen can still be scrolled sideways with the
+ * arrow keys (axe's scrollable-region-focusable rule, Step 27).
+ */
+function Table({ className, label, ...props }: React.ComponentProps<"table"> & { label?: string }) {
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      role={label ? "region" : undefined}
+      aria-label={label}
+      tabIndex={label ? 0 : undefined}
+      className="relative w-full overflow-x-auto rounded-[inherit] outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset"
     >
       <table
         data-slot="table"

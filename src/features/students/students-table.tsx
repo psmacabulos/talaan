@@ -68,7 +68,7 @@ export function StudentsTable({
 
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
-      <Table>
+      <Table label="Students">
         <TableHeader>
           <TableRow>
             <SortableHeader field="name" label="Student" params={params} />

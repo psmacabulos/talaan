@@ -1134,3 +1134,54 @@ All build tasks done. Waiting on the owner's review.
 
 ### Result
 All build tasks done. Waiting on the owner's review.
+
+## Step 27: Accessibility audit
+
+**Goal:** run axe on every screen, including the parent portal, fix the findings, and check keyboard use and focus handling. Done when no serious or critical axe violations remain. Step 26 was approved at the start of this step.
+
+**Owner decisions up front:** approved `@playwright/test` and `@axe-core/playwright` (both already named in CLAUDE.md's stack under "add when a step needs it"), and chose to put the audit in CI in this step instead of waiting for Step 28.
+
+### Setup
+- `npm install -D @playwright/test @axe-core/playwright` installed `@playwright/test@^1.63.0` and `@axe-core/playwright@^4.13.0`. Then `npx playwright install chromium` downloaded Chrome Headless Shell (about 115 MB) into the user profile, outside the repo. npm printed its usual "install scripts blocked" warning for `esbuild` and `unrs-resolver`. Both were already in the tree, and nothing new needed a script.
+- `playwright.config.ts` has two projects, `mobile` (360×780) and `desktop` (1280×800). Its `webServer` runs `npm run start -- --port 3100`. It tests the **production build** rather than `next dev`, so it checks what a school would actually get and doesn't collide with the owner's dev server on 3000. `npm run test:a11y` is `npm run build && playwright test`. CI runs `npx playwright test` right after its existing Build step, so it doesn't build twice.
+- `vitest.config.ts` now excludes `e2e/**`. Vitest's default file pattern matches `*.spec.ts` and would have tried to run the Playwright files.
+- `.gitignore` gained `/test-results/`, `/playwright-report/`, `/blob-report/` and `/playwright/.cache/`.
+- `e2e/sessions.ts` signs a browser context in by setting `talaan-dev-session` or `talaan-parent-session` directly. This works under `next start`, because only `setDevSession` is production-guarded and `getSession` still reads the cookie. `previewThemePreset` sets `talaan-theme-override` in the same way.
+- `e2e/a11y.spec.ts` sets `withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])`. Serious and critical findings fail the test with `{ rule, impact, help, targets }`, and moderate and minor ones become test annotations.
+
+### Findings and fixes
+First run (19 screens × light/dark × 2 sizes, plus 5 presets): **90 passed, 6 failed**. All 6 were the same rule.
+
+1. **`scrollable-region-focusable` (serious)** on Attendance (principal and teacher) and Staff at 360px, in both modes. shadcn's `Table` wraps the `<table>` in an `overflow-x-auto` div. When the table is wider than the phone and has no focusable cells (Students and Schools have row buttons, so they passed), keyboard users can't scroll it. Fix: `Table` takes an optional `label`. With one, the container gets `role="region"`, `aria-label`, `tabIndex={0}` and an inset focus ring. The ring is `ring-inset` because the features' own `overflow-x-auto rounded-lg border` wrapper would clip an outer ring. All five tables pass a label: Attendance, Class roll, Schools, Staff and Students.
+
+Then I added interactive-state tests. Second run:
+
+2. **`aria-hidden-focus` (serious)** with the parent notification bell open. Radix `DropdownMenu` is modal by default, so it runs `hideOthers()`, which puts `aria-hidden="true"` on the page wrapper (`.min-h-screen`) while its links and buttons stay tabbable. I probed it with a throwaway spec listing `[aria-hidden=true]` elements that contain focusables. The mobile nav *Sheet* does the same, but axe marks that one "incomplete" (it can't tell, because of the focus trap) rather than failing it. Fix: `<DropdownMenu modal={false}>`. A notifications list has no reason to hide the page, and Esc, Tab and outside clicks still close it.
+3. **`color-contrast` (serious) on the tap station, mobile only, intermittent. Not an app bug.** The flagged node was the ghost `h-7` "Simulate offline" button. A valid tap starts a `startTransition` upload, which sets `disabled={isSyncing}`, and the button fades to `opacity-50`. axe exempts disabled elements, but when the upload finishes, `disabled` goes away *before* the 150ms opacity transition back to 1 ends. An axe pass landing inside that window measures a half-transparent, enabled button. A probe running each result 3 times on an idle machine never reproduced it. It only happened under the full parallel run's CPU load. Test fix: wait until "Simulate offline" is enabled again before auditing.
+4. **The animation wait itself timed out on login screens.** My first general fix for mid-fade contrast waited for `document.getAnimations()` to have nothing running. The login art panel has a looping animation, so that never happens, and 17 tests hit the 30s timeout. The wait now ignores animations with `iterations === Infinity`.
+5. **"Form errors show a `role=alert`" was my wrong assumption.** The Add student test waited for `getByRole("alert")` after an empty submit and found nothing. The forms use `aria-invalid` plus `aria-describedby`, and React Hook Form's `shouldFocusError` moves focus to the first invalid field, which is a standard, fully announced pattern. The tests now assert `:focus` has `aria-invalid="true"`. That's stronger, because it also proves the focus move.
+
+Then I ran a one-off **best-practice** sweep (not gating) over 14 URLs at both sizes. It found only moderate issues:
+
+6. **`landmark-one-main` and `region`** on `/`, `/parent/login`, `/parent/signup` and the not-found page (no `<main>`), and on every staff page at desktop width (the `SidebarBrand` block sat in a plain `<div>`). Fixed by turning the outer grid `<div>` of the three login-style pages and `not-found.tsx` into `<main>`, and turning `Sidebar`'s root into `<aside aria-label="Sidebar">`.
+7. **`heading-order`** on the parent home: each child card had an `h3` "Attendance history" under the page `h1` with no `h2`. The child's name was a styled `<p>`, so it became the `h2`. It looks the same, and a screen reader user can now jump from child to child.
+
+I also added a **skip link** (`src/components/skip-link.tsx`), used in `AppShell` and the parent `(protected)` layout. The target `<main id="main-content" tabIndex={-1}>` is `outline-none`. The first screenshot showed it cramped: Tailwind's `not-sr-only` sets `padding: 0`, which beat the plain `px-4 py-2` in the cascade. I switched to `focus:px-4 focus:py-2.5` and re-screenshotted at 1280 light and 360 dark.
+
+Then the keyboard tests:
+
+8. **Focus wasn't returned when a code-opened drawer closed.** The "Esc restores focus" test failed on Add student at both sizes. Radix Dialog's `onCloseAutoFocus` calls `event.preventDefault()` and then `context.triggerRef.current?.focus()`. The students, staff and schools drawers are controlled (`open` state) with no `SheetTrigger`, so `triggerRef` is null and focus fell to `<body>`. Fix in `src/components/ui/sheet.tsx`: `SheetContent` records `document.activeElement` in `onOpenAutoFocus`, which runs before FocusScope moves focus in, and focuses it in `onCloseAutoFocus` if it's still connected. The mobile nav, which does use a trigger, gets the same result as before. The test now also covers a drawer opened from a *table row*.
+9. The focus-trap test first used `drawer.locator(":focus")` and failed at Tab 13 (the "Close" button). A probe logging `document.activeElement` after each Tab showed focus correctly cycling First name → … → Cancel → Add student → Close → First name, all inside the dialog. The locator was unreliable, not the trap. It's replaced with an `evaluate` of `activeElement.closest("[role=dialog]")`.
+
+One server log line appeared in early runs: `⨯ Error: The destination stream closed early.` It comes from `next start` when a test navigates away while a streamed response is still being sent. No test failed because of it, and it didn't appear in the final runs. I didn't investigate further.
+
+A side effect worth knowing: every labelled table is now one Tab stop, even at desktop width where it doesn't need to scroll. That's the standard trade-off for this fix, and costs one extra Tab.
+
+### Verified
+- `npx playwright test` passed twice in a row after the last change: **118 passed, 2 skipped** (the two mobile-drawer tests skip on the desktop project, by design).
+- Fixes 6 and 7 are in rules outside the gating tag set, so I confirmed them by reading the changed markup rather than by a rerun. The skip-link and table-focus screenshots were checked at 360px and 1280px, light and dark.
+- `lint`, `typecheck`, `check:tokens`, `test` (296) and `build` all pass.
+- `/design-system` isn't audited, because it's dev-only and returns not-found in the production build the audit uses.
+
+### Result
+All build tasks done. Waiting on the owner's review.

@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████████░░ 90%**  (69 of 77 tasks, 27 of 30 steps approved)
+**Overall progress: ██████████████████░░ 91%**  (70 of 77 tasks, 27 of 30 steps approved)
 
-**Next up:** Step 27, Accessibility audit (not started)
+**Next up:** Step 27, Accessibility audit (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -34,7 +34,7 @@
 | 24 | Notification feed | ██████████ 100% | Approved |
 | 25 | Schools management | ██████████ 100% | Approved |
 | 26 | Appearance settings | ██████████ 100% | Approved |
-| 27 | Accessibility audit | ░░░░░░░░░░   0% | Not started |
+| 27 | Accessibility audit | █████░░░░░  50% | Ready for your review |
 | 28 | End-to-end tests | ░░░░░░░░░░   0% | Not started |
 | 29 | Final polish | ░░░░░░░░░░   0% | Not started |
 
@@ -230,7 +230,7 @@ Commit: `feat(theme): add appearance settings`
 - [x] Owner review: I checked it and said "approved"
 
 ### Step 27: Accessibility audit
-- [ ] Run axe on every screen, including the parent portal, fix issues, and check keyboard use and focus handling.
+- [x] Run axe on every screen, including the parent portal, fix issues, and check keyboard use and focus handling.
 Done when: no serious or critical axe violations remain.
 Commit: `fix(a11y): resolve accessibility audit findings`
 - [ ] Owner review: I checked it and said "approved"
