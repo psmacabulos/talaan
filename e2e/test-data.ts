@@ -7,6 +7,8 @@
  * edits records that other tests read.
  */
 
+import { seedStudents } from "../src/data/seed/students";
+
 /**
  * A unique suffix for this test run, used to namespace student/parent records
  * so they don't collide with other test runs.
@@ -39,19 +41,15 @@ export function testStudentName(purpose: string): string {
 }
 
 /**
- * The seed parent used by the parent flow test (student-0006, linked to
- * parent-balanga-1 in parent-student-links.ts). Must remain stable across
- * test runs so the test can find and use this existing link.
+ * The parent flow test (parent.spec.ts) can't assume any one specific seed
+ * student gets tapped — in CI, station.spec.ts/a11y.spec.ts's tap-station
+ * tests draw from the same shared pool of untapped students (see
+ * playwright.config.ts's `workers` comment and students.ts's spare batch).
+ * It reads back whichever name the tap station actually shows and looks
+ * them up here instead.
  */
-export const SEED_PARENT_EMAIL = "parent-one@balanga.example";
-export const SEED_PARENT_PASSWORD = "password123"; // Hardcoded in seed (step 22)
-// student-0006 is index 5 in src/data/seed/students.ts: nameAt(5) is
-// { firstName: "Carmen", lastName: "Sison" }, lrnAt(5) is the 12-digit
-// "100000000005", and birthDateAt(7, 5) is "2013-06-06". These three were
-// stale placeholders from before the deterministic seed generator existed
-// (found while fixing Step 29's e2e test run — they never matched the
-// real seed data, so this link-a-child step always would have failed).
-export const SEED_STUDENT_LRN_FOR_PARENT_TEST = "100000000005"; // student-0006
-export const SEED_STUDENT_FIRST_NAME_FOR_PARENT_TEST = "Carmen"; // matches student-0006
-export const SEED_STUDENT_LAST_NAME_FOR_PARENT_TEST = "Sison"; // matches student-0006
-export const SEED_STUDENT_BIRTH_DATE_FOR_PARENT_TEST = "2013-06-06"; // matches student-0006
+export function findBalangaStudentByFullName(fullName: string) {
+  return seedStudents.find(
+    (student) => student.schoolId === "school-balanga" && `${student.firstName} ${student.lastName}` === fullName,
+  );
+}

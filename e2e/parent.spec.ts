@@ -1,12 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { signInAs } from "./sessions";
-import {
-  testEmail,
-  SEED_STUDENT_LRN_FOR_PARENT_TEST,
-  SEED_STUDENT_FIRST_NAME_FOR_PARENT_TEST,
-  SEED_STUDENT_LAST_NAME_FOR_PARENT_TEST,
-  SEED_STUDENT_BIRTH_DATE_FOR_PARENT_TEST,
-} from "./test-data";
+import { findBalangaStudentByFullName, testEmail } from "./test-data";
 
 /**
  * The parent flow test only runs on mobile (360px) to avoid collisions
@@ -21,15 +15,30 @@ test.describe("Parent flow (mobile only)", () => {
     baseURL,
   }) => {
     // Step 1: Principal taps a card at the station (to trigger a notification).
-    // Using the seeded student-0006 who is already linked to
-    // parent-balanga-1 but not yet tapped today.
     await signInAs(context, "principal", baseURL!);
     await page.goto("/station");
 
-    // Tap a valid card — this should pick student-0006 (the result is an
-    // aria-live region, not a dialog — see tap-station-kiosk.tsx).
+    // Tap a valid card. The station always picks the *first* untapped
+    // student in the shared Balanga seed pool — but in CI, other spec files
+    // (station.spec.ts, a11y.spec.ts's tap-station check) draw from that
+    // same pool first (see playwright.config.ts's `workers` comment), so
+    // this can't assume it'll land on any one specific student. Read back
+    // whoever it actually shows instead (the result is an aria-live region,
+    // not a dialog — see tap-station-kiosk.tsx).
     await page.getByRole("button", { name: "Valid card" }).click();
-    await expect(page.getByText(SEED_STUDENT_LAST_NAME_FOR_PARENT_TEST)).toBeVisible();
+    // Scoped to <main> — the page also has a toast region with its own
+    // aria-live="polite" (sonner), which would otherwise make this locator
+    // ambiguous.
+    const resultPanel = page.locator("main").locator('[aria-live="polite"]');
+    await expect(resultPanel).toBeVisible();
+    const tappedName = (await resultPanel.locator("p").first().textContent())?.trim() ?? "";
+    const student = findBalangaStudentByFullName(tappedName);
+    test.skip(!student, `Could not match tap station result "${tappedName}" to a seed student`);
+    // Every 3rd seed student has no LRN yet (students.ts) — a parent can't
+    // self-link one of those, so skip rather than fail if the pool happens
+    // to hand us one.
+    test.skip(!student?.lrn, `${tappedName} has no LRN on file yet, so a parent can't self-link them`);
+    await expect(page.getByText(student!.lastName)).toBeVisible();
 
     // Step 2: Parent signs up with a new account.
     const newParentEmail = testEmail("parent-signup");
@@ -39,8 +48,8 @@ test.describe("Parent flow (mobile only)", () => {
     await page.getByLabel("Last name").fill("Parent");
     await page.getByLabel("Email").fill(newParentEmail);
     await page.getByLabel("Mobile number").fill("09171234567");
-    // Must pick Balanga since student-0006 is at that school. A Radix/
-    // shadcn Select (a button, not a native <select>).
+    // Must pick Balanga since the tapped student is at that school. A
+    // Radix/shadcn Select (a button, not a native <select>).
     await page.getByLabel("Your child's school").click();
     await page.getByRole("option", { name: "Balanga City National Science High School" }).click();
     await page.getByLabel("Password", { exact: true }).fill("testpass123");
@@ -50,10 +59,10 @@ test.describe("Parent flow (mobile only)", () => {
     // Redirected to link-child.
     await expect(page).toHaveURL("/parent/link-child");
 
-    // Step 3: Link the student (student-0006).
-    await page.getByLabel("LRN").fill(SEED_STUDENT_LRN_FOR_PARENT_TEST);
-    await page.getByLabel("Last name").fill(SEED_STUDENT_LAST_NAME_FOR_PARENT_TEST);
-    await page.getByLabel("Birth date").fill(SEED_STUDENT_BIRTH_DATE_FOR_PARENT_TEST);
+    // Step 3: Link the tapped student.
+    await page.getByLabel("LRN").fill(student!.lrn!);
+    await page.getByLabel("Last name").fill(student!.lastName);
+    await page.getByLabel("Birth date").fill(student!.birthDate);
     await page.getByRole("button", { name: "Link this child" }).click();
 
     // Redirected to parent dashboard.
@@ -72,16 +81,16 @@ test.describe("Parent flow (mobile only)", () => {
     // form, which use the full name / last name.
     const menu = page.getByRole("menu");
     await expect(menu).toBeVisible();
-    await expect(menu.getByText(new RegExp(SEED_STUDENT_FIRST_NAME_FOR_PARENT_TEST)).first()).toBeVisible();
+    await expect(menu.getByText(new RegExp(student!.firstName)).first()).toBeVisible();
 
     // Step 5: Open the full notifications page.
     await page.getByRole("menuitem", { name: /View all/i }).click();
     await expect(page).toHaveURL("/parent/notifications");
 
-    // The notification should be there. Scoped to <main> — a "Carmen Sison
-    // is now linked" toast from the earlier link-child step can still be
-    // on screen and also matches the first name.
-    const notificationItem = page.locator("main").getByText(new RegExp(SEED_STUDENT_FIRST_NAME_FOR_PARENT_TEST));
+    // The notification should be there. Scoped to <main> — a "<name> is now
+    // linked" toast from the earlier link-child step can still be on screen
+    // and also matches the first name.
+    const notificationItem = page.locator("main").getByText(new RegExp(student!.firstName));
     await expect(notificationItem.first()).toBeVisible();
     await expect(page.locator("main").getByText(/tapped in|tapped out/i).first()).toBeVisible();
 
@@ -112,7 +121,7 @@ test.describe("Parent flow (mobile only)", () => {
 
     // Back to dashboard and notification is still there.
     await expect(page).toHaveURL("/parent");
-    const notificationStillThere = page.getByText(new RegExp(SEED_STUDENT_LAST_NAME_FOR_PARENT_TEST));
+    const notificationStillThere = page.getByText(new RegExp(student!.lastName));
     await expect(notificationStillThere).toBeVisible();
   });
 });

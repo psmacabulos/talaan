@@ -1541,3 +1541,35 @@ Checked for commented-out code blocks and TODO/FIXME markers across `src/` — n
 
 ### Result
 Build tasks done. The sitewide spacing/alignment pass was dropped at the owner's request (2026-09-24) — not worth doing now since parts of the design may still change, better revisited once it's more settled. Approved; this closes out Phase 1.
+
+## Between Step 29 and Step 30: fixing the CI-only tap-station race
+
+The gap Step 29 deliberately left open (`a11y.spec.ts` racing `station.spec.ts`/`parent.spec.ts` for Balanga's shared pool of untapped students) came back for real: three consecutive pushes failed CI on the same two tests — `parent.spec.ts` looking for "Sison" and not finding it, and `[desktop] station.spec.ts`'s "valid card" test finding no result at all. Reproduced locally with plain `npx playwright test` (not `npm run test:e2e`, which never included `a11y.spec.ts`) — same two failures, byte-for-byte.
+
+### First hypothesis, and why it wasn't the whole story
+
+The obvious fix looked like Step 29's own suggestion: force everything onto one worker (`workers: process.env.CI ? 1 : undefined` in `playwright.config.ts`) so nothing races. Ran the full suite that way — **same two failures**, exactly reproduced. That ruled out "just a race" as the full explanation and meant something else was wrong.
+
+Traced it by reading the actual execution order a single worker produces: Playwright runs one project fully before the next (`mobile`, then `desktop`), files within a project in a fixed order, and within `a11y.spec.ts`, its "tap station results" test (line 210, an accessibility check that clicks all four buttons including "Valid card") runs *before* `parent.spec.ts` even starts. So `a11y.spec.ts` grabs the pool's first student (Carmen) every single time, deterministically, before `parent.spec.ts` gets a turn — not an occasional race, a guaranteed loss. Then `station.spec.ts`'s own two tests (`up to 1 + 3 = 4` draws) finish off whatever's left in the 6-student pool before the `desktop` project even starts, so its own "valid card" test there finds nothing.
+
+**The real number:** across both viewport projects, the suite can demand up to 11 successful "Valid card" draws (`a11y`×2 + `parent`×1 + `station`'s two tests×2), but the seed only ever leaves 6 students untapped. No amount of reordering fixes a genuine shortage — this was under-supply, not (only) a race. `workers: 1` was still worth keeping (it removes the *nondeterministic* half of the problem and makes CI reproducible locally), but the pool itself needed to grow.
+
+### Reordering the pool turned out riskier than it looked
+
+First instinct for "make Carmen safe from the other draws" was to reorder the pool so she's picked last, not first. Dead end: the pool order is just seed array index order, and `cards.ts`/`taps.ts`/`notifications.ts`/`parent-student-links.ts` all hardcode specific numeric positions (their own comments say so — "indices line up with seedStudents/seedCards"). Shifting anyone's index to reorder them risks quietly breaking other already-passing scenarios tied to those exact positions. Appending new students at the *end* doesn't reorder anything either — they'd still come after Carmen, so the tests that grab her first would keep grabbing her first regardless of how much is added after. Concluded: don't touch ordering, just make the *supply* big enough that running out never happens, and make `parent.spec.ts` stop assuming it'll be handed one specific student.
+
+### A duplicate name, self-inflicted
+
+Added 10 spare untapped Balanga students (`students.ts`, appended after the real roster, excluded from `taps.ts`'s bulk-tap generator so they stay untapped) and rewrote `parent.spec.ts` to read back whichever name the tap station actually shows and look that student up dynamically (`findBalangaStudentByFullName` in `test-data.ts`), rather than assuming Carmen. Reran the full suite — a *different* test now failed: `students.spec.ts`'s "replace a student's card", searching for "Juan Cruz" and getting a strict-mode violation, two rows both named "Juan Cruz".
+
+Root cause: `nameAt(index)` (`names.ts`) pairs first/last names with period exactly 40 (`FIRST_NAMES[index % 40]`, and `LAST_NAMES[(index*7+3) % 40]` — multiplying by 7 mod 40 is a bijection, so the *pair* repeats every 40 indices too). Balanga's own roster (indices 0-35) already uses every residue from 0-35; continuing the plain index sequence past 71 for the new spare batch meant index 80 (`80 % 40 = 0`) re-minted student-0001's exact name, "Juan Cruz". Only residues 36-39 are actually safe (not used by any real Balanga student) — so at most 4 new students can be added this way without duplicating someone. Fixed by giving `studentAt()` a separate `nameIndex` parameter (defaults to the real `index` for the roster) and having the spare batch pass one of the four safe residues, no repeats among themselves either (`parent.spec.ts`'s lookup is by name — two spares sharing a name would make it find the wrong one's LRN/birth date). Dropped the spare count from 10 to 4 to match; the actual minimum needed (worked out by tracing the worst-case draw order again with the new numbers) was 8 total, so 4 new + the existing 6 leaves real headroom. Added a unit test (`seed.test.ts`) asserting every student's full name is unique *within their own school* (not globally — cross-school duplicates already existed before any of this, e.g. student-0001 and student-0041 are both "Juan Cruz" at different schools, which is fine since every screen is school-scoped).
+
+### One more real bug, in the new test code itself
+
+With the pool and the lookup both fixed, `parent.spec.ts` still failed — this time in a way that pointed at a bug in the fix, not the seed data: `locator('[aria-live="polite"]')` (added to read back the tapped student's name) matched *two* elements — the tap station's own result panel, and sonner's toast region, which also carries `aria-live="polite"` and is always present in the DOM even when empty. Scoped the locator to `page.locator("main").locator('[aria-live="polite"]')`, since the toast region lives outside `<main>`.
+
+### Verified
+Rebuilt (`npm run build`) and ran the full suite (`CI=1 npx playwright test`, matching CI exactly) three times after the fix: **164 passed, 12 skipped, 0 failed**, no retries needed, each time. Also `npm run lint`, `npm run typecheck`, `npm run test` (322 tests, up one from the new seed uniqueness test).
+
+### Result
+Fixed in one commit, not a numbered plan step (bug fix to already-shipped Phase 1 test infrastructure, not new build work). `docs/TESTING.md`'s "Known gap" note is now resolved and rewritten to describe the actual mechanism and fix.

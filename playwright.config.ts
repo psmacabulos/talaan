@@ -12,6 +12,14 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
+  // In CI, every test shares one running server (and its one in-memory mock
+  // "database" — station.spec.ts/parent.spec.ts/a11y.spec.ts's tap-station
+  // tests all draw from the same finite pool of untapped students). Running
+  // several tests at once there means their tap-station clicks race for the
+  // same pool and pick different students than the tests expect. A single
+  // worker removes that race entirely; locally, `reuseExistingServer` means
+  // this doesn't apply and Playwright picks its normal parallel default.
+  workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL: `http://localhost:${PORT}`,

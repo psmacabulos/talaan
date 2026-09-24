@@ -21,6 +21,7 @@ Short, plain-language notes explaining things along the way — for whenever I w
 - [Accessibility: checking that everyone can use it (Step 27)](#accessibility-checking-that-everyone-can-use-it-step-27)
 - [Phones vs. desktops: one list, two layouts (Steps 27.6–27.8)](#phones-vs-desktops-one-list-two-layouts-steps-276278)
 - [End-to-end tests can quietly go stale (Step 29)](#end-to-end-tests-can-quietly-go-stale-step-29)
+- [When "add more workers" doesn't fix a flaky test suite](#when-add-more-workers-doesnt-fix-a-flaky-test-suite)
 
 ---
 
@@ -603,3 +604,15 @@ Several failures were just wrong expected text: a test checking for "Email is re
 
 ### The same student can be described three different ways depending on which screen you're on
 While fixing the parent-flow test, found that the tap-station result and the "link a child" form both use a student's full name or last name, but the parent's notification bell only ever shows the first name ("Carmen tapped in") — three genuinely different, all-correct conventions for naming the same person depending on the audience (staff needing to identify exactly who, vs. a parent who already knows). A test written against the wrong one of the three will fail even though nothing is broken.
+
+## When "add more workers" doesn't fix a flaky test suite
+Three pushes in a row failed CI on the same two e2e tests. The obvious-looking fix — force everything onto a single worker so nothing runs at the same time — didn't actually fix it; the exact same two tests failed again, every time. Full write-up: `docs/BUILD-LOG.md`'s "Between Step 29 and Step 30" entry; `docs/TESTING.md` documents the actual mechanism.
+
+### "Random" and "wrong" aren't the same failure
+A single worker doesn't mean *nothing races* — it just makes the run order fixed and repeatable instead of random. If that one fixed order is *itself* wrong (something always grabs a shared resource before the thing that needed it does), the test fails every single time under one worker, exactly as often as it did with several. The tell: a "flaky" test that suddenly fails 100% of the time once you remove the randomness is telling you the bug was never really about *timing* — it was about *order*, or about there simply not being enough of something to go around.
+
+### Several tests quietly sharing one mutable pile of data is its own kind of bug
+The tap station's "Valid card" button always hands out the *next* untapped student from the seed data — fine for one test, risky the moment more than one test clicks it against the same running server. Nothing marks that pool as "shared, handle with care"; it just happens to be one array in memory that every request reads and writes. The fix ended up being two things together: enough spare supply that running out stops being possible in the worst case, and not *assuming* which specific student a test will get — read back whatever actually happened and work from that, instead of hardcoding an expected name.
+
+### A "random-looking" name generator can have a hidden repeat
+Adding extra seed students to fix the above created a *new*, sillier bug: one of the new students ended up with the exact same name as an existing one, because the name generator cycles through a fixed list of 40 first names and 40 last names — continue past 40 students and it starts reusing the same names again, deterministically, at a predictable spot. "Looks random" and "never repeats" are not the same guarantee; a generator built from a small fixed list needs an explicit plan for what happens once you ask it for more than the list's size.

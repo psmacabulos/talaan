@@ -88,16 +88,37 @@ describe("seed data matches its own schemas", () => {
 });
 
 describe("seed data shape", () => {
-  it("has 3 schools, 7 staff and 72 students", () => {
+  it("has 3 schools, 7 staff and 76 students (72-student roster plus a spare batch for e2e)", () => {
     expect(seedSchools).toHaveLength(3);
     expect(seedStaff).toHaveLength(7);
-    expect(seedStudents).toHaveLength(72);
+    expect(seedStudents).toHaveLength(76);
+  });
+
+  it("gives every student a unique full name within their own school", () => {
+    // Only within-school needs to hold: every screen that lists or searches
+    // students is scoped to one school (a student's own name-generation
+    // period repeats globally past 40 students, so cross-school duplicates
+    // do happen — e.g. student-0001 and student-0041 are both "Juan Cruz").
+    // e2e\students.spec.ts searches Balanga by name, and parent.spec.ts
+    // looks a tapped Balanga student up by name, so a same-school duplicate
+    // would make either ambiguous.
+    const namesBySchool = new Map<string, string[]>();
+    for (const student of seedStudents) {
+      const names = namesBySchool.get(student.schoolId) ?? [];
+      names.push(`${student.firstName} ${student.lastName}`);
+      namesBySchool.set(student.schoolId, names);
+    }
+    for (const [schoolId, names] of namesBySchool) {
+      expect(new Set(names).size, schoolId).toBe(names.length);
+    }
   });
 
   it("spreads students across grades 7-12 and 12 sections", () => {
     const gradeLevels = new Set(seedStudents.map((s) => s.gradeLevel));
     expect(gradeLevels).toEqual(new Set([7, 8, 9, 10, 11, 12]));
 
+    // Still 12 — students.ts's spare batch joins an existing section
+    // (Rizal) rather than adding a 13th.
     const sections = new Set(seedStudents.map((s) => `${s.schoolId}/${s.gradeLevel}/${s.section}`));
     expect(sections.size).toBe(12);
   });

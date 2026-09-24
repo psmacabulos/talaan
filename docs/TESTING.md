@@ -46,7 +46,14 @@ All tests run against one instance of the running app. The app resets its sample
 - The parent flow runs only at phone width to avoid multiple tests trying to link the same student at the same time.
 - `station.spec.ts`'s own tests run serially (`test.describe.configure({ mode: "serial" })`) so they don't race each other for Balanga's shared pool of untapped students via "Valid card"/"Simulate a tap".
 
-**Known gap (found in Step 29's review):** `e2e/a11y.spec.ts` also clicks "Valid card" against the same Balanga pool, in parallel with `station.spec.ts` and `parent.spec.ts` — nothing currently stops those three files from racing each other. `npm run test:e2e` (the five files above, the ones a person actually runs day to day) doesn't include `a11y.spec.ts`, so this doesn't show up there; but plain `npx playwright test` — what CI actually runs — occasionally exhausts the pool and fails one of `station.spec.ts`'s or `parent.spec.ts`'s tests. A proper fix means either giving each file's tap tests a different school (Oceanview/Crimsonridge have their own untapped pools) or a real per-test isolation mechanism, not a bigger seed pool (that only raises the collision threshold, not removes it). Worth its own step rather than a quick patch here.
+**Balanga's tap-station pool, and why `parent.spec.ts` doesn't assume a specific student:** `e2e/a11y.spec.ts`'s "tap station results" test *also* clicks "Valid card" against that same pool, and `npx playwright test` (what CI runs, unlike `npm run test:e2e`) runs both viewport projects and every spec file against one shared server. Across `a11y.spec.ts` × 2 projects, `parent.spec.ts` × 1, and `station.spec.ts`'s two tests × 2 projects, the suite can demand up to 11 successful draws in the worst case. Two things make this safe:
+
+1. `playwright.config.ts` sets `workers: 1` in CI only, so tests run in one deterministic sequence instead of racing across files/projects (local runs stay parallel — `reuseExistingServer` means this doesn't apply there anyway).
+2. `students.ts` seeds a few extra untapped-with-active-card Balanga students on top of the roster's own 6, so the pool has enough supply even after `a11y.spec.ts`'s and `station.spec.ts`'s own draws (worked out by tracing the actual worst-case draw order, not guessed).
+
+`parent.spec.ts` still can't assume *which* student it'll get (a11y's test, running first in CI's fixed order, always takes the pool's first one) — it reads back whichever name the tap station's result panel actually shows and looks that student up in the real seed data (`findBalangaStudentByFullName` in `test-data.ts`) instead of hardcoding one. If the pool happens to hand it the one-in-a-few students with no LRN on file yet (`students.ts`: every 3rd student is missing one, by design), it skips with a clear reason rather than failing — a parent genuinely can't self-link that child today, which isn't a bug in this test to paper over.
+
+**A gotcha if you ever extend the spare batch further:** the seed's name generator (`nameAt` in `names.ts`) repeats every 40 students, and Balanga's own 36-student roster already uses every residue below 36 — so a naive spare student can silently duplicate an existing student's exact name (found the hard way: a spare student became a second "Juan Cruz", breaking `students.spec.ts`'s search-by-name test). Only residues 36-39 are safe within Balanga; see `studentAt()`'s `nameIndex` parameter in `students.ts`.
 
 ### When to add an end-to-end test
 
@@ -101,6 +108,8 @@ npm run typecheck                # TypeScript
 npm run build                    # build the app
 npx playwright test              # e2e + a11y (both runs together)
 ```
+
+`npx playwright test` runs on a single worker in CI specifically (`workers: 1` when `process.env.CI` is set, in `playwright.config.ts`) — every test shares one running server and its one in-memory mock data store, so CI trades some speed for a deterministic run order instead of files/projects racing each other for shared seed data. Locally, the same command still runs in parallel.
 
 All must pass before a commit can be merged. If a browser test fails in CI but passes locally, that usually means:
 - The test relies on timing (e.g., "wait 100ms") — add a proper wait condition instead.

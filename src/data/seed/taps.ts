@@ -1,6 +1,6 @@
 import type { Alert, Tap } from "@/features/attendance/types";
 import { cardSerialAt } from "./cards";
-import { seedStudents } from "./students";
+import { ROSTER_STUDENT_COUNT, seedStudents } from "./students";
 
 const STATION_ID = "station-main-gate";
 
@@ -91,6 +91,7 @@ const BULK_TAPS_FROM_INDEX = 7;
 
 const bulkTaps: Tap[] = seedStudents.flatMap((student, index): Tap[] => {
   if (index < BULK_TAPS_FROM_INDEX) return [];
+  if (index >= ROSTER_STUDENT_COUNT) return []; // students.ts's spare batch — kept untapped on purpose
   if (index % 7 === 0) return []; // absent today
   if (index % 9 === 0) return []; // no card issued yet (cards.ts), so nothing to tap with
 
