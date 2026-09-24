@@ -7,8 +7,8 @@ Multi-school web app for Philippine high schools. Students tap an NFC ID card at
 ## Plan history
 The original plan sent parent notifications by SMS. As of 2026-09-22 this changed: SMS is dropped entirely, replaced by free push/in-app notifications through a parent account. The end goal is companion iOS and Android apps (most likely wrapping this same Next.js app with Capacitor, a lower-cost path than a separate native rewrite — final tech choice still open when Phase 3 starts). Until those exist, the web app itself is the demo: parents sign up and link a child on the web, and notifications show as an in-app bell/feed rather than a real OS push. See `docs/PLAN.md`'s Phase 1 parent-portal steps and Phase 3.
 
-## Current phase: front end only
-Build the complete, production-quality front end first, against a typed mock data layer. Do **not** build the database, real authentication or the tap API yet (Phase 2 in docs/PLAN.md). The owner is not a coder: explain things in plain language, and expect them to review every step before it is committed.
+## Current phase: back end, recipe-driven (Phase 2)
+Phase 1 (the complete, production-quality front end against a typed mock data layer) is done and approved. Phase 2 replaces the mock repositories with a real database, real authentication and the tap API (see docs/PLAN.md). The owner is a junior backend developer who wants hands-on practice: for Phase 2, **Claude does not write backend code**. Instead, for each step Claude writes an instructional recipe in `docs/backend/step-NN-<name>.md` — a plain-language explanation of why, then the exact commands and exact code to type — and the owner implements it personally, then reports back what happened. See `docs/backend/README.md` for exactly how this works.
 
 ## Git: hands off
 The owner creates the repository and makes **every** commit. You never run git commands that change anything: no add, commit, push, pull, fetch, branch, checkout, switch, merge, rebase, reset, restore, stash, tag, clean, init or remote, and never `gh`. `.claude/settings.json` blocks these; do not try to work around it. You may run read-only `git status`, `git diff` and `git log` to summarize your changes. Writing files such as `.github/workflows/ci.yml` is fine when a step calls for it.
@@ -24,6 +24,12 @@ The owner creates the repository and makes **every** commit. You never run git c
 6. Reply with a review report: what changed in plain language, the files added or changed, exactly how I can see it working (commands and URL), what to look for, anything unfinished or uncertain, and the suggested commit message from the plan.
 7. STOP and wait. If I ask for changes, make them inside the same step and report again.
 8. Only when I write "approved": tick that step's "Owner review" box, run `npm run progress`, and tell me it is ready to commit. Then wait until I ask for the next step.
+
+### Phase 2 variant (recipe-driven)
+Steps 3, 4 and 6 above change shape once a step touches backend code, since the owner writes it personally:
+3. "Implement" means writing the step's recipe in `docs/backend/step-NN-<name>.md` (format in that folder's README) — the exact commands and code the owner will type, with the why. Claude does not edit backend source files, `.env`, or run backend commands on the owner's behalf.
+4. "Verify" means the recipe gives the owner the exact commands/checks to run themselves; the owner runs them and reports the output, or the exact error, back to Claude.
+6. The review report points at the recipe file and summarizes what the owner reported back, in plain language.
 
 ## Progress tracking
 `docs/PLAN.md` starts with a progress block (overall bar and a table of every step). `scripts/progress.mjs` generates it from the checkboxes. Never edit between the `progress:start` and `progress:end` markers by hand, and never tick "Owner review" before I approve.

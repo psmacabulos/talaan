@@ -15,6 +15,17 @@
 5. Not right? Tell Claude what to fix. Right? Say `approved`. Claude then ticks the box and updates the progress bar in `docs/PLAN.md`.
 6. Commit: open **Source Control**, look through the changed files, paste the suggested commit message, click **Commit**, then **Sync Changes**.
 
+## Every step, Phase 2 (back end)
+Same shape, but you write the backend code yourself, to actually learn it:
+1. Claude writes a recipe in `docs/backend/step-NN-<name>.md`: why, then the exact commands/code, in order.
+2. Open that file and type/paste each piece yourself, reading as you go — not just pasting blindly.
+3. Run the "Verify it worked" check in the recipe.
+4. Tell Claude what happened — it worked, or paste the exact error/output.
+5. Wrong or stuck? Claude explains what to change; you make the edit and re-verify. Right? Say `approved`, same as before.
+6. Commit the same way as Phase 1.
+
+See `docs/backend/README.md` for the full explanation of why this changed.
+
 ## Good to know
 - Progress is at the top of `docs/PLAN.md`. `npm run progress` refreshes it.
 - Claude cannot run git. This is enforced in `.claude/settings.json`. In the Claude panel, type `/permissions` to see the blocked commands. Your commit history should contain only your commits.
