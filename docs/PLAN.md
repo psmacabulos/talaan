@@ -332,5 +332,6 @@ Commit: `chore: add local Postgres via Docker for backend development`
 
 ## Phase 3: parent app (later, do not start yet)
 - A separate Expo (React Native) app for parents — iOS and Android from one codebase — talking to the same `/api/v1` API as the gate station and admin web, authenticated the same token-based way. Decided 2026-10-03, replacing the earlier Capacitor-wrapping plan — see "Plan history" above and `docs/ARCHITECTURE.md`.
+- Deliberately small and parent-only: sign up or sign in, link a child (LRN + last name + birth date), receive tap notifications, and view the notification feed and the linked child's taps. No staff, gate or admin features, ever — those stay in the web app.
 - Push through Firebase Cloud Messaging, so notifications arrive as real OS-level push even with the app closed.
 - The web app keeps working as-is: for staff always, for the gate station and monitor always, and for any parent who hasn't installed the app.

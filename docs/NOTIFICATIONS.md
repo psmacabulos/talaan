@@ -2,6 +2,8 @@
 
 SMS was dropped from the plan on 2026-09-22; this is the **in-app channel only** — a bell and a feed inside the parent portal, driven by the same simulated-tap mechanism the staff dashboard already uses. This doc covers the whole mechanism: how a tap becomes a notification, who sees it, and where the Phase 1 simplifications are.
 
+Where this goes next: Phase 2 turns the `Notification` row into a notification outbox (written in the same transaction as the tap, then sent by a worker), and Phase 3 delivers it as real push to a separate parent-only Expo app through Firebase Cloud Messaging. See `docs/ARCHITECTURE.md`.
+
 ## The one idea to hold on to
 
 **A notification is created once, at tap time — never derived at read time.** When a tap is recorded, the app immediately decides (from the school's preference) whether parents should hear about it, and writes one `Notification` row. When a parent later opens their bell or feed, the app just *reads* that row — it never re-derives anything. This is the opposite of how attendance status works (`docs/ATTENDANCE-MODEL.md`: present/late/absent are computed on read from raw taps), and for a good reason: a school's notification preference is a *moment-in-time* decision. If the principal turns notifications off tomorrow, yesterday's "your child tapped in" should still be in the feed — the parent was told, and the record of being told should survive the setting change.

@@ -1573,3 +1573,47 @@ Rebuilt (`npm run build`) and ran the full suite (`CI=1 npx playwright test`, ma
 
 ### Result
 Fixed in one commit, not a numbered plan step (bug fix to already-shipped Phase 1 test infrastructure, not new build work). `docs/TESTING.md`'s "Known gap" note is now resolved and rewritten to describe the actual mechanism and fix.
+
+## Before Step 30: plan change — separate parent app instead of wrapping this one
+
+On 2026-10-03 the owner changed the Phase 3 plan. The earlier idea (from the 2026-09-22 change above) was to wrap this whole Next.js app in Capacitor so it could ship to the App Store and Play Store. That's dropped. The parent app is now a **separate, small Expo (React Native) app** that only parents use: sign in, link a child, receive tap notifications through Firebase Cloud Messaging, and view the feed. Staff, gate and admin features stay in the web app only.
+
+This was a planning change, not a build step. Nothing in `src/` changed.
+
+**Why the switch:** Capacitor made sense when the phone app was going to be "the web app, in a native shell." Once the parent app's job shrank to just notifications, wrapping the whole admin front end meant shipping screens parents never use. A small dedicated app plus one shared versioned API keeps business rules in one place (the service layer) and makes push notifications first-class.
+
+**Knock-on decisions made at the same time** (all in `docs/ARCHITECTURE.md`):
+- One Next.js app stays the only backend, serving four clients: admin web, the `/gate` tap station, the `/gate/display` guardhouse monitor, and (Phase 3) the parent app.
+- Every endpoint a non-browser client needs lives under `/api/v1`, with token auth for three kinds of identity: staff, devices and parents.
+- Taps and their notifications are written in one transaction (a notification outbox), and a separate worker sends the push.
+- `/gate` and `/gate/display` move into Phase 2 instead of waiting for later.
+- The owner described this as "phase 1: backend, gate, monitor, admin" and "phase 2: parent app." That was mapped onto the plan's existing numbering (Phase 2 gains gate/monitor scope, Phase 3 becomes the Expo app), so the 29 approved steps didn't need renumbering.
+
+**What changed:**
+- `CLAUDE.md`: second "Plan history" paragraph, new "Backend architecture" section, gate/monitor device in the domain section.
+- `docs/ARCHITECTURE.md`: new. Clients, tables, API endpoints, auth and folder structure.
+- `docs/PLAN.md`: second "Plan history" paragraph, Phase 2 gate/monitor/outbox scope, Phase 3 rewritten for Expo + FCM. A follow-up pass (2026-10-05) also spelled out the parent app's small, parent-only scope in both `docs/PLAN.md` and `docs/ARCHITECTURE.md`.
+- `README.md`: link to `docs/ARCHITECTURE.md`.
+- `docs/LEARNING-LOG.md` (2026-10-05 follow-up): the "iOS/Android app" entry no longer recommends Capacitor and now explains why Expo was chosen.
+
+## Before Step 30: dependency refresh on a new Mac
+
+Moving the project to a Mac, the owner ran `npm install`, saw "9 vulnerabilities (8 high, 1 critical)", and tried `npm audit fix --force`. That command *downgraded* `eslint-config-next` 16.3.5 → 14.2.35 and `shadcn` 4.21.0 → 1.0.0, and loosened the `next` pin to `^16.3.8`. Nothing was committed.
+
+**What was checked:** a clean `npm ci` of the last commit's lockfile in a separate scratch copy installed 770 packages with no errors, so the Mac wasn't the problem. `npm audit` showed two separate issues:
+- `next` 16.2.0–16.3.5: critical remote code execution in `next/og` `ImageResponse`. Fixed in 16.3.8 (a patch release). npm called it "outside the stated range" only because `next` is pinned to one exact version.
+- `braces` (all versions; reached through `micromatch` → `fast-glob` → `@next/eslint-plugin-next`, `ts-morph`, `shadcn`): high-severity stack-exhaustion DoS. No fixed version exists, so `--force`'s only "fix" was the shadcn downgrade. Left as-is: dev-only tools, never in the production bundle, and it only matters for untrusted glob patterns.
+
+**Upgrades, each tried in the scratch copy before touching the repo:**
+- Patch/minor: `next` and `eslint-config-next` 16.3.8 (both still exact pins), `react`/`react-dom` 19.3.0 (exact), `shadcn` 4.21.1, `lucide-react` 1.52.0, `react-hook-form` 7.89.0, `prettier` 3.9.9, `cn` 0.3.3.
+- `@types/node` `^20` → `^24`, matching the Node 24 runtime (not 26, which would describe APIs Node 24 doesn't have).
+- Majors that worked: `vitest` 5, `@vitejs/plugin-react` 5, `jsdom` 30, `@testing-library/jest-dom` 7, `typescript` 6.0. No code or config changes needed.
+
+**Dead ends, held back on purpose:**
+- `@vitejs/plugin-react` 6: needs `vite` 8 as a direct dependency, and even then fails with `ERESOLVE`. Its optional `@rolldown/plugin-babel` peer pulls `@babel/plugin-transform-runtime` 8, which requires `@babel/core` 8 while the rest of the tree is on Babel 7. It only installs with `--legacy-peer-deps`, so it stays on 5.
+- `eslint` 10: `eslint-config-next` 16.3.8 depends on `eslint-plugin-react`, `-import` and `-jsx-a11y`, whose peer ranges stop at ESLint 9.
+- `typescript` 7: `typescript-eslint` (via `eslint-config-next`) accepts `<6.1.0`.
+
+**Also hit:** Playwright's `chromium_headless_shell-1243` wasn't downloaded on this Mac yet ("Executable doesn't exist"). Fixed with `npx playwright install chromium`. CI already runs this step.
+
+**Verified (real repo, after copying the verified `package.json` and `package-lock.json` over the `--force` ones and running `npm ci`):** `npm run lint`, `typecheck`, `test` (322 passed), `check:tokens` and `build` all clean. Playwright in the scratch copy with `CI=1`: 164 passed, 12 skipped, the same as the last known-good run. `npm audit` afterwards: only the 9 `braces`-chain highs remain, and the critical is gone.

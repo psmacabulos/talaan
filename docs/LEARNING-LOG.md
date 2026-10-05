@@ -88,6 +88,18 @@ MCP servers only load when a Claude Code session *starts* — so after adding on
 ### An `npm run` script that only worked in Git Bash, not from a real Windows terminal (Step 29)
 `package.json`'s `test:e2e` script was written as `playwright test 'e2e/(login|students|...).spec.ts'` — one quoted argument, using `|` to mean "or" inside the file pattern. That syntax only means "or" to a shell that understands single quotes as quoting and `()`/`|` as regex characters once inside them — Bash, the shell Claude's own terminal tool uses. But `npm run <script>` doesn't run in whatever shell you happen to be typing into; on Windows, npm always hands the command to `cmd.exe` specifically, and `cmd.exe` doesn't treat single quotes as quoting *at all* — it just sees a literal `|`, which it always treats as "pipe this into the next command," breaking the whole line. So the script had likely never worked when actually run as `npm run test:e2e` from a plain Windows terminal — only a direct Bash-run `npx playwright test '...'` could ever have passed. Fixed by writing the file list as five plain space-separated arguments instead of one quoted pattern — no quoting or shell-special characters needed, so it means the same thing in `cmd.exe`, PowerShell and Bash alike. **Lesson:** when an npm script needs to work on Windows, avoid quoting tricks that only one shell understands — prefer syntax that needs no special shell behavior at all.
 
+### What `&&` does between commands (owner question)
+`npm run lint && npm run typecheck && npm run test && npm run build` is four commands on one line. `&&` means **"run the next command only if the previous one succeeded."** If lint fails, the line stops right there: typecheck, test and build never start, and the first failure is the last thing on screen, easy to find.
+
+Running them one at a time does exactly the same checks. `&&` just saves you typing them four times, and stops you missing a failure that scrolled away while the next command ran. Related symbols you'll see:
+- `;` runs the next command **no matter what** (`a ; b` runs `b` even if `a` failed).
+- `||` runs the next command **only if the previous one failed** (`a || echo "a broke"`).
+- `\` at the end of a line means "this command continues on the next line." It's how a long command like Step 30's `docker run` gets split up so it's readable.
+
+"Succeeded" is decided by the command's **exit code**: every command ends by reporting a number, where `0` means success and anything else means failure. You can see the last one with `echo $?`. CI works the same way: a step whose exit code isn't `0` turns the run red.
+
+`npm ci` (the clean, exact install from `package-lock.json`) is explained in "Keeping local and CI in sync" below.
+
 ---
 
 ## Keeping local and CI in sync
@@ -109,6 +121,21 @@ npm ci
 npm run lint && npm run typecheck && npm run test && npm run build
 ```
 Committing `package-lock.json` every time it changes (already happening automatically with `npm install`) is what makes this guarantee real — if it's ever out of sync with `package.json`, `npm ci` fails loudly rather than silently installing something different than what CI will get.
+
+### "9 vulnerabilities" after `npm install` — and why `npm audit fix --force` is the wrong button (owner question)
+Asked when setting up on a new Mac. Those lines at the end of `npm install` aren't install errors. The install succeeded. They're `npm audit` checking every package against a list of known security issues. The Mac had nothing to do with it.
+
+- **`npm audit fix`** (no `--force`) only makes changes that stay inside the version ranges in `package.json`. Safe to run.
+- **`npm audit fix --force`** will change *anything*, including going **backwards** a major version, just to get a package off the list. Here it "fixed" things by downgrading `eslint-config-next` from 16 to 14 (built for an older Next.js) and `shadcn` from 4 to 1.0.0. That breaks more than it fixes. Don't use it. If you already ran it, put `package.json` and `package-lock.json` back with `git restore package.json package-lock.json`, then `npm ci`.
+
+**What to do instead:** run `npm audit` and read each item. Check that item's newest version (`npm view <package> version`), check whether its peer dependency ranges fit the rest of the project (`npm view <package> peerDependencies`), upgrade it on purpose, then run lint, typecheck, test and build. Two things to recognise:
+- **A real fix that npm wouldn't apply by itself.** `next` 16.3.5 had a critical bug, fixed in 16.3.8. npm called that "outside the stated range" only because `next` was pinned to one exact version. Upgrading the pin is the fix.
+- **A warning with no fix yet.** `braces` is flagged for *every* version, so no upgrade clears it. It only reaches this project through dev tools (the ESLint plugin, the shadcn CLI) and never ships in the app, so it's safe to leave until a fixed version comes out.
+
+"Newest" isn't always "compatible." ESLint 10 and TypeScript 7 exist, but the plugins Next's ESLint config depends on don't support them yet, so they wait. `npm install` will usually tell you with an `ERESOLVE` error. Never get past that error with `--force` or `--legacy-peer-deps`: those flags just switch the safety check off.
+
+### "Executable doesn't exist" from Playwright on a new machine
+Playwright's test browser is a separate ~95 MB download kept in your user folder, not in `node_modules`. So a fresh machine needs it once: `npx playwright install chromium`. CI already does this in `.github/workflows/ci.yml`.
 
 ---
 
@@ -477,12 +504,19 @@ The "Add student" button is up in the page header; clicking a table row does the
 ### Do we have to rewrite everything to get onto the App Store and Play Store? (owner question)
 Asked when the plan changed from SMS to a companion app. No — there are two real paths, and neither means throwing away what's already built:
 
-- **Capacitor** (the recommended path for this project) wraps the *existing* web app in a thin native shell — same Next.js/React code, packaged so it can be submitted to both stores, with plugins for native features like push notifications. One codebase.
-- **React Native** is a genuine rewrite: the logic (types, validation) can be shared, but every screen gets rebuilt with native components instead of the Tailwind/shadcn ones already in this project. Can feel more "native," but is a second UI to build and maintain — a lot more cost for a small pilot.
+- **Capacitor** wraps the *existing* web app in a thin native shell — same Next.js/React code, packaged so it can be submitted to both stores, with plugins for native features like push notifications. One codebase.
+- **React Native (with Expo)** builds a separate app: the logic (types, validation) can be shared, but its screens are built with native components instead of the Tailwind/shadcn ones already in this project.
 
-Either way, a **real** push notification (one that arrives even with the app closed) still needs a server that holds each phone's push subscription and can trigger Apple/Google's push service — that's Phase 2/3 backend work, not something either wrapping approach gets around on its own.
+Either way, a **real** push notification (one that arrives even with the app closed) still needs a server that holds each phone's push token and can trigger Apple/Google's push service — that's Phase 2 backend work, not something either approach gets around on its own.
 
-This is a real decision, but it's deliberately not locked into the docs yet — see the "Plan history" note in `CLAUDE.md` and `docs/PLAN.md`'s Phase 3 — because it's costly to reverse and there's no reason to commit to it this far ahead of actually starting that phase.
+### Which one did we pick, and why? (decided 2026-10-03)
+**A separate Expo (React Native) app, just for parents.** Capacitor was the first recommendation, but it assumed the phone app would be the *whole* web app in a native shell. Once it was clear the parent app is small and does one job (sign in, link a child, receive tap notifications, see the feed), wrapping everything stopped making sense:
+
+- **The admin web isn't built for parents.** Staff screens, the sidebar, tables — none of it belongs in a parent's phone app. A small dedicated app only has the few screens a parent needs.
+- **Push is first-class in Expo.** Firebase Cloud Messaging works through Expo's own notification tooling, with no plugin glue to a web view.
+- **The backend stays the single source of truth.** The Expo app calls the same `/api/v1` endpoints the gate station uses, so no business rule gets written twice — that's why Phase 2 puts the real logic in `src/services/` behind a versioned API.
+
+The cost is a second (small) UI to build and maintain, which is fine because it only has a handful of screens. Full design: `docs/ARCHITECTURE.md`; history: `CLAUDE.md`'s and `docs/PLAN.md`'s "Plan history".
 
 ---
 

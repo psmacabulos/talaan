@@ -4,35 +4,65 @@
 
 Everything in Phase 1 reads and writes to `src/data/seed/` — plain TypeScript arrays sitting in memory. Restart the dev server and any change from "Simulate a tap" or the demo login is gone, because there's nowhere for it to persist. Phase 2 replaces that with **PostgreSQL**, a real database that keeps data on disk between restarts, enforces the shape of your data (a `Student` row can't have a missing `schoolId`), and lets multiple things (your dev server, a future tap station, a background job) read and write the same data safely at once.
 
-Postgres itself is just a program that needs to be running somewhere, listening for connections. On a real server it runs directly on the machine (that's what your Heroku Postgres add-on will be, later). On your own laptop, the standard way backend developers run it is inside **Docker** — a tool that runs a program in an isolated, disposable little box (a "container") instead of installing it directly onto Windows.
+Postgres itself is just a program that needs to be running somewhere, listening for connections. On a real server it runs directly on the machine (that's what your Heroku Postgres add-on will be, later). On your own laptop, the standard way backend developers run it is inside **Docker** — a tool that runs a program in an isolated, disposable little box (a "container") instead of installing it directly onto your Mac.
 
-Why Docker instead of installing Postgres for Windows directly:
-- **Disposable.** If you mess up the database, you delete the container and start a fresh one in seconds — no uninstall/reinstall of a real Windows program.
+Why Docker instead of installing Postgres on the Mac directly (Homebrew or Postgres.app):
+- **Disposable.** If you mess up the database, you delete the container and start a fresh one in seconds — nothing to uninstall, no leftover files scattered around macOS.
 - **Matches production.** Your app will talk to Postgres the exact same way (a connection string) whether that Postgres is in a container on your laptop or a managed instance on Heroku. Nothing about your code changes.
 - **Standard practice.** This is genuinely how most backend teams run a local database — not a beginner shortcut.
 
 This step only gets Postgres running and reachable. The next step (31) connects Prisma — the tool your Next.js code will actually use to talk to it — to this database. Today you're just proving the box exists and is open before building anything on top of it.
 
+```mermaid
+flowchart LR
+    subgraph Mac["Your Mac"]
+        Terminal["Terminal / VS Code<br/>(later: Prisma, Next.js)"]
+        subgraph Docker["Docker Desktop"]
+            Container["talaan-postgres container<br/>Postgres listening on 5432"]
+        end
+        Volume[("talaan-pgdata volume<br/>the actual data files")]
+    end
+    Terminal -- "localhost:5432" --> Container
+    Container -- "reads/writes" --> Volume
+```
+
 ## What you'll need
 
-- Windows 11 with virtualization enabled (the default on modern PCs — Docker Desktop's installer will tell you if it isn't).
-- About 10 minutes and one restart of your PC if Docker asks for one (enabling WSL2, if it isn't already on).
+- A Mac on a recent macOS version (Docker Desktop supports the current macOS release and the two before it).
+- To know which chip your Mac has. Run this in a terminal:
+
+  ```bash
+  uname -m
+  ```
+
+  `arm64` means **Apple silicon** (M1, M2, M3, M4…). `x86_64` means **Intel**. You'll pick the matching download in step 1.
+- About 10 minutes. No restart needed on a Mac.
 
 ## Steps
 
 ### 1. Install Docker Desktop
 
-Download it from **https://www.docker.com/products/docker-desktop/** and run the installer. Keep the default option to use the **WSL 2 backend** when asked. If it asks to restart your computer, do that, then open Docker Desktop from the Start menu and wait for it to say it's running (a whale icon in the system tray).
+Go to **https://www.docker.com/products/docker-desktop/** and choose **Download for Mac**, picking **Apple Silicon** or **Intel** to match what `uname -m` told you.
+
+1. Open the downloaded `Docker.dmg` and drag the Docker icon into **Applications**.
+2. Open **Docker** from Applications (or Spotlight: ⌘ Space, type "Docker").
+3. Accept the terms. If it asks for your Mac password, that's to set up its helper tools. Keep the **recommended settings** when offered.
+4. You can skip signing in to a Docker account. It isn't needed for this project.
+5. Wait until the **whale icon in the menu bar** (top-right of the screen) stops animating. Docker is now running.
+
+**Why the chip matters:** Docker runs Linux programs inside a small virtual machine. The Apple silicon build runs that virtual machine natively on your chip. The Intel build on an Apple silicon Mac would be slow, or wouldn't run at all.
+
+(If you already use Homebrew, `brew install --cask docker-desktop` installs the same app. Either way works. Still open it once from Applications afterwards.)
 
 ### 2. Confirm Docker works
 
-Open a terminal (VS Code's built-in terminal is fine) and run:
+Open a terminal (VS Code's built-in terminal is fine: **View → Terminal**) and run:
 
 ```bash
 docker --version
 ```
 
-You should see something like `Docker version 27.x.x`. Then run:
+You should see something like `Docker version 28.x.x, build …`. The exact number doesn't matter. Then run:
 
 ```bash
 docker run hello-world
@@ -43,17 +73,26 @@ docker run hello-world
 ### 3. Start a Postgres container for this project
 
 ```bash
-docker run --name talaan-postgres -e POSTGRES_PASSWORD=devpassword -e POSTGRES_DB=talaan -p 5432:5432 -v talaan-pgdata:/var/lib/postgresql/data -d postgres:16
+docker run --name talaan-postgres \
+  -e POSTGRES_PASSWORD=devpassword \
+  -e POSTGRES_DB=talaan \
+  -p 5432:5432 \
+  -v talaan-pgdata:/var/lib/postgresql/data \
+  -d postgres:16
 ```
+
+The `\` at the end of each line means "this command continues on the next line." It's one command split up so you can read it. Paste all six lines together. (You could also type it as one long line without the `\`s; it does exactly the same thing.)
 
 **Why each part:**
 - `--name talaan-postgres` — a name you can refer to later (`docker stop talaan-postgres`, etc.) instead of a random id.
 - `-e POSTGRES_PASSWORD=devpassword` — sets the password for Postgres's built-in `postgres` user. This is a throwaway local dev password, never used anywhere real — it's fine to see it in plain text here.
 - `-e POSTGRES_DB=talaan` — creates an empty database named `talaan` the moment the container starts, instead of you creating it by hand.
-- `-p 5432:5432` — "port mapping": Postgres inside the container listens on port 5432; this exposes that same port on your actual machine, so tools on Windows (Prisma, `psql`, a GUI client) can reach `localhost:5432`.
+- `-p 5432:5432` — "port mapping": Postgres inside the container listens on port 5432. This exposes that same port on your Mac, so tools running on the Mac (Prisma, `psql`, a GUI client) can reach `localhost:5432`.
 - `-v talaan-pgdata:/var/lib/postgresql/data` — a named Docker "volume": Postgres's actual data files are stored here, on your machine, outside the container. Without this, deleting the container would silently delete every row in it too. With it, you can delete and recreate the container and your data survives.
 - `-d` — "detached": run it in the background instead of tying up your terminal.
-- `postgres:16` — the official Postgres image, version 16 (a current stable major version).
+- `postgres:16` — the official Postgres image, version 16. The same image works on Apple silicon and Intel; Docker picks the right one for your chip automatically.
+
+The first run downloads the image (a few hundred MB), so give it a minute. It prints one long id when it's done.
 
 ### 4. Confirm it's running
 
@@ -61,7 +100,7 @@ docker run --name talaan-postgres -e POSTGRES_PASSWORD=devpassword -e POSTGRES_D
 docker ps
 ```
 
-You should see one row, `talaan-postgres`, with a `STATUS` of `Up` and `PORTS` showing `0.0.0.0:5432->5432/tcp`.
+You should see one row, `talaan-postgres`, with a `STATUS` of `Up …` and `PORTS` showing `0.0.0.0:5432->5432/tcp`. You'll also see it in the Docker Desktop window under **Containers**.
 
 ### 5. Connect to it and prove the database is really there
 
@@ -69,7 +108,7 @@ You should see one row, `talaan-postgres`, with a `STATUS` of `Up` and `PORTS` s
 docker exec -it talaan-postgres psql -U postgres -d talaan
 ```
 
-**Why:** `psql` is Postgres's own command-line client. `docker exec -it` runs a command *inside* the already-running container rather than starting a new one — here, that command is `psql` itself, logging in as the `postgres` user to the `talaan` database. Your prompt should change to `talaan=#`.
+**Why:** `psql` is Postgres's own command-line client. You don't need to install it on your Mac, because it already lives inside the container. `docker exec -it` runs a command *inside* the already-running container rather than starting a new one — here, that command is `psql` itself, logging in as the `postgres` user to the `talaan` database. Your prompt should change to `talaan=#`.
 
 At that prompt, type:
 
@@ -90,7 +129,9 @@ In `.env.example`, add this line (with a short comment above it), so the shape o
 DATABASE_URL="postgresql://postgres:devpassword@localhost:5432/talaan"
 ```
 
-Then, in VS Code, create a new file named exactly `.env` in the project root (same folder as `.env.example`) with the same `DATABASE_URL` line. `.env` is already in `.gitignore`, so it never gets committed — that's deliberate, since real environments (Heroku, later) will have a different, real password in their own `.env`-equivalent.
+Then create your own `.env` in the project root (same folder as `.env.example`) with the same `DATABASE_URL` line. In VS Code: right-click the empty space in the Explorer sidebar → **New File…** → type `.env`. `.env` is already in `.gitignore`, so it never gets committed — that's deliberate, since real environments (Heroku, later) will have a different, real password in their own `.env`-equivalent.
+
+**Heads-up for Finder:** macOS hides files whose name starts with a dot, so `.env` and `.env.example` won't show in Finder by default. Press **⌘ Shift .** in a Finder window to show or hide them. VS Code always shows them.
 
 **Why a connection string:** `postgresql://postgres:devpassword@localhost:5432/talaan` packs everything a client needs into one string: protocol (`postgresql`), user (`postgres`), password (`devpassword`), host (`localhost`), port (`5432`), and database name (`talaan`). Prisma, in the next step, reads exactly this string from `DATABASE_URL`.
 
@@ -99,19 +140,39 @@ Then, in VS Code, create a new file named exactly `.env` in the project root (sa
 - `docker ps` shows `talaan-postgres` as `Up`.
 - You connected with `psql` and saw `Did not find any relations.` from `\dt`.
 - `.env.example` has the new `DATABASE_URL` line, and your own `.env` (not committed) has the same line with the real local value.
+- `git status` lists `.env.example` as modified but does **not** list `.env`. That proves `.gitignore` is protecting it.
+
+Then tell me what you saw (or paste the exact error).
 
 ## If something goes wrong
 
-- **"port is already allocated" when starting the container** — something else on your machine is already using port 5432, usually a Postgres install from a previous project. Either stop that other Postgres, or change the mapping to `-p 5433:5432` and use `5433` in your connection string instead.
-- **Docker Desktop won't start / complains about WSL2** — open PowerShell as Administrator and run `wsl --update`, then restart Docker Desktop.
-- **`docker: command not found` in your terminal** — close and reopen the terminal after installing (it needs to pick up the new PATH), or restart VS Code entirely.
-- **`docker exec` says the container is not running** — check `docker ps -a` (note the `-a`, which shows stopped containers too). If it's stopped, `docker start talaan-postgres` restarts the same container without losing data.
+- **`Cannot connect to the Docker daemon` / `Is the docker daemon running?`** — Docker Desktop isn't open. Open it from Applications and wait for the menu bar whale to stop animating, then retry. Docker Desktop doesn't always start by itself after you restart your Mac. To make it start automatically: Docker Desktop → **Settings → General → Start Docker Desktop when you sign in to your computer**.
+- **`docker: command not found`** — close and reopen the terminal (or restart VS Code) so it picks up the new command. If it still isn't found, open Docker Desktop → **Settings → Advanced** and make sure the CLI tools are installed (the default "System" option), then reopen the terminal.
+- **`port is already allocated` / `address already in use` when starting the container** — something else on your Mac already uses port 5432. Usually that's a Postgres installed earlier through Homebrew or Postgres.app. Find out what it is with:
+
+  ```bash
+  lsof -i :5432
+  ```
+
+  If it's a Homebrew Postgres, stop it with `brew services stop postgresql` (or `postgresql@16`, whichever version `brew services list` shows). If it's Postgres.app, quit it from its menu bar icon. Or leave it running and use another port: change the mapping to `-p 5433:5432` and use `5433` in your connection string instead. If the failed attempt left a stopped container behind, remove it first with `docker rm talaan-postgres`, then rerun step 3.
+- **`The container name "/talaan-postgres" is already in use`** — you already created it once (maybe in an earlier attempt). `docker start talaan-postgres` starts that existing one. Only if you want to start over: `docker rm -f talaan-postgres`, then rerun step 3. Your data in the `talaan-pgdata` volume is kept either way.
+- **`docker exec` says the container is not running** — check `docker ps -a` (the `-a` also shows stopped containers). If it's stopped, `docker start talaan-postgres` restarts the same container without losing data. Stopped containers are normal after a Mac restart.
+- **Docker Desktop is using a lot of memory or battery** — that's its Linux virtual machine. Quitting Docker Desktop from the menu bar whale stops everything, and your data stays safe in the volume. Open it again and run `docker start talaan-postgres` when you're back to backend work.
 
 ## What you just learned
 
 - **Container vs. volume:** the container is the running program (throwaway, easy to delete/recreate); the volume is where its actual data lives (kept, survives the container being deleted).
-- **Port mapping:** how a program running inside an isolated box becomes reachable from your normal Windows terminal.
+- **Port mapping:** how a program running inside an isolated box becomes reachable from your normal Mac terminal at `localhost`.
 - **Connection string:** the standard way almost every database client — `psql`, Prisma, a GUI tool — is told how to reach a database: one string with the user, password, host, port and database name packed in.
+
+## Everyday commands from now on
+
+| You want to… | Run |
+|---|---|
+| Start the database (after a restart) | `docker start talaan-postgres` |
+| Stop it | `docker stop talaan-postgres` |
+| See if it's running | `docker ps` |
+| Open a `psql` prompt | `docker exec -it talaan-postgres psql -U postgres -d talaan` |
 
 ## What's next
 
