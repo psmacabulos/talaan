@@ -301,6 +301,23 @@ Then tell me what you saw (or paste the exact error).
 - **Server-only vs. client code:** a `"use client"` file drags everything it imports, directly or indirectly, into the browser bundle. Keep database code out of anything a client component imports.
 - **Static vs. dynamic pages:** Next.js pre-renders a page at build time unless it reads request data. `connection()` opts a page out when its data can change.
 
+## Before you commit
+
+Run these once "Verify it worked" passes. They're the same checks CI runs, in the same order. [docs/LEARNING-LOG.md](../LEARNING-LOG.md#the-routine-to-run-before-every-commit-and-push-owner-question) explains what each one catches.
+
+```bash
+docker start talaan-postgres
+npm run lint && npm run check:tokens && npm run typecheck && npm run test && npm run build
+```
+
+Before you push, also run the browser tests. They take a few minutes and use the build from the line above:
+
+```bash
+npx playwright test
+```
+
+If one fails, fix it and rerun that one command, then rerun the whole line before committing. If you're stuck, share the exact error.
+
 ## What's next
 
 The other repositories move to Prisma the same way, one model per step, starting with `Staff`, which every school's sign-in will need. Those recipes come in the next batch.

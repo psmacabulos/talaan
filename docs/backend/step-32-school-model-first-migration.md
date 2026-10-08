@@ -181,6 +181,23 @@ Then tell me what you saw (or paste the exact error).
 | See which migrations have run | `npx prisma migrate status` |
 | Format the schema | `npx prisma format` |
 
+## Before you commit
+
+Run these once "Verify it worked" passes. They're the same checks CI runs, in the same order. [docs/LEARNING-LOG.md](../LEARNING-LOG.md#the-routine-to-run-before-every-commit-and-push-owner-question) explains what each one catches.
+
+```bash
+docker start talaan-postgres
+npm run lint && npm run check:tokens && npm run typecheck && npm run test && npm run build
+```
+
+Before you push, also run the browser tests. They take a few minutes and use the build from the line above:
+
+```bash
+npx playwright test
+```
+
+If one fails, fix it and rerun that one command, then rerun the whole line before committing. If you're stuck, share the exact error.
+
 ## What's next
 
 Step 33 generates Prisma Client from this schema and uses it in a seed script to put Phase 1's three demo schools into the real table, then reads them back.

@@ -12,6 +12,7 @@ Claude writes one recipe file here: `docs/backend/step-NN-<name>.md`, using the 
 4. **Verify it worked** — an exact command or action with the output you should see.
 5. **If something goes wrong** — the errors a beginner is likely to hit at this exact step, and the fix.
 6. **What you just learned** — a short recap of the concept, so it sticks.
+7. **Before you commit** — the same copy-paste block in every recipe: start the database, then the lint, tokens, typecheck, test and build checks in CI's order, plus `npx playwright test` before a push. The owner runs these personally before every commit.
 
 ## What the owner does
 

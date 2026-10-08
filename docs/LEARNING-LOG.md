@@ -143,6 +143,28 @@ npm run lint && npm run typecheck && npm run test && npm run build
 ```
 Committing `package-lock.json` every time it changes (already happening automatically with `npm install`) is what makes this guarantee real — if it's ever out of sync with `package.json`, `npm ci` fails loudly rather than silently installing something different than what CI will get.
 
+### The routine to run before every commit and push (owner question)
+CI runs these same checks on every push, but running them yourself first catches problems in about a minute, before they're in git history. Start in the project folder with the database up (`docker start talaan-postgres`; `docker ps` should show it `Up`), because the build and browser tests now read from it.
+
+**Every commit (the quick checks, in the same order as CI):**
+```bash
+npm run lint && npm run check:tokens && npm run typecheck && npm run test && npm run build
+```
+`&&` means "only run the next one if this one passed", so the first failure stops the chain and its error is the last thing on screen. What each one catches:
+- `lint`: code-style mistakes and common React bugs (ESLint).
+- `check:tokens`: a raw color (`#fff`, `bg-blue-500`) slipped into a component.
+- `typecheck`: TypeScript type errors anywhere, including files you didn't open.
+- `test`: the Vitest unit tests (fast, no browser).
+- `build`: the real production build. It catches things the dev server forgives.
+
+**Before a push (adds the browser tests):**
+```bash
+npx playwright test
+```
+It needs a fresh `npm run build` first, which the line above already did. It starts the built app on port 3100 by itself and clicks through every screen at phone and desktop width, then runs the accessibility audit. It takes a few minutes. `npm run test:e2e` and `npm run test:a11y` run each half separately (and rebuild first).
+
+**When it fails:** fix it, then rerun just the command that failed, then the whole line again before committing. If a local run passes but CI fails, see the two entries above (leftover `.next` folder, version mismatch). The most faithful local copy of CI starts from `rm -rf node_modules .next && npm ci`.
+
 ### "9 vulnerabilities" after `npm install` — and why `npm audit fix --force` is the wrong button (owner question)
 Asked when setting up on a new Mac. Those lines at the end of `npm install` aren't install errors. The install succeeded. They're `npm audit` checking every package against a list of known security issues. The Mac had nothing to do with it.
 
