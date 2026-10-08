@@ -30,6 +30,7 @@ This is the same rhythm as Phase 1's step protocol in `CLAUDE.md` — plan, do t
 - **`docs/recipes/`** (Phase 1's retrospective, "here's exactly what I built" checklists) doesn't get a new entry per backend step — the files in this folder already are the recipe, written before the code exists instead of after. `docs/BUILD-LOG.md` and `docs/LEARNING-LOG.md` still get updated as before.
 - **Steps are smaller than Phase 1's.** Phase 1 steps often bundled several related tasks into one commit. Backend steps are one idea at a time — installing a tool, defining one model, writing one migration — so each recipe is short enough to fully understand before moving to the next.
 - Only the current step is written out in full in `docs/PLAN.md`. The rest of Phase 2 stays a rough, one-line-per-step roadmap until we actually get there — writing a detailed recipe for something Auth.js-related today, before we've even connected a database, would mean guessing at details that are likely to change.
+- **Recipes can come in batches of up to about five** (decided 2026-10-05, Steps 31–35), when the steps in a batch don't depend on anything still undecided. Each one is still typed, verified, approved and committed on its own, in order. Before each batch, Claude runs the recipes itself in a throwaway copy of the repo (with its own Postgres container on another port), so the exact code and the expected output in each recipe have actually been run once.
 
 ## Roadmap so far
 

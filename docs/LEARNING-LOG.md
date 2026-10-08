@@ -22,6 +22,10 @@ Short, plain-language notes explaining things along the way — for whenever I w
 - [Phones vs. desktops: one list, two layouts (Steps 27.6–27.8)](#phones-vs-desktops-one-list-two-layouts-steps-276278)
 - [End-to-end tests can quietly go stale (Step 29)](#end-to-end-tests-can-quietly-go-stale-step-29)
 - [When "add more workers" doesn't fix a flaky test suite](#when-add-more-workers-doesnt-fix-a-flaky-test-suite)
+- [Running the database locally with Docker (Step 30)](#running-the-database-locally-with-docker-step-30)
+- [The word "client" (Phase 2)](#the-word-client-phase-2)
+- [TypeScript syntax in the backend code (Phase 2)](#typescript-syntax-in-the-backend-code-phase-2)
+- [Database and migrations (Phase 2)](#database-and-migrations-phase-2)
 
 ---
 
@@ -88,6 +92,23 @@ MCP servers only load when a Claude Code session *starts* — so after adding on
 ### An `npm run` script that only worked in Git Bash, not from a real Windows terminal (Step 29)
 `package.json`'s `test:e2e` script was written as `playwright test 'e2e/(login|students|...).spec.ts'` — one quoted argument, using `|` to mean "or" inside the file pattern. That syntax only means "or" to a shell that understands single quotes as quoting and `()`/`|` as regex characters once inside them — Bash, the shell Claude's own terminal tool uses. But `npm run <script>` doesn't run in whatever shell you happen to be typing into; on Windows, npm always hands the command to `cmd.exe` specifically, and `cmd.exe` doesn't treat single quotes as quoting *at all* — it just sees a literal `|`, which it always treats as "pipe this into the next command," breaking the whole line. So the script had likely never worked when actually run as `npm run test:e2e` from a plain Windows terminal — only a direct Bash-run `npx playwright test '...'` could ever have passed. Fixed by writing the file list as five plain space-separated arguments instead of one quoted pattern — no quoting or shell-special characters needed, so it means the same thing in `cmd.exe`, PowerShell and Bash alike. **Lesson:** when an npm script needs to work on Windows, avoid quoting tricks that only one shell understands — prefer syntax that needs no special shell behavior at all.
 
+### Branch or stay on `main` for the backend? (owner question)
+Recommendation: **one short-lived branch per backend step** (for example `step-30-local-postgres`). Open a pull request, let CI check it, merge it into `main` once the step is approved, then delete the branch.
+- **`main` stays a working app.** Phase 1 is the demo, and backend steps change data and login code. A half-finished step on a branch can't break it.
+- **CI checks before merging.** `.github/workflows/ci.yml` runs on `pull_request`, so every step gets a pass/fail before it reaches `main`.
+- **Short-lived, not one big `backend` branch.** A branch that lives for months drifts far from `main` and is painful to merge. Recipe steps are small on purpose, so each branch lasts a day or two.
+
+The commands, every step:
+```bash
+git switch main && git pull               # start from the latest main
+git switch -c step-NN-short-name          # new branch for this step
+# ...follow the recipe, then commit...
+git push -u origin step-NN-short-name     # first push of the branch
+# open a pull request on GitHub, wait for CI, get "approved", merge it
+git switch main && git pull && git branch -d step-NN-short-name
+```
+`git switch -c` creates a branch and moves onto it. `-u` on the first push links your local branch to the GitHub one, so later pushes are just `git push`. `git branch -d` deletes the local branch, and only does so if it's already merged, so you can't lose work by accident.
+
 ### What `&&` does between commands (owner question)
 `npm run lint && npm run typecheck && npm run test && npm run build` is four commands on one line. `&&` means **"run the next command only if the previous one succeeded."** If lint fails, the line stops right there: typecheck, test and build never start, and the first failure is the last thing on screen, easy to find.
 
@@ -133,6 +154,19 @@ Asked when setting up on a new Mac. Those lines at the end of `npm install` aren
 - **A warning with no fix yet.** `braces` is flagged for *every* version, so no upgrade clears it. It only reaches this project through dev tools (the ESLint plugin, the shadcn CLI) and never ships in the app, so it's safe to leave until a fixed version comes out.
 
 "Newest" isn't always "compatible." ESLint 10 and TypeScript 7 exist, but the plugins Next's ESLint config depends on don't support them yet, so they wait. `npm install` will usually tell you with an `ERESOLVE` error. Never get past that error with `--force` or `--legacy-peer-deps`: those flags just switch the safety check off.
+
+### `npm run dev` still broken after the packages were fixed? Delete `.next`
+`.next/` is Next.js's own scratch folder: build output, plus a disk cache the dev server reuses between runs so it starts faster. That cache also remembers things like "this import couldn't be found." Here it remembered `Can't resolve 'shadcn/tailwind.css'` from when `npm audit fix --force` had briefly installed shadcn 1.0.0, which doesn't have that file. That stale answer stayed even after the right version was back. The fix is safe and quick, because Next rebuilds the folder from scratch:
+```bash
+# stop the dev server first (Ctrl+C in its terminal)
+rm -rf .next
+npm run dev
+```
+Rule of thumb: after any big dependency change (reinstalling, upgrading or downgrading Next.js, Tailwind or shadcn), delete `.next` before trusting an error from `npm run dev`. `.next` is in `.gitignore`, so deleting it never touches your code or git.
+
+Two things that can make it *look* still broken right afterwards:
+- **An old browser tab.** A tab that was showing the error overlay can keep showing it, and even re-send the old error to the server log, after the server is fixed. Close the tab, or hard-refresh it (⌘ Shift R).
+- **A red squiggle on `LayoutProps` in `layout.tsx`.** `LayoutProps` and `PageProps` are types Next.js *generates* into `.next/`, so deleting `.next` deletes them too. They come back as soon as `npm run dev` (or `npm run typecheck`) runs once. A fresh clone shows the same squiggle until then. That's normal.
 
 ### "Executable doesn't exist" from Playwright on a new machine
 Playwright's test browser is a separate ~95 MB download kept in your user folder, not in `node_modules`. So a fresh machine needs it once: `npx playwright install chromium`. CI already does this in `.github/workflows/ci.yml`.
@@ -650,3 +684,126 @@ The tap station's "Valid card" button always hands out the *next* untapped stude
 
 ### A "random-looking" name generator can have a hidden repeat
 Adding extra seed students to fix the above created a *new*, sillier bug: one of the new students ended up with the exact same name as an existing one, because the name generator cycles through a fixed list of 40 first names and 40 last names — continue past 40 students and it starts reusing the same names again, deterministically, at a predictable spot. "Looks random" and "never repeats" are not the same guarantee; a generator built from a small fixed list needs an explicit plan for what happens once you ask it for more than the list's size.
+
+## Running the database locally with Docker (Step 30)
+
+### Where does `-v talaan-pgdata:/var/lib/postgresql` actually put the data? Should it live next to the repo instead? (owner question)
+`/var/lib/postgresql` is **not a folder on your Mac**. It's a path *inside the container*, which runs its own small Linux system. The `-v` flag reads as `<where it's kept>:<where Postgres sees it inside the container>`. The left side, `talaan-pgdata`, is a **named volume**: a storage area that Docker creates and looks after for you. On a Mac, Docker runs every container inside a hidden Linux virtual machine, so the volume ends up inside that VM's disk image (somewhere under `~/Library/Containers/com.docker.docker/`). You never browse it in Finder, and you don't need to.
+
+A named volume is the normal choice for a local development database. Putting the data in a folder next to the repo (a "bind mount", such as `-v ./pgdata:/var/lib/postgresql`) is possible, but it's worse on a Mac:
+- **iCloud can corrupt it.** If iCloud's "Desktop & Documents Folders" sync is turned on, iCloud uploads and rewrites a live database's files while Postgres is still writing to them.
+- **Git can pick it up.** A folder inside the repo is one forgotten `.gitignore` line away from being committed.
+- **It's slower and fussier.** Every read and write has to cross from the Linux VM to macOS and back. Postgres also expects its files to be owned by its own Linux user, and folders on a Mac often fail that check.
+
+Handy commands:
+- `docker volume ls` lists your volumes.
+- `docker volume inspect talaan-pgdata` shows details. Its "Mountpoint" is a path inside Docker's VM, not on your Mac.
+
+### Deleting a volume (owner question)
+A volume that a container still uses can't be deleted, even if that container is stopped. Remove the container first, then delete the volume:
+```bash
+docker stop talaan-postgres
+docker rm talaan-postgres
+docker volume rm talaan-pgdata
+```
+This permanently deletes every row in that database, and there's no undo. Run `docker volume ls` afterwards to confirm it's gone. Running the Step 30 `docker run` command again creates a fresh, empty volume. Deleting only the container (without the volume) keeps the data, and the next `docker run` with the same `-v` picks it up again.
+
+To keep a copy of the data, don't copy the raw files. Export it with `pg_dump` (a later step can cover that). Anyway, the real data lives in the production database. The local one can always be recreated from migrations and seed data.
+
+### Tab completion for `docker` commands (owner question)
+Docker does support Tab completion, but zsh only loads it after you turn it on. This Mac uses Oh My Zsh, which loads completions through "plugins" listed in `~/.zshrc`. Only `git` was listed, so pressing Tab after `docker` did nothing. To fix it, add `docker` to the list:
+```bash
+plugins=(git docker)
+```
+Then open a new terminal tab (or run `source ~/.zshrc`). Typing `docker vol` and pressing Tab now completes to `docker volume`, and container and volume names complete too. If it still does nothing, clear zsh's completion cache with `rm -f ~/.zcompdump*` and open a new tab. The plugin also adds short aliases (such as `dps` for `docker ps`). You don't have to use them.
+
+## The word "client" (Phase 2)
+
+### What does "client" mean, as in "Prisma Client"? (owner question)
+A **client** is whatever *asks*; a **server** is whatever *answers*. Think of a restaurant: the customer (client) orders, the kitchen (server) cooks and sends it back. "Client" describes a *role* in one conversation, not a kind of machine, so the same program can be a client in one conversation and a server in another.
+
+This project uses the word in three places:
+
+```
+Browser / gate tablet / parent app  ──asks──▶  Next.js app  ──asks──▶  Postgres
+          (client)                        (server here,          (server)
+                                           client here)
+```
+
+1. **The browser is a client of the Next.js app.** That's why a `"use client"` file is called a *Client Component*: its code runs in the browser, the asking side.
+2. **The four "clients" in `docs/ARCHITECTURE.md`** (admin web, `/gate`, `/gate/display`, the parent app) are the four things that send requests to our one backend.
+3. **The Next.js app is a client of the database.** Postgres (in Docker since Step 30) is the server, waiting for questions. Something has to send it SQL and turn the answer back into JavaScript objects. A program that does that is a *database client*. `psql` is one (you type SQL, it shows rows). **Prisma Client** is another: TypeScript code that Prisma *generates* from `prisma/schema.prisma` (Step 33), so the app can write `prisma.school.findMany()` instead of raw SQL, with typed results.
+
+So "Prisma Client" just means "the piece of our code that talks to the database on the app's behalf." `src/lib/db.ts` creates one of them and the whole app shares it. The Postgres error `too many clients already` uses the word the same way: too many open connections asking at once, which is why there's only one shared Prisma Client (see [Step 33's recipe](backend/step-33-prisma-client-and-seed.md), step 5).
+
+### Is one Prisma Client enough when hundreds of students tap in at once? (owner question)
+Yes, because **one client is not one connection**. With the `pg` adapter, the Prisma Client creates a `pg.Pool` (the same pool used in a plain `pg` project with raw SQL), and that pool opens **up to 10 connections by default**. The Altus project's "5 connections always available" was the same idea with `max: 5`. To change it here: `new PrismaPg({ connectionString, max: 5 })`.
+
+```
+many requests ──▶ one PrismaClient ──▶ pool: [conn][conn][conn]…(up to 10) ──▶ Postgres
+                                        if all are busy, the next request waits its turn
+```
+
+A rough peak-hour check: 500 students arriving over about 20 minutes is under one tap per second, and saving a tap takes a few milliseconds. One connection could keep up; ten has a lot of room to spare. When every connection is busy, the next query waits a few milliseconds for one to free up. It doesn't fail.
+
+More connections isn't automatically better. Postgres has a hard limit, and small hosted plans allow only a few dozen. Each running copy of the app (each Heroku dyno) has its own pool, so 2 copies × 10 = 20 connections used. The pool size gets tuned once there's a real production database and real load numbers, not now.
+
+## TypeScript syntax in the backend code (Phase 2)
+
+### What does `??` do? (owner question, Step 33)
+`a ?? b` means "use `a`, unless `a` is `null` or `undefined`; then use `b`." It's called the **nullish coalescing** operator. Two details matter:
+- **`b` only runs if it's needed.** In `globalForPrisma.prisma ?? createPrismaClient()`, the function isn't called at all when a client already exists. That's the whole point: no second connection pool.
+- **It's stricter than `||`.** `||` also falls back on `0`, `""` and `false`, while `??` falls back only when the value is missing. `count || 10` turns a real `0` into `10`; `count ?? 10` keeps the `0`.
+
+### `globalThis as unknown as { prisma?: PrismaClient }` (Step 33)
+`globalThis` is one object shared by the whole running Node.js process, and it survives `npm run dev`'s hot reloads. TypeScript doesn't know it has a `prisma` property, so this line tells it "treat this object as one that *may* have a `prisma`." The `as unknown as` is a double cast: TypeScript refuses to cast directly between two unrelated types, so the value goes through `unknown` (the "could be anything" type) first. It only affects type checking. At runtime, `globalForPrisma` is just `globalThis`. Line-by-line walkthrough of `src/lib/db.ts`: [Step 33's recipe](backend/step-33-prisma-client-and-seed.md), step 5.
+
+### Running one `.ts` file by itself: `npx tsx`, not `node` (owner question, Step 33)
+`node prisma/seed.ts` fails on the `import { prisma } from "@/lib/db"` line. Node 24 can run a `.ts` file (it strips the types), but it never reads `tsconfig.json`. So it doesn't know that `@/` is a shortcut for `src/`, and it looks for an npm package literally named `@/lib/db`. It also expects every import to spell out its file extension, which this project's code never does.
+
+`tsx` reads `tsconfig.json`, so the shortcut and extensionless imports both work. To run any single file, from the project root:
+
+```
+npx tsx prisma/seed.ts
+```
+
+Run it from the project root, not from inside `prisma/`. `import "dotenv/config"` looks for `.env` in the folder the command runs from, so running it elsewhere leaves `DATABASE_URL` empty. Once the seed is finished, `npx prisma db seed` runs the same `tsx prisma/seed.ts` for you (it's the `seed` line in `prisma.config.ts`).
+
+## Database and migrations (Phase 2)
+
+### What is a migration, and what happens when the database has to change later? (owner question, Step 34)
+A migration is one small, named, committed change to the database's *shape* (its tables and columns), like a git commit for the database. `migrate dev` writes one on your laptop. `migrate deploy` runs the ones a database hasn't run yet. Changing only screens or the contents of a JSON column (like removing the custom color picker) is a code change, not a migration, but existing rows may need a data fix. Full lesson, with worked examples on this project's `School` model: [`docs/DATABASE-MIGRATIONS.md`](DATABASE-MIGRATIONS.md).
+
+### Where does `npx prisma db seed` come from, if `package.json` has no seed script? (owner question, Step 33)
+It isn't an npm script. `prisma db seed` is a command built into the Prisma CLI, which came with the `prisma` dev dependency. `npx` runs that CLI from `node_modules/.bin`. (An npm script would be run with `npm run <name>` instead.)
+
+The CLI doesn't know how to run *our* seed file, so it looks that up in `prisma.config.ts`:
+
+```ts
+migrations: {
+  path: "prisma/migrations",
+  seed: "tsx prisma/seed.ts",   // ← `prisma db seed` runs this command
+},
+```
+
+```
+npx prisma db seed ──▶ prisma.config.ts → migrations.seed ──▶ tsx prisma/seed.ts
+```
+
+Without that line it prints "No seed command configured" and does nothing. Most tutorials put the seed in `package.json` under `"prisma": { "seed": "..." }`. That was Prisma 6 and older. Prisma 7 (this project) reads it from `prisma.config.ts` instead.
+
+Reading the command itself (owner follow-up): `npx` runs the program, `prisma` is the program, `db` is a command *group* ("things done directly to the database"), and `seed` is the action, the same shape as `docker volume rm`. Other members of the `db` group: `db push`, `db pull`, `db execute`. Migration files have their own group, `migrate` (`migrate dev`, `migrate reset`, `migrate deploy`), and a few commands have no group (`prisma generate`, `prisma studio`). `npx prisma --help` lists them all, and `npx prisma db --help` lists one group's commands.
+
+### What `npx prisma migrate deploy` does, and is it "just create the tables"? (owner question, Step 34)
+It runs the SQL in your committed `prisma/migrations/*/migration.sql` files, oldest first, and skips any that the database has already run. Postgres keeps that list in a table Prisma made, `_prisma_migrations`.
+
+So "creates the tables" is only half right. A migration file can contain any schema change: create a table, add a column, add an index, rename something. `migrate deploy` runs whatever is in the files.
+- **CI** (an empty database every run): it runs every migration, so in practice it builds every table from nothing.
+- **Production** (a database that already has data): it runs only the migrations added since the last deploy, and the data stays.
+
+```
+migrate dev    (your laptop)   schema.prisma changed → writes a NEW migration file → applies it
+migrate deploy (CI, Heroku)    reads the existing migration files → applies the ones not run yet
+```
+
+It never writes a migration file, never compares against `schema.prisma`, never asks a question, never resets data, and never seeds (that's `prisma db seed`, a separate step). Full setup: [Step 34's recipe](backend/step-34-postgres-in-ci.md).

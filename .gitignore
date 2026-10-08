@@ -49,3 +49,6 @@ next-env.d.ts
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# Prisma Client, regenerated from prisma/schema.prisma (npm install runs it)
+/src/generated/

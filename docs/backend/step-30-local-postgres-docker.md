@@ -77,8 +77,8 @@ docker run --name talaan-postgres \
   -e POSTGRES_PASSWORD=devpassword \
   -e POSTGRES_DB=talaan \
   -p 5432:5432 \
-  -v talaan-pgdata:/var/lib/postgresql/data \
-  -d postgres:16
+  -v talaan-pgdata:/var/lib/postgresql \
+  -d postgres:18
 ```
 
 The `\` at the end of each line means "this command continues on the next line." It's one command split up so you can read it. Paste all six lines together. (You could also type it as one long line without the `\`s; it does exactly the same thing.)
@@ -88,9 +88,11 @@ The `\` at the end of each line means "this command continues on the next line."
 - `-e POSTGRES_PASSWORD=devpassword` — sets the password for Postgres's built-in `postgres` user. This is a throwaway local dev password, never used anywhere real — it's fine to see it in plain text here.
 - `-e POSTGRES_DB=talaan` — creates an empty database named `talaan` the moment the container starts, instead of you creating it by hand.
 - `-p 5432:5432` — "port mapping": Postgres inside the container listens on port 5432. This exposes that same port on your Mac, so tools running on the Mac (Prisma, `psql`, a GUI client) can reach `localhost:5432`.
-- `-v talaan-pgdata:/var/lib/postgresql/data` — a named Docker "volume": Postgres's actual data files are stored here, on your machine, outside the container. Without this, deleting the container would silently delete every row in it too. With it, you can delete and recreate the container and your data survives.
+- `-v talaan-pgdata:/var/lib/postgresql` — a named Docker "volume": Postgres's actual data files are stored here, on your machine, outside the container. Without this, deleting the container would silently delete every row in it too. With it, you can delete and recreate the container and your data survives.
 - `-d` — "detached": run it in the background instead of tying up your terminal.
-- `postgres:16` — the official Postgres image, version 16. The same image works on Apple silicon and Intel; Docker picks the right one for your chip automatically.
+- `postgres:18` — the official Postgres image, version 18. That's the newest version Heroku Postgres supports (16 to 18), so your laptop and production run the same major version. The same image works on Apple silicon and Intel; Docker picks the right one for your chip automatically.
+
+**Watch out for old tutorials:** most guides online were written for Postgres 17 or older and mount the volume at `/var/lib/postgresql/data`. Postgres 18's image changed this: it keeps its data in `/var/lib/postgresql/18/docker`, so the volume has to be mounted one level up, at `/var/lib/postgresql`. If you used the old path with 18, the container would still start, but your data would sit *outside* your named volume. Deleting the container would then delete the data too, with no warning. The path above is the one from the image's own Dockerfile.
 
 The first run downloads the image (a few hundred MB), so give it a minute. It prints one long id when it's done.
 
@@ -156,6 +158,14 @@ Then tell me what you saw (or paste the exact error).
 
   If it's a Homebrew Postgres, stop it with `brew services stop postgresql` (or `postgresql@16`, whichever version `brew services list` shows). If it's Postgres.app, quit it from its menu bar icon. Or leave it running and use another port: change the mapping to `-p 5433:5432` and use `5433` in your connection string instead. If the failed attempt left a stopped container behind, remove it first with `docker rm talaan-postgres`, then rerun step 3.
 - **`The container name "/talaan-postgres" is already in use`** — you already created it once (maybe in an earlier attempt). `docker start talaan-postgres` starts that existing one. Only if you want to start over: `docker rm -f talaan-postgres`, then rerun step 3. Your data in the `talaan-pgdata` volume is kept either way.
+- **The container stops right after starting, and `docker logs talaan-postgres` says `Error: in 18+, these Docker images are configured to store database data in a format which is compatible with "pg_ctlcluster"` … `there appears to be PostgreSQL data in: …`** — the `talaan-pgdata` volume already holds data from an older Postgres version (for example, an earlier try with `postgres:16`). At this step the database is still empty, so it's safe to throw that volume away and start fresh:
+
+  ```bash
+  docker rm -f talaan-postgres
+  docker volume rm talaan-pgdata
+  ```
+
+  Then rerun step 3. (Later, once the database holds real data, you'd never delete the volume to change versions. You'd do a proper upgrade instead. That's a problem for another day.)
 - **`docker exec` says the container is not running** — check `docker ps -a` (the `-a` also shows stopped containers). If it's stopped, `docker start talaan-postgres` restarts the same container without losing data. Stopped containers are normal after a Mac restart.
 - **Docker Desktop is using a lot of memory or battery** — that's its Linux virtual machine. Quitting Docker Desktop from the menu bar whale stops everything, and your data stays safe in the volume. Open it again and run `docker start talaan-postgres` when you're back to backend work.
 
