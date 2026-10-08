@@ -7,6 +7,25 @@ on:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    # A throwaway Postgres for this run only, the same version as local
+    # (Step 30) and Heroku. Deleted when the job ends.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: devpassword
+          POSTGRES_DB: talaan
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:devpassword@localhost:5432/talaan
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,6 +38,11 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Set up the database
+        run: |
+          npx prisma migrate deploy
+          npx prisma db seed
 
       - name: Lint
         run: npm run lint
