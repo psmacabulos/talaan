@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: █████████████████░░░ 83%**  (122 of 147 tasks, 41 of 48 steps approved)
+**Overall progress: █████████████████░░░ 86%**  (126 of 147 tasks, 42 of 48 steps approved)
 
-**Next up:** Step 37, Staff in Postgres (ready for your review)
+**Next up:** Step 38, Students in Postgres (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -48,8 +48,8 @@
 | 34 | Give CI its own Postgres | ██████████ 100% | Approved |
 | 35 | Swap the school repository for a real Prisma-backed one | ██████████ 100% | Approved |
 | 36 | Give the browser tests their own database, reset before every run | ██████████ 100% | Approved |
-| 37 | Staff in Postgres | ████████░░  75% | Ready for your review |
-| 38 | Students in Postgres | ░░░░░░░░░░   0% | Not started |
+| 37 | Staff in Postgres | ██████████ 100% | Approved |
+| 38 | Students in Postgres | ████████░░  75% | Ready for your review |
 | 39 | ID cards in Postgres | ░░░░░░░░░░   0% | Not started |
 | 40 | Taps and alerts in Postgres | ░░░░░░░░░░   0% | Not started |
 | 41 | Parents and parent–child links in Postgres | ░░░░░░░░░░   0% | Not started |
@@ -412,13 +412,13 @@ Recipe: `docs/backend/step-37-staff-model.md`
 - [x] Staff seeded in order, one row at a time.
 Done when: an invited teacher survives a dev-server restart, `psql` refuses a staff row for a school that doesn't exist, and every check passes.
 Commit: `feat(db): store staff in Postgres`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 38: Students in Postgres
 Recipe: `docs/backend/step-38-student-model.md`
-- [ ] `Student` model with `birthDate` as a `DATE` and one `(schoolId, lrn)` index, migration `add_student`.
-- [ ] `prisma-student-repository.ts` (UTC-safe dates, case-insensitive link-a-child lookup) with unit tests, including a round trip. The mock singleton is removed.
-- [ ] Students seeded with one `createMany`.
+- [x] `Student` model with `birthDate` as a `DATE` and one `(schoolId, lrn)` index, migration `add_student`.
+- [x] `prisma-student-repository.ts` (UTC-safe dates, case-insensitive link-a-child lookup) with unit tests, including a round trip. The mock singleton is removed.
+- [x] Students seeded with one `createMany`.
 Done when: an edited student survives a restart with the same birth date, a parent can link a child by LRN, last name and birth date, and every check passes.
 Commit: `feat(db): store students in Postgres`
 - [ ] Owner review: I checked it and said "approved"

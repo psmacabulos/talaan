@@ -65,5 +65,3 @@ export function createMockStudentRepository(
     },
   };
 }
-
-export const studentRepository = createMockStudentRepository();

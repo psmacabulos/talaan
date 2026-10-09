@@ -287,14 +287,10 @@ The **round-trip** test is the most useful kind for a mapper pair: whatever goes
 
 ### 4. Flip the switch
 
-**4a.** In `src/data/repositories/index.ts`, replace the five-line student export:
+**4a.** In `src/data/repositories/index.ts`, replace the student export:
 
 ```ts
-export {
-  studentRepository,
-  createMockStudentRepository,
-  type StudentRepository,
-} from "./student-repository";
+export { studentRepository, createMockStudentRepository, type StudentRepository } from "./student-repository";
 ```
 
 with:

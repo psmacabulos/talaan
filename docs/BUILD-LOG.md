@@ -1715,3 +1715,12 @@ Choices made while writing them:
 - **Step 44 (the real clock) is waiting on the owner.** Phase 1 runs on a fixed `DASHBOARD_NOW` (`2026-06-20T09:15:00Z`) and compares dates and times of day in UTC. A real 7:50 AM tap in Balanga is 23:50 UTC the day before, so it would land on the wrong day. Before any real tap is recorded, the app needs Philippine time and a real "today", and that raises questions about the demo data and the tests.
 
 **Step 44 answers (same day):** real clock by default, with an optional `DEMO_NOW` setting that pins it to the demo morning for the browser tests and screenshots. Seed data stays on 20 June 2026. `Asia/Manila` for every school. Late and absent cutoffs become a per-school setting now, defaulting to 8:05 and 9:00 AM. Its recipe gets written once Steps 38–43 are in, since it touches code they change.
+
+## Step 38: students in Postgres (2026-10-09)
+
+Built from the recipe (`docs/backend/step-38-student-model.md`), fast-track, after the owner approved and committed Step 37.
+
+- `Student` model with `birthDate` as `@db.Date` and one `(schoolId, lrn)` index. `npx prisma migrate dev --name add_student` created and applied `20261009034558_add_student`. The SQL has `"birthDate" DATE NOT NULL`, `Student_schoolId_lrn_idx` and the foreign key to `School`, as the recipe says.
+- `prisma-student-repository.ts` and its test were copied from the recipe's code blocks, not retyped. `index.ts` exports the Prisma `studentRepository`, and the mock singleton is gone from `student-repository.ts`.
+- `prisma/demo-data.ts` inserts the 76 students with one `createMany` after the staff. A first `npx prisma db seed` printed `Schools: 3`, `Staff: 8`, `Students: 76`. Staff is 8, not the demo's 7, because of a teacher the owner invited on the dev database while checking Step 37. That's the owner's own data, left alone.
+- **Recipe fix:** step 4a showed the student export spread over five lines. Since Step 35's Prettier change to a 120-character line, it's one line in `index.ts`, so the "replace this" text didn't match. The recipe now shows the one-line version. Steps 39 and 40 already did.

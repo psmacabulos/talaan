@@ -895,7 +895,34 @@ rows:     [ row-balanga,          row-oceanview,          row-crimsonridge ]
 result:   [ School balanga,       School oceanview,       School crimsonridge ]
 ```
 Same idea as a `for` loop that pushes `toSchool(row)` into a new array, in one line. The original `rows` array isn't changed. A function handed to another function like this is called a **callback**. You've already used some: `.filter(...)`, `.sort(...)`, and `onClick={...}` in React all take one.
+### Why `{ id: student.id, ...toStudentData(student) }` and not just `...toStudentData(student)`? (owner question, Step 38)
+Because `toStudentData` deliberately leaves the `id` out. It returns only the columns that describe the student (name, birth date, grade and so on). So the spread on its own would give Prisma a row with no id.
+
+It leaves the id out because it's shared by two jobs:
+- **Creating** a row, where the id has to be set once: `create: { id: student.id, ...toStudentData(student) }`.
+- **Updating** a row, where the id must never change: `db.student.update({ where: { id: student.id }, data: toStudentData(student) })`. With an `id` inside `data`, an update could rename a row's id. That would break every card, tap and parent link pointing at the old one.
+
+So the id is added only where a row is created, in plain sight.
+
+Without `id: student.id` in the seed, two things go wrong:
+- For tables whose `id` has `@default(uuid())` (`Student`, `Staff`), Postgres would invent a random id. The seed's `student-0001` would become something like `3f2a…`, and every card, tap and link in the demo data still points at `student-0001`. Those inserts fail on the foreign key, or match nothing.
+- For `Tap`, whose `id` has no default (the device must supply it), TypeScript refuses to compile: `id` is required.
+
+The `...` spread copies every property of an object into the new one. Writing `id` first and then spreading is just "this object's columns, plus an id".
+
 ## Database and migrations (Phase 2)
+
+### Is a student's `id` only for the seed? And what happens when their card changes? (owner question, Step 38)
+**Every** student has an `id`, not just the demo ones. For a real student, "Add student" makes one with `crypto.randomUUID()` (`src/features/students/actions.ts`) and passes it in, the same way the seed passes `student-0001`. The only difference is the look: seed ids are readable, real ones are random.
+
+That `id` is the database's own internal label for the row. It isn't the LRN or a school ID number, it's never printed on anything, and it never changes. That's exactly why everything else can safely point at it.
+
+The card is a separate thing, in its own `Card` table. Each card row has its own `id`, the NFC `serial`, the `studentId` it belongs to, and a status (active, lost, retired). When a student loses their card:
+
+1. Their current card row is marked `lost`. Its serial stays on record, so if it's tapped later the station raises a lost-card alert.
+2. A new card row is created with the new serial and the **same** `studentId`. "One active card per student" is enforced by the database from Step 39.
+
+So the student's `id` stays put and only the card changes. Old taps keep both the serial that was read and the `studentId` it belonged to at that moment, so history stays right after a replacement.
 
 ### What is a migration, and what happens when the database has to change later? (owner question, Step 34)
 A migration is one small, named, committed change to the database's *shape* (its tables and columns), like a git commit for the database. `migrate dev` writes one on your laptop. `migrate deploy` runs the ones a database hasn't run yet. Changing only screens or the contents of a JSON column (like removing the custom color picker) is a code change, not a migration, but existing rows may need a data fix. Full lesson, with worked examples on this project's `School` model: [`docs/DATABASE-MIGRATIONS.md`](DATABASE-MIGRATIONS.md).

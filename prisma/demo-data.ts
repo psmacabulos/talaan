@@ -1,7 +1,8 @@
 import type { PrismaClient } from "@/generated/prisma/client";
-import { seedSchools, seedStaff } from "@/data/seed";
+import { seedSchools, seedStaff, seedStudents } from "@/data/seed";
 import { toSchoolData } from "@/data/repositories/prisma-school-repository";
 import { toStaffData } from "@/data/repositories/prisma-staff-repository";
+import { toStudentData } from "@/data/repositories/prisma-student-repository";
 
 /**
  * Copies Phase 1's demo data into the database, keeping the same ids
@@ -30,10 +31,18 @@ export async function insertDemoData(db: PrismaClient) {
       create: { id: staff.id, ...toStaffData(staff) },
     });
   }
+
+  // 76 students in one query instead of 76. skipDuplicates makes it safe
+  // to run again, the same job `update: {}` does for an upsert.
+  await db.student.createMany({
+    data: seedStudents.map((student) => ({ id: student.id, ...toStudentData(student) })),
+    skipDuplicates: true,
+  });
 }
 
 /** One line per table, so you can see at a glance what's in the database. */
 export async function printDemoDataSummary(db: PrismaClient) {
   console.log(`Schools: ${await db.school.count()}`);
   console.log(`Staff: ${await db.staff.count()}`);
+  console.log(`Students: ${await db.student.count()}`);
 }

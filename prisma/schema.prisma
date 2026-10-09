@@ -24,7 +24,8 @@ model School {
   createdAt              DateTime               @default(now())
   updatedAt              DateTime               @updatedAt
 
-  staff Staff[]
+  staff    Staff[]
+  students Student[]
 }
 
 enum Role {
@@ -54,4 +55,26 @@ model Staff {
   updatedAt          DateTime    @updatedAt
 
   @@index([schoolId])
+}
+
+model Student {
+  id             String   @id @default(uuid())
+  schoolId       String
+  school         School   @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  firstName      String
+  middleName     String?
+  lastName       String
+  // A calendar date with no time of day: Postgres's DATE type.
+  birthDate      DateTime @db.Date
+  lrn            String?
+  gradeLevel     Int
+  section        String
+  guardianName   String
+  guardianMobile String
+  photoUrl       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Serves both "every student at a school" and the link-a-child lookup.
+  @@index([schoolId, lrn])
 }
