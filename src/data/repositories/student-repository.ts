@@ -18,10 +18,7 @@ export interface StudentRepository {
    * seed/students.ts's `lrnAt`) can never match here; that's an accepted
    * Phase 1 gap, not a bug.
    */
-  findForLink(
-    schoolId: string,
-    details: { lrn: string; lastName: string; birthDate: string },
-  ): Promise<Student | null>;
+  findForLink(schoolId: string, details: { lrn: string; lastName: string; birthDate: string }): Promise<Student | null>;
 }
 
 export function createMockStudentRepository(

@@ -19,11 +19,7 @@ const CLASS: Record<CardFilterStatus, string> = {
 export function CardStatusBadge({ status, className }: { status: CardFilterStatus; className?: string }) {
   return (
     <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium",
-        CLASS[status],
-        className,
-      )}
+      className={cn("inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium", CLASS[status], className)}
     >
       {LABEL[status]}
     </span>

@@ -15,15 +15,13 @@ import type { LinkChildInput, ParentLoginInput, ParentSignupInput } from "./type
 
 export type ParentSignupFieldErrors = Partial<Record<keyof ParentSignupInput, string>>;
 export type ParentSignupActionResult =
-  | { ok: true }
-  | { ok: false; formError?: string; fieldErrors?: ParentSignupFieldErrors };
+  { ok: true } | { ok: false; formError?: string; fieldErrors?: ParentSignupFieldErrors };
 
 export type ParentLoginActionResult = { ok: true } | { ok: false; formError: string };
 
 export type LinkChildFieldErrors = Partial<Record<keyof LinkChildInput, string>>;
 export type LinkChildActionResult =
-  | { ok: true; studentName: string }
-  | { ok: false; formError?: string; fieldErrors?: LinkChildFieldErrors };
+  { ok: true; studentName: string } | { ok: false; formError?: string; fieldErrors?: LinkChildFieldErrors };
 
 function fieldErrorsFrom<Shape extends Record<string, unknown>>(
   error: import("zod").ZodError<Shape>,

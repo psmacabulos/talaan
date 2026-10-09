@@ -30,8 +30,22 @@ const students: Student[] = [
     lrn: "222222222222",
     birthDate: "2010-01-01",
   }),
-  student({ id: "s-dado", firstName: "Dado", lastName: "Santos", gradeLevel: 10, section: "Luna", birthDate: "2013-01-01" }),
-  student({ id: "s-ela", firstName: "Ela", lastName: "Torres", gradeLevel: 10, section: "Luna", birthDate: "2012-06-01" }),
+  student({
+    id: "s-dado",
+    firstName: "Dado",
+    lastName: "Santos",
+    gradeLevel: 10,
+    section: "Luna",
+    birthDate: "2013-01-01",
+  }),
+  student({
+    id: "s-ela",
+    firstName: "Ela",
+    lastName: "Torres",
+    gradeLevel: 10,
+    section: "Luna",
+    birthDate: "2012-06-01",
+  }),
 ];
 
 function card(overrides: Partial<Card> & Pick<Card, "id" | "studentId" | "status">): Card {
@@ -91,12 +105,7 @@ describe("searchStudents", () => {
   });
 
   it("restricts to one grade and section, for a teacher's advisory class", async () => {
-    const result = await searchStudents(
-      SCHOOL_ID,
-      BASE,
-      { restrictTo: { gradeLevel: 10, section: "Luna" } },
-      deps,
-    );
+    const result = await searchStudents(SCHOOL_ID, BASE, { restrictTo: { gradeLevel: 10, section: "Luna" } }, deps);
     expect(result.items.map((row) => row.student.firstName)).toEqual(["Dado", "Ela"]);
   });
 

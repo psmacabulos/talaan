@@ -1,14 +1,7 @@
-import {
-  notificationRepository,
-  parentStudentLinkRepository,
-  studentRepository,
-} from "@/data/repositories";
-import type { Student } from "@/features/students/types";
-import type { Notification } from "./types";
+import { notificationRepository, parentStudentLinkRepository, studentRepository } from "@/data/repositories";
+import type { ParentNotificationItem } from "./notification-format";
 
-/** A notification joined with the child it's about, ready to render. */
-export type ParentNotificationItem = { notification: Notification; student: Student };
-
+export { countUnreadNotifications, notificationKindLabel, type ParentNotificationItem } from "./notification-format";
 /**
  * Everything a parent's bell and feed show: every notification for every
  * linked child, newest first, with the child's name alongside. Extracted
@@ -19,6 +12,7 @@ export type ParentNotificationItem = { notification: Notification; student: Stud
  * No dedupe is needed: `linkChild` refuses to link the same student twice,
  * so one link per student is already guaranteed by the data.
  */
+
 export async function getParentNotifications(parentId: string): Promise<ParentNotificationItem[]> {
   const links = await parentStudentLinkRepository.listByParent(parentId);
 
@@ -38,13 +32,4 @@ export async function getParentNotifications(parentId: string): Promise<ParentNo
 
   items.sort((a, b) => b.notification.tappedAt.localeCompare(a.notification.tappedAt));
   return items;
-}
-
-export function countUnreadNotifications(items: ParentNotificationItem[]): number {
-  return items.filter((item) => !item.notification.read).length;
-}
-
-/** The plain-language verb a parent reads, e.g. "tapped in" — sentence case, matching the app's copy style. */
-export function notificationKindLabel(kind: Notification["kind"]): string {
-  return kind === "time_in" ? "tapped in" : "tapped out";
 }

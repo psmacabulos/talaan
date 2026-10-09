@@ -28,9 +28,7 @@ export function SchoolDrawer({
       <SheetContent className="flex flex-col gap-0 data-[side=right]:w-full">
         <SheetHeader className="border-b border-border">
           <SheetTitle>Add school</SheetTitle>
-          <SheetDescription>
-            Give the new school its name, colors, principal and logo.
-          </SheetDescription>
+          <SheetDescription>Give the new school its name, colors, principal and logo.</SheetDescription>
         </SheetHeader>
         {open ? <SchoolForm onSuccess={onSuccess} onCancel={() => onOpenChange(false)} /> : null}
       </SheetContent>

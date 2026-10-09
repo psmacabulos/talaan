@@ -6,15 +6,7 @@ import { cn } from "@/lib/utils";
 import type { Role } from "@/features/staff/types";
 import { navItemsForRole } from "./nav-items";
 
-export function NavLinks({
-  role,
-  onNavigate,
-  className,
-}: {
-  role: Role;
-  onNavigate?: () => void;
-  className?: string;
-}) {
+export function NavLinks({ role, onNavigate, className }: { role: Role; onNavigate?: () => void; className?: string }) {
   const pathname = usePathname();
   // Computed client-side from the role alone (a plain string) rather than
   // received as a prop: a Server Component can't pass the NAV_ITEMS array

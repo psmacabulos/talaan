@@ -10,9 +10,7 @@ describe("Login page", () => {
     // desktop art panel and the mobile-only compact heading are mutually
     // exclusive via `hidden lg:flex` / `lg:hidden`, never both visible at
     // once. Neither names a specific school (see login-art-panel.tsx).
-    expect(screen.getAllByRole("heading", { name: /attendance portal/i }).length).toBeGreaterThan(
-      0,
-    );
+    expect(screen.getAllByRole("heading", { name: /attendance portal/i }).length).toBeGreaterThan(0);
     expect(screen.queryByText(/national science high school/i)).not.toBeInTheDocument();
 
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();

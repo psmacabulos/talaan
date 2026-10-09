@@ -8,27 +8,60 @@
 // component changes. A hardcoded color anywhere else would stay stuck
 // forever, in every other theme.
 // Run with: npm run check:tokens   (or: node scripts/check-tokens.mjs)
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import path from 'node:path';
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const SRC_DIR = path.join(ROOT, 'src');
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
+const SRC_DIR = path.join(ROOT, "src");
 
 // The only place real color values are allowed to be defined.
-const ALLOWED_DIRS = [path.join(SRC_DIR, 'lib', 'theme'), path.join(SRC_DIR, 'styles')];
+const ALLOWED_DIRS = [path.join(SRC_DIR, "lib", "theme"), path.join(SRC_DIR, "styles")];
 
-const SCAN_EXTENSIONS = new Set(['.ts', '.tsx', '.css', '.js', '.mjs']);
+const SCAN_EXTENSIONS = new Set([".ts", ".tsx", ".css", ".js", ".mjs"]);
 
-const COLOR_FUNCTIONS = ['rgb', 'rgba', 'hsl', 'hsla', 'oklch', 'oklab', 'lab', 'lch'];
+const COLOR_FUNCTIONS = ["rgb", "rgba", "hsl", "hsla", "oklch", "oklab", "lab", "lch"];
 const TAILWIND_PALETTES = [
-  'slate', 'gray', 'zinc', 'neutral', 'stone',
-  'red', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald', 'teal',
-  'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose',
+  "slate",
+  "gray",
+  "zinc",
+  "neutral",
+  "stone",
+  "red",
+  "orange",
+  "amber",
+  "yellow",
+  "lime",
+  "green",
+  "emerald",
+  "teal",
+  "cyan",
+  "sky",
+  "blue",
+  "indigo",
+  "violet",
+  "purple",
+  "fuchsia",
+  "pink",
+  "rose",
 ];
 const TAILWIND_COLOR_PREFIXES = [
-  'bg', 'text', 'border', 'ring', 'fill', 'stroke', 'from', 'via', 'to',
-  'outline', 'accent', 'caret', 'decoration', 'divide', 'shadow', 'placeholder',
+  "bg",
+  "text",
+  "border",
+  "ring",
+  "fill",
+  "stroke",
+  "from",
+  "via",
+  "to",
+  "outline",
+  "accent",
+  "caret",
+  "decoration",
+  "divide",
+  "shadow",
+  "placeholder",
 ];
 
 // A hex color: # followed only by hex digits, 3-8 of them (#fff, #223060,
@@ -39,11 +72,11 @@ const HEX_COLOR = /#[0-9a-fA-F]{3,8}\b/g;
 // A color function called with a literal argument (a digit or a decimal
 // point right after the paren) — not `color-mix(in oklch, ...)`, which
 // never has "(" immediately after the color-space name.
-const COLOR_FUNCTION_CALL = new RegExp(`\\b(?:${COLOR_FUNCTIONS.join('|')})\\(\\s*[\\d.]`, 'g');
+const COLOR_FUNCTION_CALL = new RegExp(`\\b(?:${COLOR_FUNCTIONS.join("|")})\\(\\s*[\\d.]`, "g");
 
 const TAILWIND_PALETTE_CLASS = new RegExp(
-  `\\b(?:${TAILWIND_COLOR_PREFIXES.join('|')})-(?:${TAILWIND_PALETTES.join('|')})-(?:50|100|200|300|400|500|600|700|800|900|950)\\b`,
-  'g',
+  `\\b(?:${TAILWIND_COLOR_PREFIXES.join("|")})-(?:${TAILWIND_PALETTES.join("|")})-(?:50|100|200|300|400|500|600|700|800|900|950)\\b`,
+  "g",
 );
 
 // CLAUDE.md's actual rule is "no raw colors... in components or pages" — a
@@ -55,10 +88,7 @@ const TAILWIND_PALETTE_CLASS = new RegExp(
 const ALLOWED_FILENAME_PATTERN = /[/\\]schemas(\.test)?\.ts$/;
 
 function isAllowed(filePath) {
-  return (
-    ALLOWED_DIRS.some((dir) => filePath.startsWith(dir + path.sep)) ||
-    ALLOWED_FILENAME_PATTERN.test(filePath)
-  );
+  return ALLOWED_DIRS.some((dir) => filePath.startsWith(dir + path.sep)) || ALLOWED_FILENAME_PATTERN.test(filePath);
 }
 
 function walk(dir, files = []) {
@@ -79,7 +109,7 @@ const violations = [];
 for (const file of walk(SRC_DIR)) {
   if (isAllowed(file)) continue;
   const relative = path.relative(ROOT, file);
-  const lines = readFileSync(file, 'utf8').split('\n');
+  const lines = readFileSync(file, "utf8").split("\n");
   lines.forEach((line, index) => {
     for (const pattern of [HEX_COLOR, COLOR_FUNCTION_CALL, TAILWIND_PALETTE_CLASS]) {
       for (const match of line.matchAll(pattern)) {
@@ -95,9 +125,9 @@ if (violations.length > 0) {
     console.error(`  ${v.file}:${v.line}  (${v.found})\n    ${v.text}`);
   }
   console.error(
-    '\nColors must be one of the named tokens in src/styles/tokens.css or src/lib/theme/presets.ts — see docs/STYLING-SYSTEM.md.',
+    "\nColors must be one of the named tokens in src/styles/tokens.css or src/lib/theme/presets.ts — see docs/STYLING-SYSTEM.md.",
   );
   process.exit(1);
 }
 
-console.log('check:tokens: no raw colors found outside the theme files.');
+console.log("check:tokens: no raw colors found outside the theme files.");

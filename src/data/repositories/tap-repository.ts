@@ -14,10 +14,7 @@ export interface TapRepository {
   create(tap: Tap): Promise<Tap>;
 }
 
-export function createMockTapRepository(
-  data: Tap[] = seedTaps,
-  options: { latencyMs?: number } = {},
-): TapRepository {
+export function createMockTapRepository(data: Tap[] = seedTaps, options: { latencyMs?: number } = {}): TapRepository {
   const latencyMs = options.latencyMs ?? DEFAULT_LATENCY_MS;
 
   return {

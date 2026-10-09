@@ -3,27 +3,14 @@
 import { useState } from "react";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import type { Role } from "@/features/staff/types";
 import type { School } from "@/features/schools/types";
 import { NavLinks } from "./nav-links";
 import { SidebarBrand } from "./sidebar";
 
 /** The <900px equivalent of the sidebar (design/school-portal-prototype.html) — an off-canvas drawer, closing itself once a link is tapped. */
-export function MobileNav({
-  role,
-  school,
-}: {
-  role: Role;
-  school: School | null;
-}) {
+export function MobileNav({ role, school }: { role: Role; school: School | null }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -38,9 +25,7 @@ export function MobileNav({
             absolutely-positioned close button. */}
         <SheetHeader className="border-b border-border pr-8">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
-          <SheetDescription className="sr-only">
-            Move between the sections of the app.
-          </SheetDescription>
+          <SheetDescription className="sr-only">Move between the sections of the app.</SheetDescription>
           <SidebarBrand school={school} />
         </SheetHeader>
         <NavLinks role={role} onNavigate={() => setOpen(false)} className="p-4" />

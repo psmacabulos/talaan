@@ -33,14 +33,9 @@ export function GradeBreakdown({ rows }: { rows: GradeAttendance[] }) {
             aria-label={`Grade ${row.gradeLevel}, ${row.inSchoolPercent.toFixed(0)} percent in school`}
             className="h-2.5 overflow-hidden rounded-full bg-muted"
           >
-            <div
-              className="h-full rounded-full bg-primary"
-              style={{ width: `${row.inSchoolPercent}%` }}
-            />
+            <div className="h-full rounded-full bg-primary" style={{ width: `${row.inSchoolPercent}%` }} />
           </div>
-          <p className="text-right font-heading font-semibold text-foreground">
-            {row.inSchoolPercent.toFixed(0)}%
-          </p>
+          <p className="text-right font-heading font-semibold text-foreground">{row.inSchoolPercent.toFixed(0)}%</p>
         </div>
       ))}
     </div>

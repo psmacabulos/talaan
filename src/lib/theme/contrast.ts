@@ -108,10 +108,7 @@ export function generateCustomPalette(brandColor: string): CustomPalette {
   const lightAccent = clampChroma({ mode: "oklch", l: 0.958, c: 0.02, h: hue - 30 }, "oklch");
   const lightBorder = clampChroma({ mode: "oklch", l: 0.923, c: 0.017, h: hue }, "oklch");
 
-  let lightPrimary: Oklch = clampChroma(
-    { mode: "oklch", l: Math.min(brand.l, 0.45), c: brand.c, h: hue },
-    "oklch",
-  );
+  let lightPrimary: Oklch = clampChroma({ mode: "oklch", l: Math.min(brand.l, 0.45), c: brand.c, h: hue }, "oklch");
   lightPrimary = nudgeLightnessUntilReadable(lightPrimary, PURE_WHITE, "darker");
   let lightLink: Oklch = clampChroma({ mode: "oklch", l: 0.5, c: brand.c, h: hue }, "oklch");
   lightLink = nudgeLightnessUntilReadable(lightLink, formatOklch(lightBackground), "darker");
@@ -154,9 +151,7 @@ export function generateCustomPalette(brandColor: string): CustomPalette {
     card: formatOklch(darkCard),
     cardForeground: pickReadableForeground(formatOklch(darkCard), [formatOklch(lightText)]),
     primary: formatOklch(darkPrimary),
-    primaryForeground: pickReadableForeground(formatOklch(darkPrimary), [
-      formatOklch(darkBackground),
-    ]),
+    primaryForeground: pickReadableForeground(formatOklch(darkPrimary), [formatOklch(darkBackground)]),
     link: formatOklch(darkLink),
     highlight: HIGHLIGHT,
     highlightForeground: HIGHLIGHT_FOREGROUND,

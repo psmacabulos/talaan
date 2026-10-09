@@ -35,16 +35,14 @@ const scenarioTaps: Tap[] = [
   // the grade 7 Rizal adviser's own dashboard (Step 13's teacher variant)
   // has someone still to arrive — otherwise their class reads 6 of 6 and
   // "Simulate a tap" has nobody left to tap in.
-  ...seedStudents.slice(1, 5).map(
-    (student, i): Tap => ({
-      id: `00000000-0000-4000-8000-00000000000${i + 2}`,
-      schoolId: "school-balanga",
-      stationId: STATION_ID,
-      cardSerial: cardSerialAt(i + 1),
-      studentId: student.id,
-      tappedAt: `2026-06-20T${timeAt(7, 57, i)}:00Z`,
-    }),
-  ),
+  ...seedStudents.slice(1, 5).map((student, i): Tap => ({
+    id: `00000000-0000-4000-8000-00000000000${i + 2}`,
+    schoolId: "school-balanga",
+    stationId: STATION_ID,
+    cardSerial: cardSerialAt(i + 1),
+    studentId: student.id,
+    tappedAt: `2026-06-20T${timeAt(7, 57, i)}:00Z`,
+  })),
   // student-0007 (Bonifacio, grade 8) tapping in late.
   {
     id: "00000000-0000-4000-8000-000000000007",

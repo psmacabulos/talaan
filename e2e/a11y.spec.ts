@@ -40,20 +40,10 @@ async function expectNoBlockingViolations(page: Page) {
   // A fade-in caught halfway reads as low contrast, so wait for one-off
   // animations to settle (endless ones, like a spinner, never will).
   await page.waitForFunction(() =>
-    document
-      .getAnimations()
-      .every(
-        (a) =>
-          a.playState !== "running" ||
-          a.effect?.getTiming().iterations === Infinity,
-      ),
+    document.getAnimations().every((a) => a.playState !== "running" || a.effect?.getTiming().iterations === Infinity),
   );
-  const { violations } = await new AxeBuilder({ page })
-    .withTags(WCAG_TAGS)
-    .analyze();
-  const blocking = violations.filter((v) =>
-    BLOCKING_IMPACTS.has(v.impact ?? ""),
-  );
+  const { violations } = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
+  const blocking = violations.filter((v) => BLOCKING_IMPACTS.has(v.impact ?? ""));
   const other = violations.filter((v) => !BLOCKING_IMPACTS.has(v.impact ?? ""));
 
   for (const v of other) {
@@ -86,11 +76,7 @@ for (const colorScheme of ["light", "dark"] as const) {
     }
 
     for (const preset of themePresets) {
-      test(`login and dashboard under the ${preset.id} preset`, async ({
-        page,
-        context,
-        baseURL,
-      }) => {
+      test(`login and dashboard under the ${preset.id} preset`, async ({ page, context, baseURL }) => {
         await previewThemePreset(context, preset.id, baseURL!);
         await page.goto("/");
         await expectNoBlockingViolations(page);
@@ -110,15 +96,8 @@ for (const colorScheme of ["light", "dark"] as const) {
  * opened first and then audited.
  */
 test.describe("interactive states", () => {
-  test("mobile navigation drawer", async ({
-    page,
-    context,
-    baseURL,
-  }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "mobile",
-      "the drawer only exists on small screens",
-    );
+  test("mobile navigation drawer", async ({ page, context, baseURL }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile", "the drawer only exists on small screens");
     await signInAs(context, "principal", baseURL!);
     await page.goto("/dashboard");
     await page.getByRole("button", { name: "Open navigation menu" }).click();
@@ -126,11 +105,7 @@ test.describe("interactive states", () => {
     await expectNoBlockingViolations(page);
   });
 
-  test("add student drawer with validation errors", async ({
-    page,
-    context,
-    baseURL,
-  }) => {
+  test("add student drawer with validation errors", async ({ page, context, baseURL }) => {
     await signInAs(context, "principal", baseURL!);
     await page.goto("/students");
     await page.getByRole("button", { name: "Add student" }).click();
@@ -141,18 +116,11 @@ test.describe("interactive states", () => {
     await drawer.getByRole("button", { name: "Add student" }).click();
     // Errors are tied to their fields (aria-invalid + aria-describedby) and
     // keyboard focus jumps to the first one, so it's read out straight away.
-    await expect(page.locator(":focus")).toHaveAttribute(
-      "aria-invalid",
-      "true",
-    );
+    await expect(page.locator(":focus")).toHaveAttribute("aria-invalid", "true");
     await expectNoBlockingViolations(page);
   });
 
-  test("edit student drawer and card replace confirmation", async ({
-    page,
-    context,
-    baseURL,
-  }) => {
+  test("edit student drawer and card replace confirmation", async ({ page, context, baseURL }) => {
     await signInAs(context, "principal", baseURL!);
     await page.goto("/students");
     await page
@@ -183,11 +151,7 @@ test.describe("interactive states", () => {
 
   // Cancels instead of confirming, so the shared mock data other tests
   // read is left alone.
-  test("staff row menu and remove confirmation", async ({
-    page,
-    context,
-    baseURL,
-  }) => {
+  test("staff row menu and remove confirmation", async ({ page, context, baseURL }) => {
     await signInAs(context, "principal", baseURL!);
     await page.goto("/staff");
     const trigger = page.getByRole("button", {
@@ -198,9 +162,7 @@ test.describe("interactive states", () => {
     await expectNoBlockingViolations(page);
 
     await page.getByRole("menuitem", { name: "Remove" }).click();
-    await expect(
-      page.getByRole("dialog", { name: "Remove Jose Pascual?" }),
-    ).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Remove Jose Pascual?" })).toBeVisible();
     await expectNoBlockingViolations(page);
 
     await page.getByRole("button", { name: "Cancel" }).click();
@@ -210,42 +172,25 @@ test.describe("interactive states", () => {
   test("tap station results", async ({ page, context, baseURL }) => {
     await signInAs(context, "principal", baseURL!);
     await page.goto("/station");
-    for (const label of [
-      "Valid card",
-      "Already tapped",
-      "Lost card",
-      "Unknown card",
-    ]) {
+    for (const label of ["Valid card", "Already tapped", "Lost card", "Unknown card"]) {
       await page.getByRole("button", { name: label, exact: true }).click();
       // A valid tap uploads in the background and briefly disables (fades)
       // this button; audit once the upload is done, not mid-fade.
-      await expect(
-        page.getByRole("button", { name: "Simulate offline" }),
-      ).toBeEnabled();
+      await expect(page.getByRole("button", { name: "Simulate offline" })).toBeEnabled();
       await expectNoBlockingViolations(page);
     }
   });
 
-  test("parent login and link-a-child form errors", async ({
-    page,
-    context,
-    baseURL,
-  }) => {
+  test("parent login and link-a-child form errors", async ({ page, context, baseURL }) => {
     await page.goto("/parent/login");
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
-    await expect(page.locator(":focus")).toHaveAttribute(
-      "aria-invalid",
-      "true",
-    );
+    await expect(page.locator(":focus")).toHaveAttribute("aria-invalid", "true");
     await expectNoBlockingViolations(page);
 
     await signInAs(context, "parent", baseURL!);
     await page.goto("/parent/link-child");
     await page.locator("form").getByRole("button").last().click();
-    await expect(page.locator(":focus")).toHaveAttribute(
-      "aria-invalid",
-      "true",
-    );
+    await expect(page.locator(":focus")).toHaveAttribute("aria-invalid", "true");
     await expectNoBlockingViolations(page);
   });
 
@@ -261,11 +206,7 @@ test.describe("interactive states", () => {
 /** Keyboard behavior axe can't see: where focus goes, and whether it comes back. */
 test.describe("keyboard and focus", () => {
   for (const as of ["principal", "parent"] as const) {
-    test(`skip link is the first tab stop (${as})`, async ({
-      page,
-      context,
-      baseURL,
-    }) => {
+    test(`skip link is the first tab stop (${as})`, async ({ page, context, baseURL }) => {
       await signInAs(context, as, baseURL!);
       await page.goto(as === "parent" ? "/parent" : "/dashboard");
       await page.keyboard.press("Tab");
@@ -277,11 +218,7 @@ test.describe("keyboard and focus", () => {
     });
   }
 
-  test("drawer traps focus, closes on Escape and restores focus", async ({
-    page,
-    context,
-    baseURL,
-  }) => {
+  test("drawer traps focus, closes on Escape and restores focus", async ({ page, context, baseURL }) => {
     await signInAs(context, "principal", baseURL!);
     await page.goto("/students");
     const trigger = page.getByRole("button", { name: "Add student" });
@@ -292,9 +229,7 @@ test.describe("keyboard and focus", () => {
 
     for (let i = 0; i < 25; i++) {
       await page.keyboard.press("Tab");
-      const insideDrawer = await page.evaluate(
-        () => !!document.activeElement?.closest("[role=dialog]"),
-      );
+      const insideDrawer = await page.evaluate(() => !!document.activeElement?.closest("[role=dialog]"));
       expect(insideDrawer, `focus after ${i + 1} tabs`).toBe(true);
     }
 
@@ -312,15 +247,8 @@ test.describe("keyboard and focus", () => {
     await expect(row).toBeFocused();
   });
 
-  test("mobile navigation drawer restores focus to the menu button", async ({
-    page,
-    context,
-    baseURL,
-  }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "mobile",
-      "the drawer only exists on small screens",
-    );
+  test("mobile navigation drawer restores focus to the menu button", async ({ page, context, baseURL }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile", "the drawer only exists on small screens");
     await signInAs(context, "principal", baseURL!);
     await page.goto("/dashboard");
     const trigger = page.getByRole("button", { name: "Open navigation menu" });
@@ -332,22 +260,11 @@ test.describe("keyboard and focus", () => {
     await expect(trigger).toBeFocused();
   });
 
-  test("tap station buttons are at least 44px tall", async ({
-    page,
-    context,
-    baseURL,
-  }) => {
+  test("tap station buttons are at least 44px tall", async ({ page, context, baseURL }) => {
     await signInAs(context, "principal", baseURL!);
     await page.goto("/station");
-    for (const label of [
-      "Valid card",
-      "Already tapped",
-      "Lost card",
-      "Unknown card",
-    ]) {
-      const box = await page
-        .getByRole("button", { name: label, exact: true })
-        .boundingBox();
+    for (const label of ["Valid card", "Already tapped", "Lost card", "Unknown card"]) {
+      const box = await page.getByRole("button", { name: label, exact: true }).boundingBox();
       expect(box!.height, label).toBeGreaterThanOrEqual(44);
     }
   });
@@ -368,11 +285,7 @@ test.describe("small screens", () => {
   ] as const;
 
   for (const listPage of LIST_PAGES) {
-    test(`${listPage.path} fits the screen width (${listPage.as})`, async ({
-      page,
-      context,
-      baseURL,
-    }, testInfo) => {
+    test(`${listPage.path} fits the screen width (${listPage.as})`, async ({ page, context, baseURL }, testInfo) => {
       test.skip(testInfo.project.name !== "mobile", "phone layout only");
       await signInAs(context, listPage.as, baseURL!);
       await page.goto(listPage.path);
@@ -398,11 +311,7 @@ test.describe("light and dark mode toggle", () => {
   ] as const;
 
   for (const place of PLACES) {
-    test(`menu is accessible (${place.name})`, async ({
-      page,
-      context,
-      baseURL,
-    }) => {
+    test(`menu is accessible (${place.name})`, async ({ page, context, baseURL }) => {
       await signInAs(context, place.as, baseURL!);
       await page.goto(place.path);
       await page.getByRole("button", { name: "Light or dark mode" }).click();
@@ -411,11 +320,7 @@ test.describe("light and dark mode toggle", () => {
     });
   }
 
-  test("choosing dark with the keyboard sticks after a reload", async ({
-    page,
-    context,
-    baseURL,
-  }) => {
+  test("choosing dark with the keyboard sticks after a reload", async ({ page, context, baseURL }) => {
     await signInAs(context, "principal", baseURL!);
     await page.goto("/dashboard");
     await page.getByRole("button", { name: "Light or dark mode" }).focus();
@@ -428,9 +333,7 @@ test.describe("light and dark mode toggle", () => {
     await expect(page.locator("html")).toHaveClass(/\bdark\b/);
 
     await page.getByRole("button", { name: "Light or dark mode" }).click();
-    await expect(
-      page.getByRole("menuitemradio", { name: "Dark" }),
-    ).toBeChecked();
+    await expect(page.getByRole("menuitemradio", { name: "Dark" })).toBeChecked();
     await page.getByRole("menuitemradio", { name: "Match device" }).click();
     await expect(page.locator("html")).not.toHaveClass(/\bdark\b/);
   });

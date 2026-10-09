@@ -45,10 +45,8 @@ export function LoginArtPanel() {
           backgroundImage:
             "linear-gradient(color-mix(in oklch, var(--border) 55%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in oklch, var(--border) 55%, transparent) 1px, transparent 1px)",
           backgroundSize: "32px 32px",
-          maskImage:
-            "radial-gradient(ellipse 65% 55% at 50% 42%, transparent 15%, black 100%)",
-          WebkitMaskImage:
-            "radial-gradient(ellipse 65% 55% at 50% 42%, transparent 15%, black 100%)",
+          maskImage: "radial-gradient(ellipse 65% 55% at 50% 42%, transparent 15%, black 100%)",
+          WebkitMaskImage: "radial-gradient(ellipse 65% 55% at 50% 42%, transparent 15%, black 100%)",
         }}
       />
 
@@ -94,12 +92,7 @@ export function LoginArtPanel() {
                 index < VALUE_PROPS.length - 1 && "motion-reduce:mb-3",
               )}
             >
-              <span
-                className={cn(
-                  "flex size-8 shrink-0 items-center justify-center rounded-full",
-                  TONE_CLASSES[tone],
-                )}
-              >
+              <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-full", TONE_CLASSES[tone])}>
                 <Icon className="size-4" aria-hidden="true" />
               </span>
               <span className="text-sm font-medium text-foreground">{text}</span>

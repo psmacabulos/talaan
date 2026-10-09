@@ -32,9 +32,7 @@ async function main() {
   });
   console.log(`Seeded ${schools.length} schools:`);
   for (const school of schools) {
-    console.log(
-      `- ${school.id}: ${school.name}(${school.notificationPreference})`,
-    );
+    console.log(`- ${school.id}: ${school.name}(${school.notificationPreference})`);
   }
 }
 

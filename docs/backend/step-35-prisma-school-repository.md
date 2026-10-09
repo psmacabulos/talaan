@@ -193,6 +193,7 @@ import { toSchool, toSchoolData } from "./prisma-school-repository";
 const row: SchoolRow = {
   id: "school-a",
   name: "School A",
+  address: null,
   theme: { kind: "preset", presetId: "ocean" },
   logoUrl: null,
   showDepedLogo: false,
@@ -278,6 +279,15 @@ That's the whole swap. Every `import { schoolRepository } from "@/data/repositor
    - `npm run dev`, sign in as the Balanga principal (dev switcher), open **Settings → Notifications**, change it to **Time in only** and save.
    - Stop the dev server (Ctrl+C) and start it again. Reload Settings: still **Time in only**. With the mock, a restart always reset it.
    - In `psql`: `SELECT id, "notificationPreference", "updatedAt" FROM "School";` shows the new value and a fresh `updatedAt`.
+
+     > **Opening `psql`.** Docker must be running (if `docker ps` doesn't list `talaan-postgres`, run `docker start talaan-postgres` first).
+     >
+     > ```bash
+     > docker exec -it talaan-postgres psql -U postgres -d talaan
+     > ```
+     >
+     > The prompt changes to `talaan=#`. Type `\q` to leave. What each part of the command means: [Learning log: getting into `psql`](../LEARNING-LOG.md#getting-into-psql-and-what-each-part-of-the-command-means-owner-question).
+
    - Set it back to **Time in and time out** afterwards. (Rerunning the seed won't reset it: `update: {}` leaves existing rows alone.)
 3. `/parent/signup` lists the three schools.
 4. Optional, slow: `npm run test:e2e` locally (Docker must be running). It takes a while, so CI is the main check.
@@ -291,7 +301,9 @@ Then tell me what you saw (or paste the exact error).
 - **Every page shows the error screen, and the terminal says `Can't reach database server at localhost:5432`**: Docker or the container isn't running. From now on the app needs the database: `docker start talaan-postgres`.
 - **A page says the school isn't found, or lists are empty**: the table is empty (for example, after a reset). Run `npx prisma db seed`.
 - **`ZodError` … `presetId`** in the terminal: a row holds a theme the app doesn't accept. That's `toSchool` doing its job. Check the row in `psql` and fix or delete it.
+- **Typecheck: `Property 'address' is missing in type`** in the test file: the test's `row` must list every column the `School` table has, including `address` (added by the `add_school_address` migration). Add `address: null,` under `name`.
 - **Typecheck: `Module '"@/generated/prisma/client"' has no exported member 'School'`**: the client is stale. Run `npx prisma generate`.
+- **Typecheck (or a red squiggle in VS Code): `Object literal may only specify known properties, and 'address' does not exist in type`** on the test's `address: null`: the opposite of the "missing" error above. The schema and migration have `address`, but the generated client in `src/generated/prisma` was built before that migration. Run `npx prisma generate`. If VS Code still underlines it, run **TypeScript: Restart TS Server** from the command palette.
 - **A newly added school's principal disappears after a restart**: expected for now. The school is in Postgres, but staff are still mock (in memory). It's fixed when staff move to Prisma.
 
 ## What you just learned
@@ -320,4 +332,4 @@ If one fails, fix it and rerun that one command, then rerun the whole line befor
 
 ## What's next
 
-The other repositories move to Prisma the same way, one model per step, starting with `Staff`, which every school's sign-in will need. Those recipes come in the next batch.
+Step 36 gives the browser tests their own database that resets before every run, so tests that write data keep passing once that data lives in Postgres. Then Steps 37–40 move staff, students, cards and taps the same way this step moved schools.

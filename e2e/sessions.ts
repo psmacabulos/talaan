@@ -22,24 +22,12 @@ export const PERSONAS = {
 
 export type Persona = keyof typeof PERSONAS;
 
-export async function signInAs(
-  context: BrowserContext,
-  persona: Persona,
-  baseURL: string,
-) {
+export async function signInAs(context: BrowserContext, persona: Persona, baseURL: string) {
   const session = PERSONAS[persona];
   if (!session) return;
-  await context.addCookies([
-    { name: session.cookie, value: session.value, url: baseURL },
-  ]);
+  await context.addCookies([{ name: session.cookie, value: session.value, url: baseURL }]);
 }
 
-export async function previewThemePreset(
-  context: BrowserContext,
-  presetId: string,
-  baseURL: string,
-) {
-  await context.addCookies([
-    { name: "talaan-theme-override", value: presetId, url: baseURL },
-  ]);
+export async function previewThemePreset(context: BrowserContext, presetId: string, baseURL: string) {
+  await context.addCookies([{ name: "talaan-theme-override", value: presetId, url: baseURL }]);
 }

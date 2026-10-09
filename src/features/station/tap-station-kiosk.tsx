@@ -102,7 +102,11 @@ export function TapStationKiosk({
               : "inline-flex items-center gap-1.5 rounded-full bg-status-present-bg px-2.5 py-1 text-xs font-medium text-status-present"
           }
         >
-          {isOffline ? <WifiOff className="size-3.5" aria-hidden="true" /> : <Wifi className="size-3.5" aria-hidden="true" />}
+          {isOffline ? (
+            <WifiOff className="size-3.5" aria-hidden="true" />
+          ) : (
+            <Wifi className="size-3.5" aria-hidden="true" />
+          )}
           {isOffline ? "Offline" : "Online"}
         </span>
         <span className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground">
@@ -216,8 +220,6 @@ function describeOutcome(
     tone: "idle",
     Icon: HelpCircle,
     title: "Card not registered",
-    lead: queued
-      ? "Saved on this device, will sync later."
-      : "Ask the office to link this card to a student.",
+    lead: queued ? "Saved on this device, will sync later." : "Ask the office to link this card to a student.",
   };
 }

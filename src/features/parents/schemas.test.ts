@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  notificationKindSchema,
-  notificationSchema,
-  parentSchema,
-  parentStudentLinkSchema,
-} from "./schemas";
+import { notificationKindSchema, notificationSchema, parentSchema, parentStudentLinkSchema } from "./schemas";
 
 const validParent = {
   id: "parent-0001",

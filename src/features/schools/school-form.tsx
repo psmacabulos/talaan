@@ -76,10 +76,7 @@ export function SchoolForm({ onSuccess, onCancel }: { onSuccess: () => void; onC
       }
 
       if (result.fieldErrors) {
-        for (const [field, message] of Object.entries(result.fieldErrors) as [
-          keyof CreateSchoolFormInput,
-          string,
-        ][]) {
+        for (const [field, message] of Object.entries(result.fieldErrors) as [keyof CreateSchoolFormInput, string][]) {
           setError(field, { message });
         }
       }
@@ -101,16 +98,12 @@ export function SchoolForm({ onSuccess, onCancel }: { onSuccess: () => void; onC
             <div className="flex items-center gap-3">
               <SchoolLogo name={previewName} logoUrl={logoUrl} className="size-10" />
               <div className="flex min-w-0 flex-col">
-                <span className="truncate font-heading text-sm font-semibold text-foreground">
-                  {previewName}
-                </span>
+                <span className="truncate font-heading text-sm font-semibold text-foreground">{previewName}</span>
                 <span className="text-xs text-muted-foreground">Attendance portal</span>
               </div>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">
-            The sidebar header everyone at this school will see.
-          </p>
+          <p className="text-xs text-muted-foreground">The sidebar header everyone at this school will see.</p>
         </div>
 
         <fieldset className="flex flex-col gap-4">
@@ -159,8 +152,7 @@ export function SchoolForm({ onSuccess, onCancel }: { onSuccess: () => void; onC
         <fieldset className="flex flex-col gap-4">
           <legend className="mb-1 font-heading text-sm font-semibold text-foreground">Principal</legend>
           <p className="text-sm text-muted-foreground">
-            Their account starts as invited so this school can be opened right away. No real email is
-            sent in this demo.
+            Their account starts as invited so this school can be opened right away. No real email is sent in this demo.
           </p>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">

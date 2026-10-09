@@ -262,13 +262,7 @@ export const DEFAULT_CUSTOM_BRAND_COLOR = "#223060";
  */
 export type ThemeSelection = ThemePresetId | "saved";
 
-export const themePresets: ThemePreset[] = [
-  schoolPreset,
-  oceanPreset,
-  emeraldPreset,
-  crimsonPreset,
-  violetPreset,
-];
+export const themePresets: ThemePreset[] = [schoolPreset, oceanPreset, emeraldPreset, crimsonPreset, violetPreset];
 
 export function getThemePreset(id: string | undefined): ThemePreset {
   return themePresets.find((preset) => preset.id === id) ?? schoolPreset;

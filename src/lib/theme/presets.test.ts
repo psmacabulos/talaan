@@ -41,10 +41,7 @@ describe("theme presets", () => {
   });
 
   it("the school preset matches src/styles/tokens.css exactly", () => {
-    const tokensCss = readFileSync(
-      path.resolve(__dirname, "../../styles/tokens.css"),
-      "utf-8",
-    );
+    const tokensCss = readFileSync(path.resolve(__dirname, "../../styles/tokens.css"), "utf-8");
     const school = themePresets.find((preset) => preset.id === "school");
     if (!school) throw new Error("school preset not found");
 

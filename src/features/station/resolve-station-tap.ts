@@ -54,7 +54,11 @@ function activeCardFor(studentId: string, cards: Card[]): Card | undefined {
  * "actually persisted once synced" — the same reasoning as CLAUDE.md's
  * "idempotent by a device-made UUID" rule for a real station.
  */
-export function resolveStationTap(kind: StationTapKind, context: StationTapContext, ids: StationTapIds): StationTapOutcome {
+export function resolveStationTap(
+  kind: StationTapKind,
+  context: StationTapContext,
+  ids: StationTapIds,
+): StationTapOutcome {
   const { schoolId, students, taps, cards, now } = context;
 
   if (kind === "valid") {

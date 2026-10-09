@@ -30,13 +30,7 @@ const CARD_FILTER_LABEL: Record<CardFilter, string> = {
  * `router.push`. Grade filtering is hidden entirely for teachers — they're
  * already scoped to one grade and section server-side.
  */
-export function StudentsToolbar({
-  params,
-  showGradeFilter,
-}: {
-  params: StudentListParams;
-  showGradeFilter: boolean;
-}) {
+export function StudentsToolbar({ params, showGradeFilter }: { params: StudentListParams; showGradeFilter: boolean }) {
   const router = useRouter();
   const [query, setQuery] = useState(params.q);
   // Adjusting state during render (React's documented pattern for "reset
@@ -60,10 +54,7 @@ export function StudentsToolbar({
 
   return (
     <div
-      className={cn(
-        "grid gap-3 sm:flex sm:flex-wrap sm:items-center",
-        showGradeFilter ? "grid-cols-2" : "grid-cols-1",
-      )}
+      className={cn("grid gap-3 sm:flex sm:flex-wrap sm:items-center", showGradeFilter ? "grid-cols-2" : "grid-cols-1")}
     >
       <div className="relative col-span-full sm:w-72">
         <Search

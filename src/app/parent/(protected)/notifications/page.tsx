@@ -5,10 +5,7 @@ import { EmptyState } from "@/components/empty-state";
 import { getParentSession } from "@/lib/parent-session";
 import { MarkAllReadButton } from "@/features/parents/mark-all-read-button";
 import { NotificationList } from "@/features/parents/notification-list";
-import {
-  countUnreadNotifications,
-  getParentNotifications,
-} from "@/features/parents/notifications-data";
+import { countUnreadNotifications, getParentNotifications } from "@/features/parents/notifications-data";
 
 /**
  * Step 24's full notification feed. The protected layout already fetched the

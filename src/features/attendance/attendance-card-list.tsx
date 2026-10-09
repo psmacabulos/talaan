@@ -37,10 +37,7 @@ export function AttendanceCardList({
   variant?: "cards" | "rows";
 }) {
   return (
-    <ul
-      aria-label={label}
-      className={cn("flex flex-col", variant === "cards" ? "gap-2" : "divide-y divide-border")}
-    >
+    <ul aria-label={label} className={cn("flex flex-col", variant === "cards" ? "gap-2" : "divide-y divide-border")}>
       {rows.map(({ student, cardStatus }) => {
         const tap = todaysTap(student.id, taps, now);
 
@@ -59,9 +56,7 @@ export function AttendanceCardList({
               <h4 className="text-base leading-snug font-semibold wrap-break-word text-foreground">
                 {studentName(student)}
               </h4>
-              {cardStatus !== "active" ? (
-                <CardStatusBadge status={cardStatus} className="mt-1 px-2 py-0.5" />
-              ) : null}
+              {cardStatus !== "active" ? <CardStatusBadge status={cardStatus} className="mt-1 px-2 py-0.5" /> : null}
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
               <StatusPill status={studentStatus(student.id, taps, now)} />

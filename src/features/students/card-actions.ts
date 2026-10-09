@@ -15,7 +15,9 @@ async function lookupBySerial(serial: string): Promise<Card[]> {
   return existing ? [existing] : [];
 }
 
-async function assertCanManageCards(studentId: string): Promise<{ ok: true; schoolId: string } | { ok: false; formError: string }> {
+async function assertCanManageCards(
+  studentId: string,
+): Promise<{ ok: true; schoolId: string } | { ok: false; formError: string }> {
   const session = await getSession();
   if (!session.schoolId || session.role === "teacher") {
     return { ok: false, formError: "You don't have permission to manage ID cards." };

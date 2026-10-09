@@ -45,7 +45,14 @@ const anaActiveCard = card({ id: "c-ana", studentId: "s-ana", status: "active", 
 const benLostCard = card({ id: "c-ben-lost", studentId: "s-ben", status: "lost", serial: "04:02:02:02:02:02:02" });
 
 function context(overrides: Partial<StationTapContext> = {}): StationTapContext {
-  return { schoolId: SCHOOL_ID, students: [ana, ben], taps: [], cards: [anaActiveCard, benLostCard], now: NOW, ...overrides };
+  return {
+    schoolId: SCHOOL_ID,
+    students: [ana, ben],
+    taps: [],
+    cards: [anaActiveCard, benLostCard],
+    now: NOW,
+    ...overrides,
+  };
 }
 
 describe("resolveStationTap: valid", () => {
@@ -88,7 +95,12 @@ describe("resolveStationTap: valid", () => {
 
 describe("resolveStationTap: duplicate", () => {
   it("reports the existing tap for a student who already tapped today, without creating a new one", () => {
-    const existing = tap({ id: "t-1", studentId: "s-ana", cardSerial: anaActiveCard.serial, tappedAt: "2026-06-20T07:56:00Z" });
+    const existing = tap({
+      id: "t-1",
+      studentId: "s-ana",
+      cardSerial: anaActiveCard.serial,
+      tappedAt: "2026-06-20T07:56:00Z",
+    });
     const outcome = resolveStationTap("duplicate", context({ taps: [existing] }), IDS);
     expect(outcome).toEqual({ status: "ignored", kind: "duplicate", existingTap: existing, studentName: "Ana Cruz" });
   });

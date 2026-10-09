@@ -9,8 +9,7 @@ import type { StudentFormInput } from "./types";
 export type StudentFormFieldErrors = Partial<Record<keyof StudentFormInput, string>>;
 
 export type StudentFormActionResult =
-  | { ok: true }
-  | { ok: false; formError?: string; fieldErrors?: StudentFormFieldErrors };
+  { ok: true } | { ok: false; formError?: string; fieldErrors?: StudentFormFieldErrors };
 
 function fieldErrorsFrom(error: import("zod").ZodError<StudentFormInput>): StudentFormFieldErrors {
   const flattened = error.flatten().fieldErrors;

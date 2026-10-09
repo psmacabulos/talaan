@@ -22,13 +22,9 @@ export type Session = {
  * below so it can be unit-tested directly (with a small fake repository)
  * instead of needing to mock `next/headers`'s cookie store.
  */
-export async function resolveSession(
-  staffId: string | undefined,
-  repository: StaffRepository,
-): Promise<Session> {
+export async function resolveSession(staffId: string | undefined, repository: StaffRepository): Promise<Session> {
   const staff =
-    (staffId ? await repository.getById(staffId) : null) ??
-    (await repository.getById(DEFAULT_DEV_STAFF_ID));
+    (staffId ? await repository.getById(staffId) : null) ?? (await repository.getById(DEFAULT_DEV_STAFF_ID));
 
   if (!staff) {
     throw new Error(`Default dev staff "${DEFAULT_DEV_STAFF_ID}" was not found in the seed data.`);

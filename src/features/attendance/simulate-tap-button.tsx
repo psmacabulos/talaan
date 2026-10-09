@@ -31,25 +31,16 @@ export function SimulateTapButton() {
 
       if (result.reason === "no-card") {
         const names = result.studentNames;
-        toast(
-          names.length === 1
-            ? `${names[0]} has no ID card yet`
-            : `${names.length} students have no ID card yet`,
-          {
-            description:
-              names.length === 1
-                ? "They can't tap in until a card is linked to them."
-                : `${names.join(", ")} can't tap in until a card is linked to them.`,
-          },
-        );
+        toast(names.length === 1 ? `${names[0]} has no ID card yet` : `${names.length} students have no ID card yet`, {
+          description:
+            names.length === 1
+              ? "They can't tap in until a card is linked to them."
+              : `${names.join(", ")} can't tap in until a card is linked to them.`,
+        });
         return;
       }
 
-      toast(
-        result.reason === "everyone-in"
-          ? "Everyone has already tapped in"
-          : "Pick a school first",
-      );
+      toast(result.reason === "everyone-in" ? "Everyone has already tapped in" : "Pick a school first");
     });
   }
 

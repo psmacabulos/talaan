@@ -61,10 +61,7 @@ export function PresetPicker({
         className="grid grid-cols-1 gap-2 sm:grid-cols-2"
       >
         {themePresets.map((preset) => (
-          <div
-            key={preset.id}
-            className="flex items-start gap-2.5 rounded-lg border border-border px-3 py-2.5"
-          >
+          <div key={preset.id} className="flex items-start gap-2.5 rounded-lg border border-border px-3 py-2.5">
             <RadioGroupItem value={preset.id} id={`school-preset-${preset.id}`} className="mt-0.5" />
             {/* items-start overrides the Label base's items-center: inside a
                 flex-col it must left-align the name and swatch, or both end

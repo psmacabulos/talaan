@@ -19,13 +19,7 @@ const STATUS_CLASS: Record<AttendanceStatus, string> = {
   idle: "bg-status-idle-bg text-status-idle",
 };
 
-export function StatusPill({
-  status,
-  className,
-}: {
-  status: AttendanceStatus;
-  className?: string;
-}) {
+export function StatusPill({ status, className }: { status: AttendanceStatus; className?: string }) {
   return (
     <span
       className={cn(

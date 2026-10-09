@@ -2,9 +2,7 @@ import { expect, test } from "@playwright/test";
 import { signInAs } from "./sessions";
 
 test.describe("Theme switching", () => {
-  test("theme dropdown on login page persists after sign-in", async ({
-    page,
-  }) => {
+  test("theme dropdown on login page persists after sign-in", async ({ page }) => {
     // Start on login (no auth yet).
     await page.goto("/");
 
@@ -22,11 +20,7 @@ test.describe("Theme switching", () => {
   test.describe("theme dropdown (desktop/tablet only)", () => {
     test.skip(({ viewport }) => viewport!.width < 640, "theme dropdown is hidden below sm (640px)");
 
-    test("theme dropdown switches theme and persists after reload", async ({
-      page,
-      context,
-      baseURL,
-    }) => {
+    test("theme dropdown switches theme and persists after reload", async ({ page, context, baseURL }) => {
       await signInAs(context, "principal", baseURL!);
       await page.goto("/dashboard");
 
@@ -43,9 +37,7 @@ test.describe("Theme switching", () => {
       // The theme colors should have changed. Check by looking at a colored
       // element (e.g., a primary button or status badge).
       const primaryButton = page.getByRole("button").first();
-      const computedStyle = await primaryButton.evaluate((el) =>
-        window.getComputedStyle(el).backgroundColor,
-      );
+      const computedStyle = await primaryButton.evaluate((el) => window.getComputedStyle(el).backgroundColor);
       // Emerald theme uses a teal primary, so it shouldn't be the default school blue.
       expect(computedStyle).toBeTruthy();
 
@@ -59,11 +51,7 @@ test.describe("Theme switching", () => {
       await expect(emeraldOption).toHaveAttribute("aria-selected", "true");
     });
 
-    test("saved theme restores school's own theme", async ({
-      page,
-      context,
-      baseURL,
-    }) => {
+    test("saved theme restores school's own theme", async ({ page, context, baseURL }) => {
       await signInAs(context, "principal", baseURL!);
       await page.goto("/dashboard");
 
@@ -81,17 +69,10 @@ test.describe("Theme switching", () => {
 
       // Dropdown now shows "Saved theme" as selected.
       await page.getByRole("combobox", { name: "Color theme" }).click();
-      await expect(page.getByRole("option", { name: "Saved theme" })).toHaveAttribute(
-        "aria-selected",
-        "true",
-      );
+      await expect(page.getByRole("option", { name: "Saved theme" })).toHaveAttribute("aria-selected", "true");
     });
 
-    test("theme dropdown is only on principal and super admin", async ({
-      page,
-      context,
-      baseURL,
-    }) => {
+    test("theme dropdown is only on principal and super admin", async ({ page, context, baseURL }) => {
       // Teacher should not see it.
       await signInAs(context, "teacher", baseURL!);
       await page.goto("/dashboard");

@@ -9,7 +9,9 @@ describe("parseStudentListParams", () => {
   });
 
   it("parses valid values for every field", () => {
-    expect(parseStudentListParams({ q: "juan", grade: "9", card: "lost", sort: "age", dir: "desc", page: "3" })).toEqual({
+    expect(
+      parseStudentListParams({ q: "juan", grade: "9", card: "lost", sort: "age", dir: "desc", page: "3" }),
+    ).toEqual({
       q: "juan",
       grade: 9,
       card: "lost",

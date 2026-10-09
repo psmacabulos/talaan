@@ -9,11 +9,7 @@ import { findBalangaStudentByFullName, testEmail } from "./test-data";
 test.describe("Parent flow (mobile only)", () => {
   test.skip(({ viewport }) => viewport!.width !== 360, "phone width only");
 
-  test("parent signs up, links a child, and sees notification", async ({
-    page,
-    context,
-    baseURL,
-  }) => {
+  test("parent signs up, links a child, and sees notification", async ({ page, context, baseURL }) => {
     // Step 1: Principal taps a card at the station (to trigger a notification).
     await signInAs(context, "principal", baseURL!);
     await page.goto("/station");
@@ -92,7 +88,12 @@ test.describe("Parent flow (mobile only)", () => {
     // and also matches the first name.
     const notificationItem = page.locator("main").getByText(new RegExp(student!.firstName));
     await expect(notificationItem.first()).toBeVisible();
-    await expect(page.locator("main").getByText(/tapped in|tapped out/i).first()).toBeVisible();
+    await expect(
+      page
+        .locator("main")
+        .getByText(/tapped in|tapped out/i)
+        .first(),
+    ).toBeVisible();
 
     // Step 6: Sign out and back in.
     // On mobile, sign-out is likely in a menu or footer.

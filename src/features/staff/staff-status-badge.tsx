@@ -17,11 +17,7 @@ const CLASS: Record<StaffStatus, string> = {
 export function StaffStatusBadge({ status, className }: { status: StaffStatus; className?: string }) {
   return (
     <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium",
-        CLASS[status],
-        className,
-      )}
+      className={cn("inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium", CLASS[status], className)}
     >
       {LABEL[status]}
     </span>

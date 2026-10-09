@@ -35,11 +35,7 @@ export function SchoolsDirectory({ items }: { items: SchoolRow[] }) {
       />
 
       {items.length === 0 ? (
-        <EmptyState
-          icon={SchoolIcon}
-          title="No schools yet"
-          description="Add the first school to get started."
-        />
+        <EmptyState icon={SchoolIcon} title="No schools yet" description="Add the first school to get started." />
       ) : (
         // Both views render and CSS shows one, so the server's HTML is right
         // for every screen from the first paint (docs/RESPONSIVE-LISTS.md).

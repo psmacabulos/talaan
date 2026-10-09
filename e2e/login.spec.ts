@@ -15,9 +15,7 @@ test.describe("Login", () => {
     await page.getByLabel("Password", { exact: true }).fill("password123");
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
     // Phase 1 hasn't connected real accounts yet, so the button shows this.
-    await expect(
-      page.getByText("Sign-in isn't connected yet", { exact: true }),
-    ).toBeVisible();
+    await expect(page.getByText("Sign-in isn't connected yet", { exact: true })).toBeVisible();
     // Still on login, not redirected.
     await expect(page).toHaveURL("/");
   });
@@ -36,9 +34,7 @@ test.describe("Login", () => {
     await expect(page.getByText(/Enter a valid email address/i)).toBeVisible();
   });
 
-  test("parent sign-in redirects to link-child for a new parent", async ({
-    page,
-  }) => {
+  test("parent sign-in redirects to link-child for a new parent", async ({ page }) => {
     // Sign up first (parent flow test will re-use this).
     await page.goto("/parent/signup");
     const email = `parent-${Date.now()}@example.com`;

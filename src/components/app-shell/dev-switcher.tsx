@@ -75,9 +75,7 @@ export function DevSwitcher({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuLabel className="text-xs text-muted-foreground">
-          Preview as (dev only)
-        </DropdownMenuLabel>
+        <DropdownMenuLabel className="text-xs text-muted-foreground">Preview as (dev only)</DropdownMenuLabel>
         <DropdownMenuRadioGroup value={userId} onValueChange={switchTo}>
           {platform.length > 0 && (
             <Fragment>

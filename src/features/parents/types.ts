@@ -1,10 +1,5 @@
 import type { z } from "zod";
-import type {
-  notificationKindSchema,
-  notificationSchema,
-  parentSchema,
-  parentStudentLinkSchema,
-} from "./schemas";
+import type { notificationKindSchema, notificationSchema, parentSchema, parentStudentLinkSchema } from "./schemas";
 import type { linkChildSchema, parentLoginSchema, parentSignupSchema } from "./auth-schemas";
 
 export type Parent = z.infer<typeof parentSchema>;

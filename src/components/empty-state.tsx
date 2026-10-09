@@ -25,9 +25,7 @@ export function EmptyState({
       <Icon className="size-10 text-muted-foreground" aria-hidden="true" />
       <div className="flex flex-col gap-1">
         <p className="font-heading text-base font-semibold text-foreground">{title}</p>
-        {description ? (
-          <p className="max-w-sm text-sm text-muted-foreground">{description}</p>
-        ) : null}
+        {description ? <p className="max-w-sm text-sm text-muted-foreground">{description}</p> : null}
       </div>
       {action ? (
         <Button size="sm" onClick={action.onClick}>

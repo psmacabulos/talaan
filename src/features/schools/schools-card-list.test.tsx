@@ -50,7 +50,9 @@ describe("SchoolsCardList", () => {
     render(<SchoolsCardList items={[balanga, crimson]} />);
 
     const [first] = cards();
-    expect(within(first).getByRole("heading", { name: "Balanga City National Science High School" })).toBeInTheDocument();
+    expect(
+      within(first).getByRole("heading", { name: "Balanga City National Science High School" }),
+    ).toBeInTheDocument();
     expect(within(first).getByText("36 students · 4 staff")).toBeInTheDocument();
     expect(screen.queryByText("School")).not.toBeInTheDocument();
     expect(screen.queryByText("Crimson")).not.toBeInTheDocument();

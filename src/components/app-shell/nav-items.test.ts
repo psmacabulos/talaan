@@ -26,11 +26,7 @@ describe("navItemsForRole", () => {
   });
 
   it("keeps a teacher to their own class's screens", () => {
-    expect(navItemsForRole("teacher").map((item) => item.segment)).toEqual([
-      "dashboard",
-      "attendance",
-      "students",
-    ]);
+    expect(navItemsForRole("teacher").map((item) => item.segment)).toEqual(["dashboard", "attendance", "students"]);
   });
 });
 

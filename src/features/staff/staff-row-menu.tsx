@@ -91,11 +91,7 @@ export function StaffRowMenu({
             disabled={isPending}
             className={cn("text-muted-foreground", className)}
           >
-            {isPending ? (
-              <Loader2 className="animate-spin" aria-hidden="true" />
-            ) : (
-              <MoreVertical aria-hidden="true" />
-            )}
+            {isPending ? <Loader2 className="animate-spin" aria-hidden="true" /> : <MoreVertical aria-hidden="true" />}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-60">

@@ -37,11 +37,7 @@ export default async function StationPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        as="h2"
-        title="Tap station"
-        description="This is what a tablet or phone at the gate shows."
-      />
+      <PageHeader as="h2" title="Tap station" description="This is what a tablet or phone at the gate shows." />
       <TapStationKiosk schoolId={session.schoolId} students={students} taps={taps} cards={cards} />
     </div>
   );

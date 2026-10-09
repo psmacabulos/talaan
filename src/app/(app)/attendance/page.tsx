@@ -99,7 +99,11 @@ export default async function AttendancePage({ searchParams }: PageProps<"/atten
           description={`This demo only has sample attendance for ${formatAttendanceDateLabel(ATTENDANCE_SEED_DATE)}.`}
         />
         <Link
-          href={attendanceHref({ date: ATTENDANCE_SEED_DATE, gradeLevel: selected.gradeLevel, section: selected.section })}
+          href={attendanceHref({
+            date: ATTENDANCE_SEED_DATE,
+            gradeLevel: selected.gradeLevel,
+            section: selected.section,
+          })}
           className="rounded-sm text-sm font-medium text-link underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           Jump to {formatAttendanceDateLabel(ATTENDANCE_SEED_DATE)}

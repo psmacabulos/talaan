@@ -75,9 +75,7 @@ export const studentFormSchema = z.object({
     .optional()
     .transform((value) => (value ? value : undefined)),
   lastName: z.string().trim().min(1, "Enter a last name"),
-  birthDate: z
-    .iso.date("Enter a birth date")
-    .refine((value) => value <= TODAY, "Birth date cannot be in the future"),
+  birthDate: z.iso.date("Enter a birth date").refine((value) => value <= TODAY, "Birth date cannot be in the future"),
   lrn: z
     .union([lrnSchema, z.literal("")])
     .optional()

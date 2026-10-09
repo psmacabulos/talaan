@@ -14,6 +14,16 @@ Claude writes one recipe file here: `docs/backend/step-NN-<name>.md`, using the 
 6. **What you just learned** — a short recap of the concept, so it sticks.
 7. **Before you commit** — the same copy-paste block in every recipe: start the database, then the lint, tokens, typecheck, test and build checks in CI's order, plus `npx playwright test` before a push. The owner runs these personally before every commit.
 
+**Whenever a recipe asks you to use `psql`**, it repeats this reminder right where it's needed, instead of assuming you remember the command:
+
+> **Opening `psql`.** Docker must be running (if `docker ps` doesn't list `talaan-postgres`, run `docker start talaan-postgres` first).
+>
+> ```bash
+> docker exec -it talaan-postgres psql -U postgres -d talaan
+> ```
+>
+> The prompt changes to `talaan=#`. Type `\q` to leave. What each part of the command means: [Learning log: getting into `psql`](../LEARNING-LOG.md#getting-into-psql-and-what-each-part-of-the-command-means-owner-question).
+
 ## What the owner does
 
 1. Open the recipe file for the current step.

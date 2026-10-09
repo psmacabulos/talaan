@@ -62,10 +62,7 @@ export function StudentsDirectory({
           canEdit ? (
             // Just "Add" on phones, so the button fits beside the title; the
             // full name stays the accessible name everywhere.
-            <Button
-              aria-label="Add student"
-              onClick={() => setDrawer({ open: true, student: undefined, cards: [] })}
-            >
+            <Button aria-label="Add student" onClick={() => setDrawer({ open: true, student: undefined, cards: [] })}>
               <Plus className="size-4" aria-hidden="true" />
               Add<span className="hidden sm:inline">student</span>
             </Button>

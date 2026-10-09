@@ -68,8 +68,7 @@ export default async function DashboardPage() {
   if (session.role === "teacher") {
     const classStudents = students.filter(
       (student) =>
-        student.gradeLevel === signedInStaff?.advisoryGradeLevel &&
-        student.section === signedInStaff?.advisorySection,
+        student.gradeLevel === signedInStaff?.advisoryGradeLevel && student.section === signedInStaff?.advisorySection,
     );
     const classStudentIds = new Set(classStudents.map((student) => student.id));
     const classTaps = taps.filter((tap) => tap.studentId && classStudentIds.has(tap.studentId));
@@ -79,9 +78,7 @@ export default async function DashboardPage() {
     // inside Step 13 instead of reopening Step 9's repository interfaces.
     // The full card history, not just the active card, so a phone can tell
     // "No card" from "Lost" (Step 27.8), the same as the Attendance page.
-    const cardsByStudent = await Promise.all(
-      classStudents.map((student) => cardRepository.listByStudent(student.id)),
-    );
+    const cardsByStudent = await Promise.all(classStudents.map((student) => cardRepository.listByStudent(student.id)));
     const rollRows = classStudents.map((student, index) => ({
       student,
       cardStatus: deriveCardStatus(cardsByStudent[index] ?? []),

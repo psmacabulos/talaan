@@ -40,9 +40,7 @@ export function parseAttendanceDate(raw: string | string[] | undefined): string 
 export function classOptionsFromRoster(students: Student[]): ClassOption[] {
   const seen = new Set<string>();
   const options: ClassOption[] = [];
-  const sorted = [...students].sort(
-    (a, b) => a.gradeLevel - b.gradeLevel || a.section.localeCompare(b.section),
-  );
+  const sorted = [...students].sort((a, b) => a.gradeLevel - b.gradeLevel || a.section.localeCompare(b.section));
   for (const student of sorted) {
     const key = `${student.gradeLevel}/${student.section}`;
     if (seen.has(key)) continue;
@@ -79,9 +77,7 @@ export function resolveClassSelection(
   const gradeOptions = options.filter((option) => option.gradeLevel === gradeNumber);
   const resolvedGradeOptions = gradeOptions.length > 0 ? gradeOptions : [options[0]];
 
-  return (
-    resolvedGradeOptions.find((option) => option.section === sectionValue) ?? resolvedGradeOptions[0]
-  );
+  return resolvedGradeOptions.find((option) => option.section === sectionValue) ?? resolvedGradeOptions[0];
 }
 
 export function attendanceHref(params: AttendanceListParams): string {

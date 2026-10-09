@@ -100,7 +100,9 @@ function studentAt(index: number, slot: SectionSlot, nameIndex: number = index):
 }
 
 const rosterStudents: Student[] = SECTION_SLOTS.flatMap((slot, slotIndex) =>
-  Array.from({ length: STUDENTS_PER_SECTION }, (_, seatIndex) => studentAt(slotIndex * STUDENTS_PER_SECTION + seatIndex, slot)),
+  Array.from({ length: STUDENTS_PER_SECTION }, (_, seatIndex) =>
+    studentAt(slotIndex * STUDENTS_PER_SECTION + seatIndex, slot),
+  ),
 );
 
 /** Index of the first student after the normal 72-strong roster — taps.ts

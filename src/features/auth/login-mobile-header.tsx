@@ -17,16 +17,13 @@ export function LoginMobileHeader() {
             "linear-gradient(color-mix(in oklch, var(--border) 55%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in oklch, var(--border) 55%, transparent) 1px, transparent 1px)",
           backgroundSize: "24px 24px",
           maskImage: "radial-gradient(ellipse 90% 90% at 50% 40%, black 45%, transparent 100%)",
-          WebkitMaskImage:
-            "radial-gradient(ellipse 90% 90% at 50% 40%, black 45%, transparent 100%)",
+          WebkitMaskImage: "radial-gradient(ellipse 90% 90% at 50% 40%, black 45%, transparent 100%)",
         }}
       />
       <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md">
         <Nfc className="size-5" aria-hidden="true" />
       </span>
-      <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-        Attendance portal
-      </h1>
+      <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Attendance portal</h1>
     </div>
   );
 }

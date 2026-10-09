@@ -60,7 +60,12 @@ describe("StaffCompactList", () => {
   });
 
   it("shows a teacher's role when there's no advisory class", () => {
-    render(<StaffCompactList items={[{ ...teacher, advisoryGradeLevel: undefined, advisorySection: undefined }]} currentUserId="x" />);
+    render(
+      <StaffCompactList
+        items={[{ ...teacher, advisoryGradeLevel: undefined, advisorySection: undefined }]}
+        currentUserId="x"
+      />,
+    );
     expect(screen.getByText("Teacher")).toBeInTheDocument();
   });
 

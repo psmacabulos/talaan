@@ -121,7 +121,67 @@ Running them one at a time does exactly the same checks. `&&` just saves you typ
 
 `npm ci` (the clean, exact install from `package-lock.json`) is explained in "Keeping local and CI in sync" below.
 
+### Writing a conventional commit message (owner question, Step 35)
+A conventional commit is a commit message with a fixed shape, so the history is easy to scan and tools can read it:
+
+```
+type(scope): short summary          ← subject line, required
+
+Why the change was made, in a sentence or two.   ← body, optional
+- one bullet per notable thing it includes
+```
+
+**`type`**: what *kind* of change it is. Pick the one that fits the main change:
+
+| Type | Use it for | Example |
+| --- | --- | --- |
+| `feat` | something new a user or the app can do | `feat(db): add local Postgres, Prisma and the School model with seed data` |
+| `fix` | a bug fix | `fix: stop tap-station e2e tests from starving each other in CI` |
+| `docs` | only documentation changed | `docs: kick off Phase 2 with the recipe-driven workflow and Step 30's recipe` |
+| `test` | only tests added or changed | `test: add end-to-end tests` |
+| `ci` | the CI workflow (`.github/workflows/`) | `ci: run Postgres in CI and apply migrations` |
+| `chore` | upkeep: dependency updates, config, scripts | `chore: update dependencies and fix critical Next.js advisory` |
+| `refactor` | code restructured, behavior unchanged | `refactor(students): split the form into smaller components` |
+| `style` | formatting only (Prettier, whitespace) | `style: reformat the codebase at 120 columns` |
+
+**`(scope)`**: optional. Names the area that changed, in one word: `db`, `students`, `theme`, `ui`. Leave it out when the change is spread everywhere.
+
+**Summary rules:**
+- Write it as a command, as if finishing "This commit will …": `add`, `fix`, `move`. Not `added` or `adds`.
+- Lowercase after the colon, no full stop at the end, about 72 characters at most.
+- Say *what changed*, not *what you did*: `read and write schools through Prisma`, not `step 35 done`.
+
+**Body**: add one when the subject can't say it all. Leave a blank line after the subject. Explain *why*, then list anything else that's included.
+
+**Breaking change**: a change that breaks something that used to work (say, an API the parent app depends on). Add `!` before the colon (`feat(api)!: …`). The project isn't released yet, so you won't need this for now.
+
+**One commit, one change.** If you can't pick a single type, the commit probably holds two changes. For example, a whole-codebase Prettier reformat is a `style` commit by itself. Mixed into a `feat` commit, it buries the real change under hundreds of reformatted lines.
+
+**Typing it:**
+- One line: `git commit -m "feat(db): read and write schools through Prisma"`.
+- With a body: `git commit` with no `-m` opens your editor (vi; see "Saving and quitting in vi/vim" above). Or use two `-m` flags: `git commit -m "subject" -m "body"`. The second `-m` becomes the body.
+- Or use VS Code's Source Control box. The first line is the subject; leave the second line empty, then type the body.
+
+Two slips are already in this repo's history. Check `git log --oneline` after committing:
+- `a619949 git commit -m "test: add end-to-end tests`: the whole command got pasted *into* the message box.
+- `ec20373  feat(students): …`: a leading space before the type.
+
+Each step in `docs/PLAN.md` ends with a suggested `Commit:` line. Use that, or write your own with these rules.
+
 ---
+
+### Getting to a file or folder fast in VS Code (owner question, Step 35)
+- **⌘P (Quick Open):** type part of a file's name or path, then Enter. Folder names work as part of the search: `repo prisma school` finds `src/data/repositories/prisma-school-repository.ts`. This is the fastest way most of the time.
+- **A folder itself:** ⌘⇧E puts you in the Explorer (the file tree). Start typing a name, like `repositories`, to jump to it, then → opens it. ⌘⌥F inside the Explorer filters the tree to matches.
+- **The file you're in:** right-click its tab → **Reveal in Explorer View** shows where it sits in the tree.
+- **⌃- (Control and minus)** jumps back to where you just were, and **⌃⇧-** goes forward again. Handy after following a link or opening a file with ⌘P.
+- **⌘-click** an import path like `"./school-repository"` opens that file.
+
+### Why saving a file split one-line exports onto many lines: Prettier's `printWidth` (owner question, Step 35)
+- `.prettierrc.json` sets `"printWidth": 80`. Any statement longer than 80 characters gets wrapped, one item per line. Prettier never keeps a statement on one line once it's over the limit.
+- `index.ts` had lines around 100–106 characters that were typed by hand and never formatted. Format-on-save in VS Code then applied the 80 limit.
+- To keep more on one line, raise the limit, for example `"printWidth": 120`. It's one setting for the whole repo, so the next `npm run format` rewraps every file to match. Do that as its own commit, separate from feature work.
+- To protect a single statement, put `// prettier-ignore` on the line above it. Prettier then leaves that statement as written.
 
 ## Keeping local and CI in sync
 
@@ -426,6 +486,9 @@ Next.js merges what Express usually splits into two things (Routes + Controller)
 
 ---
 
+### What does the Prisma-backed repository do, and why are there two "School" types? (owner question, Step 35)
+The repository is the front desk every page asks for schools. Step 35 builds a second desk that keeps the same four promises (`list`, `getById`, `update`, `create`) but stores schools in Postgres instead of an array, then switches `index.ts` to export it. The two types describe one school in two languages: `SchoolRow` is the database row (with `address`, `createdAt`, `updatedAt`, `null` for "no logo" and an unchecked JSON theme), and `School` is the app's own shape. `toSchool` translates and checks on the way in, and `toSchoolData` translates on the way out. Each is named after what it returns. A row isn't text or a JSON string: Prisma already hands back a normal JavaScript object. It's just the wrong shape. Return it directly and typecheck fails with `Types of property 'theme' are incompatible. Type 'JsonValue' is not assignable to …`, because the interface promises a `School`. Diagrams, the swap, one save traced end to end, and the file explained block by block: [Inside the School Repository](https://claude.ai/artifact/25nLSGGcJMnxNqNnhCQPNa).
+
 ## App shell and navigation (Step 10)
 
 ### Why passing an icon into a "use client" component crashed the app
@@ -695,6 +758,11 @@ Several failures were just wrong expected text: a test checking for "Email is re
 ### The same student can be described three different ways depending on which screen you're on
 While fixing the parent-flow test, found that the tap-station result and the "link a child" form both use a student's full name or last name, but the parent's notification bell only ever shows the first name ("Carmen tapped in") — three genuinely different, all-correct conventions for naming the same person depending on the audience (staff needing to identify exactly who, vs. a parent who already knows). A test written against the wrong one of the three will fail even though nothing is broken.
 
+### `[WebServer] ⨯ Error: The destination stream closed early.` in a passing run (owner question)
+Lines starting with `[WebServer]` aren't test results. They're the app's own server log (the `npm run start` that Playwright launches), printed into the same terminal. This particular error means the browser hung up while the server was still sending a page. Next.js sends pages in pieces ("streaming"). When a test finishes, closes its page, or clicks to the next page before the last piece arrives, the server notices nobody is listening and logs this. It's like a caller hanging up mid-sentence: the speaker notices, and nothing is broken.
+
+It's harmless when every test still shows `✓`. It comes and goes because it depends on timing (machine speed, how many tests run at once), which is why a green CI run can look different from a local one. It was first seen in Step 27 (see `docs/BUILD-LOG.md`). Worry only if a test actually fails (`✘`), or if a page breaks when you use it by hand in `npm run dev`. In that case, read the `[WebServer]` lines just before the failure, because they usually explain it.
+
 ## When "add more workers" doesn't fix a flaky test suite
 Three pushes in a row failed CI on the same two e2e tests. The obvious-looking fix — force everything onto a single worker so nothing runs at the same time — didn't actually fix it; the exact same two tests failed again, every time. Full write-up: `docs/BUILD-LOG.md`'s "Between Step 29 and Step 30" entry; `docs/TESTING.md` documents the actual mechanism.
 
@@ -708,6 +776,27 @@ The tap station's "Valid card" button always hands out the *next* untapped stude
 Adding extra seed students to fix the above created a *new*, sillier bug: one of the new students ended up with the exact same name as an existing one, because the name generator cycles through a fixed list of 40 first names and 40 last names — continue past 40 students and it starts reusing the same names again, deterministically, at a predictable spot. "Looks random" and "never repeats" are not the same guarantee; a generator built from a small fixed list needs an explicit plan for what happens once you ask it for more than the list's size.
 
 ## Running the database locally with Docker (Step 30)
+
+### Getting into `psql`, and what each part of the command means (owner question)
+`psql` is Postgres's own command-line client: you type SQL, it prints rows. It isn't installed on your Mac. It lives inside the `talaan-postgres` container, so you reach it through Docker:
+
+```bash
+docker exec -it talaan-postgres psql -U postgres -d talaan
+```
+
+| Part | Meaning |
+| --- | --- |
+| `docker exec` | Run a command *inside a container that's already running* (unlike `docker run`, which starts a new one). |
+| `-i` | "interactive": keep the keyboard connected, so what you type reaches `psql`. |
+| `-t` | "tty": give it a proper terminal, so you get the `talaan=#` prompt and line editing. `-it` is just `-i -t` written together. |
+| `talaan-postgres` | Which container. The name was chosen with `--name` in Step 30's `docker run`. |
+| `psql` | The command to run inside it. Everything after this belongs to `psql`, not Docker. |
+| `-U postgres` | Log in as the user `postgres` (the `POSTGRES_USER` from Step 30). |
+| `-d talaan` | Open the database `talaan`. Use `-d talaan_test` for the browser-test database (Step 36). |
+
+Your prompt changes to `talaan=#`. Type `\q` (or press Ctrl+D) to leave. Other handy commands at that prompt: `\dt` lists the tables, `\d "Student"` shows one table's columns. Table and column names with capitals need double quotes (`"Student"`, `"lastName"`), and every SQL line ends with `;`.
+
+If it says the container isn't running (common after a Mac restart): open Docker Desktop, then `docker start talaan-postgres`, and try again. Every recipe that uses `psql` repeats this command where it's needed.
 
 ### Where does `-v talaan-pgdata:/var/lib/postgresql` actually put the data? Should it live next to the repo instead? (owner question)
 `/var/lib/postgresql` is **not a folder on your Mac**. It's a path *inside the container*, which runs its own small Linux system. The `-v` flag reads as `<where it's kept>:<where Postgres sees it inside the container>`. The left side, `talaan-pgdata`, is a **named volume**: a storage area that Docker creates and looks after for you. On a Mac, Docker runs every container inside a hidden Linux virtual machine, so the volume ends up inside that VM's disk image (somewhere under `~/Library/Containers/com.docker.docker/`). You never browse it in Finder, and you don't need to.
@@ -791,6 +880,21 @@ npx tsx prisma/seed.ts
 
 Run it from the project root, not from inside `prisma/`. `import "dotenv/config"` looks for `.env` in the folder the command runs from, so running it elsewhere leaves `DATABASE_URL` empty. Once the seed is finished, `npx prisma db seed` runs the same `tsx prisma/seed.ts` for you (it's the `seed` line in `prisma.config.ts`).
 
+
+### `rows.map(toSchool)`: passing a function *into* another function (owner question, Step 35)
+`.map` walks through an array and builds a **new** array. For each item, it asks "what should this become?", and the function you hand it is the answer. Writing `toSchool` *without* `()` hands over the function itself, for `map` to call. Writing `toSchool(row)` *with* `()` calls it right now. These two lines do exactly the same thing:
+```ts
+rows.map(toSchool);
+rows.map((row) => toSchool(row));
+```
+With three rows, `map` does this for you:
+```
+rows:     [ row-balanga,          row-oceanview,          row-crimsonridge ]
+             │ toSchool(…)           │ toSchool(…)            │ toSchool(…)
+             ▼                       ▼                        ▼
+result:   [ School balanga,       School oceanview,       School crimsonridge ]
+```
+Same idea as a `for` loop that pushes `toSchool(row)` into a new array, in one line. The original `rows` array isn't changed. A function handed to another function like this is called a **callback**. You've already used some: `.filter(...)`, `.sort(...)`, and `onClick={...}` in React all take one.
 ## Database and migrations (Phase 2)
 
 ### What is a migration, and what happens when the database has to change later? (owner question, Step 34)
@@ -829,3 +933,36 @@ migrate deploy (CI, Heroku)    reads the existing migration files → applies th
 ```
 
 It never writes a migration file, never compares against `schema.prisma`, never asks a question, never resets data, and never seeds (that's `prisma db seed`, a separate step). Full setup: [Step 34's recipe](backend/step-34-postgres-in-ci.md).
+
+### I added a column (`School.address`) but the app doesn't use it yet. Does every school function have to mention it? (owner question, Step 35)
+No. A new column only has to appear where code **builds a whole row**. Code that only **reads** some columns can ignore the rest. Using `address` (a nullable column, `String?`) as the example:
+
+| Where | Mentions `address`? | What happens |
+|---|---|---|
+| `toSchool(row)`: reads a row into the app's `School` | No need | It picks the fields it wants. Leaving one out is fine. Even if you passed `address` in, `schoolSchema` would silently drop it, because the app's `School` type has no address yet. |
+| `toSchoolData(school)`: what Prisma writes | No need | On `update`, a column you don't mention is left as it is. On `create`, a nullable column you don't mention is stored as `NULL`. |
+| A test that builds a full row (`const row: SchoolRow = { … }`) | **Yes** | TypeScript wants every column of the row type, so this is where you get `Property 'address' is missing`. Add `address: null`. |
+
+When it *would* break: a **required** column with no default (`address String` instead of `String?`). Then every `create` must provide it, and TypeScript says so at each `create` call, before anything runs. That's also why an existing table's new required column needs a `@default(…)` or a data fix in its migration (see [`docs/DATABASE-MIGRATIONS.md`](DATABASE-MIGRATIONS.md)).
+
+When you do want the app to use the address, the chain is: `schema.prisma` and its migration (done) → `schoolSchema` in `src/features/schools/schemas.ts` (the app's `School` type follows from it) → `toSchool` and `toSchoolData` → the form and the screen. TypeScript points out most of the spots once the schema has the field.
+
+### "`address` does not exist in type", when the schema clearly has it (owner question, Step 35)
+TypeScript never reads `schema.prisma`. It reads the TypeScript code Prisma *generates* from it into `src/generated/prisma`. That code only changes when `npx prisma generate` runs, so after a schema change it can be one step behind. Here, the client was generated on Oct 6 and the `address` migration came on Oct 8, so the generated `School` type had no `address` and the test's `address: null` was flagged as an unknown property. In Prisma 7, `migrate dev` doesn't regenerate the client for you (older versions did), and `postinstall` only runs it on `npm install`. **Rule of thumb:** after any change to `schema.prisma`, run `npx prisma migrate dev` and then `npx prisma generate`. If VS Code still shows the old error, restart its TypeScript server (command palette → **TypeScript: Restart TS Server**).
+
+### What does "idempotent by id" mean, and who makes the id? (owner question, Step 35)
+**Idempotent** means doing something twice has the same result as doing it once. A light switch's "on" is idempotent (press it again and the light is still just on). A "+1" button isn't.
+
+**Who makes the id:** the code *calling* `create`, before it calls it. Not the database. `createSchool` in `src/features/schools/actions.ts` runs `crypto.randomUUID()`, which gives a random text id like `"3f2b8c1e-9a4d-4c7e-b1f0-6d2e8a5c9b17"`, and passes it in. It's a UUID (a string), not a counting number. Seed data uses readable ids like `"school-balanga"` instead. The `@default(uuid())` in `schema.prisma` is only a fallback for a caller that doesn't supply one, which this app never relies on.
+
+**What `create` does with it** (the `upsert` with `update: {}`):
+```
+create({ id: "abc", name: "Oceanview" })   → no row "abc" yet → inserts it        → 1 school
+create({ id: "abc", name: "Oceanview" })   → row "abc" exists → changes nothing   → still 1 school
+create({ id: "abc", name: "Something else" }) → row "abc" exists → changes nothing → still "Oceanview"
+create({ id: "xyz", name: "Oceanview" })   → different id → inserts it            → 2 schools
+```
+
+**Why it matters: retries.** It matters most for taps. The gate tablet makes the tap's id, sends it, and the Wi-Fi drops before the server's "got it" comes back. The tablet can't tell whether the tap arrived, so it sends it again with the **same id**. The server sees an id it already has and ignores the copy, so the student is recorded once. If the server made the id instead, the retry would look like a brand-new tap and the student would be in twice. That's why the id must be decided *before* sending.
+
+**What it does not protect against:** two separate clicks. Clicking "Add school" twice runs `createSchool` twice, `crypto.randomUUID()` makes two different ids, and you get two schools. The form guards against that a different way: its button is disabled while it's saving. Idempotency by id only makes a *resend of the same thing* safe.

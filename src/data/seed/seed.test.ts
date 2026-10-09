@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { alertSchema, tapSchema } from "@/features/attendance/schemas";
-import {
-  notificationSchema,
-  parentSchema,
-  parentStudentLinkSchema,
-} from "@/features/parents/schemas";
+import { notificationSchema, parentSchema, parentStudentLinkSchema } from "@/features/parents/schemas";
 import { schoolSchema } from "@/features/schools/schemas";
 import { staffSchema } from "@/features/staff/schemas";
 import { cardSchema, studentSchema } from "@/features/students/schemas";
@@ -70,19 +66,13 @@ describe("seed data matches its own schemas", () => {
 
   it("every parent-student link is valid", () => {
     for (const link of seedParentStudentLinks) {
-      expect(
-        parentStudentLinkSchema.safeParse(link).success,
-        `link ${link.id}`,
-      ).toBe(true);
+      expect(parentStudentLinkSchema.safeParse(link).success, `link ${link.id}`).toBe(true);
     }
   });
 
   it("every notification is valid", () => {
     for (const notification of seedNotifications) {
-      expect(
-        notificationSchema.safeParse(notification).success,
-        `notification ${notification.id}`,
-      ).toBe(true);
+      expect(notificationSchema.safeParse(notification).success, `notification ${notification.id}`).toBe(true);
     }
   });
 });
@@ -158,9 +148,7 @@ describe("seed data shape", () => {
   });
 
   it("includes at least one lost-card tap with a matching alert", () => {
-    const lostCardSerials = new Set(
-      seedCards.filter((c) => c.status === "lost").map((c) => c.serial),
-    );
+    const lostCardSerials = new Set(seedCards.filter((c) => c.status === "lost").map((c) => c.serial));
     const lostCardTap = seedTaps.find((tap) => lostCardSerials.has(tap.cardSerial));
     expect(lostCardTap).toBeDefined();
 
@@ -193,9 +181,7 @@ describe("seed data shape", () => {
     for (const notification of seedNotifications) {
       const student = studentById.get(notification.studentId);
       expect(student, `notification ${notification.id} student`).toBeDefined();
-      expect(notification.schoolId, `notification ${notification.id} school`).toBe(
-        student?.schoolId,
-      );
+      expect(notification.schoolId, `notification ${notification.id} school`).toBe(student?.schoolId);
     }
   });
 

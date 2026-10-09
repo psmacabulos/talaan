@@ -44,11 +44,7 @@ export default async function ParentProtectedLayout({ children }: { children: Re
           <SignOutButton />
         </div>
       </header>
-      <main
-        id={MAIN_CONTENT_ID}
-        tabIndex={-1}
-        className="flex flex-1 flex-col outline-none"
-      >
+      <main id={MAIN_CONTENT_ID} tabIndex={-1} className="flex flex-1 flex-col outline-none">
         {children}
       </main>
     </div>

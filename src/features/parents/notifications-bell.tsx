@@ -15,8 +15,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { formatTapTime } from "@/features/attendance/status";
 import { markAllNotificationsRead, markNotificationRead } from "./notification-actions";
-import { countUnreadNotifications, notificationKindLabel } from "./notifications-data";
-import type { ParentNotificationItem } from "./notifications-data";
+import { countUnreadNotifications, notificationKindLabel } from "./notification-format";
+import type { ParentNotificationItem } from "./notification-format";
 
 const MAX_ITEMS = 5;
 
@@ -118,12 +118,9 @@ export function NotificationsBell({ items }: { items: ParentNotificationItem[] }
                 />
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="truncate text-sm text-foreground">
-                    <span className="font-medium">{student.firstName}</span>{" "}
-                    {notificationKindLabel(notification.kind)}
+                    <span className="font-medium">{student.firstName}</span> {notificationKindLabel(notification.kind)}
                   </span>
-                  <span className="text-xs text-muted-foreground">
-                    {formatTapTime(notification.tappedAt)}
-                  </span>
+                  <span className="text-xs text-muted-foreground">{formatTapTime(notification.tappedAt)}</span>
                 </span>
               </DropdownMenuItem>
             ))}

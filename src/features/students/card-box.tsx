@@ -29,9 +29,7 @@ export function CardBox({ studentId, cards: initialCards }: { studentId: string;
   // Oldest first, so "the current lost card" (if there's no active one) is
   // always the most recent entry, not whatever order the array happens to
   // be in.
-  const history = cards
-    .filter((card) => card.status !== "active")
-    .sort((a, b) => a.linkedAt.localeCompare(b.linkedAt));
+  const history = cards.filter((card) => card.status !== "active").sort((a, b) => a.linkedAt.localeCompare(b.linkedAt));
   const currentLost = activeCard ? undefined : history[history.length - 1];
   const olderHistory = activeCard ? history : history.slice(0, -1);
 
@@ -129,7 +127,9 @@ export function CardBox({ studentId, cards: initialCards }: { studentId: string;
             <>
               <div className="flex flex-wrap items-center gap-2">
                 <CardStatusBadge status={currentLost ? "lost" : "none"} />
-                {currentLost ? <span className="font-mono text-sm break-all text-foreground">{currentLost.serial}</span> : null}
+                {currentLost ? (
+                  <span className="font-mono text-sm break-all text-foreground">{currentLost.serial}</span>
+                ) : null}
               </div>
               {currentLost ? (
                 <CardHistory history={olderHistory} />

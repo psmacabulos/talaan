@@ -41,9 +41,7 @@ export function ChildSummaryCard({ student, taps }: { student: Student; taps: Ta
       </div>
 
       <div className="mt-4 border-t border-border pt-3">
-        <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Attendance history
-        </h3>
+        <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Attendance history</h3>
         {history.length === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">No taps on record yet.</p>
         ) : (

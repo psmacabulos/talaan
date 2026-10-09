@@ -21,11 +21,7 @@ test.describe("Tap station", () => {
   // suite in Step 29 (a run showed "Nothing to simulate" mid-test).
   test.describe.configure({ mode: "serial" });
 
-  test("valid card shows the student and updates attendance", async ({
-    page,
-    context,
-    baseURL,
-  }) => {
+  test("valid card shows the student and updates attendance", async ({ page, context, baseURL }) => {
     await signInAs(context, "principal", baseURL!);
     await page.goto("/station");
 
@@ -76,11 +72,7 @@ test.describe("Tap station", () => {
     await expect(page.getByText("Card not registered")).toBeVisible();
   });
 
-  test("offline queue persists and syncs when back online", async ({
-    page,
-    context,
-    baseURL,
-  }) => {
+  test("offline queue persists and syncs when back online", async ({ page, context, baseURL }) => {
     await signInAs(context, "principal", baseURL!);
     await page.goto("/station");
 

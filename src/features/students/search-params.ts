@@ -53,16 +53,15 @@ export function parseStudentListParams(raw: Record<string, string | string[] | u
   const card = CARD_FILTERS.includes(rawCard as CardFilter) ? (rawCard as CardFilter) : DEFAULT_PARAMS.card;
 
   const rawSort = firstValue(raw.sort);
-  const sort = SORT_FIELDS.includes(rawSort as StudentSortField)
-    ? (rawSort as StudentSortField)
-    : DEFAULT_PARAMS.sort;
+  const sort = SORT_FIELDS.includes(rawSort as StudentSortField) ? (rawSort as StudentSortField) : DEFAULT_PARAMS.sort;
 
   const rawDir = firstValue(raw.dir);
   const dir = rawDir === "asc" || rawDir === "desc" ? rawDir : DEFAULT_PARAMS.dir;
 
   const rawPage = firstValue(raw.page);
   const pageNumber = rawPage === undefined ? undefined : Number(rawPage);
-  const page = pageNumber !== undefined && Number.isInteger(pageNumber) && pageNumber >= 1 ? pageNumber : DEFAULT_PARAMS.page;
+  const page =
+    pageNumber !== undefined && Number.isInteger(pageNumber) && pageNumber >= 1 ? pageNumber : DEFAULT_PARAMS.page;
 
   return { q, grade, card, sort, dir, page };
 }

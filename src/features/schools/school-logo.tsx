@@ -19,15 +19,7 @@ function initials(name: string): string {
  * choice inline; this component serves the Step 25 schools list and the
  * add-school form's live preview.
  */
-export function SchoolLogo({
-  name,
-  logoUrl,
-  className,
-}: {
-  name: string;
-  logoUrl?: string;
-  className?: string;
-}) {
+export function SchoolLogo({ name, logoUrl, className }: { name: string; logoUrl?: string; className?: string }) {
   if (logoUrl) {
     // Data-URL logos (Phase 1's storage) are served as-is by next/image —
     // it detects the data: prefix and disables optimization on its own.

@@ -21,11 +21,7 @@ export default async function StaffPage() {
   if (!session.schoolId) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader
-          as="h2"
-          title="Staff"
-          description="Principals and teachers who can sign in to this school."
-        />
+        <PageHeader as="h2" title="Staff" description="Principals and teachers who can sign in to this school." />
         <NoSchoolSelected subject="staff list" />
       </div>
     );

@@ -33,9 +33,7 @@ describe("studentSchema", () => {
   });
 
   it("accepts a valid photo URL, and rejects a non-URL string", () => {
-    expect(
-      studentSchema.safeParse({ ...validStudent, photoUrl: "https://example.com/photo.jpg" }).success,
-    ).toBe(true);
+    expect(studentSchema.safeParse({ ...validStudent, photoUrl: "https://example.com/photo.jpg" }).success).toBe(true);
     expect(studentSchema.safeParse({ ...validStudent, photoUrl: "not-a-url" }).success).toBe(false);
   });
 
@@ -53,9 +51,7 @@ describe("studentSchema", () => {
 
   it("rejects a birth date that isn't a plain calendar date", () => {
     expect(studentSchema.safeParse({ ...validStudent, birthDate: "not a date" }).success).toBe(false);
-    expect(studentSchema.safeParse({ ...validStudent, birthDate: "2012-03-14T00:00:00Z" }).success).toBe(
-      false,
-    );
+    expect(studentSchema.safeParse({ ...validStudent, birthDate: "2012-03-14T00:00:00Z" }).success).toBe(false);
   });
 
   it("rejects a guardian mobile number that isn't a valid PH format", () => {
@@ -101,9 +97,7 @@ describe("studentFormSchema", () => {
 
   it("rejects a birth date after today, and accepts today itself", () => {
     expect(studentFormSchema.safeParse({ ...validInput, birthDate: "2999-01-01" }).success).toBe(false);
-    expect(
-      studentFormSchema.safeParse({ ...validInput, birthDate: STUDENT_FORM_MAX_BIRTH_DATE }).success,
-    ).toBe(true);
+    expect(studentFormSchema.safeParse({ ...validInput, birthDate: STUDENT_FORM_MAX_BIRTH_DATE }).success).toBe(true);
   });
 
   it("rejects a provided LRN that isn't exactly 12 digits", () => {

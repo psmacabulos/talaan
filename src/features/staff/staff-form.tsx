@@ -156,7 +156,9 @@ export function StaffForm({ onSuccess, onCancel }: { onSuccess: () => void; onCa
 
         {role === "teacher" ? (
           <fieldset className="flex flex-col gap-4">
-            <legend className="mb-1 font-heading text-sm font-semibold text-foreground">Advisory class (optional)</legend>
+            <legend className="mb-1 font-heading text-sm font-semibold text-foreground">
+              Advisory class (optional)
+            </legend>
             <AdvisoryHint />
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">

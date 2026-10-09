@@ -9,19 +9,14 @@ import { clearThemeOverride } from "@/lib/theme/theme-override-actions";
 import { createSchoolSchema, notificationPreferenceSchema, schoolThemeSchema } from "./schemas";
 import type { CreateSchoolFormInput, NotificationPreference, SchoolTheme } from "./types";
 
-export type NotificationSettingsActionResult =
-  | { ok: true }
-  | { ok: false; formError?: string };
+export type NotificationSettingsActionResult = { ok: true } | { ok: false; formError?: string };
 
-export type AppearanceSettingsActionResult =
-  | { ok: true }
-  | { ok: false; formError: string };
+export type AppearanceSettingsActionResult = { ok: true } | { ok: false; formError: string };
 
 export type CreateSchoolFieldErrors = Partial<Record<keyof CreateSchoolFormInput, string>>;
 
 export type CreateSchoolActionResult =
-  | { ok: true }
-  | { ok: false; formError?: string; fieldErrors?: CreateSchoolFieldErrors };
+  { ok: true } | { ok: false; formError?: string; fieldErrors?: CreateSchoolFieldErrors };
 
 /** Only failure returns — on success `openSchool` redirects instead. */
 export type OpenSchoolActionResult = { ok: false; formError: string };

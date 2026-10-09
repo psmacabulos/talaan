@@ -14,8 +14,6 @@ export function TopbarTitle() {
   const label = NAV_ITEMS.find((item) => item.segment === segment)?.label ?? "Talaan";
 
   return (
-    <h1 className="min-w-0 flex-1 truncate font-heading text-lg font-semibold text-foreground sm:text-xl">
-      {label}
-    </h1>
+    <h1 className="min-w-0 flex-1 truncate font-heading text-lg font-semibold text-foreground sm:text-xl">{label}</h1>
   );
 }

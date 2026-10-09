@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { LoginArtPanel } from "@/features/auth/login-art-panel";
 import { LoginMobileHeader } from "@/features/auth/login-mobile-header";
 import { ParentSignupForm } from "@/features/parents/signup-form";
@@ -12,6 +13,10 @@ import { ThemeToggle } from "@/components/theme-toggle";
  * own active choice, not the app assuming one, see auth-schemas.ts).
  */
 export default async function ParentSignupPage() {
+  // Render on every request, not once at build time: the school list now
+  // comes from the database, and a school added later must show up here
+
+  await connection();
   const schools = await schoolRepository.list();
 
   return (
@@ -34,7 +39,12 @@ export default async function ParentSignupPage() {
             </p>
           </div>
 
-          <ParentSignupForm schools={schools.map((school) => ({ id: school.id, name: school.name }))} />
+          <ParentSignupForm
+            schools={schools.map((school) => ({
+              id: school.id,
+              name: school.name,
+            }))}
+          />
         </div>
       </section>
     </main>

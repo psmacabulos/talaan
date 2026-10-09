@@ -16,9 +16,7 @@ export default async function SchoolsPage() {
   const session = await getSession();
 
   if (!hasNavAccess(session.role, "schools")) {
-    return (
-      <AccessDenied reason="Only a super admin manages schools across the platform." />
-    );
+    return <AccessDenied reason="Only a super admin manages schools across the platform." />;
   }
 
   const schools = await schoolRepository.list();

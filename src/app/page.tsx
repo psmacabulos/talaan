@@ -52,9 +52,7 @@ export default function LoginPage() {
             </Link>
           </p>
 
-          <p className="text-center text-sm text-muted-foreground">
-            Talaan (placeholder product name)
-          </p>
+          <p className="text-center text-sm text-muted-foreground">Talaan (placeholder product name)</p>
         </div>
       </section>
     </main>

@@ -10,8 +10,7 @@ import type { Staff, StaffFormInput } from "./types";
 export type StaffFormFieldErrors = Partial<Record<keyof StaffFormInput, string>>;
 
 export type StaffFormActionResult =
-  | { ok: true }
-  | { ok: false; formError?: string; fieldErrors?: StaffFormFieldErrors };
+  { ok: true } | { ok: false; formError?: string; fieldErrors?: StaffFormFieldErrors };
 
 function fieldErrorsFrom(error: import("zod").ZodError<StaffFormInput>): StaffFormFieldErrors {
   const flattened = error.flatten().fieldErrors;

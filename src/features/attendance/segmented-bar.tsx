@@ -30,11 +30,7 @@ export function AttendanceSegmentedBar({ counts }: { counts: StatusCounts }) {
   const ariaLabel = ORDER.map((key) => `${LABEL[key]} ${counts[key]}`).join(", ");
 
   return (
-    <div
-      role="img"
-      aria-label={ariaLabel}
-      className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted"
-    >
+    <div role="img" aria-label={ariaLabel} className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted">
       {total > 0 &&
         ORDER.filter((key) => counts[key] > 0).map((key) => (
           <div key={key} className={FILL_CLASS[key]} style={{ width: `${(counts[key] / total) * 100}%` }} />

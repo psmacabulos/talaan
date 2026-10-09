@@ -7,9 +7,7 @@ export default function NotFound() {
       <Compass className="size-10 text-muted-foreground" aria-hidden="true" />
       <div className="flex flex-col gap-1">
         <h1 className="font-heading text-2xl font-semibold">This page doesn&apos;t exist</h1>
-        <p className="max-w-sm text-sm text-muted-foreground">
-          Check the address, or head back to a page that does.
-        </p>
+        <p className="max-w-sm text-sm text-muted-foreground">Check the address, or head back to a page that does.</p>
       </div>
       <Link
         href="/dashboard"

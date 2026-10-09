@@ -175,7 +175,6 @@ export function AppearanceSettingsForm({ currentTheme }: { currentTheme: SchoolT
             </div>
           </div>
         ) : null}
-
       </div>
 
       <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">

@@ -22,19 +22,19 @@ There are no environment variables required yet in Phase 1 — see [`.env.exampl
 
 ## npm scripts
 
-| Script              | What it does                                                                    |
-| ------------------- | ------------------------------------------------------------------------------- |
-| `npm run dev`       | Start the app locally, with hot reload.                                         |
-| `npm run build`     | Build the app for production.                                                   |
-| `npm run start`     | Run the production build (run `build` first).                                   |
-| `npm run lint`      | Check the code with ESLint.                                                     |
-| `npm run format`    | Reformat all files with Prettier.                                               |
-| `npm run typecheck` | Check TypeScript types without emitting output.                                 |
-| `npm run test`      | Run the test suite once with Vitest.                                            |
-| `npm run test:e2e`  | Build the app, then run end-to-end tests (user journeys: login, add student, replace card, tap station, theme, parent flow) in a real browser with Playwright. |
-| `npm run test:a11y` | Build the app, then run the accessibility audit (axe on every screen, plus keyboard and focus checks) in a real browser with Playwright. |
-| `npm run check:tokens` | Fail if a raw color (hex/rgb/hsl/oklch or a Tailwind palette class) shows up outside the theme files. |
-| `npm run progress`  | Regenerate the progress table at the top of `docs/PLAN.md` from its checkboxes. |
+| Script                 | What it does                                                                                                                                                   |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`          | Start the app locally, with hot reload.                                                                                                                        |
+| `npm run build`        | Build the app for production.                                                                                                                                  |
+| `npm run start`        | Run the production build (run `build` first).                                                                                                                  |
+| `npm run lint`         | Check the code with ESLint.                                                                                                                                    |
+| `npm run format`       | Reformat all files with Prettier.                                                                                                                              |
+| `npm run typecheck`    | Check TypeScript types without emitting output.                                                                                                                |
+| `npm run test`         | Run the test suite once with Vitest.                                                                                                                           |
+| `npm run test:e2e`     | Build the app, then run end-to-end tests (user journeys: login, add student, replace card, tap station, theme, parent flow) in a real browser with Playwright. |
+| `npm run test:a11y`    | Build the app, then run the accessibility audit (axe on every screen, plus keyboard and focus checks) in a real browser with Playwright.                       |
+| `npm run check:tokens` | Fail if a raw color (hex/rgb/hsl/oklch or a Tailwind palette class) shows up outside the theme files.                                                          |
+| `npm run progress`     | Regenerate the progress table at the top of `docs/PLAN.md` from its checkboxes.                                                                                |
 
 ## Theming
 

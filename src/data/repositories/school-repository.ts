@@ -48,6 +48,3 @@ export function createMockSchoolRepository(
     },
   };
 }
-
-/** The one instance the rest of the app actually imports. */
-export const schoolRepository = createMockSchoolRepository();

@@ -39,8 +39,7 @@ function compareRows(a: StudentRow, b: StudentRow, params: StudentListParams): n
     case "name":
     default:
       result =
-        a.student.lastName.localeCompare(b.student.lastName) ||
-        a.student.firstName.localeCompare(b.student.firstName);
+        a.student.lastName.localeCompare(b.student.lastName) || a.student.firstName.localeCompare(b.student.firstName);
       break;
   }
   return params.dir === "desc" ? -result : result;

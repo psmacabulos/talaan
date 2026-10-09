@@ -33,33 +33,18 @@ export function SidebarBrand({ school }: { school: School | null }) {
         </span>
       )}
       <div className="flex min-w-0 flex-col">
-        <span className="truncate font-heading text-sm font-semibold text-foreground">
-          {school?.name ?? "Talaan"}
-        </span>
-        <span className="text-xs text-muted-foreground">
-          {school ? "Attendance portal" : "All schools"}
-        </span>
+        <span className="truncate font-heading text-sm font-semibold text-foreground">{school?.name ?? "Talaan"}</span>
+        <span className="text-xs text-muted-foreground">{school ? "Attendance portal" : "All schools"}</span>
       </div>
     </div>
   );
 }
 
-export function Sidebar({
-  role,
-  school,
-  className,
-}: {
-  role: Role;
-  school: School | null;
-  className?: string;
-}) {
+export function Sidebar({ role, school, className }: { role: Role; school: School | null; className?: string }) {
   return (
     <aside
       aria-label="Sidebar"
-      className={cn(
-        "w-64 shrink-0 flex-col gap-6 border-r border-border bg-card px-4 py-6",
-        className,
-      )}
+      className={cn("w-64 shrink-0 flex-col gap-6 border-r border-border bg-card px-4 py-6", className)}
     >
       <SidebarBrand school={school} />
       <NavLinks role={role} className="flex-1" />

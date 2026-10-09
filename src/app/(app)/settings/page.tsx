@@ -42,8 +42,8 @@ export default async function SettingsPage() {
           <div className="flex flex-col gap-1">
             <h3 className="font-heading text-base font-semibold text-foreground">Appearance</h3>
             <p className="text-sm text-muted-foreground">
-              Choose this school&apos;s color theme. Everyone at the school sees it once you save; light or dark
-              mode stays each person&apos;s own choice.
+              Choose this school&apos;s color theme. Everyone at the school sees it once you save; light or dark mode
+              stays each person&apos;s own choice.
             </p>
           </div>
           <AppearanceSettingsForm currentTheme={school.theme} />

@@ -50,8 +50,7 @@ export async function simulateTap(): Promise<SimulateTapResult> {
   if (session.role === "teacher") {
     const staff = await staffRepository.getById(session.userId);
     candidates = roster.filter(
-      (student) =>
-        student.gradeLevel === staff?.advisoryGradeLevel && student.section === staff?.advisorySection,
+      (student) => student.gradeLevel === staff?.advisoryGradeLevel && student.section === staff?.advisorySection,
     );
   }
 
