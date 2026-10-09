@@ -23,5 +23,35 @@ model School {
   notificationPreference NotificationPreference @default(time_in_and_time_out)
   createdAt              DateTime               @default(now())
   updatedAt              DateTime               @updatedAt
+
+  staff Staff[]
 }
 
+enum Role {
+  super_admin
+  principal
+  teacher
+}
+
+enum StaffStatus {
+  active
+  invited
+}
+
+model Staff {
+  id                 String      @id @default(uuid())
+  // Null only for a super admin, who isn't tied to one school.
+  schoolId           String?
+  school             School?     @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  role               Role
+  firstName          String
+  lastName           String
+  email              String
+  status             StaffStatus @default(invited)
+  advisoryGradeLevel Int?
+  advisorySection    String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  @@index([schoolId])
+}

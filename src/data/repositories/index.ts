@@ -1,6 +1,7 @@
 export { createMockSchoolRepository, type SchoolRepository } from "./school-repository";
 export { schoolRepository, createPrismaSchoolRepository } from "./prisma-school-repository";
-export { staffRepository, createMockStaffRepository, type StaffRepository } from "./staff-repository";
+export { createMockStaffRepository, type StaffRepository } from "./staff-repository";
+export { staffRepository, createPrismaStaffRepository } from "./prisma-staff-repository";
 export { studentRepository, createMockStudentRepository, type StudentRepository } from "./student-repository";
 export { cardRepository, createMockCardRepository, type CardRepository } from "./card-repository";
 export { tapRepository, createMockTapRepository, type TapRepository } from "./tap-repository";

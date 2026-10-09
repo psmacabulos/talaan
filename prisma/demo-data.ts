@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
-import { seedSchools } from "@/data/seed";
+import { seedSchools, seedStaff } from "@/data/seed";
 import { toSchoolData } from "@/data/repositories/prisma-school-repository";
+import { toStaffData } from "@/data/repositories/prisma-staff-repository";
 
 /**
  * Copies Phase 1's demo data into the database, keeping the same ids
@@ -21,9 +22,18 @@ export async function insertDemoData(db: PrismaClient) {
       create: { id: school.id, ...toSchoolData(school) },
     });
   }
+
+  for (const staff of seedStaff) {
+    await db.staff.upsert({
+      where: { id: staff.id },
+      update: {},
+      create: { id: staff.id, ...toStaffData(staff) },
+    });
+  }
 }
 
 /** One line per table, so you can see at a glance what's in the database. */
 export async function printDemoDataSummary(db: PrismaClient) {
   console.log(`Schools: ${await db.school.count()}`);
+  console.log(`Staff: ${await db.staff.count()}`);
 }

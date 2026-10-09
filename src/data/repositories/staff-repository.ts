@@ -47,5 +47,3 @@ export function createMockStaffRepository(
     },
   };
 }
-
-export const staffRepository = createMockStaffRepository();

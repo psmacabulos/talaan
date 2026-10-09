@@ -1689,3 +1689,29 @@ The owner had already typed Parts A and B (`prisma/demo-data.ts`, and `prisma/se
 One small difference from the owner's Part B: `seed.ts` still had the old comment above `main()`, which now describes `demo-data.ts` and wrongly said upsert "updates an existing row" (its `update: {}` leaves the row alone). The recipe's Part B has no comment there, so it was removed.
 
 The owner added the `E2E_DATABASE_URL` line to their own `.env` (Part F2), since that file is theirs to edit. The owner then ran the recipe's "Verify it worked" checks and the commit routine (lint, check:tokens, typecheck, test, build, and `npx playwright test` twice), reported them done with no errors, and approved the step on 2026-10-09. Along the way the owner asked why the seed and the browser tests run twice. That answer is now in the learning log.
+
+## Step 37: staff in Postgres (2026-10-09)
+
+Built straight from the recipe (`docs/backend/step-37-staff-model.md`), fast-track. No changes to the recipe were needed.
+
+- `Staff` model with `Role`/`StaffStatus` enums, `schoolId` optional with `onDelete: Restrict`, and `@@index([schoolId])`. `npx prisma migrate dev --name add_staff` created and applied `20261009033002_add_staff` to the local `talaan` database, then `npx prisma generate`. The SQL has both enums, the table, `Staff_schoolId_idx` and `FOREIGN KEY ("schoolId") REFERENCES "School"("id") ON DELETE RESTRICT`, as the recipe expects.
+- `prisma-staff-repository.ts` (`toStaff`, `toStaffData`, `createPrismaStaffRepository`, `staffRepository`) with five unit tests. `index.ts` now exports `staffRepository` from it, and the mock singleton is gone from `staff-repository.ts`. Only the mock factory is still imported elsewhere (`session.test.ts`, `staff-repository.test.ts`).
+- `prisma/demo-data.ts` seeds staff after schools, one at a time, and the summary prints `Staff: …`. A first `npx prisma db seed` on the owner's database printed `Staff: 7`.
+
+The browser tests' `globalSetup` (Step 36) applies the new migration to `talaan_test` by itself. The owner runs the checks from the recipe's "Verify it worked".
+
+## Steps 41–43: fast-track recipes written, roadmap to the demo (2026-10-09)
+
+While the owner checked Step 37, the roadmap after Step 40 was filled in (Steps 41–52, demo-first) and the next three recipes were written: parents and links (41), notifications (42), and gate devices with the heartbeat endpoint (43). Unlike the earlier batches, these weren't dry-run in a scratch copy first. Under fast-track they get built for real right after approval, and any difference found then is fixed in the recipe and noted here.
+
+Choices made while writing them:
+
+- **Password hashing with Node's built-in `scrypt`**, not bcrypt or Argon2 packages, so no new dependency. `src/lib/password.ts` stores `scrypt:<salt>:<hash>` and compares with `timingSafeEqual`. Tried once in a scratch file: right password matches, wrong one and a plain-text value don't, about 37 ms per hash. It passed a strict `tsc` type-check. Staff sign-in (Step 50) reuses it.
+- **`Parent.email` is `@unique` and `ParentStudentLink` is unique per `(parentId, studentId)`.** Step 37 kept staff emails non-unique because the invite form has no duplicate check. Parent signup and link-a-child already check, so a database rule can't surface as a crash for a normal user.
+- **The seed hashes the demo parent password once** and reuses it for all six parents, to keep `db:reset` (before every browser test run) quick.
+- **Notifications move unchanged.** The `tapId` link and the outbox columns from `docs/ARCHITECTURE.md` (`status`, `attempts`, `sentAt`) are added later, in the steps that use them.
+- **Devices are created by a command (`npm run device:create`), not by `POST /api/v1/devices/register`** as `docs/ARCHITECTURE.md` proposed. An admin screen isn't planned yet, and a command also works on the production server. The architecture doc gets updated when Step 43 is built.
+- **Device tokens are hashed with sha256, not scrypt.** A token is 32 random bytes, so there's nothing to guess, and the lookup needs the same hash every time (no salt).
+- **Step 44 (the real clock) is waiting on the owner.** Phase 1 runs on a fixed `DASHBOARD_NOW` (`2026-06-20T09:15:00Z`) and compares dates and times of day in UTC. A real 7:50 AM tap in Balanga is 23:50 UTC the day before, so it would land on the wrong day. Before any real tap is recorded, the app needs Philippine time and a real "today", and that raises questions about the demo data and the tests.
+
+**Step 44 answers (same day):** real clock by default, with an optional `DEMO_NOW` setting that pins it to the demo morning for the browser tests and screenshots. Seed data stays on 20 June 2026. `Asia/Manila` for every school. Late and absent cutoffs become a per-school setting now, defaulting to 8:05 and 9:00 AM. Its recipe gets written once Steps 38–43 are in, since it touches code they change.
