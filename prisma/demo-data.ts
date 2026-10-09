@@ -2,6 +2,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import {
   seedAlerts,
   seedCards,
+  seedNotifications,
   seedParents,
   seedParentStudentLinks,
   seedSchools,
@@ -12,6 +13,7 @@ import {
 import { SEED_PARENT_PASSWORD } from "@/data/repositories/parent-repository";
 import { toAlertData } from "@/data/repositories/prisma-alert-repository";
 import { toCardData } from "@/data/repositories/prisma-card-repository";
+import { toNotificationData } from "@/data/repositories/prisma-notification-repository";
 import { toParentData } from "@/data/repositories/prisma-parent-repository";
 import { toParentStudentLinkData } from "@/data/repositories/prisma-parent-student-link-repository";
 import { toSchoolData } from "@/data/repositories/prisma-school-repository";
@@ -21,10 +23,12 @@ import { toTapData } from "@/data/repositories/prisma-tap-repository";
 import { hashPassword } from "@/lib/password";
 
 /**
- * Copies Phase 1's demo data into the database, keeping the same ids
- * ("school-balanga", ...) so the mock repositories that still point at
- * those ids keep lining up. Safe to run again: each insert skips a row
- * that already exists instead of failing on a duplicate id.
+ * Copies Phase 1's demo data into the database, keeping the same readable
+ * ids ("school-balanga", "student-0001", ...) that the demo logins, the
+ * browser tests and the data itself refer to. Inserted parents first,
+ * children after, so every foreign key already has its row. Safe to run
+ * again: each insert skips a row that already exists instead of failing
+ * on a duplicate id.
  *
  * Shared by `prisma/seed.ts` (adds what's missing) and
  * `prisma/reset-demo.ts` (empties the tables first).
@@ -87,6 +91,11 @@ export async function insertDemoData(db: PrismaClient) {
     data: seedParentStudentLinks.map((link) => ({ id: link.id, ...toParentStudentLinkData(link) })),
     skipDuplicates: true,
   });
+
+  await db.notification.createMany({
+    data: seedNotifications.map((notification) => ({ id: notification.id, ...toNotificationData(notification) })),
+    skipDuplicates: true,
+  });
 }
 
 /** One line per table, so you can see at a glance what's in the database. */
@@ -99,4 +108,5 @@ export async function printDemoDataSummary(db: PrismaClient) {
   console.log(`Alerts: ${await db.alert.count()}`);
   console.log(`Parents: ${await db.parent.count()}`);
   console.log(`Parent–child links: ${await db.parentStudentLink.count()}`);
+  console.log(`Notifications: ${await db.notification.count()}`);
 }

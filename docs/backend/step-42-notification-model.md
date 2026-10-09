@@ -281,6 +281,7 @@ import { toNotificationData } from "@/data/repositories/prisma-notification-repo
 
 ## If something goes wrong
 
+- **`TypeError: Cannot read properties of undefined (reading 'findMany')`** at `db.notification` while `npm run dev` is running: the dev server was already running when the migration and `npx prisma generate` ran. It keeps its old Prisma Client (cached on `globalThis` in `src/lib/db.ts`), which has no `notification` yet. Stop the dev server (Ctrl+C) and start it again. The same applies after any step that adds a model.
 - **Typecheck: `has no exported member 'Notification'`** from `@/generated/prisma/client`: run `npx prisma generate`.
 - **The bell shows the old count after marking read:** the page was served from the browser's back/forward cache. Reload. If it persists after a reload, share what you clicked.
 - **`grep` in Verify 4 prints a line:** that mock file still has its `export const … = createMock…()` line. Delete it, and check `index.ts` exports the Prisma one instead.

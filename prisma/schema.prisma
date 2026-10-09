@@ -32,6 +32,7 @@ model School {
   alerts             Alert[]
   parents            Parent[]
   parentStudentLinks ParentStudentLink[]
+  notifications      Notification[]
 }
 
 enum Role {
@@ -81,9 +82,10 @@ model Student {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  cards       Card[]
-  taps        Tap[]
-  parentLinks ParentStudentLink[]
+  cards         Card[]
+  taps          Tap[]
+  parentLinks   ParentStudentLink[]
+  notifications Notification[]
 
   // Serves both "every student at a school" and the link-a-child lookup.
   @@index([schoolId, lrn])
@@ -182,4 +184,26 @@ model ParentStudentLink {
   @@unique([parentId, studentId])
   @@index([schoolId])
   @@index([studentId])
+}
+
+enum NotificationKind {
+  time_in
+  time_out
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  schoolId  String
+  school    School           @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  studentId String
+  student   Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  kind      NotificationKind
+  // A copy of the tap's time, so the feed can say "arrived 7:56 AM"
+  // without looking the tap up.
+  tappedAt  DateTime
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([studentId, tappedAt])
+  @@index([schoolId])
 }

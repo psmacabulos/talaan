@@ -53,5 +53,3 @@ export function createMockNotificationRepository(
     },
   };
 }
-
-export const notificationRepository = createMockNotificationRepository();

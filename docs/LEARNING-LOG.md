@@ -441,6 +441,22 @@ The standard answer is a third record — `ParentStudentLink` — that exists on
 
 ## Tap stations and notifications
 
+### My reader types `0211299923`, not `04:A3:5F:…`. Is that a problem? (owner question, 2026-10-09)
+No. It's the same kind of information written differently. An NFC card's ID (its UID) is a handful of bytes, and the app writes them as hex pairs with colons. Your reader instead turns 4 bytes into one ordinary number and types it as 10 digits.
+
+What a phone (NFC Tools) showed for the sticker that typed `0211299923`:
+
+| | Bytes |
+|---|---|
+| The sticker's real ID (7 bytes) | `53 2E 98 0C 14 00 01` |
+| What the reader types, as hex | `0C 98 2E 53`: the first 4 bytes, reversed |
+
+So the app takes the 10 digits, turns them back into those 4 bytes in their real order, and stores `53:2E:98:0C`. Real order matters for the future: a different reader (a phone, a turnstile) sees the real ID, and can still match it because it starts with the same 4 bytes.
+
+**The catch:** the last 3 bytes never reach the app, so two stickers could in theory look the same. The database refuses a serial that's already linked (Step 39), so a clash shows up when staff link the card ("already linked", use another sticker), never as the wrong student at the gate. Some readers can be set to send the full ID, which removes the problem entirely.
+
+Full details: `docs/ARCHITECTURE.md`, "Open questions".
+
 ### Why notifications are created at tap time, not derived at read time (Step 24)
 The first big build of this topic — the parent bell and feed — lives in [`docs/NOTIFICATIONS.md`](NOTIFICATIONS.md). The one contrast worth keeping in mind next to the attendance model: attendance *is* derived at read time (nothing stores "present"; it's computed from raw taps), but notifications are the **opposite** — a `Notification` row is written the moment a tap happens, and the bell/feed just read rows back. That's because a school's preference ("notify on time-in only") is a moment-in-time decision: if the principal turns notifications off tomorrow, yesterday's "your child tapped in" should still be in the feed. The parent was told; the record of being told should survive the setting change. So the read path has nothing to compute — it only joins, sorts, and counts unread rows.
 
@@ -912,6 +928,13 @@ The `...` spread copies every property of an object into the new one. Writing `i
 
 ## Database and migrations (Phase 2)
 
+### "Cannot read properties of undefined (reading 'findMany')" right after a new model (owner question, Step 42)
+Not a bug in the code. A dev server that was already running kept using an **old Prisma Client**.
+
+`src/lib/db.ts` creates the Prisma Client once and keeps it on `globalThis`, so hot reloads don't open a new pool of database connections each time (see "`globalThis as unknown as { prisma?: PrismaClient }`" above). The catch: when a migration adds a model and `npx prisma generate` rebuilds the client, the running dev server still holds the client it made *before*. That old client has no `notification` property, so `db.notification` is `undefined`, and `.findMany` on `undefined` throws.
+
+**Fix:** stop `npm run dev` (Ctrl+C) and start it again after any step that adds or changes a model. Production never hits this, because a deploy always starts a fresh process with the new client.
+
 ### Is a student's `id` only for the seed? And what happens when their card changes? (owner question, Step 38)
 **Every** student has an `id`, not just the demo ones. For a real student, "Add student" makes one with `crypto.randomUUID()` (`src/features/students/actions.ts`) and passes it in, the same way the seed passes `student-0001`. The only difference is the look: seed ids are readable, real ones are random.
 
@@ -993,6 +1016,22 @@ create({ id: "xyz", name: "Oceanview" })   → different id → inserts it      
 **Why it matters: retries.** It matters most for taps. The gate tablet makes the tap's id, sends it, and the Wi-Fi drops before the server's "got it" comes back. The tablet can't tell whether the tap arrived, so it sends it again with the **same id**. The server sees an id it already has and ignores the copy, so the student is recorded once. If the server made the id instead, the retry would look like a brand-new tap and the student would be in twice. That's why the id must be decided *before* sending.
 
 **What it does not protect against:** two separate clicks. Clicking "Add school" twice runs `createSchool` twice, `crypto.randomUUID()` makes two different ids, and you get two schools. The form guards against that a different way: its button is disabled while it's saving. Idempotency by id only makes a *resend of the same thing* safe.
+
+### What does `npm run db:reset` actually do, and why run it after testing by hand? (owner question, Step 42)
+It puts your database back to the demo data: every table emptied, then refilled with the same schools, staff, students, cards, taps, parents and notifications as on day one. It doesn't delete the database or its tables, only the rows in them.
+
+Under the hood (`prisma/reset-demo.ts`):
+1. **Safety check:** it refuses to run unless `DATABASE_URL` points at `localhost`, so it can never touch a real school's data.
+2. **`TRUNCATE "School" CASCADE`:** empties `School` and, through `CASCADE`, every table with a foreign key pointing back to it (staff, students, cards, taps, alerts, parents, links, notifications). The tables, columns and indexes stay; only the rows go. It's one quick statement, not a row-by-row delete.
+3. **`insertDemoData`:** the same function `npx prisma db seed` uses inserts the demo rows again, with their fixed ids (`school-balanga`, `student-0001`, ...).
+
+**Why it's needed now, and wasn't in Phase 1:** the mock data lived in memory, so restarting the server was a free reset. Postgres keeps everything, which is the point of a database, but it also keeps everything you did while testing: simulated taps, a lost-card alert, an extra teacher, a replaced card. A few examples of why that gets in the way:
+- "Simulate a tap" picks the first student who hasn't tapped yet. After enough clicks there are none left, and it says "Nothing to simulate".
+- A recipe's "seed twice, you should see `Cards: 69`" shows 71 after you've replaced a card.
+
+**Seed vs. reset:** `npx prisma db seed` only *adds* demo rows that are missing and never removes your extra ones. `npm run db:reset` removes everything, then adds the demo rows back.
+
+**You don't have to run it.** It's a "tidy up after experimenting" button for your `talaan` database. The browser tests don't need it: they reset their own separate database, `talaan_test`, by themselves before every run (Step 36). Anything you want to keep in `talaan` (a device you created, a school you set up) is gone after a reset.
 
 ### Why run the seed twice, and the browser tests twice? (owner question, Step 36)
 The second run is the real test. The first run only proves the code works on whatever the database happened to look like.
