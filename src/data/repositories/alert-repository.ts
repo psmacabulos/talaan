@@ -28,5 +28,3 @@ export function createMockAlertRepository(
     },
   };
 }
-
-export const alertRepository = createMockAlertRepository();

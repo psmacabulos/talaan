@@ -1732,3 +1732,12 @@ Built from the recipe (`docs/backend/step-39-card-model.md`), fast-track, after 
 - `previewFeatures = ["partialIndexes"]` in the generator, the `Card` model and `CardStatus` enum, and back-relations on `School` and `Student`. `npx prisma migrate dev --name add_card` created and applied `20261009051945_add_card`. The SQL has `Card_serial_key`, `Card_studentId_idx`, and `CREATE UNIQUE INDEX "Card_one_active_per_student" ON "Card"("studentId") WHERE ("status" = 'active')`, as in the dry run.
 - `prisma-card-repository.ts` with its test. `index.ts` exports the Prisma `cardRepository`, and the mock singleton is gone from `card-repository.ts`.
 - Cards are seeded with one `createMany` after the students. A first `npx prisma db seed` printed `Cards: 69`.
+
+## Step 40: taps and alerts in Postgres (2026-10-09)
+
+Built from the recipe (`docs/backend/step-40-tap-and-alert-models.md`), fast-track, after the owner approved and pushed Step 39. The models, repositories and tests were copied from the recipe's code blocks. No recipe changes were needed.
+
+- `Tap` (device-made `id` with no default, nullable `studentId`) and `Alert` (`tapId @unique`, so one alert per tap), the `AlertType` enum, and back-relations on `School` and `Student`. `npx prisma migrate dev --name add_tap_and_alert` created and applied `20261009054045_add_tap_and_alert`. It has `Tap_schoolId_tappedAt_idx`, `Tap_studentId_tappedAt_idx`, `Alert_tapId_key`, `Alert_schoolId_idx` and four foreign keys, and it leaves Step 39's `Card_one_active_per_student` alone.
+- `prisma-tap-repository.ts` and `prisma-alert-repository.ts` with their tests. `index.ts` exports both, and both mock singletons are gone. `notify-parents.ts` only imports the `TapRepository` type, so it didn't change.
+- Taps, then alerts, are seeded with `createMany`. A first `npx prisma db seed` printed `Taps: 56` and `Alerts: 1`. `Cards` showed 71, not 69: the owner's card-replace check from Step 39 added two rows to the dev database.
+- Every simulated tap now stays in the database. After enough "Simulate a tap" clicks in `npm run dev`, no untapped students are left ("Nothing to simulate"). `npm run db:reset` puts the demo data back. The browser tests reset their own database before every run (Step 36).

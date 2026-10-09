@@ -35,5 +35,3 @@ export function createMockTapRepository(data: Tap[] = seedTaps, options: { laten
     },
   };
 }
-
-export const tapRepository = createMockTapRepository();

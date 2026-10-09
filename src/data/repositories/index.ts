@@ -6,8 +6,10 @@ export { createMockStudentRepository, type StudentRepository } from "./student-r
 export { studentRepository, createPrismaStudentRepository } from "./prisma-student-repository";
 export { createMockCardRepository, type CardRepository } from "./card-repository";
 export { cardRepository, createPrismaCardRepository } from "./prisma-card-repository";
-export { tapRepository, createMockTapRepository, type TapRepository } from "./tap-repository";
-export { alertRepository, createMockAlertRepository, type AlertRepository } from "./alert-repository";
+export { createMockTapRepository, type TapRepository } from "./tap-repository";
+export { tapRepository, createPrismaTapRepository } from "./prisma-tap-repository";
+export { createMockAlertRepository, type AlertRepository } from "./alert-repository";
+export { alertRepository, createPrismaAlertRepository } from "./prisma-alert-repository";
 export { parentRepository, createMockParentRepository, type ParentRepository } from "./parent-repository";
 export {
   parentStudentLinkRepository,

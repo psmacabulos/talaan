@@ -1,9 +1,11 @@
 import type { PrismaClient } from "@/generated/prisma/client";
-import { seedCards, seedSchools, seedStaff, seedStudents } from "@/data/seed";
+import { seedAlerts, seedCards, seedSchools, seedStaff, seedStudents, seedTaps } from "@/data/seed";
+import { toAlertData } from "@/data/repositories/prisma-alert-repository";
 import { toCardData } from "@/data/repositories/prisma-card-repository";
 import { toSchoolData } from "@/data/repositories/prisma-school-repository";
 import { toStaffData } from "@/data/repositories/prisma-staff-repository";
 import { toStudentData } from "@/data/repositories/prisma-student-repository";
+import { toTapData } from "@/data/repositories/prisma-tap-repository";
 
 /**
  * Copies Phase 1's demo data into the database, keeping the same ids
@@ -44,6 +46,17 @@ export async function insertDemoData(db: PrismaClient) {
     data: seedCards.map((card) => ({ id: card.id, ...toCardData(card) })),
     skipDuplicates: true,
   });
+
+  await db.tap.createMany({
+    data: seedTaps.map((tap) => ({ id: tap.id, ...toTapData(tap) })),
+    skipDuplicates: true,
+  });
+
+  // After the taps: an alert points at the tap that raised it.
+  await db.alert.createMany({
+    data: seedAlerts.map((alert) => ({ id: alert.id, ...toAlertData(alert) })),
+    skipDuplicates: true,
+  });
 }
 
 /** One line per table, so you can see at a glance what's in the database. */
@@ -52,4 +65,6 @@ export async function printDemoDataSummary(db: PrismaClient) {
   console.log(`Staff: ${await db.staff.count()}`);
   console.log(`Students: ${await db.student.count()}`);
   console.log(`Cards: ${await db.card.count()}`);
+  console.log(`Taps: ${await db.tap.count()}`);
+  console.log(`Alerts: ${await db.alert.count()}`);
 }

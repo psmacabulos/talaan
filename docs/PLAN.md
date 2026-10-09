@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████████░░ 88%**  (130 of 147 tasks, 43 of 48 steps approved)
+**Overall progress: ██████████████████░░ 91%**  (134 of 147 tasks, 44 of 48 steps approved)
 
-**Next up:** Step 39, ID cards in Postgres (ready for your review)
+**Next up:** Step 40, Taps and alerts in Postgres (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -50,8 +50,8 @@
 | 36 | Give the browser tests their own database, reset before every run | ██████████ 100% | Approved |
 | 37 | Staff in Postgres | ██████████ 100% | Approved |
 | 38 | Students in Postgres | ██████████ 100% | Approved |
-| 39 | ID cards in Postgres | ████████░░  75% | Ready for your review |
-| 40 | Taps and alerts in Postgres | ░░░░░░░░░░   0% | Not started |
+| 39 | ID cards in Postgres | ██████████ 100% | Approved |
+| 40 | Taps and alerts in Postgres | ████████░░  75% | Ready for your review |
 | 41 | Parents and parent–child links in Postgres | ░░░░░░░░░░   0% | Not started |
 | 42 | Parent notifications in Postgres | ░░░░░░░░░░   0% | Not started |
 | 43 | Gate devices, their tokens, and the first `/api/v1` endpoint | ░░░░░░░░░░   0% | Not started |
@@ -430,13 +430,13 @@ Recipe: `docs/backend/step-39-card-model.md`
 - [x] Cards seeded after students.
 Done when: `psql` refuses a second active card for a student but accepts a lost one, a replaced card survives a restart, and every check passes.
 Commit: `feat(db): store ID cards in Postgres`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 40: Taps and alerts in Postgres
 Recipe: `docs/backend/step-40-tap-and-alert-models.md`
-- [ ] `Tap` model (device-made id, nullable `studentId`) and `Alert` model (one-to-one with its tap), migration `add_tap_and_alert`.
-- [ ] `prisma-tap-repository.ts` and `prisma-alert-repository.ts` with unit tests. Both mock singletons are removed.
-- [ ] Taps, then alerts, seeded.
+- [x] `Tap` model (device-made id, nullable `studentId`) and `Alert` model (one-to-one with its tap), migration `add_tap_and_alert`.
+- [x] `prisma-tap-repository.ts` and `prisma-alert-repository.ts` with unit tests. Both mock singletons are removed.
+- [x] Taps, then alerts, seeded.
 Done when: a simulated tap and a lost-card alert survive a restart, the browser tests pass twice in a row, and every check passes.
 Commit: `feat(db): store taps and alerts in Postgres`
 - [ ] Owner review: I checked it and said "approved"

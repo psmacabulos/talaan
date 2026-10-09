@@ -28,6 +28,8 @@ model School {
   staff    Staff[]
   students Student[]
   cards    Card[]
+  taps     Tap[]
+  alerts   Alert[]
 }
 
 enum Role {
@@ -78,6 +80,7 @@ model Student {
   updatedAt      DateTime @updatedAt
 
   cards Card[]
+  taps  Tap[]
 
   // Serves both "every student at a school" and the link-a-child lookup.
   @@index([schoolId, lrn])
@@ -103,4 +106,41 @@ model Card {
   // At most one *active* card per student. Lost and retired cards don't count.
   @@unique([studentId], map: "Card_one_active_per_student", where: { status: "active" })
   @@index([studentId])
+}
+
+model Tap {
+  // Made by the tapping device, not the server: a tap sent twice (a retry
+  // after a dropped connection) has the same id, so it's only stored once.
+  id         String   @id
+  schoolId   String
+  school     School   @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  stationId  String
+  // Kept as a plain copy, not a link to Card: an unknown card has no row.
+  cardSerial String
+  // Who the card belonged to at the moment of the tap. Null for an unknown card.
+  studentId  String?
+  student    Student? @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  tappedAt   DateTime
+  alert      Alert?
+
+  @@index([schoolId, tappedAt])
+  @@index([studentId, tappedAt])
+}
+
+enum AlertType {
+  lost_card_tapped
+}
+
+model Alert {
+  id           String    @id @default(uuid())
+  schoolId     String
+  school       School    @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  // @unique makes this one-to-one: a tap raises at most one alert.
+  tapId        String    @unique
+  tap          Tap       @relation(fields: [tapId], references: [id], onDelete: Restrict)
+  type         AlertType
+  createdAt    DateTime  @default(now())
+  acknowledged Boolean   @default(false)
+
+  @@index([schoolId])
 }
