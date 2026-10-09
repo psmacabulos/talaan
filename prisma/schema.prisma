@@ -1,6 +1,7 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
@@ -26,6 +27,7 @@ model School {
 
   staff    Staff[]
   students Student[]
+  cards    Card[]
 }
 
 enum Role {
@@ -75,6 +77,30 @@ model Student {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  cards Card[]
+
   // Serves both "every student at a school" and the link-a-child lookup.
   @@index([schoolId, lrn])
+}
+
+enum CardStatus {
+  active
+  lost
+  retired
+}
+
+model Card {
+  id        String     @id @default(uuid())
+  schoolId  String
+  school    School     @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  studentId String
+  student   Student    @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  // One physical card, one row, forever: a lost card keeps its serial.
+  serial    String     @unique
+  status    CardStatus @default(active)
+  linkedAt  DateTime   @default(now())
+
+  // At most one *active* card per student. Lost and retired cards don't count.
+  @@unique([studentId], map: "Card_one_active_per_student", where: { status: "active" })
+  @@index([studentId])
 }

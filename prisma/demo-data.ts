@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@/generated/prisma/client";
-import { seedSchools, seedStaff, seedStudents } from "@/data/seed";
+import { seedCards, seedSchools, seedStaff, seedStudents } from "@/data/seed";
+import { toCardData } from "@/data/repositories/prisma-card-repository";
 import { toSchoolData } from "@/data/repositories/prisma-school-repository";
 import { toStaffData } from "@/data/repositories/prisma-staff-repository";
 import { toStudentData } from "@/data/repositories/prisma-student-repository";
@@ -38,6 +39,11 @@ export async function insertDemoData(db: PrismaClient) {
     data: seedStudents.map((student) => ({ id: student.id, ...toStudentData(student) })),
     skipDuplicates: true,
   });
+
+  await db.card.createMany({
+    data: seedCards.map((card) => ({ id: card.id, ...toCardData(card) })),
+    skipDuplicates: true,
+  });
 }
 
 /** One line per table, so you can see at a glance what's in the database. */
@@ -45,4 +51,5 @@ export async function printDemoDataSummary(db: PrismaClient) {
   console.log(`Schools: ${await db.school.count()}`);
   console.log(`Staff: ${await db.staff.count()}`);
   console.log(`Students: ${await db.student.count()}`);
+  console.log(`Cards: ${await db.card.count()}`);
 }

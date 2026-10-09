@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: █████████████████░░░ 86%**  (126 of 147 tasks, 42 of 48 steps approved)
+**Overall progress: ██████████████████░░ 88%**  (130 of 147 tasks, 43 of 48 steps approved)
 
-**Next up:** Step 38, Students in Postgres (ready for your review)
+**Next up:** Step 39, ID cards in Postgres (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -49,8 +49,8 @@
 | 35 | Swap the school repository for a real Prisma-backed one | ██████████ 100% | Approved |
 | 36 | Give the browser tests their own database, reset before every run | ██████████ 100% | Approved |
 | 37 | Staff in Postgres | ██████████ 100% | Approved |
-| 38 | Students in Postgres | ████████░░  75% | Ready for your review |
-| 39 | ID cards in Postgres | ░░░░░░░░░░   0% | Not started |
+| 38 | Students in Postgres | ██████████ 100% | Approved |
+| 39 | ID cards in Postgres | ████████░░  75% | Ready for your review |
 | 40 | Taps and alerts in Postgres | ░░░░░░░░░░   0% | Not started |
 | 41 | Parents and parent–child links in Postgres | ░░░░░░░░░░   0% | Not started |
 | 42 | Parent notifications in Postgres | ░░░░░░░░░░   0% | Not started |
@@ -421,13 +421,13 @@ Recipe: `docs/backend/step-38-student-model.md`
 - [x] Students seeded with one `createMany`.
 Done when: an edited student survives a restart with the same birth date, a parent can link a child by LRN, last name and birth date, and every check passes.
 Commit: `feat(db): store students in Postgres`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 39: ID cards in Postgres
 Recipe: `docs/backend/step-39-card-model.md`
-- [ ] `partialIndexes` preview feature. `Card` model with a unique `serial` and the partial unique index `Card_one_active_per_student`, migration `add_card`.
-- [ ] `prisma-card-repository.ts` with unit tests. The mock singleton is removed.
-- [ ] Cards seeded after students.
+- [x] `partialIndexes` preview feature. `Card` model with a unique `serial` and the partial unique index `Card_one_active_per_student`, migration `add_card`.
+- [x] `prisma-card-repository.ts` with unit tests. The mock singleton is removed.
+- [x] Cards seeded after students.
 Done when: `psql` refuses a second active card for a student but accepts a lost one, a replaced card survives a restart, and every check passes.
 Commit: `feat(db): store ID cards in Postgres`
 - [ ] Owner review: I checked it and said "approved"

@@ -1724,3 +1724,11 @@ Built from the recipe (`docs/backend/step-38-student-model.md`), fast-track, aft
 - `prisma-student-repository.ts` and its test were copied from the recipe's code blocks, not retyped. `index.ts` exports the Prisma `studentRepository`, and the mock singleton is gone from `student-repository.ts`.
 - `prisma/demo-data.ts` inserts the 76 students with one `createMany` after the staff. A first `npx prisma db seed` printed `Schools: 3`, `Staff: 8`, `Students: 76`. Staff is 8, not the demo's 7, because of a teacher the owner invited on the dev database while checking Step 37. That's the owner's own data, left alone.
 - **Recipe fix:** step 4a showed the student export spread over five lines. Since Step 35's Prettier change to a 120-character line, it's one line in `index.ts`, so the "replace this" text didn't match. The recipe now shows the one-line version. Steps 39 and 40 already did.
+
+## Step 39: ID cards in Postgres (2026-10-09)
+
+Built from the recipe (`docs/backend/step-39-card-model.md`), fast-track, after the owner approved and pushed Step 38. The code and the `Card` model were copied from the recipe's code blocks. No recipe changes were needed.
+
+- `previewFeatures = ["partialIndexes"]` in the generator, the `Card` model and `CardStatus` enum, and back-relations on `School` and `Student`. `npx prisma migrate dev --name add_card` created and applied `20261009051945_add_card`. The SQL has `Card_serial_key`, `Card_studentId_idx`, and `CREATE UNIQUE INDEX "Card_one_active_per_student" ON "Card"("studentId") WHERE ("status" = 'active')`, as in the dry run.
+- `prisma-card-repository.ts` with its test. `index.ts` exports the Prisma `cardRepository`, and the mock singleton is gone from `card-repository.ts`.
+- Cards are seeded with one `createMany` after the students. A first `npx prisma db seed` printed `Cards: 69`.

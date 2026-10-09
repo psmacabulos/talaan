@@ -50,5 +50,3 @@ export function createMockCardRepository(
     },
   };
 }
-
-export const cardRepository = createMockCardRepository();
