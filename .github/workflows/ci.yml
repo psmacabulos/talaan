@@ -25,6 +25,9 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://postgres:devpassword@localhost:5432/talaan
+      # CI's database is thrown away after the run, so the browser tests can
+      # reset this same one.
+      E2E_DATABASE_URL: postgresql://postgres:devpassword@localhost:5432/talaan
 
     steps:
       - name: Checkout

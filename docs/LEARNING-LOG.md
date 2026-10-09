@@ -966,3 +966,11 @@ create({ id: "xyz", name: "Oceanview" })   → different id → inserts it      
 **Why it matters: retries.** It matters most for taps. The gate tablet makes the tap's id, sends it, and the Wi-Fi drops before the server's "got it" comes back. The tablet can't tell whether the tap arrived, so it sends it again with the **same id**. The server sees an id it already has and ignores the copy, so the student is recorded once. If the server made the id instead, the retry would look like a brand-new tap and the student would be in twice. That's why the id must be decided *before* sending.
 
 **What it does not protect against:** two separate clicks. Clicking "Add school" twice runs `createSchool` twice, `crypto.randomUUID()` makes two different ids, and you get two schools. The form guards against that a different way: its button is disabled while it's saving. Idempotency by id only makes a *resend of the same thing* safe.
+
+### Why run the seed twice, and the browser tests twice? (owner question, Step 36)
+The second run is the real test. The first run only proves the code works on whatever the database happened to look like.
+
+- **Seed twice:** a seed should be *idempotent*, meaning running it again changes nothing. `insertDemoData` uses `upsert` with `update: {}`, so the second run should skip the three schools that already exist and still print `Schools: 3`. If it crashed on a duplicate id, or printed 6, the seed wouldn't be safe to rerun.
+- **Browser tests twice:** the tests add students, link cards and tap in, and from Step 37 on those changes stay in Postgres. The first run starts clean either way. Only the second run shows whether the reset in `e2e/global-setup.ts` really puts everything back. Without it, the second run starts from the first run's leftovers (for example, no untapped students left for the tap-station tests) and fails even though the app is fine.
+
+Once Step 36 is approved, one run per check is enough. The double run is just how you check the reset works.

@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: █████████████████░░░ 85%**  (115 of 135 tasks, 40 of 45 steps approved)
+**Overall progress: ██████████████████░░ 88%**  (119 of 135 tasks, 41 of 45 steps approved)
 
-**Next up:** Step 36, Give the browser tests their own database, reset before every run (not started)
+**Next up:** Step 37, Staff in Postgres (not started)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -47,7 +47,7 @@
 | 33 | Generate the Prisma Client and prove it end to end | ██████████ 100% | Approved |
 | 34 | Give CI its own Postgres | ██████████ 100% | Approved |
 | 35 | Swap the school repository for a real Prisma-backed one | ██████████ 100% | Approved |
-| 36 | Give the browser tests their own database, reset before every run | ░░░░░░░░░░   0% | Not started |
+| 36 | Give the browser tests their own database, reset before every run | ██████████ 100% | Approved |
 | 37 | Staff in Postgres | ░░░░░░░░░░   0% | Not started |
 | 38 | Students in Postgres | ░░░░░░░░░░   0% | Not started |
 | 39 | ID cards in Postgres | ░░░░░░░░░░   0% | Not started |
@@ -306,6 +306,8 @@ Commit: `chore: final polish for phase 1`
 
 ## Phase 2: back end, gate station and guardhouse monitor (recipe-driven — see docs/backend/README.md)
 
+**Fast-track from Step 36 (2026-10-09):** Claude now implements each step's code, following its recipe, so the app reaches a demo and the gate hardware sooner. The owner still runs every check, approves each step and commits, and studies the recipes afterwards. See the note at the top of `docs/backend/README.md`. The paragraph below describes how Steps 30–35 were done.
+
 Unlike Phase 1, the owner writes every line of backend code personally, to learn backend development in Next.js. For each step, Claude writes an instructional recipe in `docs/backend/step-NN-<name>.md` (why, exact commands, exact code); the owner types it, runs it, and reports back what happened. See `docs/backend/README.md` for exactly how this works. Steps are smaller than Phase 1's — one idea at a time — so only the current step is written out in full below; the rest of Phase 2 stays a rough roadmap until we reach it.
 
 ### Roadmap (titles only, detailed one at a time)
@@ -379,12 +381,12 @@ Steps 36–40 were written as one batch of recipes at the owner's request (2026-
 
 ### Step 36: Give the browser tests their own database, reset before every run
 Recipe: `docs/backend/step-36-e2e-test-database.md`
-- [ ] Move the seed's inserts into `prisma/demo-data.ts` (`insertDemoData`, `printDemoDataSummary`), reused by `prisma/seed.ts`.
-- [ ] `prisma/reset-demo.ts` (`npm run db:reset`): refuses anything but localhost, `TRUNCATE "School" CASCADE`, then the demo data.
-- [ ] Playwright `globalSetup` migrates and resets the database named by `E2E_DATABASE_URL`, and the test server uses it. `.env.example` and CI set it.
+- [x] Move the seed's inserts into `prisma/demo-data.ts` (`insertDemoData`, `printDemoDataSummary`), reused by `prisma/seed.ts`.
+- [x] `prisma/reset-demo.ts` (`npm run db:reset`): refuses anything but localhost, `TRUNCATE "School" CASCADE`, then the demo data.
+- [x] Playwright `globalSetup` migrates and resets the database named by `E2E_DATABASE_URL`, and the test server uses it. `.env.example` and CI set it.
 Done when: `npx playwright test` passes twice in a row against `talaan_test`, and your own `talaan` database is untouched.
 Commit: `test(e2e): run browser tests against their own reset database`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 37: Staff in Postgres
 Recipe: `docs/backend/step-37-staff-model.md`

@@ -14,6 +14,7 @@
     "test:e2e": "npm run build && playwright test e2e/login.spec.ts e2e/students.spec.ts e2e/station.spec.ts e2e/theme.spec.ts e2e/parent.spec.ts",
     "test:a11y": "npm run build && playwright test e2e/a11y.spec.ts",
     "check:tokens": "node scripts/check-tokens.mjs",
+    "db:reset": "tsx prisma/reset-demo.ts",
     "progress": "node scripts/progress.mjs"
   },
   "dependencies": {

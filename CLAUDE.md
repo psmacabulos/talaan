@@ -10,7 +10,9 @@ The original plan sent parent notifications by SMS. As of 2026-09-22 this change
 As of 2026-10-03 the Capacitor-wrapping idea is dropped too. The parent app becomes a separate Expo (React Native) app that talks to the same API and gets push through Firebase Cloud Messaging — not a wrapper of this Next.js app. The same change adds two more clients to the *current* phase: a `/gate` tap station (an Android tablet with a USB NFC reader in keyboard mode) and a `/gate/display` guardhouse monitor (a live feed of recent taps). See "Backend architecture" below and `docs/ARCHITECTURE.md` for the full design.
 
 ## Current phase: back end, gate station and guardhouse monitor, recipe-driven (Phase 2)
-Phase 1 (the complete, production-quality front end against a typed mock data layer) is done and approved. Phase 2 replaces the mock repositories with a real database, real authentication, the tap API, the `/gate` station and the `/gate/display` guardhouse monitor (see docs/PLAN.md and docs/ARCHITECTURE.md). The owner is a junior backend developer who wants hands-on practice: for Phase 2, **Claude does not write backend code**. Instead, for each step Claude writes an instructional recipe in `docs/backend/step-NN-<name>.md` — a plain-language explanation of why, then the exact commands and exact code to type — and the owner implements it personally, then reports back what happened. See `docs/backend/README.md` for exactly how this works.
+Phase 1 (the complete, production-quality front end against a typed mock data layer) is done and approved. Phase 2 replaces the mock repositories with a real database, real authentication, the tap API, the `/gate` station and the `/gate/display` guardhouse monitor (see docs/PLAN.md and docs/ARCHITECTURE.md).
+
+**Fast-track (changed 2026-10-09).** Steps 30–35 were typed by the owner from recipes. From Step 36 on, to get to a demo and the hardware work sooner, **Claude implements the backend code itself**, the same way Phase 1 was built. The owner still runs every verification check personally (lint, check:tokens, typecheck, test, build, Playwright), reports the output, and approves each step. Each step still has a recipe in `docs/backend/step-NN-<name>.md` for the owner to study later: either written before the code (the owner approves it first) or written from the real diff afterwards — the owner says which. See `docs/backend/README.md`.
 
 ## Backend architecture (decided 2026-10-03)
 One Next.js app is the only backend, serving four clients. Full design — database tables, API endpoints, auth approach, folder structure — lives in `docs/ARCHITECTURE.md`; this is just the shape and the principles.
@@ -42,11 +44,12 @@ The owner creates the repository and makes **every** commit. You never run git c
 7. STOP and wait. If I ask for changes, make them inside the same step and report again.
 8. Only when I write "approved": tick that step's "Owner review" box, run `npm run progress`, and tell me it is ready to commit. Then wait until I ask for the next step.
 
-### Phase 2 variant (recipe-driven)
-Steps 3, 4 and 6 above change shape once a step touches backend code, since the owner writes it personally:
-3. "Implement" means writing the step's recipe in `docs/backend/step-NN-<name>.md` (format in that folder's README) — the exact commands and code the owner will type, with the why. Claude does not edit backend source files, `.env`, or run backend commands on the owner's behalf.
-4. "Verify" means the recipe gives the owner the exact commands/checks to run themselves; the owner runs them and reports the output, or the exact error, back to Claude.
-6. The review report points at the recipe file and summarizes what the owner reported back, in plain language.
+### Phase 2 variant (fast-track, from Step 36)
+Steps 3, 4 and 6 above change shape for Phase 2:
+3. Claude implements the step's code itself, following the step's recipe in `docs/backend/step-NN-<name>.md` when one exists, and keeps the recipe matching what was actually built (or writes it from the real diff when the step had none). Claude may run commands that are part of building (for example generating a migration or the Prisma Client). Claude still never reads or edits `.env`: when a step needs a new variable there, the review report gives the owner the exact line to add.
+4. Claude does not run the verification checks. The review report lists the exact commands for the owner to run (the routine in `docs/LEARNING-LOG.md`, plus the step's own checks); the owner runs them and reports the output, or the exact error, and any failure gets fixed together.
+6. The review report summarizes the change, points at the recipe, and lists the checks to run.
+Every question the owner asks still gets a `docs/LEARNING-LOG.md` entry.
 
 ## Progress tracking
 `docs/PLAN.md` starts with a progress block (overall bar and a table of every step). `scripts/progress.mjs` generates it from the checkboxes. Never edit between the `progress:start` and `progress:end` markers by hand, and never tick "Owner review" before I approve.

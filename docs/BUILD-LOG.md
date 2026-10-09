@@ -1674,3 +1674,18 @@ The owner typed Step 35 from its recipe and approved it on 2026-10-09. Schools a
 - **`psql` reminder in recipes.** The owner kept forgetting the `docker exec -it` command. Every recipe that uses `psql` now repeats it at the point of use, with a link to a new learning-log entry explaining each part. That's a standing rule in `docs/backend/README.md`, applied to Steps 35–40.
 
 The suggested commit, with a body listing the reformat and the Steps 36–40 recipes, was `feat(db): read and write schools through Prisma`.
+
+## Step 36: the browser tests get their own database (2026-10-09)
+
+**Fast-track starts here.** The owner changed the Phase 2 workflow on 2026-10-09: typing every recipe was taking too long with no demo yet and the gate hardware still ahead. From this step, the code is written for the owner the same way Phase 1 was, and the owner still runs every check, approves and commits. Recipes stay in `docs/backend/` to study later. `CLAUDE.md`, `docs/backend/README.md` and the Phase 2 intro in `docs/PLAN.md` say so.
+
+The owner had already typed Parts A and B (`prisma/demo-data.ts`, and `prisma/seed.ts` calling it). The rest followed the recipe as written:
+
+- `prisma/reset-demo.ts` and the `db:reset` script: refuses any `DATABASE_URL` not on `localhost`/`127.0.0.1`, then `TRUNCATE "School" CASCADE` and the demo data.
+- `e2e/database.ts` (`e2eDatabaseUrl()`, fails loudly when `E2E_DATABASE_URL` is missing) and `e2e/global-setup.ts` (`prisma migrate deploy` then `db:reset`, both with `DATABASE_URL` swapped for the test database).
+- `playwright.config.ts`: loads `.env` with `dotenv/config`, adds `globalSetup`, and passes `DATABASE_URL: e2eDatabaseUrl()` to the test server through `webServer.env`.
+- `.env.example` and CI get `E2E_DATABASE_URL`. In CI it's the same throwaway `talaan` database.
+
+One small difference from the owner's Part B: `seed.ts` still had the old comment above `main()`, which now describes `demo-data.ts` and wrongly said upsert "updates an existing row" (its `update: {}` leaves the row alone). The recipe's Part B has no comment there, so it was removed.
+
+The owner added the `E2E_DATABASE_URL` line to their own `.env` (Part F2), since that file is theirs to edit. The owner then ran the recipe's "Verify it worked" checks and the commit routine (lint, check:tokens, typecheck, test, build, and `npx playwright test` twice), reported them done with no errors, and approved the step on 2026-10-09. Along the way the owner asked why the seed and the browser tests run twice. That answer is now in the learning log.
