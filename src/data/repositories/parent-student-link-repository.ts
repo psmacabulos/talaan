@@ -46,5 +46,3 @@ export function createMockParentStudentLinkRepository(
     },
   };
 }
-
-export const parentStudentLinkRepository = createMockParentStudentLinkRepository();

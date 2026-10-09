@@ -1,11 +1,24 @@
 import type { PrismaClient } from "@/generated/prisma/client";
-import { seedAlerts, seedCards, seedSchools, seedStaff, seedStudents, seedTaps } from "@/data/seed";
+import {
+  seedAlerts,
+  seedCards,
+  seedParents,
+  seedParentStudentLinks,
+  seedSchools,
+  seedStaff,
+  seedStudents,
+  seedTaps,
+} from "@/data/seed";
+import { SEED_PARENT_PASSWORD } from "@/data/repositories/parent-repository";
 import { toAlertData } from "@/data/repositories/prisma-alert-repository";
 import { toCardData } from "@/data/repositories/prisma-card-repository";
+import { toParentData } from "@/data/repositories/prisma-parent-repository";
+import { toParentStudentLinkData } from "@/data/repositories/prisma-parent-student-link-repository";
 import { toSchoolData } from "@/data/repositories/prisma-school-repository";
 import { toStaffData } from "@/data/repositories/prisma-staff-repository";
 import { toStudentData } from "@/data/repositories/prisma-student-repository";
 import { toTapData } from "@/data/repositories/prisma-tap-repository";
+import { hashPassword } from "@/lib/password";
 
 /**
  * Copies Phase 1's demo data into the database, keeping the same ids
@@ -57,6 +70,23 @@ export async function insertDemoData(db: PrismaClient) {
     data: seedAlerts.map((alert) => ({ id: alert.id, ...toAlertData(alert) })),
     skipDuplicates: true,
   });
+
+  // Every demo parent signs in with the same demo password, stored hashed
+  // like any real one. One hash for all six keeps the seed quick.
+  const demoPasswordHash = await hashPassword(SEED_PARENT_PASSWORD);
+  for (const parent of seedParents) {
+    await db.parent.upsert({
+      where: { id: parent.id },
+      update: {},
+      create: { id: parent.id, ...toParentData(parent), passwordHash: demoPasswordHash },
+    });
+  }
+
+  // After parents and students: a link points at both.
+  await db.parentStudentLink.createMany({
+    data: seedParentStudentLinks.map((link) => ({ id: link.id, ...toParentStudentLinkData(link) })),
+    skipDuplicates: true,
+  });
 }
 
 /** One line per table, so you can see at a glance what's in the database. */
@@ -67,4 +97,6 @@ export async function printDemoDataSummary(db: PrismaClient) {
   console.log(`Cards: ${await db.card.count()}`);
   console.log(`Taps: ${await db.tap.count()}`);
   console.log(`Alerts: ${await db.alert.count()}`);
+  console.log(`Parents: ${await db.parent.count()}`);
+  console.log(`Parent–child links: ${await db.parentStudentLink.count()}`);
 }

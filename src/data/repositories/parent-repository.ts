@@ -69,5 +69,3 @@ export function createMockParentRepository(
     },
   };
 }
-
-export const parentRepository = createMockParentRepository();

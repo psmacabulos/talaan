@@ -25,11 +25,13 @@ model School {
   createdAt              DateTime               @default(now())
   updatedAt              DateTime               @updatedAt
 
-  staff    Staff[]
-  students Student[]
-  cards    Card[]
-  taps     Tap[]
-  alerts   Alert[]
+  staff              Staff[]
+  students           Student[]
+  cards              Card[]
+  taps               Tap[]
+  alerts             Alert[]
+  parents            Parent[]
+  parentStudentLinks ParentStudentLink[]
 }
 
 enum Role {
@@ -79,8 +81,9 @@ model Student {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  cards Card[]
-  taps  Tap[]
+  cards       Card[]
+  taps        Tap[]
+  parentLinks ParentStudentLink[]
 
   // Serves both "every student at a school" and the link-a-child lookup.
   @@index([schoolId, lrn])
@@ -143,4 +146,40 @@ model Alert {
   acknowledged Boolean   @default(false)
 
   @@index([schoolId])
+}
+
+model Parent {
+  id           String              @id @default(uuid())
+  schoolId     String
+  school       School              @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  firstName    String
+  lastName     String
+  mobile       String
+  // One account per email. Signup already checks this and shows a friendly
+  // message; the database guarantees it even if two signups race.
+  email        String              @unique
+  // Never the password itself: see src/lib/password.ts.
+  passwordHash String
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  links        ParentStudentLink[]
+
+  @@index([schoolId])
+}
+
+model ParentStudentLink {
+  id        String   @id @default(uuid())
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  parentId  String
+  parent    Parent   @relation(fields: [parentId], references: [id], onDelete: Restrict)
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  linkedAt  DateTime @default(now())
+
+  // A parent links each child once. The link-a-child form already says
+  // "already linked"; this makes it impossible, not just unlikely.
+  @@unique([parentId, studentId])
+  @@index([schoolId])
+  @@index([studentId])
 }

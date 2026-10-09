@@ -1741,3 +1741,14 @@ Built from the recipe (`docs/backend/step-40-tap-and-alert-models.md`), fast-tra
 - `prisma-tap-repository.ts` and `prisma-alert-repository.ts` with their tests. `index.ts` exports both, and both mock singletons are gone. `notify-parents.ts` only imports the `TapRepository` type, so it didn't change.
 - Taps, then alerts, are seeded with `createMany`. A first `npx prisma db seed` printed `Taps: 56` and `Alerts: 1`. `Cards` showed 71, not 69: the owner's card-replace check from Step 39 added two rows to the dev database.
 - Every simulated tap now stays in the database. After enough "Simulate a tap" clicks in `npm run dev`, no untapped students are left ("Nothing to simulate"). `npm run db:reset` puts the demo data back. The browser tests reset their own database before every run (Step 36).
+
+## Step 41: parents and links in Postgres, with hashed passwords (2026-10-09)
+
+Built from the fast-track recipe written earlier the same day (`docs/backend/step-41-parent-models.md`), after the owner approved and pushed Step 40. This is the first recipe in the batch that hadn't been dry-run, so it was checked as it was built. The code matched the recipe; no corrections were needed.
+
+- `src/lib/password.ts` (`hashPassword`, `passwordMatches`) and its test, copied from the recipe.
+- `Parent` and `ParentStudentLink` models with back-relations on `School` and `Student`. `npx prisma migrate dev --name add_parent_and_link` created and applied `20261009054914_add_parent_and_link`: two tables, `Parent_email_key`, `ParentStudentLink_parentId_studentId_key`, the two other indexes, and five foreign keys.
+- `prisma-parent-repository.ts` and `prisma-parent-student-link-repository.ts` with their tests. `index.ts` exports both, and both mock singletons are gone. `SEED_PARENT_PASSWORD` stays in `parent-repository.ts` for the seed.
+- The seed hashes the demo password once and upserts the six parents, then `createMany`s the ten links. `npx prisma db seed` printed `Parents: 6` and `Parent–child links: 10`. The other counts were back at the demo values (`Staff: 7`, `Cards: 69`), so the owner's database had been reset since Step 40.
+- **Checked against the real database** with a throwaway `tsx` script, deleted afterwards. `verifyPassword("PARENT-ONE@balanga.example", "Talaan123!")` returned `parent-balanga-1`, so the email lookup ignores case. A wrong password returned `null`. `listByParent("parent-balanga-1")` returned `student-0001`, `student-0002`, `student-0006` in seed order. The stored hash starts with `scrypt:`.
+- `prisma/demo-data.ts`'s imports were put in alphabetical order by module, since the list had grown to nine repository imports.

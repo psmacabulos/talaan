@@ -10,12 +10,16 @@ export { createMockTapRepository, type TapRepository } from "./tap-repository";
 export { tapRepository, createPrismaTapRepository } from "./prisma-tap-repository";
 export { createMockAlertRepository, type AlertRepository } from "./alert-repository";
 export { alertRepository, createPrismaAlertRepository } from "./prisma-alert-repository";
-export { parentRepository, createMockParentRepository, type ParentRepository } from "./parent-repository";
+export { createMockParentRepository, type ParentRepository } from "./parent-repository";
+export { parentRepository, createPrismaParentRepository } from "./prisma-parent-repository";
 export {
-  parentStudentLinkRepository,
   createMockParentStudentLinkRepository,
   type ParentStudentLinkRepository,
 } from "./parent-student-link-repository";
+export {
+  parentStudentLinkRepository,
+  createPrismaParentStudentLinkRepository,
+} from "./prisma-parent-student-link-repository";
 export {
   notificationRepository,
   createMockNotificationRepository,

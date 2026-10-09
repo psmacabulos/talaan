@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████████░░ 91%**  (134 of 147 tasks, 44 of 48 steps approved)
+**Overall progress: ███████████████████░ 94%**  (138 of 147 tasks, 45 of 48 steps approved)
 
-**Next up:** Step 40, Taps and alerts in Postgres (ready for your review)
+**Next up:** Step 41, Parents and parent–child links in Postgres (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -51,8 +51,8 @@
 | 37 | Staff in Postgres | ██████████ 100% | Approved |
 | 38 | Students in Postgres | ██████████ 100% | Approved |
 | 39 | ID cards in Postgres | ██████████ 100% | Approved |
-| 40 | Taps and alerts in Postgres | ████████░░  75% | Ready for your review |
-| 41 | Parents and parent–child links in Postgres | ░░░░░░░░░░   0% | Not started |
+| 40 | Taps and alerts in Postgres | ██████████ 100% | Approved |
+| 41 | Parents and parent–child links in Postgres | ████████░░  75% | Ready for your review |
 | 42 | Parent notifications in Postgres | ░░░░░░░░░░   0% | Not started |
 | 43 | Gate devices, their tokens, and the first `/api/v1` endpoint | ░░░░░░░░░░   0% | Not started |
 
@@ -439,15 +439,15 @@ Recipe: `docs/backend/step-40-tap-and-alert-models.md`
 - [x] Taps, then alerts, seeded.
 Done when: a simulated tap and a lost-card alert survive a restart, the browser tests pass twice in a row, and every check passes.
 Commit: `feat(db): store taps and alerts in Postgres`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 Steps 41–43 were written as one batch of fast-track recipes on 2026-10-09, while Step 37 was being checked. Each is built, checked by the owner, approved and committed one at a time.
 
 ### Step 41: Parents and parent–child links in Postgres
 Recipe: `docs/backend/step-41-parent-models.md`
-- [ ] `src/lib/password.ts` (`hashPassword`, `passwordMatches`, scrypt from Node, no new dependency) with unit tests.
-- [ ] `Parent` (unique email, `passwordHash`) and `ParentStudentLink` (unique per parent and student) models, migration `add_parent_and_link`.
-- [ ] Prisma parent and link repositories with unit tests. Both mock singletons removed. Parents and links seeded, with the demo password stored hashed.
+- [x] `src/lib/password.ts` (`hashPassword`, `passwordMatches`, scrypt from Node, no new dependency) with unit tests.
+- [x] `Parent` (unique email, `passwordHash`) and `ParentStudentLink` (unique per parent and student) models, migration `add_parent_and_link`.
+- [x] Prisma parent and link repositories with unit tests. Both mock singletons removed. Parents and links seeded, with the demo password stored hashed.
 Done when: a new parent and their linked child survive a restart, `psql` shows only `scrypt:` hashes, and every check passes.
 Commit: `feat(db): store parents and links in Postgres, with hashed passwords`
 - [ ] Owner review: I checked it and said "approved"
