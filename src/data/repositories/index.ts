@@ -22,3 +22,5 @@ export {
 } from "./prisma-parent-student-link-repository";
 export { createMockNotificationRepository, type NotificationRepository } from "./notification-repository";
 export { notificationRepository, createPrismaNotificationRepository } from "./prisma-notification-repository";
+export { type DeviceRepository } from "./device-repository";
+export { deviceRepository, createPrismaDeviceRepository } from "./prisma-device-repository";

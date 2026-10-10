@@ -15,6 +15,7 @@
     "test:a11y": "npm run build && playwright test e2e/a11y.spec.ts",
     "check:tokens": "node scripts/check-tokens.mjs",
     "db:reset": "tsx prisma/reset-demo.ts",
+    "device:create": "tsx scripts/create-device.ts",
     "progress": "node scripts/progress.mjs"
   },
   "dependencies": {

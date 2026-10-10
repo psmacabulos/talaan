@@ -1764,3 +1764,28 @@ Built from the fast-track recipe (`docs/backend/step-42-notification-model.md`),
 - **Checked against the real database** with a throwaway `tsx` script, deleted afterwards. `getParentNotifications("parent-balanga-1")` returned the three seed notifications newest first (0003 time out, 0002, 0001). `markRead("nope")` returned `null`, and `markRead("notification-0001")` returned it with `read: true`. The script then set it back to unread.
 - **The owner hit `TypeError: Cannot read properties of undefined (reading 'findMany')`** at `db.notification.findMany`, on `/parent/link-child` after signing in. The dev server had been running since before the `add_notification` migration and `prisma generate`. `src/lib/db.ts` caches the Prisma Client on `globalThis` in development, so hot reload kept the old client, which has no `notification` delegate. Restarting `npm run dev` fixes it. It isn't a code bug, and production always starts a fresh process. Added to the recipe's "If something goes wrong" and to the learning log.
 - The owner approved Step 42 on 2026-10-09, after the dev-server restart.
+
+## Step 43: gate devices, their tokens, and the first `/api/v1` endpoint (2026-10-09)
+
+Built from the fast-track recipe (`docs/backend/step-43-gate-devices.md`), after the owner approved and pushed Step 42. The code matched the recipe; no corrections were needed.
+
+- `Device` model with `DeviceKind`/`DeviceStatus` enums and a back-relation on `School`. `npx prisma migrate dev --name add_device` created and applied `20261009101733_add_device`: two enums, the table, `Device_tokenHash_key`, `Device_schoolId_idx` and one foreign key.
+- New files, all copied from the recipe's code blocks:
+  - `src/features/devices/` (schema and types);
+  - `device-repository.ts` and `prisma-device-repository.ts`, exported from `index.ts`;
+  - `src/services/devices/device-token.ts` and `authenticate-device.ts`, the first files in `src/services/`;
+  - three test files;
+  - `scripts/create-device.ts` (`npm run device:create`);
+  - `src/app/api/v1/devices/heartbeat/route.ts`.
+- **Checked against the real database** with a throwaway `tsx` script that called the route's `POST` directly with a `Request`. The script and the test device were deleted afterwards, leaving 0 devices.
+  - `device:create` for Balanga printed the school name, a device id and a `tal_dev_…` token. With `--school nope` it printed `No school with id "nope".`, and with `--kind printer` it printed the usage line.
+  - The right token got `200` with `{ device: { id, schoolId, label, kind }, serverTime }`. No header, a wrong token, and the same token after `status = 'revoked'` all got `401` with `Missing, unknown or revoked device token.`
+  - `lastSeenAt` was set, and `tokenHash` was a 64-character hex string, not the token.
+  - The `405` for a `GET` needs a running server, so it's left to the owner's `curl` check.
+- **Card serial decision (owner, same day):** accept both 4-byte and 7-byte serials. The reader's 10 digits become the first 4 UID bytes in real order. Hex with or without colons, 4 or 7 bytes, is accepted as given. The gate's lookup tries an exact match, then the first 4 bytes. That's built in Step 45. Recorded in `docs/ARCHITECTURE.md` and the Step 45 roadmap line.
+- `docs/ARCHITECTURE.md`'s API table now says `devices/register` is replaced for now by `npm run device:create`, and marks the heartbeat as built.
+- **No timed heartbeat (owner decision, same day).** The recipe first described devices calling the heartbeat every minute. The owner questioned the need, and asked what happens when the guard switches the tablet off after the morning rush. Decided: the endpoint is the gate's setup check only, recording a tap also sets `lastSeenAt` (Step 45), and the monitor sends none. The code was the same either way; only the comment in `route.ts`, the recipe's intro and diagram, `docs/ARCHITECTURE.md` and the plan's Step 45, 47 and 48 lines changed.
+- **Monitor and principal access (owner decisions, same day):** a guardhouse TV opens a link with a monitor key, swapped for a cookie on the first visit. A signed-in principal or super admin watches the same feed with no registration. Every school uses the same `/gate/display`, and the school comes from the key or the session, never the URL. Recorded in `docs/ARCHITECTURE.md`.
+- **Teachers and the live feed (owner decision, 2026-10-10):** no live feed for teachers. The monitor is for the guard's photo check and for the principal. Teachers already see their own class's arrivals on the dashboard and attendance pages.
+- **Gate screen shows the photo (owner decisions, 2026-10-10):** a tablet or phone can be the gate on its own, showing each student's photo after a tap, with no separate monitor needed to start. Phones show the result full screen; tablets split it with the last few taps. The owner made a point of this: a new tap must be recorded and shown immediately, even while the previous photo is up. The few-second clear-back to "Tap your card" only runs when nobody else taps. Android devices with built-in NFC can read cards through Web NFC as a second input. Recorded on the Step 47 line in `docs/PLAN.md`.
+- **Photos and the on-device roster (owner decisions, 2026-10-10):** the gate keeps its own copy of the roster and photo thumbnails, so a tap shows the photo instantly and photos leave the server once per device. The demo must have photos, so a new Step 46.5 (student photos) comes before the gate page. Resizing happens in the browser, storage is S3-compatible behind a `PhotoStorage` interface, and only keys go in the database. The owner made "cheap to run, easy to move" a standing rule, now one of `CLAUDE.md`'s backend principles.

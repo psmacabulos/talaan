@@ -12,7 +12,7 @@ This step builds the three pieces every later gate step needs:
 
 1. **A `Device` table**: which school it belongs to, what it is (gate or monitor), its token hash, and when it last checked in.
 2. **A way to create one**: a command (`npm run device:create`) that prints the token exactly once. An admin screen for this can come later; the command works today, and works on the production server too.
-3. **The first `/api/v1` endpoint**: `POST /api/v1/devices/heartbeat`. A device calls it every minute or so to say "I'm still here". It's the simplest possible endpoint that still needs the token, so it's the right place to learn how an API route checks who's calling before the tap endpoint does the same with more at stake.
+3. **The first `/api/v1` endpoint**: `POST /api/v1/devices/heartbeat`. The gate's setup screen calls it once, when the token is entered, to check the token works and show which device it belongs to. It also records "last seen". (Decided 2026-10-09: no timer. Every recorded tap marks the gate as seen too, and the guardhouse monitor sends no heartbeat at all.) It's the simplest possible endpoint that still needs the token, so it's the right place to learn how an API route checks who's calling before the tap endpoint does the same with more at stake.
 
 ```mermaid
 sequenceDiagram
@@ -27,15 +27,13 @@ sequenceDiagram
     Script->>DB: insert Device (sha256(token), never the token)
     Script-->>Admin: prints the token ONCE
     Admin->>Gate: types or pastes the token (once)
-    loop every minute
-        Gate->>API: Authorization: Bearer tal_dev_…
-        API->>DB: find Device by sha256(token), active?
-        alt found and active
-            API->>DB: lastSeenAt = now
-            API-->>Gate: 200 { device, serverTime }
-        else missing, wrong or revoked
-            API-->>Gate: 401 { error }
-        end
+    Gate->>API: Authorization: Bearer tal_dev_… (once, at setup)
+    API->>DB: find Device by sha256(token), active?
+    alt found and active
+        API->>DB: lastSeenAt = now
+        API-->>Gate: 200 { device, serverTime }
+    else missing, wrong or revoked
+        API-->>Gate: 401 { error }
     end
 ```
 
@@ -483,10 +481,12 @@ import { deviceRepository } from "@/data/repositories";
 import { authenticateDevice } from "@/services/devices/authenticate-device";
 
 /**
- * A gate or monitor checks in: "I'm on and online." Called on a timer even
- * when nobody is tapping, so a device that stops calling can be shown as
- * offline. Answers with the device's own details, which the gate's setup
- * screen uses to confirm a token works, and the server's clock.
+ * A device checks in: "this token works, and I'm online." The gate's setup
+ * screen calls it once when a token is entered, and shows the device's own
+ * details it answers with ("Connected as Main gate tablet"). There's no
+ * timer: during the day every recorded tap marks the gate as seen too.
+ * Also answers with the server's clock, so a device can notice its own
+ * clock is wrong.
  */
 export async function POST(request: Request) {
   const device = await authenticateDevice(request.headers.get("authorization"));

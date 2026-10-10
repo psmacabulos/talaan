@@ -183,6 +183,14 @@ Each step in `docs/PLAN.md` ends with a suggested `Commit:` line. Use that, or w
 - To keep more on one line, raise the limit, for example `"printWidth": 120`. It's one setting for the whole repo, so the next `npm run format` rewraps every file to match. Do that as its own commit, separate from feature work.
 - To protect a single statement, put `// prettier-ignore` on the line above it. Prettier then leaves that statement as written.
 
+### The terminal shows `dquote>` and nothing runs (owner question, Step 43)
+`dquote>` means zsh thinks a **double quote is still open** and is waiting for the closing `"` before it runs anything. Press **Ctrl+C** to get back to a normal prompt, then fix the command.
+
+Usual causes:
+- **Curly quotes.** Copying from a formatted page (a rendered Markdown preview, a chat, a document) can turn `"` into `“` or `”`. The terminal doesn't treat those as quotes, so the straight `"` that *is* there never gets its partner. Retype the quotes by hand, or copy from the raw `.md` file in VS Code.
+- **One quote missing**, for example `--label "Main gate tablet` without the closing `"`.
+- **A copied line that isn't a command**, such as a line from `package.json` (`"device:create": "tsx scripts/create-device.ts",`). That's what the command *is called*. Type `npm run device:create -- …` instead.
+
 ## Keeping local and CI in sync
 
 ### Why a check can pass for Claude but fail in CI
@@ -417,6 +425,15 @@ Two things make it safe with Next's `next/image` (checked in `node_modules/next/
 
 ---
 
+
+### How does an API route work in Next.js, and how does the front end call the back end? (owner question, Step 43)
+Full illustrated walk-through: [Talaan's First API Request](https://claude.ai/artifact/GGPRyQ253ncfF5oi5ZGYCh), which follows one heartbeat request through the real files.
+
+The short version:
+- **The folder path is the URL.** `src/app/api/v1/devices/heartbeat/route.ts` answers `/api/v1/devices/heartbeat`. Its exported `POST` function handles POST requests. There's no list of endpoints to register, as in Express.
+- **The route stays thin:** it checks who's calling, does one thing, and returns a `Response`. The rules live in `src/services/`, and the database access in `src/data/repositories/`.
+- **Two ways to reach the back end.** *Route Handlers* (`route.ts`) are ordinary HTTP endpoints, for callers outside the admin website: the gate tablet, the guardhouse TV, the future parent app, `curl`. *Server Actions* (`"use server"` files) are functions a React component calls directly; Next.js makes the `POST` for you. Every admin and parent form uses those. Both call the same services.
+
 ## Domain modeling: types vs. schemas
 
 ### What's the actual difference between a "domain type" and a "schema"? And is Step 8 front end or back end?
@@ -440,6 +457,71 @@ The standard answer is a third record — `ParentStudentLink` — that exists on
 ---
 
 ## Tap stations and notifications
+
+### Is the heartbeat real, who sends it, and do we need to ping every minute? (owner question, Step 43)
+**Decided (2026-10-09): no timed ping.** The heartbeat endpoint from Step 43 is used once, when a gate tablet's token is entered, to check the token works and show "Connected as Main gate tablet, Balanga". After that:
+- **Every tap counts as a sign of life.** Recording a tap also updates the gate's "last seen" in the same database write, so the morning rush costs no extra requests.
+- **The guardhouse monitor sends nothing.** If the TV dies, the guard sees a black screen. It only displays taps, so nothing is lost.
+- **A tablet switched off after the rush is fine.** Staff would see "last seen 9:12 AM", with no alarm, and it carries on when it's switched back on.
+
+**The tablet is what gets registered, not the reader.** The USB reader acts as a keyboard (types digits, presses Enter) and can't reach the internet. `npm run device:create` registers the tablet running `/gate`, and each guardhouse TV.
+
+**On cost, for reference:** even a once-a-minute ping would be about 1,440 tiny requests a day per device, and Heroku's plans are a flat monthly price, not per request. Turning it down wasn't about money; it just isn't needed yet. A 5-minute check-in while the gate is idle can be added after the demo if staff want an "offline" warning.
+
+### Can a tablet or phone be the gate by itself, and show the student's photo after a tap? (owner question, 2026-10-10)
+Yes. The tap API answers with the student's name, grade and photo, so whatever screen sent the tap can show them for a few seconds, then go back to "Tap your card". Phase 1's tap station already works this way, without the photo. At the start, the gate screen can be the guard's monitor, with no separate TV.
+
+How the card gets read depends on the device:
+
+| Device | Reading a card | Notes |
+|---|---|---|
+| Any tablet or phone + the USB reader | The reader types the number, like a keyboard | Android over a USB-C or OTG adapter, and iPads with USB-C, accept USB keyboards. Test with the real reader first. |
+| Android phone or tablet with built-in NFC | Chrome's **Web NFC** reads the card's full 7-byte ID | No reader needed. The page must be on HTTPS, a staff member taps "Start scanning" once, and the page has to stay open on screen. Test it with your stickers. |
+| iPad | No NFC chip at all | USB reader only |
+| iPhone | Has NFC, but Safari can't use it | Only a native app can, and iOS shows a pop-up sheet for every scan, which is too slow for a gate. USB reader instead. |
+
+Because the app accepts both the reader's 4-byte number and the full 7-byte ID (decided 2026-10-09), a card linked once works with either way of reading.
+
+### Does the gate download the photo on every tap? Can the device keep the photos itself? (owner question, 2026-10-10; agreed the same day)
+It doesn't have to. The proposed strategy is for **the gate to keep its own copy of the student list and photos:**
+1. When the gate page opens, it downloads the list of active cards, each with the student's name, grade, section and photo address (about 50–100 KB for 500 students).
+2. Photos are downloaded **once**, as small thumbnails (about 15 KB each, about 7 MB for 500), and kept in the browser's storage on the device.
+3. On a tap, the page finds the card in its own copy and shows the photo **instantly**, while the tap goes to the server in the background.
+4. The server still decides "time in", "already tapped" or "lost card". Its answer arrives a fraction of a second later and sets the status colour.
+5. Every few minutes the gate asks "anything new?". If nothing changed, the answer is a few bytes. A changed photo gets a new address, so only that one downloads again.
+
+That saves server traffic (a photo leaves the server once per device, not once per tap) and is also the base for the offline queue later.
+
+**Privacy:** the device keeps only what the gate shows (thumbnail, name, grade, section), never the LRN, birth date or guardian details, and wipes it when its token is revoked. Use school-owned devices only.
+
+**Still to build (Step 46.5, before the gate page, so the demo has photos):** a photo upload in the student drawer, and somewhere to keep the photos. Heroku's disk is wiped on every restart, so photos go to S3-compatible storage (Cloudflare R2's free tier, most likely).
+
+**Keeping it cheap and movable** (your rule from now on, written into `CLAUDE.md`):
+- The photo is shrunk to a thumbnail **in the staff member's browser** before upload, so the server never stores a large original or does image work.
+- Storage hides behind one small interface. "S3-compatible" is a common language that R2, Amazon S3, Backblaze B2 and MinIO all speak, so switching provider means changing a few settings, not code.
+- The student row stores only the photo's **key** (`photos/student-0001/3.webp`), not a full address on one provider's site, so moving to another provider doesn't touch the database.
+
+### Why can't the guardhouse TV just open a public link? And can the principal watch too? (owner question, 2026-10-09)
+**The TV:** the live feed shows a child's photo, name and grade the moment they arrive or leave. The app runs on the public internet, so an open link works for anyone who gets hold of it (a screenshot, a forwarded message, browser history), from anywhere. That's a live record of when named minors come and go, and an open link can't be switched off for one screen. So the TV gets a link with a **key** built in: staff make it once, the TV opens it once (bookmark or start page), and the server swaps the key for a cookie so it disappears from the address bar. From the TV's side it's still "turn on, open the link". If a link leaks, staff revoke that one link.
+
+**The principal:** no registration needed. A principal already proves who they are by signing in with a password, so that sign-in is the access check. The same live feed works in their own browser, on `/gate/display` or the dashboard. A device key is only for screens that nobody signs in on.
+
+**Two different "who are you" checks, one rule:** a person proves it with a password (staff sign-in); a screen or gate proves it with a key made for it (a device token). Either can be revoked on its own. Full decision: `docs/ARCHITECTURE.md`, "Decisions made since this document was first written".
+
+### Every school opens the same `/gate/display`. How does each one see only its own students? Do we need a subdomain per school? (owner question, 2026-10-09)
+No subdomain needed. The address is the same for every school, but the server decides which school to show from **who is asking**, not from the address:
+
+| Who opens `/gate/display` | How the server knows the school |
+|---|---|
+| A guardhouse TV | Its monitor key (cookie) belongs to one `Device` row, and that row has a `schoolId` |
+| A principal | Their sign-in session has their `schoolId` |
+| A super admin | Belongs to no single school, so picks one, as they already do in the admin pages |
+
+Then every query is "taps **where `schoolId` = that school**". Balanga's TV can only ever receive Balanga's taps.
+
+**Why not put the school in the URL** (`/gate/display?school=balanga`) **or a subdomain?** Anyone can edit an address. If the address chose the school, changing one word would show another school's students. Taking the school from the key or the sign-in means there's nothing in the address to change. Subdomains like `balanga.talaan.ph` could come later to make each school feel like its own site, but they'd be decoration; the key and the sign-in would still be what keeps schools apart.
+
+This is the "multi-tenant, one database" rule from `CLAUDE.md`: one app, one database, `schoolId` on every row, every query filtered by it. Step 51 adds tests that try to read another school's data and must fail.
 
 ### My reader types `0211299923`, not `04:A3:5F:…`. Is that a problem? (owner question, 2026-10-09)
 No. It's the same kind of information written differently. An NFC card's ID (its UID) is a handful of bytes, and the app writes them as hex pairs with colons. Your reader instead turns 4 bytes into one ordinary number and types it as 10 digits.

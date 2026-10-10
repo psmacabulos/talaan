@@ -33,6 +33,7 @@ model School {
   parents            Parent[]
   parentStudentLinks ParentStudentLink[]
   notifications      Notification[]
+  devices            Device[]
 }
 
 enum Role {
@@ -205,5 +206,33 @@ model Notification {
   createdAt DateTime         @default(now())
 
   @@index([studentId, tappedAt])
+  @@index([schoolId])
+}
+
+enum DeviceKind {
+  gate
+  monitor
+}
+
+enum DeviceStatus {
+  active
+  revoked
+}
+
+model Device {
+  id         String       @id @default(uuid())
+  schoolId   String
+  school     School       @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  // What staff call it: "Main gate tablet", "Guardhouse monitor".
+  label      String
+  kind       DeviceKind
+  // sha256 of the token. The token itself is shown once and never stored.
+  tokenHash  String       @unique
+  status     DeviceStatus @default(active)
+  // Set by every heartbeat. Null until the device first checks in.
+  lastSeenAt DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
   @@index([schoolId])
 }
