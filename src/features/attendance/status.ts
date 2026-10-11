@@ -98,6 +98,42 @@ export function deriveTapKind(tap: Tap, allStudentTaps: Tap[]): NotificationKind
   return priorSameDay.length % 2 === 0 ? "time_in" : "time_out";
 }
 
+/** One student's taps on one day, labelled (Step 49). */
+export type DayTapSummary = {
+  /** The day's taps, earliest first: the 1st is a time in, the 2nd a time out, and so on. */
+  taps: { tap: Tap; kind: NotificationKind }[];
+  /** The first tap. */
+  timeIn: Tap | undefined;
+  /**
+   * The last tap, but only when it's a time out. With in, out, in (out at
+   * noon, back after lunch) the student is in school now, so there's no
+   * time out to show; the full list tells the rest.
+   */
+  timeOut: Tap | undefined;
+};
+
+/**
+ * Time in, time out and every tap of the day for one student, by the same
+ * alternation as `deriveTapKind` (docs/ATTENDANCE-MODEL.md: derived from
+ * the order, never stored). One pass over the sorted day instead of one
+ * `deriveTapKind` call per tap.
+ */
+export function dayTapSummary(studentId: string, taps: Tap[], day: SchoolDay): DayTapSummary {
+  const ofDay = taps
+    .filter((tap) => tap.studentId === studentId && schoolDateOf(tap.tappedAt) === day.date)
+    .sort((a, b) => Date.parse(a.tappedAt) - Date.parse(b.tappedAt) || a.id.localeCompare(b.id));
+  const labelled = ofDay.map((tap, index) => ({
+    tap,
+    kind: (index % 2 === 0 ? "time_in" : "time_out") as NotificationKind,
+  }));
+  const last = labelled.at(-1);
+  return {
+    taps: labelled,
+    timeIn: labelled[0]?.tap,
+    timeOut: last?.kind === "time_out" ? last.tap : undefined,
+  };
+}
+
 export function studentStatus(studentId: string, taps: Tap[], day: SchoolDay): AttendanceStatus {
   const tap = todaysTap(studentId, taps, day);
   if (tap) {

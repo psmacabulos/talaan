@@ -15,7 +15,7 @@ const row: StudentRow = {
   section: "Rizal",
   guardianName: "Maria Cruz",
   guardianMobile: "09171234567",
-  photoUrl: null,
+  photoKey: null,
   createdAt: new Date("2026-10-08T00:00:00Z"),
   updatedAt: new Date("2026-10-08T00:00:00Z"),
 };
@@ -59,7 +59,7 @@ describe("toStudentData", () => {
   });
 
   it("stores a missing LRN and middle name as null", () => {
-    expect(toStudentData(student)).toMatchObject({ lrn: null, middleName: null, photoUrl: null });
+    expect(toStudentData(student)).toMatchObject({ lrn: null, middleName: null, photoKey: null });
   });
 
   it("round-trips: a student saved and read back is the same student", () => {

@@ -31,7 +31,7 @@ export function toStudent(row: StudentRow): Student {
     section: row.section,
     guardianName: row.guardianName,
     guardianMobile: row.guardianMobile,
-    photoUrl: row.photoUrl ?? undefined,
+    photoKey: row.photoKey ?? undefined,
   });
 }
 
@@ -48,7 +48,7 @@ export function toStudentData(student: Student) {
     section: student.section,
     guardianName: student.guardianName,
     guardianMobile: student.guardianMobile,
-    photoUrl: student.photoUrl ?? null,
+    photoKey: student.photoKey ?? null,
   };
 }
 

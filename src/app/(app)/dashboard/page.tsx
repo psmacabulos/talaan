@@ -174,7 +174,20 @@ export default async function DashboardPage() {
             <NeedsAttention alerts={openAlerts} alertTaps={alertTaps} students={students} today={day.date} />
           </DashboardCard>
 
-          <DashboardCard title="Live taps">
+          <DashboardCard
+            title="Live taps"
+            aside={
+              // Principals and super admins only: this branch never renders for a teacher.
+              <a
+                href="/gate/display"
+                target="_blank"
+                rel="noopener"
+                className="rounded-md text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              >
+                Open gate monitor
+              </a>
+            }
+          >
             <LiveTapFeed taps={taps} students={students} />
           </DashboardCard>
         </div>

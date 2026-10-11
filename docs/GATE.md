@@ -20,6 +20,56 @@ flowchart LR
     Service --> Writer
 ```
 
+## The two addresses the gate calls (Step 46)
+
+| Address | Answers |
+|---|---|
+| `POST /api/v1/gate/taps` | `{ clientTapId, cardSerial, clientTappedAt }` in, `toGateTapResponse(recordTap(…))` out. `401` for a bad token, `403` for a monitor, `400` for a bad body. An unreadable card is still `200 { "outcome": "invalid_serial" }`, because it's an answer for the screen, not an error. |
+| `GET /api/v1/gate/roster` | `{ cards: [{ serial, studentId }], students: [{ id, firstName, lastName, gradeLevel, section }] }`, active cards only, with an `ETag`. Asking again with `If-None-Match` gives `304` and no body when nothing changed. |
+
+Both start with `authenticateGate()` (`src/services/devices/authenticate-gate.ts`), which accepts only an active **gate** device. The routes themselves (`src/app/api/v1/gate/*/route.ts`) hold no rules: they check, call, and reshape.
+
+## The `/gate` page (Step 47)
+
+`src/app/gate/page.tsx` renders `GateKiosk` (`src/features/gate/gate-kiosk.tsx`), outside the staff shell, with no staff sign-in. The pieces:
+
+| File | Job |
+|---|---|
+| `gate-client.ts` | Everything kept on the tablet (token, roster with its ETag in `localStorage`, photos in Cache Storage `talaan-gate-photos`) and the three calls (heartbeat, roster, taps). `forgetGate()` wipes it all. |
+| `scan-buffer.ts` | Key presses become scans, with no input field (which would open Android's keyboard). Enter ends a scan, and a gap over 100 ms starts over, so a person's slow typing never becomes a card. |
+| `roster-match.ts` | Who a scan probably is, from the tablet's roster, by the server's rule (exact, else the first 4 bytes, never a guess), so the photo shows before the server answers. |
+| `gate-display.ts` | What the screen says for each state: checking, each outcome, or not sent. |
+
+A scan gets its own UUID and is sent at once. Its entry updates when its own answer arrives, so three quick taps are three requests in flight together. Any `401` from any call wipes the tablet and returns to setup.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Setup: no token
+    [*] --> Ready: token checks in
+    Setup --> Ready: token entered, heartbeat 200
+    Ready --> Setup: any 401, or Disconnect
+    Ready --> Ready: scan → checking → answer (never waits)
+```
+
+## The guardhouse monitor (Step 48)
+
+```mermaid
+sequenceDiagram
+    participant Gate as POST /api/v1/gate/taps
+    participant Bus as tapEvents (memory, per school)
+    participant Stream as GET /api/v1/gate/stream
+    participant TV as /gate/display
+    TV->>Stream: EventSource (cookie or staff session)
+    Stream->>Bus: subscribeToTaps(schoolId)
+    Gate->>Bus: publishStoredTap(result)
+    Bus-->>Stream: GateTapEvent
+    Stream-->>TV: event: tap / data: {…}
+```
+
+- **Who may watch** (`monitorViewerFrom` in `src/features/gate/monitor-viewer.ts`): a **monitor** device by its `talaan_monitor` cookie, or a principal or super admin session with a school. Never a gate device and never a teacher. The school always comes from that viewer.
+- **Connecting a TV:** make a monitor device (`npm run device:create -- --kind monitor …`), then open `/gate/display/connect?key=<token>` on the TV once. The route checks it's a monitor key, sets the httpOnly cookie for 400 days, and redirects to `/gate/display`.
+- **One server only:** `tapEvents` lives in the server's memory. On one Heroku dyno that's every viewer. On more than one, swap it for Postgres `LISTEN/NOTIFY` behind the same `publishTap`/`subscribeToTaps`.
+
 ## The card serial
 
 A card's serial is its NFC UID. Your USB reader doesn't type it the way NFC Tools shows it: it sends only the **first 4 bytes**, as one **10-digit decimal number**, lowest byte first. `normalizeCardSerial` (`src/features/students/card-serial.ts`) turns anything a reader or a person types into the stored form:
@@ -99,6 +149,8 @@ scripts/record-tap.ts                    npm run tap:record: taps from the termi
 `recordTap(input, deps)` takes its repositories as an argument (the real ones by default), so its unit tests run against in-memory stand-ins with no database. The one thing only a real database can prove, that the transaction keeps or drops everything together, is what `npm run tap:record` exercises.
 
 ## Quick recipes
+
+**Try the real gate page on a laptop.** Run `npm run dev`, open `http://localhost:3000/gate?token=<a gate token>`, plug in the USB reader and tap. No reader? Click the page and type a card's 10 digits quickly (or paste them), then press Enter.
 
 **Try the gate without the tablet.** Create a gate device with `npm run device:create -- --school school-balanga --kind gate --label "Main gate tablet"` and copy the token. Run `npm run tap:record -- --token tal_dev_…`, click the terminal, and tap stickers on the USB reader. Each line printed is what the gate screen will show.
 

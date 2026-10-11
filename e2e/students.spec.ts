@@ -3,13 +3,17 @@ import { signInAs } from "./sessions";
 import { testStudentName, testLrn } from "./test-data";
 
 test.describe("Students", () => {
-  test("add a student with all fields", async ({ page, context, baseURL }) => {
+  test("add a student with all fields", async ({ page, context, baseURL }, testInfo) => {
     await signInAs(context, "principal", baseURL!);
     await page.goto("/students");
 
-    const firstName = testStudentName("add");
+    // The project's name is part of the student's name and LRN: the mobile
+    // and desktop runs start in the same millisecond often enough that
+    // TEST_RUN_ID alone gave both the same name, and the search then found
+    // two students.
+    const firstName = testStudentName(`add${testInfo.project.name}`);
     const lastName = "Testerson";
-    const lrn = testLrn(1);
+    const lrn = testLrn(testInfo.project.name === "mobile" ? 1 : 2);
     const birthDate = "2010-05-15";
 
     await page.getByRole("button", { name: "Add student" }).click();
@@ -90,5 +94,29 @@ test.describe("Students", () => {
 
     // Old card should appear in the history.
     await expect(dialog.getByText(/Previous cards:/)).toBeVisible();
+  });
+
+  test("add a student's photo", async ({ page, context, baseURL }, testInfo) => {
+    await signInAs(context, "principal", baseURL!);
+    await page.goto("/students");
+
+    // A different seed student per project, for the same reason as the
+    // card test above; no other browser test touches these two.
+    const studentName = testInfo.project.name === "mobile" ? "Ana Manalo" : "Pedro Bernardo";
+    await page.getByLabel("Search students").fill(studentName);
+    await page.getByRole("button", { name: `Edit ${studentName}` }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("group", { name: "Photo" })).toBeVisible();
+
+    // A plain coloured square, not a face (e2e/fixtures/photo.png). The
+    // browser crops and shrinks it to a thumbnail before it's sent.
+    await dialog.getByLabel("Student photo").setInputFiles("e2e/fixtures/photo.png");
+    await expect(page.getByText("Photo saved")).toBeVisible();
+
+    // The drawer now shows the stored photo, loaded through the photo route.
+    const photo = dialog.getByRole("group", { name: "Photo" }).locator("img");
+    await expect(photo).toHaveAttribute("src", /^\/api\/v1\/photos\/school-balanga\/student-\d+\/\w+\.(webp|jpeg)$/);
+    await expect.poll(() => photo.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(256);
+    await expect(dialog.getByRole("button", { name: "Change photo" })).toBeVisible();
   });
 });

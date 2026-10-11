@@ -13,6 +13,7 @@ import { SheetFooter } from "@/components/ui/sheet";
 import { createStudent, updateStudent } from "./actions";
 import { ageInYears } from "./age";
 import { CardBox } from "./card-box";
+import { PhotoBox } from "./photo-box";
 import { studentFormMaxBirthDate, studentFormSchema } from "./schemas";
 import type { Card, GradeLevel, Student, StudentFormInput, StudentFormValues } from "./types";
 
@@ -267,6 +268,7 @@ export function StudentForm({
           </div>
         </fieldset>
 
+        {student ? <PhotoBox student={student} /> : null}
         {student ? <CardBox studentId={student.id} cards={cards ?? []} /> : null}
       </div>
 

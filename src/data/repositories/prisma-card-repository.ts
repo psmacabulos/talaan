@@ -43,6 +43,10 @@ export function createPrismaCardRepository(db: PrismaClient = prisma): CardRepos
       const row = await db.card.findUnique({ where: { serial } });
       return row ? toCard(row) : null;
     },
+    async listActiveBySchool(schoolId) {
+      const rows = await db.card.findMany({ where: { schoolId, status: "active" }, orderBy: { serial: "asc" } });
+      return rows.map(toCard);
+    },
     async listBySerialPrefix(schoolId, firstFourBytes) {
       // A few hundred cards a school, so a prefix search is cheap whether
       // or not Postgres uses the serial's index for it.

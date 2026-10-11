@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { Student } from "@/features/students/types";
 import { schoolTimeToIso } from "@/lib/school-time";
 import { AttendanceCardList } from "./attendance-card-list";
@@ -94,5 +94,45 @@ describe("AttendanceCardList", () => {
     render(<AttendanceCardList rows={[juan]} taps={taps} day={DAY} label="Class roll" variant="rows" />);
 
     expect(items("Class roll")).toHaveLength(1);
+  });
+
+  describe("time in and time out (Step 49)", () => {
+    const at = (time: string, n: number): Tap => ({
+      id: `7b0d6f8e-4c1a-4f7e-9d7a-2f4b1c3e5a6${n}`,
+      schoolId: "school-a",
+      stationId: "station-main-gate",
+      cardSerial: "04:A3:5F:2B:91:C0:80",
+      studentId: "student-juan",
+      tappedAt: schoolTimeToIso("2026-06-19", time),
+    });
+
+    it("shows In and Out after two taps, with no taps button", () => {
+      render(<AttendanceCardList rows={[juan]} taps={[at("07:41", 1), at("08:40", 2)]} day={DAY} label="Students" />);
+      const [item] = items("Students");
+      expect(within(item).getByText("7:41 AM")).toBeInTheDocument();
+      expect(within(item).getByText("8:40 AM")).toBeInTheDocument();
+      expect(within(item).queryByRole("button")).not.toBeInTheDocument();
+    });
+
+    it("shows no time out after in, out, in, and lists all three taps in a dialog", () => {
+      render(
+        <AttendanceCardList
+          rows={[juan]}
+          taps={[at("07:38", 1), at("08:20", 2), at("08:52", 3)]}
+          day={DAY}
+          label="Students"
+        />,
+      );
+      const [item] = items("Students");
+      expect(within(item).queryByText("8:52 AM")).not.toBeInTheDocument();
+
+      fireEvent.click(within(item).getByRole("button", { name: /3 taps/ }));
+      const dialog = screen.getByRole("dialog", { name: "Juan Cruz's taps" });
+      expect(within(dialog).getByText("June 19, 2026")).toBeInTheDocument();
+      const rows = within(dialog)
+        .getAllByRole("listitem")
+        .map((row) => row.textContent);
+      expect(rows).toEqual(["1. In7:38 AM", "2. Out8:20 AM", "3. In8:52 AM"]);
+    });
   });
 });

@@ -47,9 +47,13 @@ export const studentSchema = z.object({
   section: z.string().min(1, "Enter a section"),
   guardianName: z.string().min(1, "Enter a guardian name"),
   guardianMobile: phMobileSchema,
-  // For a station's optional tap-confirmation display (a monitor showing
-  // who's tapping) — not required, most schools won't have this on day one.
-  photoUrl: z.url().optional(),
+  // The photo thumbnail's key in PhotoStorage (Step 46.5), for the gate and
+  // the monitor, where the guard checks the face against the card. A key,
+  // never a provider URL, so changing storage never touches this data.
+  photoKey: z
+    .string()
+    .regex(/^[\w-]+\/[\w-]+\/[\w-]+\.(webp|jpeg)$/)
+    .optional(),
 });
 
 /**
@@ -64,7 +68,7 @@ export function studentFormMaxBirthDate(): string {
 /**
  * The add/edit drawer's own schema (Step 15) — the same fields as
  * `studentSchema`, minus `id`, `schoolId` (assigned by the server action)
- * and `photoUrl` (no UI for it yet). Unlike the stored-record schema, an
+ * and `photoKey` (set by the photo box, Step 46.5). Unlike the stored-record schema, an
  * empty LRN or middle name from a blank form field means "not provided"
  * rather than a validation failure, and a birth date can't be in the
  * future (CLAUDE.md/the prototype's own rule for this form specifically).

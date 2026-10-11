@@ -1901,3 +1901,78 @@ Final results, run by Claude at the owner's request:
 - `npx playwright test`: 164 passed, 12 skipped (the mobile-only and desktop-only tests), run twice.
 
 The `[WebServer] Error: The destination stream closed early` line in the output is a server log from a page navigated away mid-stream, not a test failure.
+
+## Step 46: the tap API and the gate's roster (2026-10-11)
+
+The owner asked for Steps 46 to 49 to be built in a row, with Claude running the checks. The recipe is `docs/backend/step-46-tap-api.md`, and its "What changed while building" section has the details.
+
+- **New files:**
+  - `authenticate-gate.ts`, plus `src/features/gate/` (`schemas.ts`, `responses.ts`, `roster.ts`) with tests;
+  - two route files;
+  - `CardRepository.listActiveBySchool` in both versions.
+- **Trying the routes without touching the owner's database.** A throwaway `scratch-gate-server.ts` in the project root (deleted afterwards) loaded the environment, pointed `DATABASE_URL` at `e2eDatabaseUrl()`, and ran `migrate deploy` and `db:reset` on `talaan_test`. It then created a gate and a monitor device with known test tokens and started `next dev -p 3200`. The `curl` results are in the recipe. The roster was 36 cards, and the `If-None-Match` request came back `304` with `size 0`.
+- **No surprises.** `npx tsc --noEmit` was clean on the first try, and the gate and service tests gave 9 files and 50 tests passing.
+
+## Step 46.5: student photos (2026-10-11)
+
+Built from `docs/backend/step-46.5-student-photos.md`, with Cloudflare R2 for production as the owner chose. Details are in the recipe's "What changed while building".
+
+- **The dependency:** `npm install aws4fetch` added `aws4fetch@^1.0.20`, one package with no dependencies of its own. `npm install` printed its usual audit summary, which was not touched (see the learning log on `npm audit fix --force`).
+- **The migration:** `npx prisma migrate dev --name student_photo_key --create-only` generated `DROP COLUMN "photoUrl", ADD COLUMN "photoKey"`. That was replaced by hand with `ALTER TABLE "Student" RENAME COLUMN "photoUrl" TO "photoKey";`, which says what the change is and would keep any data. There was none: no seed student had a photo. `npx prisma migrate dev` then applied it to the owner's local `talaan` database.
+- **Checked before renaming:** `updateStudent` saves `{ ...existing, ...parsed.data }`, so editing a student in the drawer keeps their `photoKey`. A save that rebuilt the student from the form alone would have wiped the photo on every edit.
+- **Two type errors, both fixed in place:**
+  - `Uint8Array<ArrayBufferLike>` isn't a valid fetch body, so the S3 storage copies the bytes before sending;
+  - `RouteContext<'/api/v1/photos/[...key]'>` isn't known until Next.js regenerates route types, so the parameters are typed by hand.
+- **A flake finally explained.** The new photo browser test ran beside "add a student", which failed at both widths with `strict mode violation: getByRole('button', { name: /Edit TestAdd3hbz4c/ }) resolved to 2 elements`. That was the cause of the unexplained Step 45 failure. `TEST_RUN_ID` is `Date.now()` in base 36, worked out separately by each test worker, and the mobile and desktop workers often start in the same millisecond. They then added two students with the same name, and each search found both. The fix puts the project name into that test's student name and LRN. `students.spec.ts` then passed 6/6 three times in a row.
+- **Run while building:** `npx tsc --noEmit` clean; `npx vitest run` on students, storage, photos, gate and data gave 34 files and 233 tests passing; `npm run build` OK.
+
+## Step 47: the `/gate` page (2026-10-11)
+
+Built from `docs/backend/step-47-gate-page.md`. Its "What changed while building" has the full list.
+
+- **Order of work:** the pure helpers and their tests first (`scan-buffer`, `roster-match`, `gate-display`: 30 tests), then `gate-client.ts`, then `GateKiosk`, then the browser tests, then screenshots.
+- **Two lint errors from `react-hooks/set-state-in-effect`:**
+  - the NFC check was moved to `useSyncExternalStore`;
+  - the startup `connect()` call moved into a `setTimeout(…, 0)` that the effect's cleanup clears.
+
+  The second change turned up a real development-only bug before it shipped. Because effects run twice in development, the first run removed `?token=` from the address bar and the second found nothing. The token is now saved before it's removed.
+- **Browser test failures, all in the tests:**
+  - "Card not recognised…" matched two elements: the panel and the screen-reader live region;
+  - `[aria-live="polite"]` matched two: the gate's region and sonner's toast region on every page.
+
+  Both checks are now scoped to `main section`, and the live region's text is checked on its own.
+- **Two seed facts checked with throwaway `tsx` scripts before writing the tests:**
+  - which Balanga students have an active card and exactly one demo-morning tap (so a gate tap is a predictable "Time out", and no station test picks them);
+  - that no two of the 68 active seed cards share their first 4 bytes, so a reader-style 4-byte scan can only match one student.
+- **Looking at it, which the tests can't do:** a throwaway Playwright spec (deleted afterwards) uploaded the test photo to a student, then screenshotted the gate idle, with a result, with an unknown card, and at setup, at 360 and 1280 px, light and dark. It also screenshotted the drawer's Photo box. That found the "Card / Card not recognised" double heading, and Recent showing two different times under the pinned demo clock. Both are fixed.
+- **Dependency check (from the Step 46.5 install):** a fresh `next dev` on port 3200 against the test database served `/gate`, `/students` and `/dashboard` with 200 and no errors in its log.
+- **Results:** `e2e/gate.spec.ts` 5 passed, 1 skipped (the back-to-back test runs at tablet width only).
+
+## Step 48: the guardhouse monitor (2026-10-11)
+
+Built from `docs/backend/step-48-gate-monitor.md`. The recipe's "What changed while building" has the details.
+
+- **New pieces:**
+  - `tapEvents`, a Node `EventEmitter` kept on `globalThis`, with `setMaxListeners(0)` so several screens don't trigger the leak warning;
+  - `publishStoredTap` and `toGateTapEvent`;
+  - `monitor-viewer.ts`, `sse.ts` and `monitor-events.ts` with their tests;
+  - the stream route, the connect route, the `/gate/display` page, the `GateMonitor` client component, and the dashboard link.
+- **Typing a new page's props.** `npx tsc --noEmit` reported `'"/gate/display"' does not satisfy the constraint 'AppRoutes'` for `PageProps<"/gate/display">`. The route didn't exist when Next.js last generated its route types. `npm run typecheck` regenerates them first and then passed, and the other pages already use `PageProps`, so it stayed as is. (The Step 46.5 photo route types its parameters by hand for the same reason, since it was written before any regeneration.)
+- **Browser tests:**
+  - the first live test was too weak, since the student's morning tap could already be on screen;
+  - the stricter "newest panel" version failed fairly, because both widths' taps share the pinned 9:15 AM and the second to arrive is the newest;
+  - the final version counts the student's name before and after the tap and expects one more.
+
+  It passed twice in a row. The connect-link tests use a test-only monitor device, created next to the test gate in `e2e/create-test-devices.ts`.
+- **Screenshots** (a throwaway Playwright spec, deleted afterwards) of the monitor at 360 and 1280 px, light and dark, after a live tap, and of the dashboard link. Nothing needed changing.
+- **Results:** `e2e/gate-monitor.spec.ts` 8 passed. `npx vitest run` on the new units passed.
+
+## Step 49: time in and time out (2026-10-11)
+
+Built from `docs/backend/step-49-time-in-time-out.md`. Its "What changed while building" has the details.
+
+- **`dayTapSummary`** went into `status.ts` beside `deriveTapKind`, with 6 tests (37 in that file).
+- **The UI:** a Time out column with the "N taps" button on desktop, and In/Out on phones. The button is two files: `day-taps.tsx` (the server wrapper) and `day-taps-button.tsx` (the client dialog).
+- **The seed:** three extra taps for Precious Rivera and Rodel Espiritu (`comingsAndGoings` in `taps.ts`, ids `…000000000901`–`903`). A throwaway `tsx` script printed the counts at 9:15 (still 21 / 6 / 13) and both students' labelled taps before the browser test was written. `seed.test.ts` now locks the counts in.
+- **The screenshot that changed the layout:** at 360 px, "In 8:17 AM · Out 8:40 AM" next to "Precious Rivera" forced the name to break as "Preciou / s Rivera". Out now goes on its own line under In, and a second screenshot confirmed the fix.
+- **Browser test** (`e2e/attendance.spec.ts`, both widths): Precious's 8:40 AM is visible, Rodel's "3 taps" dialog lists In 8:01, Out 8:20 and In 8:52 in order, and Escape closes it with focus back on the button. Each width renders both the table and the phone list (CSS hides one), so the test picks the visible copy with `locator("visible=true")`.

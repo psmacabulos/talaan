@@ -120,8 +120,30 @@ const bulkTaps: Tap[] = seedStudents.flatMap((student, index): Tap[] => {
   ];
 });
 
+/**
+ * Two Balanga students' comings and goings on the demo morning (Step 49),
+ * so the Attendance page shows a time out and a "3 taps" list. Their first
+ * taps (in the bulk morning above) are unchanged, so no count changes:
+ *   - index 25, Precious Rivera: in 8:17 (late), sent home at 8:40;
+ *   - index 26, Rodel Espiritu: in 8:01, out 8:20, back in at 8:52.
+ * Every gap is over the 2-minute debounce, so these are real taps.
+ */
+function laterTap(index: number, time: string, n: number): Tap {
+  const student = seedStudents[index];
+  return {
+    id: `00000000-0000-4000-8000-${String(900 + n).padStart(12, "0")}`,
+    schoolId: student.schoolId,
+    stationId: STATION_ID,
+    cardSerial: cardSerialAt(index),
+    studentId: student.id,
+    tappedAt: schoolTimeToIso(SEED_DATE, time),
+  };
+}
+
+const comingsAndGoings: Tap[] = [laterTap(25, "08:40", 1), laterTap(26, "08:20", 2), laterTap(26, "08:52", 3)];
+
 /** The named scenarios plus the generated morning around them. */
-export const seedTaps: Tap[] = [...scenarioTaps, ...bulkTaps];
+export const seedTaps: Tap[] = [...scenarioTaps, ...bulkTaps, ...comingsAndGoings];
 
 export const seedAlerts: Alert[] = [
   {

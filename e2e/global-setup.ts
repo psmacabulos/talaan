@@ -11,4 +11,5 @@ export default function globalSetup() {
   const env = { ...process.env, DATABASE_URL: e2eDatabaseUrl() };
   execSync("npx prisma migrate deploy", { env, stdio: "inherit" });
   execSync("npm run db:reset", { env, stdio: "inherit" });
+  execSync("npx tsx e2e/create-test-devices.ts", { env, stdio: "inherit" });
 }

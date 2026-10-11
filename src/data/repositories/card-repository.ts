@@ -11,6 +11,8 @@ export interface CardRepository {
   getBySerial(serial: string): Promise<Card | null>;
   /** This school's cards whose serial starts with these 4 bytes ("53:2E:98:0C"): the exact card and any 4- or 7-byte twin. */
   listBySerialPrefix(schoolId: string, firstFourBytes: string): Promise<Card[]>;
+  /** Every active card at a school: the gate's roster (Step 46). */
+  listActiveBySchool(schoolId: string): Promise<Card[]>;
   /** Links a new card (Step 16's "Link card"/"Simulate a card tap"). Idempotent by `id`, same as `StudentRepository.create`. */
   create(card: Card): Promise<Card>;
   /** Marks a card lost (Step 16's "Replace a lost card"). Returns `null` if no card with that id exists. */
@@ -35,6 +37,10 @@ export function createMockCardRepository(
     async getBySerial(serial) {
       await simulateLatency(latencyMs);
       return data.find((card) => card.serial === serial) ?? null;
+    },
+    async listActiveBySchool(schoolId) {
+      await simulateLatency(latencyMs);
+      return data.filter((card) => card.schoolId === schoolId && card.status === "active");
     },
     async listBySerialPrefix(schoolId, firstFourBytes) {
       await simulateLatency(latencyMs);

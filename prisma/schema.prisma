@@ -83,7 +83,9 @@ model Student {
   section        String
   guardianName   String
   guardianMobile String
-  photoUrl       String?
+  // Where the photo thumbnail is stored (Step 46.5), e.g.
+  // "school-balanga/student-0001/k3x9q2ab.webp". A key, never a provider URL.
+  photoKey       String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

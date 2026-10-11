@@ -52,3 +52,6 @@ next-env.d.ts
 
 # Prisma Client, regenerated from prisma/schema.prisma (npm install runs it)
 /src/generated/
+
+# student photos stored locally in development (PHOTO_STORAGE="local")
+/.data/

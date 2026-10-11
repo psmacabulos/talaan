@@ -32,9 +32,12 @@ describe("studentSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("accepts a valid photo URL, and rejects a non-URL string", () => {
-    expect(studentSchema.safeParse({ ...validStudent, photoUrl: "https://example.com/photo.jpg" }).success).toBe(true);
-    expect(studentSchema.safeParse({ ...validStudent, photoUrl: "not-a-url" }).success).toBe(false);
+  it("accepts a photo key, and rejects a provider URL or a path that climbs out", () => {
+    expect(
+      studentSchema.safeParse({ ...validStudent, photoKey: "school-balanga/student-0001/k3x9q2ab.webp" }).success,
+    ).toBe(true);
+    expect(studentSchema.safeParse({ ...validStudent, photoKey: "https://example.com/photo.jpg" }).success).toBe(false);
+    expect(studentSchema.safeParse({ ...validStudent, photoKey: "../secrets/x.webp" }).success).toBe(false);
   });
 
   it("rejects an LRN that isn't exactly 12 digits", () => {

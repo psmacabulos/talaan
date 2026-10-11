@@ -3,7 +3,8 @@ import { CardStatusBadge } from "@/features/students/card-status-badge";
 import { StudentAvatar, studentName } from "@/features/students/student-display";
 import { cn } from "@/lib/utils";
 import type { AttendanceRow } from "./attendance-table";
-import { formatTapTime, studentStatus, todaysTap, type SchoolDay } from "./status";
+import { DayTapsIndicator } from "./day-taps";
+import { dayTapSummary, formatTapTime, studentStatus, type SchoolDay } from "./status";
 import type { Tap } from "./types";
 
 /**
@@ -39,7 +40,7 @@ export function AttendanceCardList({
   return (
     <ul aria-label={label} className={cn("flex flex-col", variant === "cards" ? "gap-2" : "divide-y divide-border")}>
       {rows.map(({ student, cardStatus }) => {
-        const tap = todaysTap(student.id, taps, day);
+        const summary = dayTapSummary(student.id, taps, day);
 
         return (
           <li
@@ -61,10 +62,20 @@ export function AttendanceCardList({
             <div className="flex shrink-0 flex-col items-end gap-1">
               <StatusPill status={studentStatus(student.id, taps, day)} flexible={day.flexible} />
               <p className="text-sm text-muted-foreground tabular-nums">
-                {tap ? (
+                {summary.timeIn ? (
                   <>
                     <span className="sr-only">In at </span>
-                    <time dateTime={tap.tappedAt}>{formatTapTime(tap.tappedAt)}</time>
+                    {/* "In" is spelled out only beside an "Out"; alone, the time says it. */}
+                    {summary.timeOut ? <span aria-hidden="true">In </span> : null}
+                    <time dateTime={summary.timeIn.tappedAt}>{formatTapTime(summary.timeIn.tappedAt)}</time>
+                    {/* On its own line: side by side they squeezed a long name until it broke mid-word at 360px. */}
+                    {summary.timeOut ? (
+                      <span className="block">
+                        <span className="sr-only">, out at </span>
+                        <span aria-hidden="true">Out </span>
+                        <time dateTime={summary.timeOut.tappedAt}>{formatTapTime(summary.timeOut.tappedAt)}</time>
+                      </span>
+                    ) : null}
                   </>
                 ) : (
                   <>
@@ -73,6 +84,7 @@ export function AttendanceCardList({
                   </>
                 )}
               </p>
+              <DayTapsIndicator summary={summary} studentName={studentName(student)} date={day.date} />
             </div>
           </li>
         );

@@ -5,6 +5,7 @@ import { schoolTimeToIso } from "@/lib/school-time";
 import {
   attendanceByGrade,
   countByStatus,
+  dayTapSummary,
   deriveTapKind,
   formatTapTime,
   schoolDayFor,
@@ -233,5 +234,42 @@ describe("deriveTapKind", () => {
 describe("formatTapTime", () => {
   it("reads the school's clock, not UTC", () => {
     expect(formatTapTime(at("07:56"))).toBe("7:56 AM");
+  });
+});
+
+describe("dayTapSummary", () => {
+  const summary = (taps: Tap[]) => dayTapSummary("s1", taps, DAY);
+
+  it("has nothing for a student with no tap", () => {
+    expect(summary([])).toEqual({ taps: [], timeIn: undefined, timeOut: undefined });
+  });
+
+  it("has a time in and no time out after one tap", () => {
+    const first = tap("s1", at("07:50"));
+    expect(summary([first])).toMatchObject({ timeIn: first, timeOut: undefined });
+  });
+
+  it("makes the second tap the time out", () => {
+    const first = tap("s1", at("07:50"));
+    const second = tap("s1", at("16:10"));
+    expect(summary([second, first])).toMatchObject({ timeIn: first, timeOut: second });
+  });
+
+  it("shows no time out after in, out, in: the student is back in school", () => {
+    const taps = [tap("s1", at("07:38")), tap("s1", at("08:20")), tap("s1", at("08:52"))];
+    const result = summary(taps);
+    expect(result.timeOut).toBeUndefined();
+    expect(result.taps.map((entry) => entry.kind)).toEqual(["time_in", "time_out", "time_in"]);
+  });
+
+  it("makes the fourth tap the time out", () => {
+    const taps = ["07:50", "12:00", "13:05", "16:10"].map((time) => tap("s1", at(time)));
+    expect(summary(taps).timeOut).toBe(taps[3]);
+  });
+
+  it("ignores other students and other days", () => {
+    const mine = tap("s1", at("07:50"));
+    const result = summary([mine, tap("s2", at("07:40")), tap("s1", at("16:00", "2026-06-18"))]);
+    expect(result.taps.map((entry) => entry.tap)).toEqual([mine]);
   });
 });

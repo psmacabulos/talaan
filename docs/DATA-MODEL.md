@@ -52,7 +52,7 @@ erDiagram
         GradeLevel gradeLevel "7-12"
         string section
         string guardianMobile
-        string photoUrl "optional, for a station's tap-confirmation display"
+        string photoKey "optional; a PhotoStorage key, never a URL (Step 46.5)"
     }
     CARD {
         string id PK
@@ -271,7 +271,7 @@ This is deliberately named for *when*, not *how* — SMS is the actual channel (
 
 This also ties back to `Tap`'s offline design (see `SECTION_SLOTS` and the caveat above): a tap made while a station is offline is still generated and queued **on the device** — it doesn't wait for a server round-trip to exist. A notification can only be sent once that queued tap actually reaches the server; there's nothing to add to the schema for this (the device-made `id` already makes offline queuing safe — see "Why some things are their own record instead of a field" above), it's a rule about the *server-side sequencing* Phase 2 will implement, not a new field.
 
-**`Student.photoUrl`** is optional, for a possible future station screen that shows the tapping student's photo and name — so whoever's staffing the gate can visually confirm the right student tapped. Explicitly not required: most schools won't have this set up, and the core notification feature doesn't depend on it existing.
+**`Student.photoUrl`** was optional, for a possible future station screen that shows the tapping student's photo and name, so whoever's staffing the gate can visually confirm the right student tapped. **Step 46.5 renamed it `photoKey`** and made it real. It now holds a key into `PhotoStorage` (`school-balanga/student-0001/k3x9q2ab.webp`), never a provider's URL, so moving from Cloudflare R2 to another S3-compatible service changes settings, not data. It's still optional: a student without a photo shows their initials.
 
 ## The seed data: how 72 students, 12 sections and 3 schools fit together
 

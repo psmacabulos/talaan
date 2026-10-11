@@ -4,7 +4,8 @@ import { CardStatusBadge } from "@/features/students/card-status-badge";
 import type { CardFilterStatus } from "@/features/students/card-status";
 import { StudentAvatar, studentName } from "@/features/students/student-display";
 import type { Student } from "@/features/students/types";
-import { formatTapTime, studentStatus, todaysTap, type SchoolDay } from "./status";
+import { DayTapsIndicator } from "./day-taps";
+import { dayTapSummary, formatTapTime, studentStatus, type SchoolDay } from "./status";
 import type { Tap } from "./types";
 
 export interface AttendanceRow {
@@ -17,8 +18,9 @@ export interface AttendanceRow {
  * same "who's actually here" question `ClassRoll` (the dashboard's compact
  * card version) answers, just as a page of its own with a Card column too.
  * From 768px up; phones get `AttendanceCardList` instead (Step 27.8).
- * No "Time out" column: unlike the prototype, taps don't model a time-out
- * event yet (docs/ATTENDANCE-MODEL.md — only the day's earliest tap counts).
+ * Time in is the first tap of the day, Time out the last one when it is a
+ * time out, and "N taps" opens the whole day when there were more than two
+ * (Step 49, `dayTapSummary`).
  */
 export function AttendanceTable({ rows, taps, day }: { rows: AttendanceRow[]; taps: Tap[]; day: SchoolDay }) {
   return (
@@ -28,13 +30,14 @@ export function AttendanceTable({ rows, taps, day }: { rows: AttendanceRow[]; ta
           <TableRow>
             <TableHead>Student</TableHead>
             <TableHead>Time in</TableHead>
+            <TableHead>Time out</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Card</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {rows.map(({ student, cardStatus }) => {
-            const tap = todaysTap(student.id, taps, day);
+            const summary = dayTapSummary(student.id, taps, day);
             return (
               <TableRow key={student.id}>
                 <TableCell>
@@ -46,7 +49,15 @@ export function AttendanceTable({ rows, taps, day }: { rows: AttendanceRow[]; ta
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="text-muted-foreground">{tap ? formatTapTime(tap.tappedAt) : "—"}</TableCell>
+                <TableCell className="text-muted-foreground tabular-nums">
+                  {summary.timeIn ? formatTapTime(summary.timeIn.tappedAt) : "—"}
+                </TableCell>
+                <TableCell className="text-muted-foreground tabular-nums">
+                  <div className="flex items-center gap-2">
+                    {summary.timeOut ? formatTapTime(summary.timeOut.tappedAt) : "—"}
+                    <DayTapsIndicator summary={summary} studentName={studentName(student)} date={day.date} />
+                  </div>
+                </TableCell>
                 <TableCell>
                   <StatusPill status={studentStatus(student.id, taps, day)} flexible={day.flexible} />
                 </TableCell>

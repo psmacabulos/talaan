@@ -94,6 +94,8 @@ A `SchoolDay` (`src/features/attendance/status.ts`) carries everything the rules
 
 **Each school sets its own two times (Step 44.5).** They are columns on the `School` row (`lateAfter`, `absentFrom`, text like `"08:05"`), edited in **Settings › Attendance times**. Every page loads its school and passes it straight in: `schoolToday(now, school)` works because a `School` already has both fields. `DEFAULT_ATTENDANCE_TIMES` matches the database defaults and is used only for a new school, the seed data, tests, and the fallback when a school record can't be found. `attendanceTimesSchema` (`src/features/schools/schemas.ts`) checks the form and the save action: both times must be `HH:MM`, and absent must be later than late.
 
+**Time in and time out (Step 49).** `dayTapSummary(studentId, taps, day)` labels a student's taps that day in order: 1st in, 2nd out, 3rd in, and so on, the same alternation as `deriveTapKind`. **Time in** is the first tap. **Time out** is the last tap, only when it's a time out: after in, out, in the student is back in school, so Time out shows "—". The Attendance page shows both, and a student with more than 2 taps gets an "N taps" button that opens the whole day (`day-taps-button.tsx`). Status still comes from the first tap only.
+
 **Weekends have no late or absent (Step 44.6).** Students sometimes come in on a Saturday or Sunday, but the times vary, so a weekend is a **flexible** day. `schoolDayFor` sets `day.flexible = isWeekend(date)` (`src/lib/school-time.ts`), and `studentStatus` checks it first:
 
 ```ts

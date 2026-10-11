@@ -8,6 +8,7 @@
  */
 
 import { seedStudents } from "../src/data/seed/students";
+import { seedCards } from "../src/data/seed/cards";
 
 /**
  * A unique suffix for this test run, used to namespace student/parent records
@@ -52,4 +53,31 @@ export function findBalangaStudentByFullName(fullName: string) {
   return seedStudents.find(
     (student) => student.schoolId === "school-balanga" && `${student.firstName} ${student.lastName}` === fullName,
   );
+}
+
+/** The test gate's token (Step 47), created only in the test database by create-test-devices.ts. */
+export const TEST_GATE_TOKEN = "tal_dev_e2e_test_gate_token_not_for_real_use";
+/** The test guardhouse monitor's token (Step 48), likewise only in the test database. */
+export const TEST_MONITOR_TOKEN = "tal_dev_e2e_test_monitor_token_not_for_real_use";
+
+/**
+ * What the owner's USB reader types for a card: its first 4 bytes, read as
+ * one number lowest byte first, as 10 decimal digits ("53:2E:98:0C" →
+ * "0211299923"). The reverse of normalizeCardSerial's digits branch.
+ */
+export function readerDigitsFor(serial: string): string {
+  const bytes = serial
+    .split(":")
+    .slice(0, 4)
+    .map((pair) => parseInt(pair, 16));
+  const value = bytes.reduceRight((total, byte) => total * 256 + byte, 0);
+  return String(value).padStart(10, "0");
+}
+
+/** A Balanga student's active card serial, by their full name. */
+export function activeCardSerialFor(fullName: string): string {
+  const student = findBalangaStudentByFullName(fullName);
+  const card = seedCards.find((candidate) => candidate.studentId === student?.id && candidate.status === "active");
+  if (!card) throw new Error(`No active seed card for ${fullName}.`);
+  return card.serial;
 }

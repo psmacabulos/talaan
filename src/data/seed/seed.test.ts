@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { alertSchema, tapSchema } from "@/features/attendance/schemas";
+import { countByStatus, schoolToday } from "@/features/attendance/status";
 import { notificationSchema, parentSchema, parentStudentLinkSchema } from "@/features/parents/schemas";
 import { schoolSchema } from "@/features/schools/schemas";
 import { staffSchema } from "@/features/staff/schemas";
 import { cardSchema, studentSchema } from "@/features/students/schemas";
+import { schoolTimeToIso } from "@/lib/school-time";
 import {
   seedAlerts,
   seedCards,
@@ -15,6 +17,7 @@ import {
   seedStudents,
   seedTaps,
 } from "./index";
+import { SEED_DATE } from "./taps";
 
 /**
  * Every seed record must actually satisfy its own domain schema — this is
@@ -192,5 +195,13 @@ describe("seed data shape", () => {
     // one child, several guardians
     const guardiansOfStudent1 = seedParentStudentLinks.filter((l) => l.studentId === "student-0001");
     expect(guardiansOfStudent1.length).toBeGreaterThan(1);
+  });
+});
+
+describe("the demo morning (Steps 44.6 and 49)", () => {
+  it("still counts 21 present, 6 late and 13 absent at Balanga at 9:15 AM, with the comings and goings added", () => {
+    const day = schoolToday(schoolTimeToIso(SEED_DATE, "09:15"));
+    const students = seedStudents.filter((student) => student.schoolId === "school-balanga");
+    expect(countByStatus(students, seedTaps, day)).toEqual({ present: 21, late: 6, absent: 13, idle: 0 });
   });
 });
