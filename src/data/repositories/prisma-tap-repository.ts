@@ -56,6 +56,15 @@ export function createPrismaTapRepository(db: PrismaClient = prisma): TapReposit
       const row = await db.tap.findUnique({ where: { id } });
       return row ? toTap(row) : null;
     },
+    async findByCardBetween(schoolId, cardSerial, from, to) {
+      // The (schoolId, tappedAt) index narrows this to a few minutes of one
+      // school's taps before the serial is compared.
+      const row = await db.tap.findFirst({
+        where: { schoolId, cardSerial, tappedAt: { gt: new Date(from), lt: new Date(to) } },
+        orderBy: EARLIEST_FIRST,
+      });
+      return row ? toTap(row) : null;
+    },
     async create(tap) {
       // The device's own id makes this idempotent: a retried tap finds its
       // row already there and changes nothing.

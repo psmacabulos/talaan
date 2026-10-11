@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, useTransition, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, useTransition, type KeyboardEvent } from "react";
 import { AlertTriangle, Loader2, Nfc } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,16 @@ export function CardBox({ studentId, cards: initialCards }: { studentId: string;
   const [serialError, setSerialError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const serialId = useId();
+  const serialRef = useRef<HTMLInputElement>(null);
+
+  // The USB reader types into whatever has focus, so the field must have it
+  // whenever the box is waiting for a card: when the panel opens, and again
+  // after a refused card. It waits until nothing is pending, because the
+  // field is disabled meanwhile and a disabled input can't take focus (why
+  // `autoFocus` alone missed it right after "Yes, replace card").
+  useEffect(() => {
+    if (mode === "waiting" && !isPending) serialRef.current?.focus();
+  }, [mode, isPending]);
 
   const activeCard = cards.find((card) => card.status === "active");
   // Oldest first, so "the current lost card" (if there's no active one) is
@@ -118,7 +128,7 @@ export function CardBox({ studentId, cards: initialCards }: { studentId: string;
             <Label htmlFor={serialId}>Card serial</Label>
             <Input
               id={serialId}
-              autoFocus
+              ref={serialRef}
               autoComplete="off"
               spellCheck={false}
               className="font-mono"

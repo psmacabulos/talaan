@@ -109,7 +109,7 @@ It answers `{ ok: true, card }` or `{ ok: false, fieldError?, formError? }`. The
 `src/features/students/card-box.tsx`, in the "waiting" state (after **Link card**, or after replacing a lost card):
 
 - **What's shown:** "Hold the card against the reader", now with "Or type the serial from an NFC app, then press Enter."
-- **The field:** a **Card serial** input, focused automatically, so the reader's typing lands in it with no click. It uses a monospace font, has autocomplete and spellcheck off, and shows its error underneath (`aria-invalid` and `aria-describedby`).
+- **The field:** a **Card serial** input that gets the cursor whenever the box is waiting, so the reader's typing lands in it with no click. A `useEffect` focuses it through a `ref` once `mode` is `"waiting"` and nothing is pending. It runs again after a refused card, so the next tap goes straight back in. (The first version used `autoFocus`, which missed right after "Yes, replace card" because the field was still disabled at that moment; see "Fixed after approval" below.) It uses a monospace font, has autocomplete and spellcheck off, and shows its error underneath (`aria-invalid` and `aria-describedby`).
 - **Enter links the card.** The card box sits *inside* the student form, so a plain Enter would submit the whole student. `onKeyDown` catches Enter, cancels the form submit, and calls `linkRealCard` instead. The reader presses Enter after every card, so tapping the sticker is all it takes.
 - **The buttons:** **Link card** (disabled while the field is empty), **Simulate a card tap** (now the outline button, kept for demos without a reader), and **Cancel**.
 - **Each new wait starts clean:** an empty field and no old error.
@@ -122,6 +122,15 @@ It answers `{ ok: true, card }` or `{ ok: false, fieldError?, formError? }`. The
   - `findSerialConflict`: nobody has the serial; an active card has it; a lost or retired card had it; 4-byte and 7-byte twins both ways; a lost twin is ignored.
 - `card-repository.test.ts`: `listBySerialPrefix` returns only this school's cards with those first 4 bytes.
 - `e2e/students.spec.ts`, "replace a student's card": after replacing, the test checks that the **Card serial** field has focus. It then fills in a random 10-digit number and presses Enter, the way the reader does, and expects a toast like "Card 1A:2B:3C:4D linked". The number is random so the phone-width and desktop runs never link the same card. It also checks that **Simulate a card tap** is still there.
+
+## Fixed after approval (found by Step 45's browser tests)
+
+The owner's Step 45 test run had 2 failures, both in "replace a student's card":
+
+1. **Phone width: the field didn't have the cursor.** `autoFocus` only acts when the input first appears. After "Yes, replace card", the waiting panel appears while the replace request is still finishing, so the input is `disabled`. A disabled input can't take focus, and nothing tried again. **Fix:** `serialRef` plus `useEffect(() => { if (mode === "waiting" && !isPending) serialRef.current?.focus(); }, [mode, isPending])`. This matters beyond the test: without it, a real reader would have typed into nothing.
+2. **Desktop: a knock-on, and a race that was always there.** The phone and desktop runs use one database at the same time, and both picked Juan Cruz. Whichever marked his card lost first made the other's "replace" fail. **Fix:** each run gets its own student: Juan Cruz on desktop, and Rosa Castillo (student-0008, active card, used by no other browser test) on the phone.
+
+After the fix the full routine passed: lint, check:tokens, typecheck, 445 unit tests, build, and 164 browser tests (12 skipped by design). `students.spec.ts` also passed three more times in a row.
 
 ## Verify it worked
 

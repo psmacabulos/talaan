@@ -16,6 +16,7 @@
     "check:tokens": "node scripts/check-tokens.mjs",
     "db:reset": "tsx prisma/reset-demo.ts",
     "device:create": "tsx scripts/create-device.ts",
+    "tap:record": "tsx scripts/record-tap.ts",
     "progress": "node scripts/progress.mjs"
   },
   "dependencies": {

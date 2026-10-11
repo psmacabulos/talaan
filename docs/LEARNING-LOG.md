@@ -884,6 +884,12 @@ The tap station's "Valid card" button always hands out the *next* untapped stude
 ### A "random-looking" name generator can have a hidden repeat
 Adding extra seed students to fix the above created a *new*, sillier bug: one of the new students ended up with the exact same name as an existing one, because the name generator cycles through a fixed list of 40 first names and 40 last names — continue past 40 students and it starts reusing the same names again, deterministically, at a predictable spot. "Looks random" and "never repeats" are not the same guarantee; a generator built from a small fixed list needs an explicit plan for what happens once you ask it for more than the list's size.
 
+### Two copies of one test, editing the same record at once (Step 44.7)
+The browser tests run every test twice at the same time, once at phone width and once at desktop width, against one shared database. "Replace a student's card" picked the same student, Juan Cruz, in both. Whichever copy marked his card lost first made the other copy's "replace" fail, because there was no active card left to replace. It passed or failed depending on which got there first. The fix was to give each copy its own student. The rule worth keeping: **a test that changes a record should own that record**, either one it creates or one no other test touches. (Running with `--repeat-each=3` brings the same race back on purpose: three copies of one test at once, all on the same student.)
+
+### `autoFocus` only tries once
+`autoFocus` focuses an input at the moment it first appears, and never again. If the input is disabled at that moment (here, while the "replace card" request was still finishing), the focus silently doesn't happen. When focus really matters, like a USB reader that types into whatever has focus, focus the input in code once it's ready: a `ref` plus a `useEffect` that runs when the state that enables it changes.
+
 ## Running the database locally with Docker (Step 30)
 
 ### Getting into `psql`, and what each part of the command means (owner question)

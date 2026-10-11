@@ -1,4 +1,5 @@
-import type { Notification } from "@/features/parents/types";
+import type { Notification, NotificationKind } from "@/features/parents/types";
+import type { NotificationPreference } from "@/features/schools/types";
 import type { NotificationRepository } from "@/data/repositories/notification-repository";
 import type { SchoolRepository } from "@/data/repositories/school-repository";
 import type { TapRepository } from "@/data/repositories/tap-repository";
@@ -10,6 +11,17 @@ export type NotifyParentsDeps = {
   tapRepository: TapRepository;
   notificationRepository: NotificationRepository;
 };
+
+/**
+ * The school's one setting decides which taps reach parents: `off` sends
+ * nothing, `time_in_only` only arrivals, `time_in_and_time_out` both.
+ * Shared by this function and the gate's tap service (Step 45), so the two
+ * can never disagree about who gets notified.
+ */
+export function shouldNotifyParents(preference: NotificationPreference, kind: NotificationKind): boolean {
+  if (preference === "off") return false;
+  return kind === "time_in" || preference === "time_in_and_time_out";
+}
 
 /**
  * Turns a freshly recorded tap into a parent notification (Step 24), or
@@ -40,11 +52,11 @@ export async function notifyParentsForTap(tap: Tap, deps: NotifyParentsDeps): Pr
   if (!tap.studentId) return null;
 
   const school = await deps.schoolRepository.getById(tap.schoolId);
-  if (!school || school.notificationPreference === "off") return null;
+  if (!school) return null;
 
   const studentTaps = await deps.tapRepository.listByStudent(tap.studentId);
   const kind = deriveTapKind(tap, studentTaps);
-  if (kind === "time_out" && school.notificationPreference === "time_in_only") return null;
+  if (!shouldNotifyParents(school.notificationPreference, kind)) return null;
 
   return deps.notificationRepository.create({
     id: crypto.randomUUID(),

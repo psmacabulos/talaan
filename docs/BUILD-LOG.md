@@ -1868,3 +1868,36 @@ The owner read the Step 45 recipe, saw the "no way to link a real sticker" gap i
 - **Enter inside a form inside a form.** The card box is a fieldset inside the student drawer's `<form>`. The USB reader presses Enter after every card, and a plain Enter in that input would have submitted the whole student form. The input's `onKeyDown` cancels Enter and links the card, and every button in the box stays `type="button"`.
 - **The browser test needed a different card each run.** `e2e/students.spec.ts` runs at phone and desktop width against one shared test database. A fixed serial would have been "already linked" the second time. So it fills in a random 10-digit number below `0xFFFFFFFF` and checks the toast against a pattern, not one serial.
 - **Run while building:** `npx tsc --noEmit` clean; `npx vitest run src/features/students src/data/repositories/card-repository.test.ts` 8 files, 85 tests passing. `npx eslint` on `card-box.tsx` clean. Not run: the full checks, the browser tests, and the drawer in a browser.
+
+## Step 45: the tap service (2026-10-11)
+
+Built from `docs/backend/step-45-tap-service.md` after the owner approved Step 44.7 and said "proceed to step 45". That was taken as approval of the recipe's five decisions as written: 2-minute debounce either side, the device clock within limits, `stationId` as the device id, a lost-card tap keeps its owner, and retired, other-school and unclear cards count as unknown. The mechanism is written up in the new `docs/GATE.md`.
+
+- **The pieces came in this order:** the pure helpers (`matchCard`, `chooseTapTime`, and `shouldNotifyParents` pulled out of `notifyParentsForTap`); then the data layer (`findByCardBetween` on both tap repositories, and the new `TapWriter` with its Prisma transaction); then `recordTap()`; then `scripts/record-tap.ts`. `npx tsc --noEmit` was clean after each.
+- **One wrong test, not wrong code.** The first `npx vitest run` gave 1 failure out of 100: "stores a retired card as an unknown card" expected the stored serial to be the reader's `53:2E:98:0C`. The service had stored the retired card's own `53:2E:98:0C:14:00:01`, which is the rule for every matched card (so the debounce sees one serial). The test now gives each unknown-card case its expected serial.
+- **Proving the transaction against real Postgres, without touching the owner's database.** The unit tests use in-memory stand-ins, so they can't show that the tap, its notification or alert, and `Device.lastSeenAt` are kept or dropped together. A throwaway script in the scratch folder pointed `DATABASE_URL` at `e2eDatabaseUrl()` (the `talaan_test` database Playwright resets on every run). It ran `prisma migrate deploy` and `db:reset`, created a gate device and called `recordTap` six times:
+  - an active seed card: `recorded`, `time_in`, notified;
+  - the same tap id again: `recorded`, replayed;
+  - the same card a minute later: `duplicate`;
+  - a lost seed card: `lost_card`;
+  - the owner's sticker `0211299923`: `unknown_card` stored as `53:2E:98:0C`;
+  - `hello`: `invalid_serial`.
+
+  Postgres then held 3 taps, 1 alert, 1 notification, and the device's `lastSeenAt` was set. The first attempt failed with a tsx `TransformError` because the script used top-level `await`. Wrapping it in `async function main()` fixed it. The script was deleted afterwards, and nothing was left in the repository.
+- **Run while building:** `npx tsc --noEmit` clean; `npx vitest run src/services src/features/attendance src/data/repositories/tap-repository.test.ts` 13 files, 107 tests passing. Not run: lint, check:tokens, the full test suite, build, and the browser tests.
+
+### Step 45 test run: two Step 44.7 fixes (2026-10-11)
+
+The owner's `npx playwright test` after Step 45 failed "replace a student's card" at both widths, then asked Claude to run all the checks for this step. Playwright's `test-results/*/error-context.md` showed two separate problems.
+- **Phone:** `toBeFocused()` on Card serial got "inactive". `autoFocus` fired while the input was still `disabled` (the replace request's transition was pending), so it never got focus. The fix was a `ref` plus a `useEffect` on `[mode, isPending]`.
+- **Desktop:** the student showed "Lost" with no active card at the very first check. It was a knock-on from the phone run, which had marked the shared student's card lost and then stopped. Running only `students.spec.ts` brought out the underlying race even after the focus fix: "Hold the card against the reader" was not found because the other project had already replaced the card. Each project now uses its own student: Juan Cruz on desktop, Rosa Castillo (student-0008) on the phone. A quick `tsx` look at the seed confirmed she has an active card, and `grep` confirmed no other spec uses her name.
+
+A `--repeat-each=3` run then failed on purpose (three phone copies on one student), so it isn't a useful check for this test. One run of `students.spec.ts` straight after it failed "add a student" at both widths. The report was overwritten before it could be read, and three plain runs in a row afterwards all passed, so the cause wasn't found. It's noted here in case it comes back.
+
+Final results, run by Claude at the owner's request:
+- `npm run lint`, `check:tokens` and `typecheck`: clean.
+- `npm run test`: 61 files, 445 tests.
+- `npm run build`: OK.
+- `npx playwright test`: 164 passed, 12 skipped (the mobile-only and desktop-only tests), run twice.
+
+The `[WebServer] Error: The destination stream closed early` line in the output is a server log from a page navigated away mid-stream, not a test failure.

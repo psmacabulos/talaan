@@ -5,7 +5,7 @@ import { createMockSchoolRepository } from "@/data/repositories/school-repositor
 import { createMockTapRepository } from "@/data/repositories/tap-repository";
 import { schoolTimeToIso } from "@/lib/school-time";
 import type { Tap } from "./types";
-import { notifyParentsForTap, type NotifyParentsDeps } from "./notify-parents";
+import { notifyParentsForTap, shouldNotifyParents, type NotifyParentsDeps } from "./notify-parents";
 
 /**
  * Fresh repositories per test over the real seed data — the three seed
@@ -87,5 +87,16 @@ describe("notifyParentsForTap", () => {
     const deps = freshDeps();
     const created = await notifyParentsForTap(tap("student-0006", "school-nowhere"), deps);
     expect(created).toBeNull();
+  });
+});
+
+describe("shouldNotifyParents", () => {
+  it("follows the school's one setting", () => {
+    expect(shouldNotifyParents("off", "time_in")).toBe(false);
+    expect(shouldNotifyParents("off", "time_out")).toBe(false);
+    expect(shouldNotifyParents("time_in_only", "time_in")).toBe(true);
+    expect(shouldNotifyParents("time_in_only", "time_out")).toBe(false);
+    expect(shouldNotifyParents("time_in_and_time_out", "time_in")).toBe(true);
+    expect(shouldNotifyParents("time_in_and_time_out", "time_out")).toBe(true);
   });
 });

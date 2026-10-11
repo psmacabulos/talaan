@@ -1,6 +1,6 @@
 # Step 45: The tap service
 
-> **Fast-track recipe.** Written before the code, for you to approve, then built for you. If building it turns up a difference, this file gets corrected to match what was actually built, and `docs/BUILD-LOG.md` says what changed.
+> **Fast-track recipe.** Written before the code, approved with its five decisions as written (2026-10-11), then built the same day. "What changed while building" (just before "Verify it worked") lists where the real code differs from the plan, and why. The mechanism is explained in `docs/GATE.md`.
 
 ## Why
 
@@ -219,6 +219,15 @@ The script uses the real clock, or `DEMO_NOW` if it's set. It's a development to
   - the writer answering `"exists"` gives the replay answer;
   - `hello` gives `invalid_serial` and no write.
 - `toTapData`/mapper reuse needs no new tests. The writer's transaction is checked by the terminal script against the real database (Verify, below).
+
+## What changed while building
+
+- **The result says whether parents were notified.** `recorded` gained `notified: boolean`, so the terminal (and later the gate screen) can say "(parent notified)" without asking again. It comes from the same `shouldNotifyParents` rule that decides whether a notification row is written.
+- **A replay tells a lost-card tap from a normal one by the card.** There's no "alert for this tap" lookup in the repositories, so `replay()` checks whether the stored serial's card is lost and belongs to the stored student. That's right as long as nobody marks the card lost in the seconds between a tap and its resend, which is the only time a replay happens.
+- **A retired card that matches is stored under its own serial**, the same as any matched card. The first version of the unknown-card test expected the reader's 4 bytes for it, and failed. The test now expects the card's serial when one matched and the reader's serial otherwise.
+- **`TapWriter` sits in `src/data/repositories/`** (`tap-writer.ts` and `prisma-tap-writer.ts`), exported from the repositories index like the others. It only has a Prisma version. The unit tests write their own five-line stand-in.
+- **The terminal script refuses a monitor token**, and says how to make a gate device when the token isn't active.
+- **The time-out direction for a replay** is worked out again from the student's taps, so it's the same answer as the first time. The tap's own id is excluded from "earlier taps".
 
 ## Verify it worked
 

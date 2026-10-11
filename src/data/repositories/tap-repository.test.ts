@@ -35,6 +35,19 @@ const unknownCardTap: Tap = {
 const allTaps = [tapA, tapB, unknownCardTap];
 
 describe("createMockTapRepository", () => {
+  it("finds a card's tap strictly inside a time window, at that school only", async () => {
+    const repo = createMockTapRepository(allTaps, { latencyMs: 0 });
+    const window = (from: string, to: string) =>
+      repo.findByCardBetween("school-a", tapA.cardSerial, schoolTimeToIso(DAY, from), schoolTimeToIso(DAY, to));
+    await expect(window("07:54", "07:58")).resolves.toEqual(tapA);
+    // The edges themselves don't count.
+    await expect(window("07:56", "07:58")).resolves.toBeNull();
+    await expect(window("07:54", "07:56")).resolves.toBeNull();
+    await expect(
+      repo.findByCardBetween("school-b", tapA.cardSerial, schoolTimeToIso(DAY, "07:00"), schoolTimeToIso(DAY, "09:00")),
+    ).resolves.toBeNull();
+  });
+
   it("lists a school's taps on one school day only", async () => {
     const repo = createMockTapRepository(allTaps, { latencyMs: 0 });
     await expect(repo.listBySchoolOnDate("school-a", DAY)).resolves.toEqual([tapA, unknownCardTap]);

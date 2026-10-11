@@ -41,14 +41,17 @@ test.describe("Students", () => {
     await expect(page.getByRole("button", { name: new RegExp(`Edit ${firstName}`) })).toBeVisible();
   });
 
-  test("replace a student's card", async ({ page, context, baseURL }) => {
+  test("replace a student's card", async ({ page, context, baseURL }, testInfo) => {
     await signInAs(context, "principal", baseURL!);
     await page.goto("/students");
 
-    // Use an existing seed student (student-0001, the one deliberately
-    // seeded with a lost card plus its active replacement — see
-    // src/data/seed/cards.ts).
-    const studentName = "Juan Cruz";
+    // An existing seed student with an active card, a different one per
+    // project: the mobile and desktop runs share one database and run at the
+    // same time, so on one shared student the first run's "mark as lost"
+    // made the other run's replace fail. Juan Cruz is student-0001 (seeded
+    // with a lost card plus its active replacement, src/data/seed/cards.ts);
+    // Rosa Castillo is student-0008, whom no other browser test touches.
+    const studentName = testInfo.project.name === "mobile" ? "Rosa Castillo" : "Juan Cruz";
     await page.getByLabel("Search students").fill(studentName);
     // Each row is rendered as a single "Edit <name>" button wrapping the
     // cells (not a <tr>), so this one locator both waits out the search's
