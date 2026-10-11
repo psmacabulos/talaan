@@ -27,7 +27,7 @@ function tap(studentId: string | null, schoolId: string): Tap {
     stationId: "station-main-gate",
     cardSerial: "04:A3:5F:2B:91:C0:80",
     studentId,
-    tappedAt: schoolTimeToIso("2026-06-20", "09:15"),
+    tappedAt: schoolTimeToIso("2026-06-19", "09:15"),
   };
 }
 
@@ -40,7 +40,7 @@ describe("notifyParentsForTap", () => {
       schoolId: "school-balanga",
       studentId: "student-0006",
       kind: "time_in",
-      tappedAt: schoolTimeToIso("2026-06-20", "09:15"),
+      tappedAt: schoolTimeToIso("2026-06-19", "09:15"),
       read: false,
     });
   });

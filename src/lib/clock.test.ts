@@ -16,8 +16,8 @@ describe("getNow", () => {
   });
 
   it("is the pinned instant when DEMO_NOW is set, offset and all", () => {
-    vi.stubEnv("DEMO_NOW", "2026-06-20T09:15:00+08:00");
-    expect(getNow()).toBe("2026-06-20T01:15:00.000Z");
+    vi.stubEnv("DEMO_NOW", "2026-06-19T09:15:00+08:00");
+    expect(getNow()).toBe("2026-06-19T01:15:00.000Z");
     expect(isDemoClock()).toBe(true);
   });
 

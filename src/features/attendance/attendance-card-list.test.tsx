@@ -27,7 +27,7 @@ const carmen: AttendanceRow = { student: student("student-carmen", "Carmen", "Si
 const pedro: AttendanceRow = { student: student("student-pedro", "Pedro", "Bernardo"), cardStatus: "lost" };
 
 // 9:15 AM on the demo morning: past both cutoffs, so a student with no tap is absent.
-const DAY = schoolToday(schoolTimeToIso("2026-06-20", "09:15"));
+const DAY = schoolToday(schoolTimeToIso("2026-06-19", "09:15"));
 
 // Well before the 8:05 AM late cutoff.
 const taps: Tap[] = [
@@ -37,7 +37,7 @@ const taps: Tap[] = [
     stationId: "station-main-gate",
     cardSerial: "04:A3:5F:2B:91:C0:80",
     studentId: "student-juan",
-    tappedAt: schoolTimeToIso("2026-06-20", "07:56"),
+    tappedAt: schoolTimeToIso("2026-06-19", "07:56"),
   },
 ];
 
@@ -81,7 +81,7 @@ describe("AttendanceCardList", () => {
       <AttendanceCardList
         rows={[juan]}
         taps={taps}
-        day={schoolToday(schoolTimeToIso("2026-06-21", "09:15"))}
+        day={schoolToday(schoolTimeToIso("2026-06-22", "09:15"))}
         label="Students"
       />,
     );

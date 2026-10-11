@@ -59,7 +59,7 @@ export function AttendanceCardList({
               {cardStatus !== "active" ? <CardStatusBadge status={cardStatus} className="mt-1 px-2 py-0.5" /> : null}
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
-              <StatusPill status={studentStatus(student.id, taps, day)} />
+              <StatusPill status={studentStatus(student.id, taps, day)} flexible={day.flexible} />
               <p className="text-sm text-muted-foreground tabular-nums">
                 {tap ? (
                   <>

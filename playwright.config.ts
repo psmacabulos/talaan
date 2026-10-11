@@ -51,7 +51,7 @@ export default defineConfig({
     // The app under test reads and writes the test database, not your own,
     // and runs on the demo morning's clock (src/lib/clock.ts), so every run
     // sees the same day as the seed data whatever today's date is.
-    env: { DATABASE_URL: e2eDatabaseUrl(), DEMO_NOW: "2026-06-20T09:15:00+08:00" },
+    env: { DATABASE_URL: e2eDatabaseUrl(), DEMO_NOW: "2026-06-19T09:15:00+08:00" },
     timeout: 120_000,
   },
 });

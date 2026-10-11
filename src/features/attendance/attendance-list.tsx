@@ -26,10 +26,10 @@ export function AttendanceList({
   return (
     <>
       <div className="md:hidden">
-        <AttendanceCountTiles counts={counts} />
+        <AttendanceCountTiles counts={counts} flexible={day.flexible} />
       </div>
       <div className="hidden md:block">
-        <AttendanceLegend counts={counts} />
+        <AttendanceLegend counts={counts} flexible={day.flexible} />
       </div>
 
       <section aria-labelledby="attendance-students-heading" className="flex flex-col gap-3 md:hidden">

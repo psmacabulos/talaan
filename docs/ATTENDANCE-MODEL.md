@@ -94,6 +94,18 @@ A `SchoolDay` (`src/features/attendance/status.ts`) carries everything the rules
 
 **Each school sets its own two times (Step 44.5).** They are columns on the `School` row (`lateAfter`, `absentFrom`, text like `"08:05"`), edited in **Settings › Attendance times**. Every page loads its school and passes it straight in: `schoolToday(now, school)` works because a `School` already has both fields. `DEFAULT_ATTENDANCE_TIMES` matches the database defaults and is used only for a new school, the seed data, tests, and the fallback when a school record can't be found. `attendanceTimesSchema` (`src/features/schools/schemas.ts`) checks the form and the save action: both times must be `HH:MM`, and absent must be later than late.
 
+**Weekends have no late or absent (Step 44.6).** Students sometimes come in on a Saturday or Sunday, but the times vary, so a weekend is a **flexible** day. `schoolDayFor` sets `day.flexible = isWeekend(date)` (`src/lib/school-time.ts`), and `studentStatus` checks it first:
+
+```ts
+if (tap) {
+  if (day.flexible) return "present";
+  return schoolMinutesOf(tap.tappedAt) <= day.lateAfter ? "present" : "late";
+}
+return !day.flexible && day.minutesNow >= day.absentFrom ? "absent" : "idle";
+```
+
+So on a weekend only two statuses can happen, and only their words change: `statusLabel(status, flexible)` (`src/components/status-pill.tsx`) shows **Came in** for present and **No tap** for idle. Every pill, the legend, the phone count tiles and the dashboard hero take `flexible={day.flexible}`. The legend and tiles then show just those two keys, and the hero says "N of M students came in" with the line "Weekend: no late or absent times." The tap station, notifications and lost-card alerts don't change at all. The rule is the same for every school. A school with regular Saturday classes, or a weekday holiday, would need a per-school calendar, which doesn't exist yet.
+
 **Two details that are easy to get wrong:**
 
 *Only the earliest tap of the day counts.* `todaysTap()` sorts and takes the first one. A student who taps twice (a mis-tap, or a future time-out tap) must not be able to turn "present" into "late" with their second tap.
@@ -118,7 +130,7 @@ flowchart LR
 
 - **Store instants, read them on the school's clock in one place.** Every tap, alert and notification time is a real moment. Only `src/lib/school-time.ts` turns one into the school's date (`schoolDateOf`), minutes into the day (`schoolMinutesOf`) or display text (`formatSchoolTime`, `formatSchoolDate`). The Philippines is UTC+8 all year with no daylight saving, so it adds 8 hours and reads the result with the `getUTC…` methods, which give the same answer on every computer. If a school outside the Philippines ever joins, this is the file to change.
 - **"Now" comes from `getNow()`** (`src/lib/clock.ts`), on the server only. It's the real time, unless `DEMO_NOW` pins it. Pages hand the resulting `SchoolDay` (or, for the tap station, the pinned time) to their components, so the browser and the server always agree on "now" for a page.
-- **`DEMO_NOW`** pins the clock to the demo morning (`"2026-06-20T09:15:00+08:00"`). The browser tests set it in `playwright.config.ts`, so they see the seed data's day on every run. You can set it in `.env` to show the sample data. Never set it on a real server. While it's set, every staff page shows a **Demo clock** badge in the top bar, so it can't go unnoticed.
+- **`DEMO_NOW`** pins the clock to the demo morning (`"2026-06-19T09:15:00+08:00"`, a Friday; it was the 20th, a Saturday, until Step 44.6). The browser tests set it in `playwright.config.ts`, so they see the seed data's day on every run. You can set it in `.env` to show the sample data. Never set it on a real server. While it's set, every staff page shows a **Demo clock** badge in the top bar, so it can't go unnoticed.
 - **No default "now" anywhere.** Each status function takes its `SchoolDay` explicitly, so TypeScript points at every caller that has to say which day it means.
 - **Pages load one day of taps** with `tapRepository.listBySchoolOnDate(schoolId, date)` (from the school's midnight to the next, using the `(schoolId, tappedAt)` index), not the school's whole history. The dashboard's "Needs attention" panel loads each open alert's tap by id instead, since an alert nobody has dealt with can be from an earlier day.
 
@@ -196,7 +208,7 @@ Every `Tap` used everywhere above this point — the dashboard, the attendance p
 
 **I want to change when "late" starts for one school.** Sign in as its principal (or open it as super admin) and change **Settings › Attendance times**. Nothing in the code changes. To change the starting values for *new* schools, change both the `@default` on `School.lateAfter`/`absentFrom` in `prisma/schema.prisma` (with a migration) and `DEFAULT_ATTENDANCE_TIMES` in `src/features/attendance/status.ts`, so the two stay twins. The unit tests in `status.test.ts` assert the boundary on both sides, and with non-default times.
 
-**I want the app to show a different moment of the school day.** Set `DEMO_NOW` in `.env` and restart `npm run dev`, for example `DEMO_NOW="2026-06-20T08:30:00+08:00"`. Before 9:00 AM un-tapped students read as "not yet tapped" rather than "absent"; before 8:05 AM everyone who has tapped reads as present. Remove it again to get the real clock back.
+**I want the app to show a different moment of the school day.** Set `DEMO_NOW` in `.env` and restart `npm run dev`, for example `DEMO_NOW="2026-06-19T08:30:00+08:00"`. A Saturday or Sunday, such as `"2026-06-20T10:00:00+08:00"`, shows the weekend version of every screen. Before 9:00 AM un-tapped students read as "not yet tapped" rather than "absent"; before 8:05 AM everyone who has tapped reads as present. Remove it again to get the real clock back.
 
 **I want attendance numbers on a new screen.** Import `countByStatus` / `attendanceByGrade` from `src/features/attendance/status.ts` and feed them a roster and a tap list from the repositories. Don't re-derive statuses by hand — these functions are unit-tested and the screens should agree with each other.
 

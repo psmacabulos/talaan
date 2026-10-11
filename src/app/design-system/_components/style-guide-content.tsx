@@ -215,12 +215,21 @@ export function StyleGuideContent() {
         </div>
       </Section>
 
-      <Section title="Status pills" description="Built on the fixed status tokens above, not a themed color.">
-        <div className="flex flex-wrap gap-2">
-          <StatusPill status="present" />
-          <StatusPill status="late" />
-          <StatusPill status="absent" />
-          <StatusPill status="idle" />
+      <Section
+        title="Status pills"
+        description="Built on the fixed status tokens above, not a themed color. A weekend has only two, with their own words."
+      >
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-2">
+            <StatusPill status="present" />
+            <StatusPill status="late" />
+            <StatusPill status="absent" />
+            <StatusPill status="idle" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <StatusPill status="present" flexible />
+            <StatusPill status="idle" flexible />
+          </div>
         </div>
       </Section>
 

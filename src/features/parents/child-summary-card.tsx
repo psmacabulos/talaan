@@ -26,7 +26,7 @@ export function ChildSummaryCard({ student, taps, day }: { student: Student; tap
             Grade {student.gradeLevel} – {student.section}
           </p>
         </div>
-        <StatusPill status={status} />
+        <StatusPill status={status} flexible={day.flexible} />
       </div>
 
       <div className="mt-4 border-t border-border pt-3">

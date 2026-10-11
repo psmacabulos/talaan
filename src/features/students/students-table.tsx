@@ -106,7 +106,7 @@ export function StudentsTable({
                 <CardStatusBadge status={row.cardStatus} />
               </TableCell>
               <TableCell>
-                <StatusPill status={studentStatus(row.student.id, taps, day)} />
+                <StatusPill status={studentStatus(row.student.id, taps, day)} flexible={day.flexible} />
               </TableCell>
             </TableRow>
           ))}

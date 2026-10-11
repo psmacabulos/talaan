@@ -48,7 +48,7 @@ export function AttendanceTable({ rows, taps, day }: { rows: AttendanceRow[]; ta
                 </TableCell>
                 <TableCell className="text-muted-foreground">{tap ? formatTapTime(tap.tappedAt) : "—"}</TableCell>
                 <TableCell>
-                  <StatusPill status={studentStatus(student.id, taps, day)} />
+                  <StatusPill status={studentStatus(student.id, taps, day)} flexible={day.flexible} />
                 </TableCell>
                 <TableCell>
                   <CardStatusBadge status={cardStatus} />

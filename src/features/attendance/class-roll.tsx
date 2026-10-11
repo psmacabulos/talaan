@@ -62,7 +62,7 @@ export function ClassRoll({ rows, taps, day }: { rows: AttendanceRow[]; taps: Ta
                     </div>
                   </TableCell>
                   <TableCell className="px-0 text-right">
-                    <StatusPill status={studentStatus(student.id, taps, day)} />
+                    <StatusPill status={studentStatus(student.id, taps, day)} flexible={day.flexible} />
                   </TableCell>
                 </TableRow>
               );

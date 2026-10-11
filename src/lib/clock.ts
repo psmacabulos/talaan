@@ -1,7 +1,7 @@
 /**
  * "Now" for the whole app. Normally the real time. DEMO_NOW pins it to one
  * instant, so the browser tests see the demo morning on every run
- * (DEMO_NOW="2026-06-20T09:15:00+08:00"). Never set on a real server; when
+ * (DEMO_NOW="2026-06-19T09:15:00+08:00"). Never set on a real server; when
  * it is set, staff pages show a "Demo clock" badge, so it can't go unnoticed.
  */
 export function getNow(): string {
@@ -10,7 +10,7 @@ export function getNow(): string {
 
   const instant = Date.parse(pinned);
   if (Number.isNaN(instant)) {
-    throw new Error(`DEMO_NOW isn't a date and time: "${pinned}". Use the form 2026-06-20T09:15:00+08:00.`);
+    throw new Error(`DEMO_NOW isn't a date and time: "${pinned}". Use the form 2026-06-19T09:15:00+08:00.`);
   }
   return new Date(instant).toISOString();
 }

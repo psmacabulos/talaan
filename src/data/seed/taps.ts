@@ -9,9 +9,10 @@ const STATION_ID = "station-main-gate";
  * The demo morning. Times below are written as the school's own clock
  * ("07:56") and stored as the real instant (src/lib/school-time.ts), the
  * same way a real tap at the gate is: 7:56 AM in the Philippines is 23:56
- * UTC the day before.
+ * UTC the day before. A Friday, so weekday rules apply: a Saturday or
+ * Sunday has no late or absent (Step 44.6).
  */
-export const SEED_DATE = "2026-06-20";
+export const SEED_DATE = "2026-06-19";
 
 function pad2(n: number): string {
   return String(n).padStart(2, "0");

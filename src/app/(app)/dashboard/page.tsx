@@ -112,6 +112,7 @@ export default async function DashboardPage() {
           eyebrow="Your class today"
           subjectLabel="students are in school"
           counts={countByStatus(classStudents, classTaps, day)}
+          flexible={day.flexible}
         />
 
         {/* items-start so each card sizes to its own content — without it
@@ -151,6 +152,7 @@ export default async function DashboardPage() {
         eyebrow="Today's attendance"
         subjectLabel="students are in school"
         counts={countByStatus(students, taps, day)}
+        flexible={day.flexible}
       />
 
       {/* items-start so each card sizes to its own content — see the

@@ -40,7 +40,7 @@ const rosa: StudentRow = {
 };
 
 // 9:15 AM on the demo morning.
-const DAY = schoolToday(schoolTimeToIso("2026-06-20", "09:15"));
+const DAY = schoolToday(schoolTimeToIso("2026-06-19", "09:15"));
 
 // Well before the 8:05 AM late cutoff.
 const taps: Tap[] = [
@@ -50,7 +50,7 @@ const taps: Tap[] = [
     stationId: "station-main-gate",
     cardSerial: "04:A3:5F:2B:91:C0:80",
     studentId: "student-reynaldo",
-    tappedAt: schoolTimeToIso("2026-06-20", "07:12"),
+    tappedAt: schoolTimeToIso("2026-06-19", "07:12"),
   },
 ];
 

@@ -1,6 +1,6 @@
 # Step 44.6: Weekends have no late or absent
 
-> **Fast-track recipe.** Written before the code, for you to approve, then built for you. If building it turns up a difference, this file gets corrected to match what was actually built.
+> **Fast-track recipe.** Written before the code, approved, then built on 2026-10-11. "What changed while building" (just before "Verify it worked") lists where the real code differs from the plan, and why.
 
 ## Why
 
@@ -91,7 +91,7 @@ In `src/features/attendance/segmented-bar.tsx`, `AttendanceLegend` and `Attendan
 | Students list | `students-table.tsx`, `students-card-list.tsx` | Pills use the weekend words |
 | Parent's child card | `child-summary-card.tsx` | "Came in" or "No tap" |
 
-Each one already receives `day`, so this is `flexible={day.flexible}` on the pill and on the hero. No page file changes.
+Each one already receives `day`, so this is `flexible={day.flexible}` on the pill. The hero gets only counts, so the dashboard page passes `flexible={day.flexible}` to it (two lines, one per hero).
 
 These stay **unchanged**:
 - The tap station and the "Simulate a tap" button: a tap is recorded the same way on any day.
@@ -126,6 +126,15 @@ Your local database still has the old Saturday taps, so run `npm run db:reset` o
 - `countByStatus` on a Saturday: late and absent are 0.
 - `statusLabel` and `StatusPill`: "Came in" and "No tap" when flexible; "Present" and "Not yet tapped" otherwise.
 - `AttendanceHero` on a flexible day: shows "came in", the weekend line, and no Late or Absent in the legend.
+
+## What changed while building
+
+- **The dashboard page changes after all.** `AttendanceHero` receives counts, not the day, so the page passes `flexible={day.flexible}` to both heroes (principal and teacher). That's the only page file touched.
+- **The bar's screen-reader label follows the legend.** `AttendanceSegmentedBar` also takes `flexible`, so its `aria-label` reads "Came in 2, No tap 3" on a weekend instead of listing Late 0 and Absent 0.
+- **The style guide shows the weekend pills.** `/design-system` gains a second row with Came in and No tap under the four weekday pills, since that page should show every state.
+- **Which tests moved to 19 June.** Six test files that judge a status on "the demo day" moved one day earlier: status, the attendance card list, the class roll, the students card list, the station and notify-parents. That's 13 tests that failed on the Saturday. Every date in those files moved by one day, so "yesterday" in them became Thursday the 18th. Two "another day" checks use **Monday 22 June** instead of Sunday the 21st, so they still test "a different school day" and not the weekend rule. The clock test's `DEMO_NOW` example moved too.
+- **Which tests stayed on 20 June.** Repository round-trips (taps, alerts, notifications, cards), date formatting, ages and the search-params tests use 20 June as an ordinary date where the weekday doesn't matter. They still pass, so they were left alone.
+- **More tests than planned.** A past Sunday (judged on Monday morning) is still never absent, and `countByStatus` on a Saturday evening counts 2 came in and 1 no tap, with 0 late and 0 absent. `attendance-hero.test.tsx` is new. It stubs the Simulate a tap button, which calls a server action.
 
 ## Verify it worked
 

@@ -4,7 +4,7 @@ import { schoolDateOf } from "@/lib/school-time";
 import { DEFAULT_LATENCY_MS, simulateLatency } from "./latency";
 
 export interface TapRepository {
-  /** A school's taps on one calendar day on the school's clock ("2026-06-20"), earliest first. What every one-day page loads, instead of the school's whole history. */
+  /** A school's taps on one calendar day on the school's clock ("2026-06-19"), earliest first. What every one-day page loads, instead of the school's whole history. */
   listBySchoolOnDate(schoolId: string, date: string): Promise<Tap[]>;
   listByStudent(studentId: string): Promise<Tap[]>;
   /** One tap, for example the one an alert points at, whatever day it was. */

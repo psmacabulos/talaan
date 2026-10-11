@@ -1,7 +1,7 @@
 import type { AttendanceStatus } from "@/components/status-pill";
 import type { NotificationKind } from "@/features/parents/types";
 import type { Student } from "@/features/students/types";
-import { formatSchoolTime, minutesFromClockTime, schoolDateOf, schoolMinutesOf } from "@/lib/school-time";
+import { formatSchoolTime, isWeekend, minutesFromClockTime, schoolDateOf, schoolMinutesOf } from "@/lib/school-time";
 import type { Tap } from "./types";
 
 /** The one tap station this demo has (CLAUDE.md's domain rules don't need more than one yet). Shared by the dashboard's "Simulate a tap" and the Step 19 tap station, so a tap from either always looks like it came from the same real place. */
@@ -27,7 +27,7 @@ export interface AttendanceTimes {
  * says once which day it means and the same answer reaches every component.
  */
 export interface SchoolDay {
-  /** The school's calendar date being shown: "2026-06-20". */
+  /** The school's calendar date being shown: "2026-06-19". */
   date: string;
   /** How far into that day it is, in minutes: a past day is over (1440), a future one hasn't started (0). */
   minutesNow: number;
@@ -35,6 +35,11 @@ export interface SchoolDay {
   lateAfter: number;
   /** With no tap by this time, a student is absent (9:00 AM is 540). */
   absentFrom: number;
+  /**
+   * A weekend (Step 44.6): schedules vary, so there's no late time and no
+   * absent time. A tap just means "came in", and no tap is never absent.
+   */
+  flexible: boolean;
 }
 
 /** The day `date` as of `now`: today is measured at the current time, a past day is over, a future one hasn't started. */
@@ -46,6 +51,7 @@ export function schoolDayFor(date: string, now: string, times: AttendanceTimes =
     minutesNow,
     lateAfter: minutesFromClockTime(times.lateAfter),
     absentFrom: minutesFromClockTime(times.absentFrom),
+    flexible: isWeekend(date),
   };
 }
 
@@ -95,9 +101,10 @@ export function deriveTapKind(tap: Tap, allStudentTaps: Tap[]): NotificationKind
 export function studentStatus(studentId: string, taps: Tap[], day: SchoolDay): AttendanceStatus {
   const tap = todaysTap(studentId, taps, day);
   if (tap) {
+    if (day.flexible) return "present";
     return schoolMinutesOf(tap.tappedAt) <= day.lateAfter ? "present" : "late";
   }
-  return day.minutesNow >= day.absentFrom ? "absent" : "idle";
+  return !day.flexible && day.minutesNow >= day.absentFrom ? "absent" : "idle";
 }
 
 export type StatusCounts = Record<AttendanceStatus, number>;

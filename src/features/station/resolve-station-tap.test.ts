@@ -6,7 +6,7 @@ import { schoolTimeToIso } from "@/lib/school-time";
 import { resolveStationTap, type StationTapContext } from "./resolve-station-tap";
 
 const SCHOOL_ID = "school-test";
-const NOW = schoolTimeToIso("2026-06-20", "09:15");
+const NOW = schoolTimeToIso("2026-06-19", "09:15");
 const IDS = { tapId: "00000000-0000-4000-8000-000000000099", alertId: "alert-new" };
 
 function student(overrides: Partial<Student> & Pick<Student, "id">): Student {
@@ -101,7 +101,7 @@ describe("resolveStationTap: duplicate", () => {
       id: "t-1",
       studentId: "s-ana",
       cardSerial: anaActiveCard.serial,
-      tappedAt: schoolTimeToIso("2026-06-20", "07:56"),
+      tappedAt: schoolTimeToIso("2026-06-19", "07:56"),
     });
     const outcome = resolveStationTap("duplicate", context({ taps: [existing] }), IDS);
     expect(outcome).toEqual({ status: "ignored", kind: "duplicate", existingTap: existing, studentName: "Ana Cruz" });

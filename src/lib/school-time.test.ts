@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatSchoolDate,
   formatSchoolTime,
+  isWeekend,
   minutesFromClockTime,
   nextDate,
   schoolDateOf,
@@ -55,6 +56,15 @@ describe("formatSchoolTime", () => {
     expect(formatSchoolTime(schoolTimeToIso("2026-06-20", "12:00"))).toBe("12:00 PM");
     expect(formatSchoolTime(schoolTimeToIso("2026-06-20", "00:05"))).toBe("12:05 AM");
     expect(formatSchoolTime(schoolTimeToIso("2026-06-20", "14:30"))).toBe("2:30 PM");
+  });
+});
+
+describe("isWeekend", () => {
+  it("is true on Saturday and Sunday only", () => {
+    expect(isWeekend("2026-06-19")).toBe(false); // Friday
+    expect(isWeekend("2026-06-20")).toBe(true); // Saturday
+    expect(isWeekend("2026-06-21")).toBe(true); // Sunday
+    expect(isWeekend("2026-06-22")).toBe(false); // Monday
   });
 });
 

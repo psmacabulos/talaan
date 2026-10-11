@@ -7,11 +7,14 @@ export function AttendanceHero({
   eyebrow,
   subjectLabel,
   counts,
+  flexible = false,
 }: {
   eyebrow: string;
   /** e.g. "students are in school" / "students in your class are in school" */
   subjectLabel: string;
   counts: StatusCounts;
+  /** A weekend (Step 44.6): no late or absent, so the hero says who came in. */
+  flexible?: boolean;
 }) {
   const inSchool = counts.present + counts.late;
   const total = counts.present + counts.late + counts.absent + counts.idle;
@@ -32,17 +35,18 @@ export function AttendanceHero({
           <p className="font-heading text-4xl font-bold text-foreground sm:text-5xl">
             {inSchool}
             <span className="ml-2.5 text-base font-normal text-muted-foreground">
-              of {total} {subjectLabel}
+              of {total} {flexible ? "students came in" : subjectLabel}
             </span>
           </p>
+          {flexible ? <p className="text-sm text-muted-foreground">Weekend: no late or absent times.</p> : null}
         </div>
         <SimulateTapButton />
       </div>
       {/* Bar and legend are one unit — the legend is the bar's key — so they
           sit closer to each other than to the headline block above. */}
       <div className="flex flex-col gap-3">
-        <AttendanceSegmentedBar counts={counts} />
-        <AttendanceLegend counts={counts} />
+        <AttendanceSegmentedBar counts={counts} flexible={flexible} />
+        <AttendanceLegend counts={counts} flexible={flexible} />
       </div>
     </section>
   );

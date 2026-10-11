@@ -19,7 +19,27 @@ const STATUS_CLASS: Record<AttendanceStatus, string> = {
   idle: "bg-status-idle-bg text-status-idle",
 };
 
-export function StatusPill({ status, className }: { status: AttendanceStatus; className?: string }) {
+/**
+ * The words for a status. On a flexible day (a weekend, Step 44.6) only
+ * present and idle can happen, and they mean "came in" and "no tap": there
+ * was no time to be on time for, and nobody was expected.
+ */
+export function statusLabel(status: AttendanceStatus, flexible = false): string {
+  if (flexible && status === "present") return "Came in";
+  if (flexible && status === "idle") return "No tap";
+  return STATUS_LABEL[status];
+}
+
+export function StatusPill({
+  status,
+  flexible = false,
+  className,
+}: {
+  status: AttendanceStatus;
+  /** The day being shown is a weekend: use the weekend words. */
+  flexible?: boolean;
+  className?: string;
+}) {
   return (
     <span
       className={cn(
@@ -28,7 +48,7 @@ export function StatusPill({ status, className }: { status: AttendanceStatus; cl
         className,
       )}
     >
-      {STATUS_LABEL[status]}
+      {statusLabel(status, flexible)}
     </span>
   );
 }

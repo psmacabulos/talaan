@@ -41,6 +41,16 @@ export function nextDate(date: string): string {
   return new Date(Date.parse(`${date}T00:00:00Z`) + 24 * 60 * MINUTE_MS).toISOString().slice(0, 10);
 }
 
+/**
+ * Saturday or Sunday, for a school calendar date ("2026-06-20" is a
+ * Saturday). `date` is already the school's own date, so it's read at
+ * midnight UTC, which gives back that same date on any server.
+ */
+export function isWeekend(date: string): boolean {
+  const dayOfWeek = new Date(`${date}T00:00:00Z`).getUTCDay();
+  return dayOfWeek === 0 || dayOfWeek === 6;
+}
+
 /** "7:56 AM" on the school's clock. */
 export function formatSchoolTime(iso: string): string {
   const minutesOfDay = schoolMinutesOf(iso);

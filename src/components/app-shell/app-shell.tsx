@@ -22,7 +22,7 @@ export function AppShell({
   staff: Staff[];
   schools: School[];
   themeSelection: ThemeSelection;
-  /** "June 20, 2026, 9:15 AM" when DEMO_NOW pins the clock, otherwise null. */
+  /** "June 19, 2026, 9:15 AM" when DEMO_NOW pins the clock, otherwise null. */
   demoClockLabel: string | null;
   children: ReactNode;
 }) {

@@ -13,8 +13,8 @@ import {
   studentsWithoutTapToday,
 } from "./status";
 
-/** A time on the school's clock as a real instant: at("07:56") is 7:56 AM on the demo morning in the Philippines. */
-function at(time: string, date = "2026-06-20"): string {
+/** A time on the school's clock as a real instant: at("07:56") is 7:56 AM on the demo morning (Friday 19 June 2026) in the Philippines. */
+function at(time: string, date = "2026-06-19"): string {
   return schoolTimeToIso(date, time);
 }
 
@@ -47,6 +47,33 @@ function tap(studentId: string, tappedAt: string): Tap {
   };
 }
 
+/** The day after the demo Friday. */
+const SATURDAY = "2026-06-20";
+const SUNDAY = "2026-06-21";
+
+describe("weekends", () => {
+  it("marks a weekend day as flexible, and a weekday as not", () => {
+    expect(schoolToday(at("10:00", SATURDAY)).flexible).toBe(true);
+    expect(schoolDayFor(SUNDAY, NOW).flexible).toBe(true);
+    expect(DAY.flexible).toBe(false);
+  });
+
+  it("counts a Saturday tap at 10:30 AM as came in (present), not late", () => {
+    const saturday = schoolToday(at("11:00", SATURDAY));
+    expect(studentStatus("s1", [tap("s1", at("10:30", SATURDAY))], saturday)).toBe("present");
+  });
+
+  it("never marks a student absent on a Sunday, even late in the day or once it's over", () => {
+    expect(studentStatus("s1", [], schoolToday(at("16:00", SUNDAY)))).toBe("idle");
+    expect(studentStatus("s1", [], schoolDayFor(SUNDAY, at("09:00", "2026-06-22")))).toBe("idle");
+  });
+
+  it("still judges the same tap and no-tap on the Friday before", () => {
+    expect(studentStatus("s1", [tap("s1", at("10:30"))], schoolToday(at("11:00")))).toBe("late");
+    expect(studentStatus("s1", [], schoolToday(at("16:00")))).toBe("absent");
+  });
+});
+
 describe("studentStatus", () => {
   it("is present for a tap at or before the late cutoff", () => {
     expect(studentStatus("s1", [tap("s1", at("08:05"))], DAY)).toBe("present");
@@ -69,7 +96,7 @@ describe("studentStatus", () => {
   });
 
   it("ignores a tap from a different day", () => {
-    expect(studentStatus("s1", [tap("s1", at("07:00", "2026-06-19"))], DAY)).toBe("absent");
+    expect(studentStatus("s1", [tap("s1", at("07:00", "2026-06-18"))], DAY)).toBe("absent");
   });
 
   it("uses the earliest of two same-day taps", () => {
@@ -94,18 +121,18 @@ describe("studentStatus", () => {
 describe("school time", () => {
   it("counts a 7:50 AM tap for today, though it's the previous day in UTC", () => {
     const early = at("07:50");
-    expect(early.startsWith("2026-06-19")).toBe(true);
+    expect(early.startsWith("2026-06-18")).toBe(true);
     expect(studentStatus("s1", [tap("s1", early)], DAY)).toBe("present");
   });
 
   it("judges a past day as finished: no tap means absent, even at 7 AM today", () => {
-    const yesterday = schoolDayFor("2026-06-19", at("07:00"));
+    const yesterday = schoolDayFor("2026-06-18", at("07:00"));
     expect(studentStatus("s1", [], yesterday)).toBe("absent");
   });
 
   it("judges a future day as not started: nobody is absent yet", () => {
-    const tomorrow = schoolDayFor("2026-06-21", NOW);
-    expect(studentStatus("s1", [], tomorrow)).toBe("idle");
+    const nextSchoolDay = schoolDayFor("2026-06-22", NOW);
+    expect(studentStatus("s1", [], nextSchoolDay)).toBe("idle");
   });
 
   it("uses the school's own times when it has them", () => {
@@ -120,6 +147,13 @@ describe("countByStatus", () => {
     const students = [student("s1", 7), student("s2", 7), student("s3", 7)];
     const taps = [tap("s1", at("07:00")), tap("s2", at("08:30"))];
     expect(countByStatus(students, taps, DAY)).toEqual({ present: 1, late: 1, absent: 1, idle: 0 });
+  });
+
+  it("never counts anyone late or absent on a weekend", () => {
+    const students = [student("s1", 7), student("s2", 7), student("s3", 7)];
+    const taps = [tap("s1", at("07:00", SATURDAY)), tap("s2", at("10:30", SATURDAY))];
+    const saturdayEvening = schoolToday(at("18:00", SATURDAY));
+    expect(countByStatus(students, taps, saturdayEvening)).toEqual({ present: 2, late: 0, absent: 0, idle: 1 });
   });
 });
 
@@ -179,7 +213,7 @@ describe("deriveTapKind", () => {
   });
 
   it("ignores taps from a previous day", () => {
-    const yesterday = tap("s1", at("16:00", "2026-06-19"));
+    const yesterday = tap("s1", at("16:00", "2026-06-18"));
     expect(deriveTapKind(newTap, [yesterday])).toBe("time_in");
   });
 

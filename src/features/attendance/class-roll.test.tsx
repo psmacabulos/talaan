@@ -27,7 +27,7 @@ const rosa: AttendanceRow = { student: student("student-rosa", "Rosa", "Castillo
 const pedro: AttendanceRow = { student: student("student-pedro", "Pedro", "Bernardo"), cardStatus: "lost" };
 
 // 9:15 AM on the demo morning.
-const DAY = schoolToday(schoolTimeToIso("2026-06-20", "09:15"));
+const DAY = schoolToday(schoolTimeToIso("2026-06-19", "09:15"));
 
 const taps: Tap[] = [
   {
@@ -36,7 +36,7 @@ const taps: Tap[] = [
     stationId: "station-main-gate",
     cardSerial: "04:A3:5F:2B:91:C0:80",
     studentId: "student-juan",
-    tappedAt: schoolTimeToIso("2026-06-20", "07:56"),
+    tappedAt: schoolTimeToIso("2026-06-19", "07:56"),
   },
 ];
 
