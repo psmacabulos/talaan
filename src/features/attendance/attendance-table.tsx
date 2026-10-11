@@ -4,7 +4,7 @@ import { CardStatusBadge } from "@/features/students/card-status-badge";
 import type { CardFilterStatus } from "@/features/students/card-status";
 import { StudentAvatar, studentName } from "@/features/students/student-display";
 import type { Student } from "@/features/students/types";
-import { formatTapTime, studentStatus, todaysTap } from "./status";
+import { formatTapTime, studentStatus, todaysTap, type SchoolDay } from "./status";
 import type { Tap } from "./types";
 
 export interface AttendanceRow {
@@ -20,7 +20,7 @@ export interface AttendanceRow {
  * No "Time out" column: unlike the prototype, taps don't model a time-out
  * event yet (docs/ATTENDANCE-MODEL.md — only the day's earliest tap counts).
  */
-export function AttendanceTable({ rows, taps, now }: { rows: AttendanceRow[]; taps: Tap[]; now: string }) {
+export function AttendanceTable({ rows, taps, day }: { rows: AttendanceRow[]; taps: Tap[]; day: SchoolDay }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
       <Table label="Attendance">
@@ -34,7 +34,7 @@ export function AttendanceTable({ rows, taps, now }: { rows: AttendanceRow[]; ta
         </TableHeader>
         <TableBody>
           {rows.map(({ student, cardStatus }) => {
-            const tap = todaysTap(student.id, taps, now);
+            const tap = todaysTap(student.id, taps, day);
             return (
               <TableRow key={student.id}>
                 <TableCell>
@@ -48,7 +48,7 @@ export function AttendanceTable({ rows, taps, now }: { rows: AttendanceRow[]; ta
                 </TableCell>
                 <TableCell className="text-muted-foreground">{tap ? formatTapTime(tap.tappedAt) : "—"}</TableCell>
                 <TableCell>
-                  <StatusPill status={studentStatus(student.id, taps, now)} />
+                  <StatusPill status={studentStatus(student.id, taps, day)} />
                 </TableCell>
                 <TableCell>
                   <CardStatusBadge status={cardStatus} />

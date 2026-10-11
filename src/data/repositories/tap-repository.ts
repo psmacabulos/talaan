@@ -1,10 +1,14 @@
 import type { Tap } from "@/features/attendance/types";
 import { seedTaps } from "@/data/seed";
+import { schoolDateOf } from "@/lib/school-time";
 import { DEFAULT_LATENCY_MS, simulateLatency } from "./latency";
 
 export interface TapRepository {
-  listBySchool(schoolId: string): Promise<Tap[]>;
+  /** A school's taps on one calendar day on the school's clock ("2026-06-20"), earliest first. What every one-day page loads, instead of the school's whole history. */
+  listBySchoolOnDate(schoolId: string, date: string): Promise<Tap[]>;
   listByStudent(studentId: string): Promise<Tap[]>;
+  /** One tap, for example the one an alert points at, whatever day it was. */
+  getById(id: string): Promise<Tap | null>;
   /**
    * Appends a tap (Step 13's "Simulate a tap"). Idempotent by `id`, the
    * same way a real station's tap would be (CLAUDE.md: "idempotent by a
@@ -18,13 +22,19 @@ export function createMockTapRepository(data: Tap[] = seedTaps, options: { laten
   const latencyMs = options.latencyMs ?? DEFAULT_LATENCY_MS;
 
   return {
-    async listBySchool(schoolId) {
+    async listBySchoolOnDate(schoolId, date) {
       await simulateLatency(latencyMs);
-      return data.filter((tap) => tap.schoolId === schoolId);
+      return data
+        .filter((tap) => tap.schoolId === schoolId && schoolDateOf(tap.tappedAt) === date)
+        .sort((a, b) => Date.parse(a.tappedAt) - Date.parse(b.tappedAt));
     },
     async listByStudent(studentId) {
       await simulateLatency(latencyMs);
       return data.filter((tap) => tap.studentId === studentId);
+    },
+    async getById(id) {
+      await simulateLatency(latencyMs);
+      return data.find((tap) => tap.id === id) ?? null;
     },
     async create(tap) {
       await simulateLatency(latencyMs);

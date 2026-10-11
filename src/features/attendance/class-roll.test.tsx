@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import type { Student } from "@/features/students/types";
+import { schoolTimeToIso } from "@/lib/school-time";
 import type { AttendanceRow } from "./attendance-table";
 import { ClassRoll } from "./class-roll";
+import { schoolToday } from "./status";
 import type { Tap } from "./types";
 
 function student(id: string, firstName: string, lastName: string): Student {
@@ -24,7 +26,9 @@ const carmen: AttendanceRow = { student: student("student-carmen", "Carmen", "Si
 const rosa: AttendanceRow = { student: student("student-rosa", "Rosa", "Castillo"), cardStatus: "none" };
 const pedro: AttendanceRow = { student: student("student-pedro", "Pedro", "Bernardo"), cardStatus: "lost" };
 
-// Same date as DASHBOARD_NOW.
+// 9:15 AM on the demo morning.
+const DAY = schoolToday(schoolTimeToIso("2026-06-20", "09:15"));
+
 const taps: Tap[] = [
   {
     id: "7b0d6f8e-4c1a-4f7e-9d7a-2f4b1c3e5a60",
@@ -32,13 +36,13 @@ const taps: Tap[] = [
     stationId: "station-main-gate",
     cardSerial: "04:A3:5F:2B:91:C0:80",
     studentId: "student-juan",
-    tappedAt: "2026-06-20T07:56:00Z",
+    tappedAt: schoolTimeToIso("2026-06-20", "07:56"),
   },
 ];
 
 describe("ClassRoll's desktop table", () => {
   it("says why a student can't tap in with the same tag as every other list", () => {
-    render(<ClassRoll rows={[juan, carmen, rosa, pedro]} taps={taps} />);
+    render(<ClassRoll rows={[juan, carmen, rosa, pedro]} taps={taps} day={DAY} />);
 
     // Both views are in the markup (CSS picks one); this is the table's.
     const [, juanRow, carmenRow, rosaRow, pedroRow] = within(

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Student } from "@/features/students/types";
 import {
-  ATTENDANCE_SEED_DATE,
   attendanceHref,
   classOptionsFromRoster,
   formatAttendanceDateLabel,
@@ -25,21 +24,23 @@ function student(overrides: Partial<Student> & Pick<Student, "id" | "gradeLevel"
 }
 
 describe("parseAttendanceDate", () => {
-  it("defaults to the seed date when no date is given", () => {
-    expect(parseAttendanceDate(undefined)).toBe(ATTENDANCE_SEED_DATE);
+  const TODAY = "2026-10-11";
+
+  it("defaults to today when no date is given", () => {
+    expect(parseAttendanceDate(undefined, TODAY)).toBe(TODAY);
   });
 
   it("accepts a plain YYYY-MM-DD date", () => {
-    expect(parseAttendanceDate("2026-01-15")).toBe("2026-01-15");
+    expect(parseAttendanceDate("2026-01-15", TODAY)).toBe("2026-01-15");
   });
 
-  it("falls back to the seed date on garbage instead of throwing", () => {
-    expect(parseAttendanceDate("not-a-date")).toBe(ATTENDANCE_SEED_DATE);
-    expect(parseAttendanceDate("2026-1-1")).toBe(ATTENDANCE_SEED_DATE);
+  it("falls back to today on garbage instead of throwing", () => {
+    expect(parseAttendanceDate("not-a-date", TODAY)).toBe(TODAY);
+    expect(parseAttendanceDate("2026-1-1", TODAY)).toBe(TODAY);
   });
 
   it("takes the first value when the param repeats in the URL", () => {
-    expect(parseAttendanceDate(["2026-01-15", "2026-01-16"])).toBe("2026-01-15");
+    expect(parseAttendanceDate(["2026-01-15", "2026-01-16"], TODAY)).toBe("2026-01-15");
   });
 });
 

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import type { SchoolDay } from "@/features/attendance/status";
 import type { Tap } from "@/features/attendance/types";
 import type { StudentListParams } from "./search-params";
 import type { StudentRow } from "./search-students";
@@ -32,6 +33,7 @@ export function StudentsDirectory({
   items,
   total,
   taps,
+  day,
   showGradeFilter,
   canEdit,
 }: {
@@ -41,6 +43,8 @@ export function StudentsDirectory({
   items: StudentRow[];
   total: number;
   taps: Tap[];
+  /** The day being shown, on the school's clock (src/features/attendance/status.ts). */
+  day: SchoolDay;
   showGradeFilter: boolean;
   canEdit: boolean;
 }) {
@@ -80,12 +84,13 @@ export function StudentsDirectory({
             <StudentsCardList
               items={items}
               taps={taps}
+              day={day}
               subtitle={showGradeFilter ? "grade" : "time-in"}
               onCardClick={openStudent}
             />
           </div>
           <div className="hidden md:block">
-            <StudentsTable items={items} taps={taps} params={params} onRowClick={openStudent} />
+            <StudentsTable items={items} taps={taps} day={day} params={params} onRowClick={openStudent} />
           </div>
           <StudentsPagination params={params} total={total} />
         </>
@@ -95,6 +100,7 @@ export function StudentsDirectory({
         open={drawer.open}
         student={drawer.student}
         cards={drawer.cards}
+        today={day.date}
         onOpenChange={(open) => setDrawer((current) => ({ ...current, open }))}
         onSuccess={() => setDrawer({ open: false, cards: [] })}
       />

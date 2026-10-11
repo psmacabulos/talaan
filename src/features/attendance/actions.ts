@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { getNow } from "@/lib/clock";
 import { getSession } from "@/lib/session";
 import {
   staffRepository,
@@ -10,7 +11,7 @@ import {
   schoolRepository,
   notificationRepository,
 } from "@/data/repositories";
-import { DASHBOARD_NOW, MAIN_GATE_STATION_ID, studentsWithoutTapToday } from "./status";
+import { DEFAULT_ATTENDANCE_TIMES, MAIN_GATE_STATION_ID, schoolToday, studentsWithoutTapToday } from "./status";
 import { notifyParentsForTap } from "./notify-parents";
 
 /**
@@ -54,8 +55,12 @@ export async function simulateTap(): Promise<SimulateTapResult> {
     );
   }
 
-  const taps = await tapRepository.listBySchool(session.schoolId);
-  const waiting = studentsWithoutTapToday(candidates, taps);
+  // Stamped with the app's clock: the real time, or the demo morning when
+  // DEMO_NOW pins it (src/lib/clock.ts).
+  const now = getNow();
+  const day = schoolToday(now, DEFAULT_ATTENDANCE_TIMES);
+  const taps = await tapRepository.listBySchoolOnDate(session.schoolId, day.date);
+  const waiting = studentsWithoutTapToday(candidates, taps, day);
 
   const cardless: string[] = [];
 
@@ -72,7 +77,7 @@ export async function simulateTap(): Promise<SimulateTapResult> {
       stationId: MAIN_GATE_STATION_ID,
       cardSerial: card.serial,
       studentId: student.id,
-      tappedAt: DASHBOARD_NOW,
+      tappedAt: now,
     };
     await tapRepository.create(tap);
     // The tap is in — fan it out to the student's linked parents (Step 24),

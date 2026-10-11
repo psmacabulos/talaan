@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { MAIN_GATE_STATION_ID } from "@/features/attendance/status";
+import { DEFAULT_ATTENDANCE_TIMES, MAIN_GATE_STATION_ID } from "@/features/attendance/status";
 import type { Tap } from "@/features/attendance/types";
 import type { Card, Student } from "@/features/students/types";
+import { schoolTimeToIso } from "@/lib/school-time";
 import { resolveStationTap, type StationTapContext } from "./resolve-station-tap";
 
 const SCHOOL_ID = "school-test";
-const NOW = "2026-06-20T09:15:00Z";
+const NOW = schoolTimeToIso("2026-06-20", "09:15");
 const IDS = { tapId: "00000000-0000-4000-8000-000000000099", alertId: "alert-new" };
 
 function student(overrides: Partial<Student> & Pick<Student, "id">): Student {
@@ -51,6 +52,7 @@ function context(overrides: Partial<StationTapContext> = {}): StationTapContext 
     taps: [],
     cards: [anaActiveCard, benLostCard],
     now: NOW,
+    times: DEFAULT_ATTENDANCE_TIMES,
     ...overrides,
   };
 }
@@ -99,7 +101,7 @@ describe("resolveStationTap: duplicate", () => {
       id: "t-1",
       studentId: "s-ana",
       cardSerial: anaActiveCard.serial,
-      tappedAt: "2026-06-20T07:56:00Z",
+      tappedAt: schoolTimeToIso("2026-06-20", "07:56"),
     });
     const outcome = resolveStationTap("duplicate", context({ taps: [existing] }), IDS);
     expect(outcome).toEqual({ status: "ignored", kind: "duplicate", existingTap: existing, studentName: "Ana Cruz" });

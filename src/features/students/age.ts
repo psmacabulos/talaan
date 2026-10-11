@@ -1,21 +1,13 @@
-import { DASHBOARD_NOW } from "@/features/attendance/status";
-
 /**
  * Age in whole years from a stored birth date (CLAUDE.md: show age, never
- * store it). Defaults `now` to the same fixed "today" the rest of the demo
- * already agrees on (src/features/attendance/status.ts's DASHBOARD_NOW), so
- * displayed ages don't quietly change depending on the real calendar date.
+ * store it), as of `today`, a "YYYY-MM-DD" date on the school's clock. The
+ * page passes its own today (src/lib/clock.ts), so every age on a page
+ * agrees with that page's attendance, including under a pinned demo clock.
  */
-export function ageInYears(birthDate: string, now: string = DASHBOARD_NOW): number {
-  const birth = new Date(birthDate);
-  const today = new Date(now);
+export function ageInYears(birthDate: string, today: string): number {
+  const [birthYear, birthMonth, birthDay] = birthDate.split("-").map(Number);
+  const [year, month, day] = today.split("-").map(Number);
 
-  let age = today.getUTCFullYear() - birth.getUTCFullYear();
-  const hasHadBirthdayThisYear =
-    today.getUTCMonth() > birth.getUTCMonth() ||
-    (today.getUTCMonth() === birth.getUTCMonth() && today.getUTCDate() >= birth.getUTCDate());
-  if (!hasHadBirthdayThisYear) {
-    age -= 1;
-  }
-  return age;
+  const hasHadBirthdayThisYear = month > birthMonth || (month === birthMonth && day >= birthDay);
+  return year - birthYear - (hasHadBirthdayThisYear ? 0 : 1);
 }

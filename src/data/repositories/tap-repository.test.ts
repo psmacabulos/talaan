@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Tap } from "@/features/attendance/types";
+import { schoolTimeToIso } from "@/lib/school-time";
 import { createMockTapRepository } from "./tap-repository";
+
+const DAY = "2026-06-20";
 
 const tapA: Tap = {
   id: "00000000-0000-4000-8000-000000000001",
@@ -8,7 +11,7 @@ const tapA: Tap = {
   stationId: "station-main-gate",
   cardSerial: "04:A3:5F:2B:91:C0:80",
   studentId: "student-a",
-  tappedAt: "2026-06-20T07:56:00Z",
+  tappedAt: schoolTimeToIso(DAY, "07:56"),
 };
 
 const tapB: Tap = {
@@ -17,7 +20,7 @@ const tapB: Tap = {
   stationId: "station-main-gate",
   cardSerial: "04:11:22:33:44:55:66",
   studentId: "student-b",
-  tappedAt: "2026-06-20T07:57:00Z",
+  tappedAt: schoolTimeToIso(DAY, "07:57"),
 };
 
 const unknownCardTap: Tap = {
@@ -26,15 +29,29 @@ const unknownCardTap: Tap = {
   stationId: "station-main-gate",
   cardSerial: "04:FF:FF:FF:FF:FF:FF",
   studentId: null,
-  tappedAt: "2026-06-20T08:10:00Z",
+  tappedAt: schoolTimeToIso(DAY, "08:10"),
 };
 
 const allTaps = [tapA, tapB, unknownCardTap];
 
 describe("createMockTapRepository", () => {
-  it("lists a school's taps only", async () => {
+  it("lists a school's taps on one school day only", async () => {
     const repo = createMockTapRepository(allTaps, { latencyMs: 0 });
-    await expect(repo.listBySchool("school-a")).resolves.toEqual([tapA, unknownCardTap]);
+    await expect(repo.listBySchoolOnDate("school-a", DAY)).resolves.toEqual([tapA, unknownCardTap]);
+    await expect(repo.listBySchoolOnDate("school-a", "2026-06-21")).resolves.toEqual([]);
+  });
+
+  it("counts an early-morning tap for the school's day, though it's the day before in UTC", async () => {
+    // 7:56 AM in the Philippines is 23:56 UTC on the 19th.
+    expect(tapA.tappedAt.startsWith("2026-06-19")).toBe(true);
+    const repo = createMockTapRepository(allTaps, { latencyMs: 0 });
+    await expect(repo.listBySchoolOnDate("school-a", "2026-06-19")).resolves.toEqual([]);
+  });
+
+  it("finds one tap by id, or null", async () => {
+    const repo = createMockTapRepository(allTaps, { latencyMs: 0 });
+    await expect(repo.getById(tapB.id)).resolves.toEqual(tapB);
+    await expect(repo.getById("00000000-0000-4000-8000-00000000ffff")).resolves.toBeNull();
   });
 
   it("lists a student's taps only", async () => {
@@ -44,7 +61,7 @@ describe("createMockTapRepository", () => {
 
   it("returns an empty list for a school/student with no taps", async () => {
     const repo = createMockTapRepository(allTaps, { latencyMs: 0 });
-    await expect(repo.listBySchool("school-none")).resolves.toEqual([]);
+    await expect(repo.listBySchoolOnDate("school-none", DAY)).resolves.toEqual([]);
   });
 
   it("create() appends a new tap, visible to subsequent lists", async () => {
@@ -54,7 +71,7 @@ describe("createMockTapRepository", () => {
 
     await repo.create(newTap);
 
-    await expect(repo.listBySchool("school-b")).resolves.toEqual([newTap]);
+    await expect(repo.listBySchoolOnDate("school-b", DAY)).resolves.toEqual([newTap]);
   });
 
   it("create() is idempotent by id — a repeated call doesn't duplicate the tap", async () => {
@@ -64,6 +81,6 @@ describe("createMockTapRepository", () => {
     await repo.create(tapB);
     await repo.create(tapB);
 
-    await expect(repo.listBySchool("school-b")).resolves.toEqual([tapB]);
+    await expect(repo.listBySchoolOnDate("school-b", DAY)).resolves.toEqual([tapB]);
   });
 });

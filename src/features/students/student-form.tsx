@@ -13,7 +13,7 @@ import { SheetFooter } from "@/components/ui/sheet";
 import { createStudent, updateStudent } from "./actions";
 import { ageInYears } from "./age";
 import { CardBox } from "./card-box";
-import { STUDENT_FORM_MAX_BIRTH_DATE, studentFormSchema } from "./schemas";
+import { studentFormMaxBirthDate, studentFormSchema } from "./schemas";
 import type { Card, GradeLevel, Student, StudentFormInput, StudentFormValues } from "./types";
 
 const GRADE_LEVELS: readonly GradeLevel[] = [7, 8, 9, 10, 11, 12];
@@ -58,12 +58,15 @@ function valuesFrom(student: Student): StudentFormValues {
 export function StudentForm({
   student,
   cards,
+  today,
   onSuccess,
   onCancel,
 }: {
   student?: Student;
   /** Only meaningful when editing (`student` set) — a brand-new student has nothing to link a card to yet. */
   cards?: Card[];
+  /** The page's today on the school's clock, for the age preview. */
+  today: string;
   onSuccess: () => void;
   onCancel: () => void;
 }) {
@@ -156,7 +159,7 @@ export function StudentForm({
               <Input
                 id="student-birth-date"
                 type="date"
-                max={STUDENT_FORM_MAX_BIRTH_DATE}
+                max={studentFormMaxBirthDate()}
                 aria-invalid={errors.birthDate ? true : undefined}
                 aria-describedby="student-birth-date-hint"
                 {...register("birthDate")}
@@ -168,7 +171,7 @@ export function StudentForm({
                 {errors.birthDate
                   ? errors.birthDate.message
                   : birthDate
-                    ? `Age ${ageInYears(birthDate)}`
+                    ? `Age ${ageInYears(birthDate, today)}`
                     : "Age is worked out from the birth date"}
               </p>
             </div>

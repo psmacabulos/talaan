@@ -4,6 +4,8 @@ import { searchStudents } from "./search-students";
 import type { StudentListParams } from "./search-params";
 import type { Card, Student } from "./types";
 
+const TODAY = "2026-06-20";
+
 const SCHOOL_ID = "school-test";
 
 function student(overrides: Partial<Student> & Pick<Student, "id" | "firstName" | "lastName">): Student {
@@ -75,37 +77,42 @@ const BASE: StudentListParams = { q: "", grade: "all", card: "all", sort: "name"
 
 describe("searchStudents", () => {
   it("returns every student in the school, sorted by name, by default", async () => {
-    const result = await searchStudents(SCHOOL_ID, BASE, {}, deps);
+    const result = await searchStudents(SCHOOL_ID, BASE, { today: TODAY }, deps);
     expect(result.total).toBe(5);
     expect(result.items.map((row) => row.student.firstName)).toEqual(["Ana", "Ben", "Carla", "Dado", "Ela"]);
   });
 
   it("matches the search text against name and LRN, case-insensitively", async () => {
-    const byName = await searchStudents(SCHOOL_ID, { ...BASE, q: "cruz" }, {}, deps);
+    const byName = await searchStudents(SCHOOL_ID, { ...BASE, q: "cruz" }, { today: TODAY }, deps);
     expect(byName.items.map((row) => row.student.firstName)).toEqual(["Ana", "Ben"]);
 
-    const byLrn = await searchStudents(SCHOOL_ID, { ...BASE, q: "222222" }, {}, deps);
+    const byLrn = await searchStudents(SCHOOL_ID, { ...BASE, q: "222222" }, { today: TODAY }, deps);
     expect(byLrn.items.map((row) => row.student.firstName)).toEqual(["Carla"]);
   });
 
   it("filters by grade", async () => {
-    const result = await searchStudents(SCHOOL_ID, { ...BASE, grade: 8 }, {}, deps);
+    const result = await searchStudents(SCHOOL_ID, { ...BASE, grade: 8 }, { today: TODAY }, deps);
     expect(result.items.map((row) => row.student.firstName)).toEqual(["Ana", "Ben"]);
   });
 
   it("filters by card status, treating a re-issued card as active", async () => {
-    const active = await searchStudents(SCHOOL_ID, { ...BASE, card: "active" }, {}, deps);
+    const active = await searchStudents(SCHOOL_ID, { ...BASE, card: "active" }, { today: TODAY }, deps);
     expect(active.items.map((row) => row.student.firstName)).toEqual(["Ana", "Dado", "Ela"]);
 
-    const lost = await searchStudents(SCHOOL_ID, { ...BASE, card: "lost" }, {}, deps);
+    const lost = await searchStudents(SCHOOL_ID, { ...BASE, card: "lost" }, { today: TODAY }, deps);
     expect(lost.items.map((row) => row.student.firstName)).toEqual(["Ben"]);
 
-    const none = await searchStudents(SCHOOL_ID, { ...BASE, card: "none" }, {}, deps);
+    const none = await searchStudents(SCHOOL_ID, { ...BASE, card: "none" }, { today: TODAY }, deps);
     expect(none.items.map((row) => row.student.firstName)).toEqual(["Carla"]);
   });
 
   it("restricts to one grade and section, for a teacher's advisory class", async () => {
-    const result = await searchStudents(SCHOOL_ID, BASE, { restrictTo: { gradeLevel: 10, section: "Luna" } }, deps);
+    const result = await searchStudents(
+      SCHOOL_ID,
+      BASE,
+      { today: TODAY, restrictTo: { gradeLevel: 10, section: "Luna" } },
+      deps,
+    );
     expect(result.items.map((row) => row.student.firstName)).toEqual(["Dado", "Ela"]);
   });
 
@@ -113,32 +120,32 @@ describe("searchStudents", () => {
     const result = await searchStudents(
       SCHOOL_ID,
       BASE,
-      { restrictTo: { gradeLevel: undefined, section: undefined } },
+      { today: TODAY, restrictTo: { gradeLevel: undefined, section: undefined } },
       deps,
     );
     expect(result.total).toBe(0);
   });
 
   it("sorts by age, youngest first, ties kept in original order", async () => {
-    const result = await searchStudents(SCHOOL_ID, { ...BASE, sort: "age" }, {}, deps);
+    const result = await searchStudents(SCHOOL_ID, { ...BASE, sort: "age" }, { today: TODAY }, deps);
     expect(result.items.map((row) => row.student.firstName)).toEqual(["Dado", "Ana", "Ela", "Ben", "Carla"]);
   });
 
   it("sorts by grade and section, then reverses for descending", async () => {
-    const asc = await searchStudents(SCHOOL_ID, { ...BASE, sort: "grade" }, {}, deps);
+    const asc = await searchStudents(SCHOOL_ID, { ...BASE, sort: "grade" }, { today: TODAY }, deps);
     expect(asc.items.map((row) => row.student.firstName)).toEqual(["Ana", "Ben", "Carla", "Dado", "Ela"]);
 
-    const desc = await searchStudents(SCHOOL_ID, { ...BASE, sort: "grade", dir: "desc" }, {}, deps);
+    const desc = await searchStudents(SCHOOL_ID, { ...BASE, sort: "grade", dir: "desc" }, { today: TODAY }, deps);
     expect(desc.items.map((row) => row.student.firstName)).toEqual(["Dado", "Ela", "Carla", "Ana", "Ben"]);
   });
 
   it("sorts by card status", async () => {
-    const result = await searchStudents(SCHOOL_ID, { ...BASE, sort: "card" }, {}, deps);
+    const result = await searchStudents(SCHOOL_ID, { ...BASE, sort: "card" }, { today: TODAY }, deps);
     expect(result.items.map((row) => row.student.firstName)).toEqual(["Ana", "Dado", "Ela", "Ben", "Carla"]);
   });
 
   it("attaches each row's full card history, not just the derived status", async () => {
-    const result = await searchStudents(SCHOOL_ID, BASE, {}, deps);
+    const result = await searchStudents(SCHOOL_ID, BASE, { today: TODAY }, deps);
     const ela = result.items.find((row) => row.student.firstName === "Ela");
     expect(ela?.cards.map((c) => c.id).sort()).toEqual(["c-ela-new", "c-ela-old"]);
 
@@ -147,11 +154,11 @@ describe("searchStudents", () => {
   });
 
   it("paginates without changing the total, and returns nothing past the last page", async () => {
-    const pageOne = await searchStudents(SCHOOL_ID, { ...BASE, page: 1 }, {}, deps);
+    const pageOne = await searchStudents(SCHOOL_ID, { ...BASE, page: 1 }, { today: TODAY }, deps);
     expect(pageOne.total).toBe(5);
     expect(pageOne.items).toHaveLength(5);
 
-    const pageTwo = await searchStudents(SCHOOL_ID, { ...BASE, page: 2 }, {}, deps);
+    const pageTwo = await searchStudents(SCHOOL_ID, { ...BASE, page: 2 }, { today: TODAY }, deps);
     expect(pageTwo.total).toBe(5);
     expect(pageTwo.items).toHaveLength(0);
   });

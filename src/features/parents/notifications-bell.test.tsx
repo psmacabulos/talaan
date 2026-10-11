@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { schoolTimeToIso } from "@/lib/school-time";
 import { NotificationsBell } from "./notifications-bell";
 import type { ParentNotificationItem } from "./notifications-data";
 
@@ -33,7 +34,7 @@ function item(
       schoolId: "school-a",
       studentId: "student-1",
       kind: "time_in",
-      tappedAt: "2026-06-20T07:56:00Z",
+      tappedAt: schoolTimeToIso("2026-06-20", "07:56"),
       read: false,
       ...overrides.notification,
     },
@@ -104,11 +105,21 @@ describe("NotificationsBell", () => {
   it("shows the newest items as name, kind and time when opened", () => {
     const items = [
       item({
-        notification: { id: "n-1", studentId: "s-1", kind: "time_out", tappedAt: "2026-06-20T16:05:00Z" },
+        notification: {
+          id: "n-1",
+          studentId: "s-1",
+          kind: "time_out",
+          tappedAt: schoolTimeToIso("2026-06-20", "16:05"),
+        },
         student: { firstName: "Ana" },
       }),
       item({
-        notification: { id: "n-2", studentId: "s-1", kind: "time_in", tappedAt: "2026-06-20T07:56:00Z" },
+        notification: {
+          id: "n-2",
+          studentId: "s-1",
+          kind: "time_in",
+          tappedAt: schoolTimeToIso("2026-06-20", "07:56"),
+        },
       }),
     ];
     render(<NotificationsBell items={items} />);

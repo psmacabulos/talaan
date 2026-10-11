@@ -1,5 +1,4 @@
 import type { GradeLevel, Student } from "@/features/students/types";
-import { DASHBOARD_NOW } from "./status";
 
 export interface ClassOption {
   gradeLevel: GradeLevel;
@@ -12,24 +11,16 @@ export interface AttendanceListParams {
   section: string;
 }
 
-/**
- * The one date the seed taps actually exist on (src/data/seed/taps.ts, all
- * dated to match DASHBOARD_NOW) — also this page's default date, so opening
- * `/attendance` with no query string lands on the day that has data instead
- * of an empty page.
- */
-export const ATTENDANCE_SEED_DATE = DASHBOARD_NOW.slice(0, 10);
-
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 function firstValue(raw: string | string[] | undefined): string | undefined {
   return Array.isArray(raw) ? raw[0] : raw;
 }
 
-/** Falls back to the seed date on anything that isn't a plain `YYYY-MM-DD` — a missing param, a stale link, a hand-edited query string. */
-export function parseAttendanceDate(raw: string | string[] | undefined): string {
+/** Falls back to `today` on anything that isn't a plain `YYYY-MM-DD` — a missing param, a stale link, a hand-edited query string. */
+export function parseAttendanceDate(raw: string | string[] | undefined, today: string): string {
   const value = firstValue(raw);
-  return value && DATE_PATTERN.test(value) ? value : ATTENDANCE_SEED_DATE;
+  return value && DATE_PATTERN.test(value) ? value : today;
 }
 
 /**
@@ -89,7 +80,7 @@ export function attendanceHref(params: AttendanceListParams): string {
   return `/attendance?${search.toString()}`;
 }
 
-/** "June 20, 2026" — for the empty state's "this demo only has data for …" message. Reads the date as a plain calendar date, not a UTC instant, same reasoning as `formatTapTime` in status.ts. */
+/** "June 20, 2026" — for the "no taps that day" message. A plain calendar date, so it's read in UTC to keep the day from shifting. */
 export function formatAttendanceDateLabel(date: string): string {
   const [year, month, day] = date.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-US", {

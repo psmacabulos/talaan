@@ -1,5 +1,5 @@
 import { StatusPill } from "@/components/status-pill";
-import { formatTapTime, studentStatus, todaysTap } from "@/features/attendance/status";
+import { formatTapTime, studentStatus, todaysTap, type SchoolDay } from "@/features/attendance/status";
 import type { Tap } from "@/features/attendance/types";
 import { cn } from "@/lib/utils";
 import { CardStatusBadge } from "./card-status-badge";
@@ -21,11 +21,14 @@ import { StudentAvatar, gradeAndSection, studentName } from "./student-display";
 export function StudentsCardList({
   items,
   taps,
+  day,
   subtitle,
   onCardClick,
 }: {
   items: StudentRow[];
   taps: Tap[];
+  /** The day being shown, on the school's clock (src/features/attendance/status.ts). */
+  day: SchoolDay;
   subtitle: "grade" | "time-in";
   /** When set, each card opens that student's edit drawer; omitted for teachers, who stay read-only. */
   onCardClick?: (row: StudentRow) => void;
@@ -35,7 +38,7 @@ export function StudentsCardList({
       {items.map((row) => {
         const { student, cardStatus } = row;
         const name = studentName(student);
-        const tap = todaysTap(student.id, taps);
+        const tap = todaysTap(student.id, taps, day);
 
         return (
           <li
@@ -74,7 +77,7 @@ export function StudentsCardList({
               </p>
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1.5">
-              <StatusPill status={studentStatus(student.id, taps)} />
+              <StatusPill status={studentStatus(student.id, taps, day)} />
               {cardStatus !== "active" ? <CardStatusBadge status={cardStatus} className="px-2 py-0.5" /> : null}
             </div>
           </li>

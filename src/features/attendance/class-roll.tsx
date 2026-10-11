@@ -5,7 +5,7 @@ import { StudentAvatar, studentName } from "@/features/students/student-display"
 import { AttendanceCardList } from "./attendance-card-list";
 import type { AttendanceRow } from "./attendance-table";
 import type { Tap } from "./types";
-import { formatTapTime, studentStatus, todaysTap } from "./status";
+import { formatTapTime, studentStatus, todaysTap, type SchoolDay } from "./status";
 
 /**
  * The teacher dashboard variant's roster — every student in the advisory
@@ -22,11 +22,11 @@ import { formatTapTime, studentStatus, todaysTap } from "./status";
  * (Step 27.8), since this list already sits inside the dashboard's bordered
  * panel; from 768px up, the table as before.
  */
-export function ClassRoll({ rows, taps }: { rows: AttendanceRow[]; taps: Tap[] }) {
+export function ClassRoll({ rows, taps, day }: { rows: AttendanceRow[]; taps: Tap[]; day: SchoolDay }) {
   return (
     <>
       <div className="md:hidden">
-        <AttendanceCardList rows={rows} taps={taps} label="Class roll" variant="rows" />
+        <AttendanceCardList rows={rows} taps={taps} day={day} label="Class roll" variant="rows" />
       </div>
       <div className="hidden md:block">
         {/* No wrapping frame: Table already renders its own overflow-x-auto
@@ -43,7 +43,7 @@ export function ClassRoll({ rows, taps }: { rows: AttendanceRow[]; taps: Tap[] }
           </TableHeader>
           <TableBody>
             {rows.map(({ student, cardStatus }) => {
-              const tap = todaysTap(student.id, taps);
+              const tap = todaysTap(student.id, taps, day);
               return (
                 <TableRow key={student.id}>
                   <TableCell className="px-0">
@@ -62,7 +62,7 @@ export function ClassRoll({ rows, taps }: { rows: AttendanceRow[]; taps: Tap[] }
                     </div>
                   </TableCell>
                   <TableCell className="px-0 text-right">
-                    <StatusPill status={studentStatus(student.id, taps)} />
+                    <StatusPill status={studentStatus(student.id, taps, day)} />
                   </TableCell>
                 </TableRow>
               );

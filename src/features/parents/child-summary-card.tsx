@@ -1,30 +1,19 @@
 import { StatusPill } from "@/components/status-pill";
-import { formatTapTime, studentStatus } from "@/features/attendance/status";
+import { formatTapTime, studentStatus, type SchoolDay } from "@/features/attendance/status";
 import type { Tap } from "@/features/attendance/types";
 import type { Student } from "@/features/students/types";
+import { formatSchoolDate } from "@/lib/school-time";
 
-/** A tap's own date, e.g. "June 20, 2026" — read as UTC fields, matching `formatTapTime` (see status.ts's comment: these timestamps represent the school's own wall-clock time written as if it were UTC). Exported since Step 24's notification list also groups by day. */
-export function formatTapDate(iso: string): string {
-  const date = new Date(iso);
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-}
+/** A tap's date on the school's clock, e.g. "June 20, 2026". Exported since Step 24's notification list also groups by day. */
+export const formatTapDate = formatSchoolDate;
 
 /**
  * One linked child's card on the parent dashboard: today's status plus a
- * plain history of every tap on record for them. Phase 1's seed data only
- * covers a single day (2026-06-20 — see docs/ATTENDANCE-MODEL.md's
- * `DASHBOARD_NOW`), so "history" here is honestly just that one entry for
- * now; the list is written to show more once Phase 2's real Tap API starts
- * producing taps on different days, with no change needed here.
+ * plain history of every tap on record for them, newest first.
  */
-export function ChildSummaryCard({ student, taps }: { student: Student; taps: Tap[] }) {
-  const status = studentStatus(student.id, taps);
-  const history = [...taps].sort((a, b) => b.tappedAt.localeCompare(a.tappedAt));
+export function ChildSummaryCard({ student, taps, day }: { student: Student; taps: Tap[]; day: SchoolDay }) {
+  const status = studentStatus(student.id, taps, day);
+  const history = [...taps].sort((a, b) => Date.parse(b.tappedAt) - Date.parse(a.tappedAt));
 
   return (
     <div className="rounded-lg border border-border bg-card p-4">

@@ -1,53 +1,64 @@
 import type { AttendanceStatus } from "@/components/status-pill";
 import type { NotificationKind } from "@/features/parents/types";
 import type { Student } from "@/features/students/types";
+import { formatSchoolTime, minutesFromClockTime, schoolDateOf, schoolMinutesOf } from "@/lib/school-time";
 import type { Tap } from "./types";
-
-/**
- * Phase 1's fixed "right now" for the dashboard — there's no real clock to
- * read from yet (no live tap API, Phase 2), and every seed tap is dated
- * 2026-06-20 (src/data/seed/taps.ts) so today's demo has to agree with
- * that same date. 9:15 AM puts it deliberately after both cutoffs below,
- * so the seed data shows all four statuses at once (present, late, idle
- * *and* absent) instead of everyone still being "not yet tapped."
- * Simulated taps (actions.ts) are stamped with this same instant.
- */
-export const DASHBOARD_NOW = "2026-06-20T09:15:00Z";
 
 /** The one tap station this demo has (CLAUDE.md's domain rules don't need more than one yet). Shared by the dashboard's "Simulate a tap" and the Step 19 tap station, so a tap from either always looks like it came from the same real place. */
 export const MAIN_GATE_STATION_ID = "station-main-gate";
 
-/**
- * On or before this time-of-day, a tap counts as on time; after, it's late.
- * 8:00 AM start plus a five-minute grace — which is also exactly what the
- * seed data's own comments assume (src/data/seed/taps.ts calls its
- * 7:56-8:01 taps "on time" and its 8:16 one "late").
- */
-export const LATE_CUTOFF_MINUTES = 8 * 60 + 5; // 8:05 AM
+/** The times a school uses until it sets its own (Step 44.5): late after 8:05 AM, absent from 9:00 AM. */
+export const DEFAULT_ATTENDANCE_TIMES: AttendanceTimes = { lateAfter: "08:05", absentFrom: "09:00" };
 
-/** Before this time-of-day, no tap yet just means "not yet tapped"; at or after, it's absent. */
-export const ABSENT_CUTOFF_MINUTES = 9 * 60; // 9:00 AM
-
-function minutesOfDay(iso: string): number {
-  const date = new Date(iso);
-  return date.getUTCHours() * 60 + date.getUTCMinutes();
-}
-
-function isSameDate(a: string, b: string): boolean {
-  return a.slice(0, 10) === b.slice(0, 10);
+/** A school's two attendance times on its own clock, "HH:MM". */
+export interface AttendanceTimes {
+  lateAfter: string;
+  absentFrom: string;
 }
 
 /**
- * A student's earliest tap "today" (DASHBOARD_NOW's own date) — a second
- * same-day tap (e.g. a mis-tap or a future time-out tap) never changes
- * whether they're counted present/late. Exported too, for anything that
- * wants to show the actual tap (its time, its station) rather than just
- * the status it produces.
+ * The one day a page is about, measured on the school's clock. Every
+ * status below is judged against this instead of a "now" string, so a page
+ * says once which day it means and the same answer reaches every component.
  */
-export function todaysTap(studentId: string, taps: Tap[], now: string = DASHBOARD_NOW): Tap | undefined {
+export interface SchoolDay {
+  /** The school's calendar date being shown: "2026-06-20". */
+  date: string;
+  /** How far into that day it is, in minutes: a past day is over (1440), a future one hasn't started (0). */
+  minutesNow: number;
+  /** A tap after this is late (8:05 AM is 485). */
+  lateAfter: number;
+  /** With no tap by this time, a student is absent (9:00 AM is 540). */
+  absentFrom: number;
+}
+
+/** The day `date` as of `now`: today is measured at the current time, a past day is over, a future one hasn't started. */
+export function schoolDayFor(date: string, now: string, times: AttendanceTimes = DEFAULT_ATTENDANCE_TIMES): SchoolDay {
+  const today = schoolDateOf(now);
+  const minutesNow = date < today ? 24 * 60 : date > today ? 0 : schoolMinutesOf(now);
+  return {
+    date,
+    minutesNow,
+    lateAfter: minutesFromClockTime(times.lateAfter),
+    absentFrom: minutesFromClockTime(times.absentFrom),
+  };
+}
+
+/** Today on the school's clock, as of `now`. */
+export function schoolToday(now: string, times: AttendanceTimes = DEFAULT_ATTENDANCE_TIMES): SchoolDay {
+  return schoolDayFor(schoolDateOf(now), now, times);
+}
+
+/**
+ * A student's earliest tap on `day` — a second same-day tap (a time out,
+ * or a mis-tap) never changes whether they count as present or late.
+ * Exported too, for anything that shows the actual tap (its time, its
+ * station) rather than just the status it produces.
+ */
+export function todaysTap(studentId: string, taps: Tap[], day: SchoolDay): Tap | undefined {
   return taps
-    .filter((tap) => tap.studentId === studentId && isSameDate(tap.tappedAt, now))
-    .sort((a, b) => a.tappedAt.localeCompare(b.tappedAt))[0];
+    .filter((tap) => tap.studentId === studentId && schoolDateOf(tap.tappedAt) === day.date)
+    .sort((a, b) => Date.parse(a.tappedAt) - Date.parse(b.tappedAt))[0];
 }
 
 /**
@@ -64,30 +75,32 @@ export function todaysTap(studentId: string, taps: Tap[], now: string = DASHBOAR
  * notification, not by the demo buttons.
  */
 export function deriveTapKind(tap: Tap, allStudentTaps: Tap[]): NotificationKind {
+  const day = schoolDateOf(tap.tappedAt);
+  const at = Date.parse(tap.tappedAt);
   const priorSameDay = allStudentTaps.filter(
     (other) =>
       other.studentId === tap.studentId &&
       other.id !== tap.id &&
-      isSameDate(other.tappedAt, tap.tappedAt) &&
-      (other.tappedAt < tap.tappedAt || (other.tappedAt === tap.tappedAt && other.id < tap.id)),
+      schoolDateOf(other.tappedAt) === day &&
+      (Date.parse(other.tappedAt) < at || (Date.parse(other.tappedAt) === at && other.id < tap.id)),
   );
   return priorSameDay.length % 2 === 0 ? "time_in" : "time_out";
 }
 
-export function studentStatus(studentId: string, taps: Tap[], now: string = DASHBOARD_NOW): AttendanceStatus {
-  const tap = todaysTap(studentId, taps, now);
+export function studentStatus(studentId: string, taps: Tap[], day: SchoolDay): AttendanceStatus {
+  const tap = todaysTap(studentId, taps, day);
   if (tap) {
-    return minutesOfDay(tap.tappedAt) <= LATE_CUTOFF_MINUTES ? "present" : "late";
+    return schoolMinutesOf(tap.tappedAt) <= day.lateAfter ? "present" : "late";
   }
-  return minutesOfDay(now) >= ABSENT_CUTOFF_MINUTES ? "absent" : "idle";
+  return day.minutesNow >= day.absentFrom ? "absent" : "idle";
 }
 
 export type StatusCounts = Record<AttendanceStatus, number>;
 
-export function countByStatus(students: Student[], taps: Tap[], now: string = DASHBOARD_NOW): StatusCounts {
+export function countByStatus(students: Student[], taps: Tap[], day: SchoolDay): StatusCounts {
   const counts: StatusCounts = { present: 0, late: 0, absent: 0, idle: 0 };
   for (const student of students) {
-    counts[studentStatus(student.id, taps, now)]++;
+    counts[studentStatus(student.id, taps, day)]++;
   }
   return counts;
 }
@@ -99,12 +112,12 @@ export type GradeAttendance = {
 };
 
 /** One row per grade level actually present at the school — a 3-grade demo school never shows three empty rows for grades it doesn't have. */
-export function attendanceByGrade(students: Student[], taps: Tap[], now: string = DASHBOARD_NOW): GradeAttendance[] {
+export function attendanceByGrade(students: Student[], taps: Tap[], day: SchoolDay): GradeAttendance[] {
   const gradeLevels = [...new Set(students.map((student) => student.gradeLevel))].sort((a, b) => a - b);
 
   return gradeLevels.map((gradeLevel) => {
     const inGrade = students.filter((student) => student.gradeLevel === gradeLevel);
-    const counts = countByStatus(inGrade, taps, now);
+    const counts = countByStatus(inGrade, taps, day);
     const inSchool = counts.present + counts.late;
     return {
       gradeLevel,
@@ -115,25 +128,11 @@ export function attendanceByGrade(students: Student[], taps: Tap[], now: string 
 }
 
 /** Students with no tap yet today, in roster order — who "Simulate a tap" picks from. Idle students are offered before absent ones, so the demo tells a "still arriving" story before it tells a "the day already ended" one. */
-export function studentsWithoutTapToday(students: Student[], taps: Tap[], now: string = DASHBOARD_NOW): Student[] {
-  const idle = students.filter((student) => studentStatus(student.id, taps, now) === "idle");
-  const absent = students.filter((student) => studentStatus(student.id, taps, now) === "absent");
+export function studentsWithoutTapToday(students: Student[], taps: Tap[], day: SchoolDay): Student[] {
+  const idle = students.filter((student) => studentStatus(student.id, taps, day) === "idle");
+  const absent = students.filter((student) => studentStatus(student.id, taps, day) === "absent");
   return [...idle, ...absent];
 }
 
-/**
- * A tap's time of day, e.g. "7:56 AM". Reads UTC fields on purpose, not the
- * browser/server's local timezone — every stored timestamp in this app
- * represents the school's own wall-clock time written as if it were UTC
- * (matching `minutesOfDay` above), not an actual UTC instant; converting to
- * whichever timezone happens to be running the code would show the wrong
- * time to some readers.
- */
-export function formatTapTime(iso: string): string {
-  const date = new Date(iso);
-  const hours24 = date.getUTCHours();
-  const minutes = date.getUTCMinutes();
-  const period = hours24 >= 12 ? "PM" : "AM";
-  const hours12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
-  return `${hours12}:${String(minutes).padStart(2, "0")} ${period}`;
-}
+/** A tap's time of day on the school's clock, e.g. "7:56 AM". */
+export const formatTapTime = formatSchoolTime;

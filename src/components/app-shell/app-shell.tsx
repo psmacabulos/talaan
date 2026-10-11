@@ -13,6 +13,7 @@ export function AppShell({
   staff,
   schools,
   themeSelection,
+  demoClockLabel,
   children,
 }: {
   userId: string;
@@ -21,6 +22,8 @@ export function AppShell({
   staff: Staff[];
   schools: School[];
   themeSelection: ThemeSelection;
+  /** "June 20, 2026, 9:15 AM" when DEMO_NOW pins the clock, otherwise null. */
+  demoClockLabel: string | null;
   children: ReactNode;
 }) {
   return (
@@ -35,6 +38,7 @@ export function AppShell({
           staff={staff}
           schools={schools}
           themeSelection={themeSelection}
+          demoClockLabel={demoClockLabel}
         />
         {/* Below 2xl (1536px), full width — unchanged from Step 10. At 2xl
             and up, padding grows a step further and content stops at a

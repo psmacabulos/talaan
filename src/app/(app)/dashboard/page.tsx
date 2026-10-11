@@ -7,6 +7,8 @@ import {
   studentRepository,
   tapRepository,
 } from "@/data/repositories";
+import { getNow } from "@/lib/clock";
+import { schoolMinutesOf } from "@/lib/school-time";
 import { getSession } from "@/lib/session";
 import { AttendanceHero } from "@/features/attendance/attendance-hero";
 import { ClassRoll } from "@/features/attendance/class-roll";
@@ -14,7 +16,7 @@ import { GradeBreakdown } from "@/features/attendance/grade-breakdown";
 import { LiveTapFeed } from "@/features/attendance/live-tap-feed";
 import { NeedsAttention } from "@/features/attendance/needs-attention";
 import { NoSchoolSelected } from "@/features/attendance/no-school-selected";
-import { attendanceByGrade, countByStatus } from "@/features/attendance/status";
+import { attendanceByGrade, countByStatus, DEFAULT_ATTENDANCE_TIMES, schoolToday } from "@/features/attendance/status";
 import { deriveCardStatus } from "@/features/students/card-status";
 
 /** A plain bordered panel with a heading — the dashboard's repeated container. */
@@ -38,6 +40,14 @@ function DashboardCard({
   );
 }
 
+/** "Good morning" before noon, "Good afternoon" until 6 PM, then "Good evening", on the school's clock. */
+function greetingAt(now: string): string {
+  const minutes = schoolMinutesOf(now);
+  if (minutes < 12 * 60) return "Good morning";
+  if (minutes < 18 * 60) return "Good afternoon";
+  return "Good evening";
+}
+
 export default async function DashboardPage() {
   const session = await getSession();
   const signedInStaff = await staffRepository.getById(session.userId);
@@ -53,17 +63,19 @@ export default async function DashboardPage() {
     );
   }
 
+  // Everything on this page is about today on the school's clock: the real
+  // time, or the demo morning when DEMO_NOW pins it (src/lib/clock.ts).
+  const now = getNow();
+  const day = schoolToday(now, DEFAULT_ATTENDANCE_TIMES);
+
   const [school, students, taps] = await Promise.all([
     schoolRepository.getById(session.schoolId),
     studentRepository.listBySchool(session.schoolId),
-    tapRepository.listBySchool(session.schoolId),
+    tapRepository.listBySchoolOnDate(session.schoolId, day.date),
   ]);
 
-  // "Good morning" is fixed, not computed from the real clock: every piece
-  // of data on this page is measured against DASHBOARD_NOW (status.ts), a
-  // fixed 9:15 AM in Phase 1's sample data. A greeting that said "Good
-  // evening" over a 9:15 AM dashboard would just look broken.
   const firstName = signedInStaff?.firstName ?? "there";
+  const greeting = `${greetingAt(now)}, ${firstName}`;
 
   if (session.role === "teacher") {
     const classStudents = students.filter(
@@ -88,7 +100,7 @@ export default async function DashboardPage() {
       <div className="flex flex-col gap-6">
         <PageHeader
           as="h2"
-          title={`Good morning, ${firstName}`}
+          title={greeting}
           description={
             signedInStaff?.advisoryGradeLevel && signedInStaff.advisorySection
               ? `Your advisory class, Grade ${signedInStaff.advisoryGradeLevel} – ${signedInStaff.advisorySection}.`
@@ -99,7 +111,7 @@ export default async function DashboardPage() {
         <AttendanceHero
           eyebrow="Your class today"
           subjectLabel="students are in school"
-          counts={countByStatus(classStudents, classTaps)}
+          counts={countByStatus(classStudents, classTaps, day)}
         />
 
         {/* items-start so each card sizes to its own content — without it
@@ -107,7 +119,7 @@ export default async function DashboardPage() {
             large empty area inside it. */}
         <div className="grid items-start gap-6 xl:grid-cols-[1.2fr_1fr]">
           <DashboardCard title="Class roll">
-            <ClassRoll rows={rollRows} taps={classTaps} />
+            <ClassRoll rows={rollRows} taps={classTaps} day={day} />
           </DashboardCard>
           <DashboardCard title="Live taps in your class">
             <LiveTapFeed taps={classTaps} students={classStudents} />
@@ -119,14 +131,15 @@ export default async function DashboardPage() {
 
   const alerts = await alertRepository.listBySchool(session.schoolId);
   const openAlerts = alerts.filter((alert) => !alert.acknowledged);
+  const alertTaps = (await Promise.all(openAlerts.map((alert) => tapRepository.getById(alert.tapId)))).filter(
+    (tap) => tap !== null,
+  );
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         as="h2"
-        title={
-          session.role === "super_admin" ? `Viewing ${school?.name ?? "this school"}` : `Good morning, ${firstName}`
-        }
+        title={session.role === "super_admin" ? `Viewing ${school?.name ?? "this school"}` : greeting}
         description={
           session.role === "super_admin"
             ? "You're seeing this school as a super admin."
@@ -137,14 +150,14 @@ export default async function DashboardPage() {
       <AttendanceHero
         eyebrow="Today's attendance"
         subjectLabel="students are in school"
-        counts={countByStatus(students, taps)}
+        counts={countByStatus(students, taps, day)}
       />
 
       {/* items-start so each card sizes to its own content — see the
           teacher branch above for why. */}
       <div className="grid items-start gap-6 xl:grid-cols-[1.2fr_1fr]">
         <DashboardCard title="Attendance by grade level">
-          <GradeBreakdown rows={attendanceByGrade(students, taps)} />
+          <GradeBreakdown rows={attendanceByGrade(students, taps, day)} />
         </DashboardCard>
 
         <div className="flex flex-col gap-6">
@@ -156,7 +169,7 @@ export default async function DashboardPage() {
               </span>
             }
           >
-            <NeedsAttention alerts={openAlerts} taps={taps} students={students} />
+            <NeedsAttention alerts={openAlerts} alertTaps={alertTaps} students={students} today={day.date} />
           </DashboardCard>
 
           <DashboardCard title="Live taps">

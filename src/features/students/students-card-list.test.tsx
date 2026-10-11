@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import { schoolToday } from "@/features/attendance/status";
 import type { Tap } from "@/features/attendance/types";
+import { schoolTimeToIso } from "@/lib/school-time";
 import type { StudentRow } from "./search-students";
 import { StudentsCardList } from "./students-card-list";
 
@@ -37,7 +39,10 @@ const rosa: StudentRow = {
   cards: [],
 };
 
-// Same date as DASHBOARD_NOW, well before the 8:05 AM late cutoff.
+// 9:15 AM on the demo morning.
+const DAY = schoolToday(schoolTimeToIso("2026-06-20", "09:15"));
+
+// Well before the 8:05 AM late cutoff.
 const taps: Tap[] = [
   {
     id: "7b0d6f8e-4c1a-4f7e-9d7a-2f4b1c3e5a60",
@@ -45,7 +50,7 @@ const taps: Tap[] = [
     stationId: "station-main-gate",
     cardSerial: "04:A3:5F:2B:91:C0:80",
     studentId: "student-reynaldo",
-    tappedAt: "2026-06-20T07:12:00Z",
+    tappedAt: schoolTimeToIso("2026-06-20", "07:12"),
   },
 ];
 
@@ -55,7 +60,7 @@ function cards() {
 
 describe("StudentsCardList", () => {
   it("shows the name, grade and section, and today's status, and nothing more personal", () => {
-    render(<StudentsCardList items={[reynaldo, rosa]} taps={taps} subtitle="grade" />);
+    render(<StudentsCardList items={[reynaldo, rosa]} taps={taps} day={DAY} subtitle="grade" />);
 
     const [first, second] = cards();
     expect(within(first).getByRole("heading", { name: "Reynaldo Abad" })).toBeInTheDocument();
@@ -69,7 +74,7 @@ describe("StudentsCardList", () => {
   });
 
   it("tags the card only when it isn't linked", () => {
-    render(<StudentsCardList items={[reynaldo, rosa]} taps={taps} subtitle="grade" />);
+    render(<StudentsCardList items={[reynaldo, rosa]} taps={taps} day={DAY} subtitle="grade" />);
 
     const [first, second] = cards();
     expect(within(first).queryByText("Linked")).not.toBeInTheDocument();
@@ -77,7 +82,7 @@ describe("StudentsCardList", () => {
   });
 
   it("shows a teacher today's time in instead of their own class on every card", () => {
-    render(<StudentsCardList items={[reynaldo, rosa]} taps={taps} subtitle="time-in" />);
+    render(<StudentsCardList items={[reynaldo, rosa]} taps={taps} day={DAY} subtitle="time-in" />);
 
     const [first, second] = cards();
     expect(within(first).getByText("In at 7:12 AM")).toBeInTheDocument();
@@ -87,14 +92,14 @@ describe("StudentsCardList", () => {
 
   it("opens the student when their card is tapped", () => {
     const onCardClick = vi.fn();
-    render(<StudentsCardList items={[reynaldo]} taps={taps} subtitle="grade" onCardClick={onCardClick} />);
+    render(<StudentsCardList items={[reynaldo]} taps={taps} day={DAY} subtitle="grade" onCardClick={onCardClick} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Edit Reynaldo Abad" }));
     expect(onCardClick).toHaveBeenCalledWith(reynaldo);
   });
 
   it("isn't clickable for someone who can't edit", () => {
-    render(<StudentsCardList items={[reynaldo]} taps={taps} subtitle="time-in" />);
+    render(<StudentsCardList items={[reynaldo]} taps={taps} day={DAY} subtitle="time-in" />);
 
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });

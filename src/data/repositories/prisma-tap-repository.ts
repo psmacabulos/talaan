@@ -2,6 +2,7 @@ import type { PrismaClient, Tap as TapRow } from "@/generated/prisma/client";
 import { tapSchema } from "@/features/attendance/schemas";
 import type { Tap } from "@/features/attendance/types";
 import { prisma } from "@/lib/db";
+import { nextDate, schoolTimeToIso } from "@/lib/school-time";
 import type { TapRepository } from "./tap-repository";
 
 /** A database row → the app's own `Tap`. */
@@ -32,13 +33,28 @@ const EARLIEST_FIRST = [{ tappedAt: "asc" as const }, { id: "asc" as const }];
 
 export function createPrismaTapRepository(db: PrismaClient = prisma): TapRepository {
   return {
-    async listBySchool(schoolId) {
-      const rows = await db.tap.findMany({ where: { schoolId }, orderBy: EARLIEST_FIRST });
+    async listBySchoolOnDate(schoolId, date) {
+      // From the school's midnight up to (not including) the next one. The
+      // (schoolId, tappedAt) index answers this without reading other days.
+      const rows = await db.tap.findMany({
+        where: {
+          schoolId,
+          tappedAt: {
+            gte: new Date(schoolTimeToIso(date, "00:00")),
+            lt: new Date(schoolTimeToIso(nextDate(date), "00:00")),
+          },
+        },
+        orderBy: EARLIEST_FIRST,
+      });
       return rows.map(toTap);
     },
     async listByStudent(studentId) {
       const rows = await db.tap.findMany({ where: { studentId }, orderBy: EARLIEST_FIRST });
       return rows.map(toTap);
+    },
+    async getById(id) {
+      const row = await db.tap.findUnique({ where: { id } });
+      return row ? toTap(row) : null;
     },
     async create(tap) {
       // The device's own id makes this idempotent: a retried tap finds its

@@ -5,6 +5,8 @@ import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { parentRepository, parentStudentLinkRepository, studentRepository, tapRepository } from "@/data/repositories";
+import { DEFAULT_ATTENDANCE_TIMES, schoolToday } from "@/features/attendance/status";
+import { getNow } from "@/lib/clock";
 import { getParentSession } from "@/lib/parent-session";
 import { ChildSummaryCard } from "@/features/parents/child-summary-card";
 import type { Student } from "@/features/students/types";
@@ -21,6 +23,7 @@ export default async function ParentHomePage() {
   const students = await Promise.all(links.map((link) => studentRepository.getById(link.studentId)));
   const linkedStudents = students.filter((student): student is Student => student !== null);
   const tapsByStudent = await Promise.all(linkedStudents.map((student) => tapRepository.listByStudent(student.id)));
+  const day = schoolToday(getNow(), DEFAULT_ATTENDANCE_TIMES);
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-10 sm:px-6">
@@ -44,7 +47,7 @@ export default async function ParentHomePage() {
         <ul className="flex flex-col gap-3">
           {linkedStudents.map((student, index) => (
             <li key={student.id}>
-              <ChildSummaryCard student={student} taps={tapsByStudent[index]} />
+              <ChildSummaryCard student={student} taps={tapsByStudent[index]} day={day} />
             </li>
           ))}
         </ul>

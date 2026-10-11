@@ -1,4 +1,6 @@
 import type { Notification } from "@/features/parents/types";
+import { schoolTimeToIso } from "@/lib/school-time";
+import { SEED_DATE } from "./taps";
 
 /**
  * A couple of sample notifications, aligned to the seed taps in taps.ts
@@ -15,7 +17,7 @@ export const seedNotifications: Notification[] = [
     schoolId: "school-balanga",
     studentId: "student-0001",
     kind: "time_in",
-    tappedAt: "2026-06-20T07:56:00Z",
+    tappedAt: schoolTimeToIso(SEED_DATE, "07:56"),
     read: false,
   },
   {
@@ -23,7 +25,7 @@ export const seedNotifications: Notification[] = [
     schoolId: "school-balanga",
     studentId: "student-0002",
     kind: "time_in",
-    tappedAt: "2026-06-20T07:57:00Z",
+    tappedAt: schoolTimeToIso(SEED_DATE, "07:57"),
     read: true,
   },
   {
@@ -31,7 +33,7 @@ export const seedNotifications: Notification[] = [
     schoolId: "school-balanga",
     studentId: "student-0001",
     kind: "time_out",
-    tappedAt: "2026-06-20T16:05:00Z",
+    tappedAt: schoolTimeToIso(SEED_DATE, "16:05"),
     read: false,
   },
 ];

@@ -1,13 +1,10 @@
 import { CalendarCheck } from "lucide-react";
-import Link from "next/link";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { cardRepository, staffRepository, studentRepository, tapRepository } from "@/data/repositories";
 import { AttendanceList } from "@/features/attendance/attendance-list";
 import type { AttendanceRow } from "@/features/attendance/attendance-table";
 import {
-  ATTENDANCE_SEED_DATE,
-  attendanceHref,
   classOptionsFromRoster,
   formatAttendanceDateLabel,
   parseAttendanceDate,
@@ -15,8 +12,10 @@ import {
 } from "@/features/attendance/attendance-search-params";
 import { AttendanceToolbar } from "@/features/attendance/attendance-toolbar";
 import { NoSchoolSelected } from "@/features/attendance/no-school-selected";
-import { countByStatus } from "@/features/attendance/status";
+import { countByStatus, DEFAULT_ATTENDANCE_TIMES, schoolDayFor } from "@/features/attendance/status";
 import { deriveCardStatus } from "@/features/students/card-status";
+import { getNow } from "@/lib/clock";
+import { schoolDateOf } from "@/lib/school-time";
 import { getSession } from "@/lib/session";
 
 function AttendancePageShell({ description, children }: { description: string; children: React.ReactNode }) {
@@ -60,8 +59,12 @@ export default async function AttendancePage({ searchParams }: PageProps<"/atten
     );
   }
 
+  // Opens on today, on the school's clock: the real date, or the demo
+  // morning's when DEMO_NOW pins it (src/lib/clock.ts).
+  const now = getNow();
+  const today = schoolDateOf(now);
   const rawParams = await searchParams;
-  const date = parseAttendanceDate(rawParams.date);
+  const date = parseAttendanceDate(rawParams.date, today);
 
   const allStudents = await studentRepository.listBySchool(session.schoolId);
   const options = classOptionsFromRoster(allStudents);
@@ -87,42 +90,30 @@ export default async function AttendancePage({ searchParams }: PageProps<"/atten
     ? `Your advisory class, Grade ${selected.gradeLevel} – ${selected.section}.`
     : "Pick a date and class to see who tapped in.";
 
-  const isSeedDate = date === ATTENDANCE_SEED_DATE;
+  const [taps, cardsByStudent] = await Promise.all([
+    tapRepository.listBySchoolOnDate(session.schoolId, date),
+    Promise.all(classStudents.map((student) => cardRepository.listByStudent(student.id))),
+  ]);
 
+  // A finished day with no taps at all, anywhere in the school, was most
+  // likely a weekend, a holiday or a day the gate was off. Marking the
+  // whole class absent would be wrong, so say so plainly instead.
   let body: React.ReactNode;
-  if (!isSeedDate) {
+  if (date < today && taps.length === 0) {
     body = (
-      <div className="flex flex-col items-center gap-3">
-        <EmptyState
-          icon={CalendarCheck}
-          title="No records for that date"
-          description={`This demo only has sample attendance for ${formatAttendanceDateLabel(ATTENDANCE_SEED_DATE)}.`}
-        />
-        <Link
-          href={attendanceHref({
-            date: ATTENDANCE_SEED_DATE,
-            gradeLevel: selected.gradeLevel,
-            section: selected.section,
-          })}
-          className="rounded-sm text-sm font-medium text-link underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          Jump to {formatAttendanceDateLabel(ATTENDANCE_SEED_DATE)}
-        </Link>
-      </div>
+      <EmptyState
+        icon={CalendarCheck}
+        title="No taps that day"
+        description={`Nobody at this school tapped in on ${formatAttendanceDateLabel(date)}. Weekends, holidays and days the gate was off look like this.`}
+      />
     );
   } else {
-    const [taps, cardsByStudent] = await Promise.all([
-      tapRepository.listBySchool(session.schoolId),
-      Promise.all(classStudents.map((student) => cardRepository.listByStudent(student.id))),
-    ]);
-
     const rows: AttendanceRow[] = classStudents.map((student, index) => ({
       student,
       cardStatus: deriveCardStatus(cardsByStudent[index] ?? []),
     }));
-
-    const now = `${date}T09:15:00Z`;
-    body = <AttendanceList rows={rows} taps={taps} now={now} counts={countByStatus(classStudents, taps, now)} />;
+    const day = schoolDayFor(date, now, DEFAULT_ATTENDANCE_TIMES);
+    body = <AttendanceList rows={rows} taps={taps} day={day} counts={countByStatus(classStudents, taps, day)} />;
   }
 
   return (

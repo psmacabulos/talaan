@@ -3,7 +3,7 @@ import { CardStatusBadge } from "@/features/students/card-status-badge";
 import { StudentAvatar, studentName } from "@/features/students/student-display";
 import { cn } from "@/lib/utils";
 import type { AttendanceRow } from "./attendance-table";
-import { formatTapTime, studentStatus, todaysTap } from "./status";
+import { formatTapTime, studentStatus, todaysTap, type SchoolDay } from "./status";
 import type { Tap } from "./types";
 
 /**
@@ -25,21 +25,21 @@ import type { Tap } from "./types";
 export function AttendanceCardList({
   rows,
   taps,
-  now,
+  day,
   label,
   variant = "cards",
 }: {
   rows: AttendanceRow[];
   taps: Tap[];
-  /** The moment "today" is measured against; defaults to status.ts's DASHBOARD_NOW. */
-  now?: string;
+  /** The day being shown, on the school's clock (src/features/attendance/status.ts). */
+  day: SchoolDay;
   label: string;
   variant?: "cards" | "rows";
 }) {
   return (
     <ul aria-label={label} className={cn("flex flex-col", variant === "cards" ? "gap-2" : "divide-y divide-border")}>
       {rows.map(({ student, cardStatus }) => {
-        const tap = todaysTap(student.id, taps, now);
+        const tap = todaysTap(student.id, taps, day);
 
         return (
           <li
@@ -59,7 +59,7 @@ export function AttendanceCardList({
               {cardStatus !== "active" ? <CardStatusBadge status={cardStatus} className="mt-1 px-2 py-0.5" /> : null}
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
-              <StatusPill status={studentStatus(student.id, taps, now)} />
+              <StatusPill status={studentStatus(student.id, taps, day)} />
               <p className="text-sm text-muted-foreground tabular-nums">
                 {tap ? (
                   <>

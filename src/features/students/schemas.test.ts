@@ -5,7 +5,7 @@ import {
   gradeLevelSchema,
   lrnSchema,
   phMobileSchema,
-  STUDENT_FORM_MAX_BIRTH_DATE,
+  studentFormMaxBirthDate,
   studentFormSchema,
   studentSchema,
 } from "./schemas";
@@ -97,7 +97,7 @@ describe("studentFormSchema", () => {
 
   it("rejects a birth date after today, and accepts today itself", () => {
     expect(studentFormSchema.safeParse({ ...validInput, birthDate: "2999-01-01" }).success).toBe(false);
-    expect(studentFormSchema.safeParse({ ...validInput, birthDate: STUDENT_FORM_MAX_BIRTH_DATE }).success).toBe(true);
+    expect(studentFormSchema.safeParse({ ...validInput, birthDate: studentFormMaxBirthDate() }).success).toBe(true);
   });
 
   it("rejects a provided LRN that isn't exactly 12 digits", () => {

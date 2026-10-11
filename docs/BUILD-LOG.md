@@ -1789,3 +1789,50 @@ Built from the fast-track recipe (`docs/backend/step-43-gate-devices.md`), after
 - **Teachers and the live feed (owner decision, 2026-10-10):** no live feed for teachers. The monitor is for the guard's photo check and for the principal. Teachers already see their own class's arrivals on the dashboard and attendance pages.
 - **Gate screen shows the photo (owner decisions, 2026-10-10):** a tablet or phone can be the gate on its own, showing each student's photo after a tap, with no separate monitor needed to start. Phones show the result full screen; tablets split it with the last few taps. The owner made a point of this: a new tap must be recorded and shown immediately, even while the previous photo is up. The few-second clear-back to "Tap your card" only runs when nobody else taps. Android devices with built-in NFC can read cards through Web NFC as a second input. Recorded on the Step 47 line in `docs/PLAN.md`.
 - **Photos and the on-device roster (owner decisions, 2026-10-10):** the gate keeps its own copy of the roster and photo thumbnails, so a tap shows the photo instantly and photos leave the server once per device. The demo must have photos, so a new Step 46.5 (student photos) comes before the gate page. Resizing happens in the browser, storage is S3-compatible behind a `PhotoStorage` interface, and only keys go in the database. The owner made "cheap to run, easy to move" a standing rule, now one of `CLAUDE.md`'s backend principles.
+- The owner approved Step 43 on 2026-10-10.
+
+## Steps 44 and 44.5: recipes written (2026-10-10)
+
+The owner asked for the Step 44 recipe before any code, to see how it would be built. Reading the code first found that the clock is the smaller half of the problem:
+
+- `DASHBOARD_NOW` reaches about 20 files, mostly through default parameter values (`now: string = DASHBOARD_NOW`), so most callers never mention it.
+- Every stored time is the school's wall-clock time written as UTC (`formatTapTime` and `minutesOfDay` read the UTC fields on purpose). A real tap at 7:56 AM in Balanga is 23:56 UTC the day before, so the gate can't record real taps until times are real instants, read on the school's clock in one place.
+- The attendance page judged any date "as of 9:15 AM" (`${date}T09:15:00Z`).
+- Every page loads every tap the school has ever had.
+
+So Step 44 became bigger than planned. As the step protocol asks, it's split:
+- **Step 44:** school time, the real clock with `DEMO_NOW`, the `SchoolDay` value, one-day tap queries, and the seed moved to real instants.
+- **Step 44.5:** per-school late and absent times, with the settings form.
+
+Choices made in the recipe:
+- **A fixed UTC+8 offset** rather than `Intl` or a time-zone library: exact for the Philippines (no daylight saving), no dependency, and `school-time.ts` is the one file to change if that ever stops being true.
+- **No default `now`/`day` parameters any more**, so TypeScript finds every caller.
+- **A visible "Demo clock" badge** whenever `DEMO_NOW` is set, rather than a code guard. The browser tests run a production build, so a "never in production" check would also block them.
+- **Cutoffs as "HH:MM" text** on `School`, checked by Zod.
+
+## Step 44: the real clock, in Philippine time (2026-10-11)
+
+Built from its recipe (`docs/backend/step-44-real-clock.md`) after the owner approved it. The recipe has a "What changed while building" section. In short:
+
+- **New:** `src/lib/school-time.ts` (fixed UTC+8: school date and minutes, formatting, `schoolTimeToIso`, `nextDate`) and `src/lib/clock.ts` (`getNow`, `isDemoClock`), each with tests. 11 tests in total.
+- **`status.ts`:** `DASHBOARD_NOW`, the two cutoff constants and the UTC-reading helpers are gone. In their place:
+  - `SchoolDay`, `schoolDayFor`, `schoolToday` and `DEFAULT_ATTENDANCE_TIMES`;
+  - every status helper takes a `SchoolDay`, with no default;
+  - `formatTapTime` is now `formatSchoolTime`;
+  - `deriveTapKind` and `todaysTap` compare instants with `Date.parse` rather than string order. Prisma returns `…00.000Z` while hand-written times were `…00Z`, so string comparison of the same moment could disagree, as noted in the Steps 36–40 dry run.
+- **Finding every caller:** the old default `now` reached about 20 files. Removing it and running `npx tsc --noEmit` listed every one: 35 errors across pages, components and tests. Each was fixed by passing the page's `SchoolDay` down.
+  - Pages: dashboard, attendance, students, station, parent home, and the app layout for the badge.
+  - Components: the attendance list, table and card list, the class roll, the students table, card list and directory, the student drawer and form, and the child summary card.
+  - Logic: `resolve-station-tap.ts`, the simulate-tap action, `search-students.ts`, `age.ts`, `schemas.ts`.
+- **One day of taps:** `TapRepository.listBySchoolOnDate` (Prisma: `tappedAt >= the school's midnight, < the next`) and `getById`. `listBySchool` was removed once nothing called it.
+- **Seed** times are written as school clock times through `schoolTimeToIso(SEED_DATE, "07:56")`, for the taps, the alert and the three notifications. On screen they're the same as before.
+- **`DEMO_NOW`:** pinned to `2026-06-20T09:15:00+08:00` in `playwright.config.ts`'s `webServer.env`, documented but commented out in `.env.example`. A "Demo clock" badge shows in the top bar while it's set.
+- **Docs:** `docs/ATTENDANCE-MODEL.md`'s `DASHBOARD_NOW` section was replaced with "School time and the clock (Step 44)". Its diagram, status code sample and quick recipes were updated.
+
+Checked while building (the owner's full routine still to run):
+- `npx tsc --noEmit` is clean.
+- `npx vitest run`: 57 files, 375 tests, all passing. Three failures along the way were fixed: two notify-parents tests that needed the converted seed, and the age-sort tie test described in the recipe.
+- `npx eslint` on the changed files is clean.
+- On `talaan_test` (reset with the new seed), `listBySchoolOnDate("school-balanga", "2026-06-20")` returned 28 taps. The first is stored as `2026-06-19T23:35:00.000Z` and shown as `7:35 AM`. Counts at 9:15 AM: present 21, late 6, absent 13. Nothing came back for the 19th.
+
+Not checked yet: `npm run build`, the browser tests, and the app in a browser. The owner's own `talaan` database still has the old fake-UTC times until `npm run db:reset`.

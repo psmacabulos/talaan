@@ -20,6 +20,7 @@ export function Topbar({
   staff,
   schools,
   themeSelection,
+  demoClockLabel,
 }: {
   userId: string;
   school: School | null;
@@ -27,6 +28,8 @@ export function Topbar({
   staff: Staff[];
   schools: School[];
   themeSelection: ThemeSelection;
+  /** "June 20, 2026, 9:15 AM" when DEMO_NOW pins the clock, otherwise null. */
+  demoClockLabel: string | null;
 }) {
   // The dev switcher is a stand-in for real login (Phase 2) — never
   // rendered in production, checked here (not just by which button a
@@ -40,8 +43,18 @@ export function Topbar({
       <MobileNav role={role} school={school} />
       <TopbarTitle />
       {/* Light/dark stays at every width (Step 27.5): it's a per-person
-          reading preference, as useful on a phone as on a desktop. */}
-      <div className="ml-auto shrink-0">
+          reading preference, as useful on a phone as on a desktop. The demo
+          clock badge stays at every width too: a pinned clock must be
+          obvious on any screen. */}
+      <div className="ml-auto flex shrink-0 items-center gap-2">
+        {demoClockLabel ? (
+          <span
+            className="rounded-full bg-status-late-bg px-2.5 py-1 text-xs font-medium text-status-late"
+            title={`The app's clock is pinned to ${demoClockLabel} (DEMO_NOW).`}
+          >
+            Demo clock<span className="hidden md:inline">: {demoClockLabel}</span>
+          </span>
+        ) : null}
         <ThemeToggle />
       </div>
       {/* Dropped below sm so the page title always has room to breathe on

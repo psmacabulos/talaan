@@ -1,7 +1,7 @@
 import { AttendanceCardList } from "./attendance-card-list";
 import { AttendanceTable, type AttendanceRow } from "./attendance-table";
 import { AttendanceCountTiles, AttendanceLegend } from "./segmented-bar";
-import type { StatusCounts } from "./status";
+import type { SchoolDay, StatusCounts } from "./status";
 import type { Tap } from "./types";
 
 /**
@@ -15,12 +15,12 @@ import type { Tap } from "./types";
 export function AttendanceList({
   rows,
   taps,
-  now,
+  day,
   counts,
 }: {
   rows: AttendanceRow[];
   taps: Tap[];
-  now: string;
+  day: SchoolDay;
   counts: StatusCounts;
 }) {
   return (
@@ -42,10 +42,10 @@ export function AttendanceList({
           </h3>
           <p className="text-xs text-muted-foreground">{rows.length} total</p>
         </div>
-        <AttendanceCardList rows={rows} taps={taps} now={now} label="Students" />
+        <AttendanceCardList rows={rows} taps={taps} day={day} label="Students" />
       </section>
       <div className="hidden md:block">
-        <AttendanceTable rows={rows} taps={taps} now={now} />
+        <AttendanceTable rows={rows} taps={taps} day={day} />
       </div>
     </>
   );

@@ -24,7 +24,7 @@ flowchart TB
     subgraph data["Inputs"]
         Roster["Students<br/>(studentRepository)"]
         Taps["Taps<br/>(tapRepository)"]
-        Now["DASHBOARD_NOW<br/>the reference 'now'"]
+        Now["SchoolDay<br/>which day, how far into it,<br/>the two cutoffs"]
     end
 
     subgraph status["src/features/attendance/status.ts"]
@@ -64,7 +64,7 @@ flowchart TB
 
 ## The four statuses, and the two cutoffs that produce them
 
-`studentStatus(studentId, taps, now)` answers one question about one student, and there are only four possible answers — the same four fixed status colors the design system reserves (`docs/STYLING-SYSTEM.md`):
+`studentStatus(studentId, taps, day)` answers one question about one student, and there are only four possible answers — the same four fixed status colors the design system reserves (`docs/STYLING-SYSTEM.md`):
 
 | Status | When | Shown as |
 |---|---|---|
@@ -76,20 +76,21 @@ flowchart TB
 The logic is two questions in sequence — *did they tap?*, then *how does the clock compare?*:
 
 ```ts
-export function studentStatus(studentId: string, taps: Tap[], now: string = DASHBOARD_NOW): AttendanceStatus {
-  const tap = todaysTap(studentId, taps, now);
+export function studentStatus(studentId: string, taps: Tap[], day: SchoolDay): AttendanceStatus {
+  const tap = todaysTap(studentId, taps, day);
   if (tap) {
-    return minutesOfDay(tap.tappedAt) <= LATE_CUTOFF_MINUTES ? "present" : "late";
+    return schoolMinutesOf(tap.tappedAt) <= day.lateAfter ? "present" : "late";
   }
-  return minutesOfDay(now) >= ABSENT_CUTOFF_MINUTES ? "absent" : "idle";
+  return day.minutesNow >= day.absentFrom ? "absent" : "idle";
 }
 ```
 
-Three constants carry the real rules, all in `src/features/attendance/status.ts`:
+A `SchoolDay` (`src/features/attendance/status.ts`) carries everything the rules need, built once per page by `schoolToday(now, times)` or `schoolDayFor(date, now, times)`:
 
-- **`LATE_CUTOFF_MINUTES`** — 8:05 AM. An 8:00 start with a five-minute grace period. Tap at or before it and you're present; after it and you're late.
-- **`ABSENT_CUTOFF_MINUTES`** — 9:00 AM. Before this, a student who hasn't tapped is just "not yet tapped" — they might still be on the way. After it, the app calls it absent.
-- **`DASHBOARD_NOW`** — see the next section.
+- **`date`**: the school's calendar date being shown.
+- **`minutesNow`**: how far into that day it is. Today, it's the current time. A past day is over (1440), so a student with no tap is absent. A future day hasn't started (0), so nobody is absent yet.
+- **`lateAfter`**: 8:05 AM by default (`DEFAULT_ATTENDANCE_TIMES`), an 8:00 start with five minutes' grace. Tap at or before it and you're present; after it, late.
+- **`absentFrom`**: 9:00 AM by default. Before this, a student with no tap is just "not yet tapped", since they might still be on the way. From it on, absent.
 
 **Two details that are easy to get wrong:**
 
@@ -97,21 +98,27 @@ Three constants carry the real rules, all in `src/features/attendance/status.ts`
 
 *Taps from other days are ignored.* The date is compared before the time, so yesterday's tap can never make someone look present today.
 
-## `DASHBOARD_NOW`: why the app has a fixed clock right now
+## School time and the clock (Step 44)
 
-The dashboard does **not** call `new Date()`. It uses a constant:
+Phase 1 ran on a frozen clock (`DASHBOARD_NOW`, always 9:15 AM on 20 June 2026), and stored the school's clock time as if it were UTC. Step 44 replaced both, because a real tap can't work that way: 7:56 AM in Balanga is 23:56 UTC **the day before**.
 
-```ts
-export const DASHBOARD_NOW = "2026-06-20T09:15:00Z";
+```mermaid
+flowchart LR
+    Now["getNow()<br/>src/lib/clock.ts<br/>real time, or DEMO_NOW"]
+    Instant[("Stored taps<br/>real instants (UTC)")]
+    School["src/lib/school-time.ts<br/>+8 hours, read with the UTC getters"]
+    Day["SchoolDay<br/>date, minutesNow, cutoffs"]
+    Status["status.ts<br/>studentStatus, counts, …"]
+    Now --> School
+    Instant --> School
+    School --> Day --> Status
 ```
 
-This looks wrong until you see why. Phase 1 has no live tap API — every tap in the app is sample data, and all of it is dated 2026-06-20. If the code asked for the real current date, it would look for "today's taps", find none on any other day, and show a school where nobody turned up at all. The fixed clock is what makes the sample data mean something.
-
-9:15 AM specifically, because it's past both cutoffs — so the sample data shows real present, real late and real absent students at the same time, rather than a screen where one of those is always zero.
-
-**What replaces it in Phase 2:** this constant becomes the actual current time, and every function already accepts `now` as an argument precisely so that swap is a one-line change rather than a rewrite. That's also why the unit tests pass their own `now` in — they test the *rules*, not one particular moment.
-
-> **Timezones:** every timestamp is read with `getUTCHours()`, never `getHours()`. These timestamps represent the school's own wall-clock time, written as if it were UTC. Converting them to whatever timezone happens to be running the code would show the wrong time to some readers.
+- **Store instants, read them on the school's clock in one place.** Every tap, alert and notification time is a real moment. Only `src/lib/school-time.ts` turns one into the school's date (`schoolDateOf`), minutes into the day (`schoolMinutesOf`) or display text (`formatSchoolTime`, `formatSchoolDate`). The Philippines is UTC+8 all year with no daylight saving, so it adds 8 hours and reads the result with the `getUTC…` methods, which give the same answer on every computer. If a school outside the Philippines ever joins, this is the file to change.
+- **"Now" comes from `getNow()`** (`src/lib/clock.ts`), on the server only. It's the real time, unless `DEMO_NOW` pins it. Pages hand the resulting `SchoolDay` (or, for the tap station, the pinned time) to their components, so the browser and the server always agree on "now" for a page.
+- **`DEMO_NOW`** pins the clock to the demo morning (`"2026-06-20T09:15:00+08:00"`). The browser tests set it in `playwright.config.ts`, so they see the seed data's day on every run. You can set it in `.env` to show the sample data. Never set it on a real server. While it's set, every staff page shows a **Demo clock** badge in the top bar, so it can't go unnoticed.
+- **No default "now" anywhere.** Each status function takes its `SchoolDay` explicitly, so TypeScript points at every caller that has to say which day it means.
+- **Pages load one day of taps** with `tapRepository.listBySchoolOnDate(schoolId, date)` (from the school's midnight to the next, using the `(schoolId, tappedAt)` index), not the school's whole history. The dashboard's "Needs attention" panel loads each open alert's tap by id instead, since an alert nobody has dealt with can be from an earlier day.
 
 ## Aggregating: counts and per-grade rows
 
@@ -157,14 +164,14 @@ Three different things can happen, and the person clicking deserves to know whic
 
 ## The attendance page (Step 17): picking one class, one day
 
-The dashboard's `ClassRoll` always shows "my whole school" or "my one advisory class" — there's no way to pick a *different* class, or look at a day other than `DASHBOARD_NOW`. The attendance page (`src/app/(app)/attendance/page.tsx`) is that browsing screen: a date, grade and section in the URL (same shareable-URL, back-button-works shape as the Students list — see `docs/URL-DRIVEN-LISTS.md`), resolved server-side in `src/features/attendance/attendance-search-params.ts`.
+The dashboard's `ClassRoll` always shows "my whole school" or "my one advisory class" — there's no way to pick a *different* class, or look at a day other than today. The attendance page (`src/app/(app)/attendance/page.tsx`) is that browsing screen: a date, grade and section in the URL (same shareable-URL, back-button-works shape as the Students list — see `docs/URL-DRIVEN-LISTS.md`), resolved server-side in `src/features/attendance/attendance-search-params.ts`.
 
 Two things make this resolution non-trivial:
 
 - **The class picker has no "all" option.** Unlike the Students list's grade filter, this page always shows exactly one class at a time — "pick a date and *class*" — so `resolveClassSelection()` has to always return *some* real class, even when the URL names one that doesn't exist (a stale link, a hand-edited query string, or nothing at all yet). It falls back to the first class that actually has students, the same shape as the prototype's own `if (!SECTIONS[grade].includes(section)) section = SECTIONS[grade][0]`.
 - **A teacher's own class always wins.** `resolveClassSelection()` takes an optional `lockedTo` — a teacher's advisory grade/section — and when it's set, everything else is ignored outright, not just hidden in the UI. That's the same real server-side guard the Students list's `searchStudents(..., { restrictTo })` already uses: a teacher who hand-edits the URL to another grade/section still only ever sees their own class, because the page never asks the URL what class to show for a locked-in teacher in the first place.
 
-The other wrinkle is the date. Every seed tap is dated to `DASHBOARD_NOW`'s day (`ATTENDANCE_SEED_DATE`, exported from `attendance-search-params.ts` so nothing hardcodes "2026-06-20" a second time) — so this page treats that one date as real and every other date as "no records", rather than trying to derive attendance for a day it has no data for at all. Picking any other date shows an empty state with a link straight back to the seed date, for the same class.
+The other wrinkle is the date. The page opens on today on the school's clock (Step 44), and `schoolDayFor(date, now)` judges any other date fairly: a past day is over, so a student with no tap is absent; a future day hasn't started, so nobody is. One exception: a past day with **no taps at all** anywhere in the school shows "No taps that day" instead of a whole class marked absent, because that's almost always a weekend, a holiday or a day the gate was off.
 
 ## The tap station (Step 19): where a `Tap` actually comes from
 
@@ -185,17 +192,19 @@ Every `Tap` used everywhere above this point — the dashboard, the attendance p
 
 ## Quick recipes
 
-**I want to change when "late" starts.** Edit `LATE_CUTOFF_MINUTES` in `src/features/attendance/status.ts`. It's minutes since midnight (`8 * 60 + 5`). The unit tests in `status.test.ts` assert the boundary on both sides, so change those too — that's deliberate, it makes the rule impossible to change by accident.
+**I want to change when "late" starts.** The defaults are `DEFAULT_ATTENDANCE_TIMES` in `src/features/attendance/status.ts` ("08:05" and "09:00"). From Step 44.5 each school sets its own in Settings. The unit tests in `status.test.ts` assert the boundary on both sides.
 
-**I want the dashboard to show a different moment of the school day.** Change `DASHBOARD_NOW`. Set it before 9:00 AM and un-tapped students read as "not yet tapped" rather than "absent"; set it before 8:05 AM and everyone who has tapped reads as present.
+**I want the app to show a different moment of the school day.** Set `DEMO_NOW` in `.env` and restart `npm run dev`, for example `DEMO_NOW="2026-06-20T08:30:00+08:00"`. Before 9:00 AM un-tapped students read as "not yet tapped" rather than "absent"; before 8:05 AM everyone who has tapped reads as present. Remove it again to get the real clock back.
 
 **I want attendance numbers on a new screen.** Import `countByStatus` / `attendanceByGrade` from `src/features/attendance/status.ts` and feed them a roster and a tap list from the repositories. Don't re-derive statuses by hand — these functions are unit-tested and the screens should agree with each other.
 
-**I want to show one student's status somewhere.** `studentStatus(student.id, taps)` returns the status; pass it straight to `<StatusPill status={...} />` (`docs/COMPONENTS.md`), which already knows the colors and labels.
+**I want to show one student's status somewhere.** `studentStatus(student.id, taps, day)` returns the status; pass it straight to `<StatusPill status={...} />` (`docs/COMPONENTS.md`), which already knows the colors and labels.
 
-**I want the actual arrival time, not just the status.** `todaysTap(student.id, taps)` returns the tap itself; `formatTapTime(tap.tappedAt)` renders it as "7:56 AM".
+**I want the actual arrival time, not just the status.** `todaysTap(student.id, taps, day)` returns the tap itself; `formatTapTime(tap.tappedAt)` renders it as "7:56 AM".
 
-**I'm adding real taps in Phase 2.** Replace `DASHBOARD_NOW` with the real current time and give `tapRepository` a database-backed implementation. Nothing in `status.ts` should need to change — it already takes `now` as a parameter and never reaches for a clock or a database itself.
+**I'm showing a time or date anywhere.** Use `formatSchoolTime` / `formatSchoolDate` from `src/lib/school-time.ts` (or `formatTapTime`, the same function). Never `toLocaleTimeString()` or `getHours()`: those use the time zone of whatever computer runs the code.
+
+**I need "now" in a page or server action.** `getNow()` from `src/lib/clock.ts`, then `schoolToday(now, times)`. Never `new Date()` directly, or `DEMO_NOW` won't reach it.
 
 **I want a new screen that browses one class at a time (like the attendance page).** Reuse `classOptionsFromRoster()` and `resolveClassSelection()` from `src/features/attendance/attendance-search-params.ts` rather than writing new grade/section fallback logic — they already handle "the URL names a class that doesn't exist" and "this role is locked to one class" correctly.
 

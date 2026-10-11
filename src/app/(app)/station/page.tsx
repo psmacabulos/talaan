@@ -3,7 +3,10 @@ import { hasNavAccess } from "@/components/app-shell/nav-items";
 import { PageHeader } from "@/components/page-header";
 import { cardRepository, studentRepository, tapRepository } from "@/data/repositories";
 import { NoSchoolSelected } from "@/features/attendance/no-school-selected";
+import { DEFAULT_ATTENDANCE_TIMES } from "@/features/attendance/status";
 import { TapStationKiosk } from "@/features/station/tap-station-kiosk";
+import { getNow, isDemoClock } from "@/lib/clock";
+import { schoolDateOf } from "@/lib/school-time";
 import { getSession } from "@/lib/session";
 
 export default async function StationPage() {
@@ -28,7 +31,8 @@ export default async function StationPage() {
   }
 
   const students = await studentRepository.listBySchool(session.schoolId);
-  const taps = await tapRepository.listBySchool(session.schoolId);
+  const now = getNow();
+  const taps = await tapRepository.listBySchoolOnDate(session.schoolId, schoolDateOf(now));
   // No school-wide "list every card" method exists (Step 16 only ever
   // needed one student's own history) — same per-student fetch-and-flatten
   // already used by search-students.ts and the Step 17 attendance page.
@@ -38,7 +42,14 @@ export default async function StationPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader as="h2" title="Tap station" description="This is what a tablet or phone at the gate shows." />
-      <TapStationKiosk schoolId={session.schoolId} students={students} taps={taps} cards={cards} />
+      <TapStationKiosk
+        schoolId={session.schoolId}
+        students={students}
+        taps={taps}
+        cards={cards}
+        attendanceTimes={DEFAULT_ATTENDANCE_TIMES}
+        pinnedNow={isDemoClock() ? now : null}
+      />
     </div>
   );
 }

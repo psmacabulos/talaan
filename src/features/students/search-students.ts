@@ -24,14 +24,14 @@ function matchesQuery(student: Student, query: string): boolean {
   return name.includes(needle) || (student.lrn?.includes(needle) ?? false);
 }
 
-function compareRows(a: StudentRow, b: StudentRow, params: StudentListParams): number {
+function compareRows(a: StudentRow, b: StudentRow, params: StudentListParams, today: string): number {
   let result: number;
   switch (params.sort) {
     case "grade":
       result = a.student.gradeLevel - b.student.gradeLevel || a.student.section.localeCompare(b.student.section);
       break;
     case "age":
-      result = ageInYears(a.student.birthDate) - ageInYears(b.student.birthDate);
+      result = ageInYears(a.student.birthDate, today) - ageInYears(b.student.birthDate, today);
       break;
     case "card":
       result = a.cardStatus.localeCompare(b.cardStatus);
@@ -56,7 +56,11 @@ function compareRows(a: StudentRow, b: StudentRow, params: StudentListParams): n
 export async function searchStudents(
   schoolId: string,
   params: StudentListParams,
-  options: { restrictTo?: { gradeLevel: Student["gradeLevel"] | undefined; section: string | undefined } } = {},
+  options: {
+    /** Today on the school's clock, which the age sort is measured against. */
+    today: string;
+    restrictTo?: { gradeLevel: Student["gradeLevel"] | undefined; section: string | undefined };
+  },
   // Defaults to the real mock repositories; tests inject their own small,
   // deterministic ones (the same createMock*Repository factories every
   // other repository test uses) instead of relying on the full seed data.
@@ -89,7 +93,7 @@ export async function searchStudents(
 
   const filteredByCard = params.card === "all" ? rows : rows.filter((row) => row.cardStatus === params.card);
 
-  const sorted = [...filteredByCard].sort((a, b) => compareRows(a, b, params));
+  const sorted = [...filteredByCard].sort((a, b) => compareRows(a, b, params, options.today));
 
   const total = sorted.length;
   const start = (params.page - 1) * STUDENTS_PAGE_SIZE;

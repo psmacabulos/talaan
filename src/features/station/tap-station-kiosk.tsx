@@ -4,7 +4,7 @@ import { Ban, CheckCircle2, HelpCircle, Nfc, RotateCcw, Wifi, WifiOff } from "lu
 import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { DASHBOARD_NOW, formatTapTime } from "@/features/attendance/status";
+import { formatTapTime, type AttendanceTimes } from "@/features/attendance/status";
 import type { Tap } from "@/features/attendance/types";
 import type { Card, Student } from "@/features/students/types";
 import { resolveStationTap, type StationTapKind, type StationTapOutcome } from "./resolve-station-tap";
@@ -30,11 +30,17 @@ export function TapStationKiosk({
   students,
   taps,
   cards,
+  attendanceTimes,
+  pinnedNow,
 }: {
   schoolId: string;
   students: Student[];
+  /** Today's taps at this school. */
   taps: Tap[];
   cards: Card[];
+  attendanceTimes: AttendanceTimes;
+  /** The demo clock's time when DEMO_NOW is set (src/lib/clock.ts), otherwise null and every tap uses this device's own clock. */
+  pinnedNow: string | null;
 }) {
   const [isOffline, setIsOffline] = useState(false);
   const [result, setResult] = useState<{ outcome: StationTapOutcome; queued: boolean } | null>(null);
@@ -53,7 +59,14 @@ export function TapStationKiosk({
     const effectiveTaps = [...taps, ...recordedTapsFrom(recorded)];
     const outcome = resolveStationTap(
       kind,
-      { schoolId, students, taps: effectiveTaps, cards, now: DASHBOARD_NOW },
+      {
+        schoolId,
+        students,
+        taps: effectiveTaps,
+        cards,
+        now: pinnedNow ?? new Date().toISOString(),
+        times: attendanceTimes,
+      },
       { tapId: crypto.randomUUID(), alertId: crypto.randomUUID() },
     );
 

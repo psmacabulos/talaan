@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { KeyboardEvent } from "react";
 import { StatusPill } from "@/components/status-pill";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { studentStatus } from "@/features/attendance/status";
+import { studentStatus, type SchoolDay } from "@/features/attendance/status";
 import type { Tap } from "@/features/attendance/types";
 import { ageInYears } from "./age";
 import { CardStatusBadge } from "./card-status-badge";
@@ -48,11 +48,14 @@ function SortableHeader({
 export function StudentsTable({
   items,
   taps,
+  day,
   params,
   onRowClick,
 }: {
   items: StudentRow[];
   taps: Tap[];
+  /** The day being shown, on the school's clock (src/features/attendance/status.ts). */
+  day: SchoolDay;
   params: StudentListParams;
   /** When set, every row opens the student's edit drawer (Step 15), with their card history (Step 16) — omitted entirely for teachers, who stay read-only. */
   onRowClick?: (row: StudentRow) => void;
@@ -98,12 +101,12 @@ export function StudentsTable({
               </TableCell>
               <TableCell className="text-muted-foreground">{row.student.lrn ?? "—"}</TableCell>
               <TableCell>{gradeAndSection(row.student)}</TableCell>
-              <TableCell>{ageInYears(row.student.birthDate)}</TableCell>
+              <TableCell>{ageInYears(row.student.birthDate, day.date)}</TableCell>
               <TableCell>
                 <CardStatusBadge status={row.cardStatus} />
               </TableCell>
               <TableCell>
-                <StatusPill status={studentStatus(row.student.id, taps)} />
+                <StatusPill status={studentStatus(row.student.id, taps, day)} />
               </TableCell>
             </TableRow>
           ))}

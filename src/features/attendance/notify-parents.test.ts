@@ -3,6 +3,7 @@ import { seedSchools, seedTaps } from "@/data/seed";
 import { createMockNotificationRepository } from "@/data/repositories/notification-repository";
 import { createMockSchoolRepository } from "@/data/repositories/school-repository";
 import { createMockTapRepository } from "@/data/repositories/tap-repository";
+import { schoolTimeToIso } from "@/lib/school-time";
 import type { Tap } from "./types";
 import { notifyParentsForTap, type NotifyParentsDeps } from "./notify-parents";
 
@@ -26,7 +27,7 @@ function tap(studentId: string | null, schoolId: string): Tap {
     stationId: "station-main-gate",
     cardSerial: "04:A3:5F:2B:91:C0:80",
     studentId,
-    tappedAt: "2026-06-20T09:15:00Z",
+    tappedAt: schoolTimeToIso("2026-06-20", "09:15"),
   };
 }
 
@@ -39,7 +40,7 @@ describe("notifyParentsForTap", () => {
       schoolId: "school-balanga",
       studentId: "student-0006",
       kind: "time_in",
-      tappedAt: "2026-06-20T09:15:00Z",
+      tappedAt: schoolTimeToIso("2026-06-20", "09:15"),
       read: false,
     });
   });

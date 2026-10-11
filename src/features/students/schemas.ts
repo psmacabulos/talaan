@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DASHBOARD_NOW } from "@/features/attendance/status";
+import { schoolDateOf } from "@/lib/school-time";
 
 /**
  * Grade 7 to 12 only (CLAUDE.md's domain rules). A literal union, not
@@ -52,10 +52,14 @@ export const studentSchema = z.object({
   photoUrl: z.url().optional(),
 });
 
-/** Same "today" `age.ts` already computes ages against, so a birth date the
- * form calls "in the future" always agrees with the age the rest of the
- * app would show for it. */
-const TODAY = DASHBOARD_NOW.slice(0, 10);
+/**
+ * Today's date on the school's clock, read when the form is checked, not
+ * once when this file loads. It's the real date even under a pinned demo
+ * clock: a birth date in the real future is wrong whatever the demo says.
+ */
+export function studentFormMaxBirthDate(): string {
+  return schoolDateOf(new Date().toISOString());
+}
 
 /**
  * The add/edit drawer's own schema (Step 15) — the same fields as
@@ -65,8 +69,6 @@ const TODAY = DASHBOARD_NOW.slice(0, 10);
  * rather than a validation failure, and a birth date can't be in the
  * future (CLAUDE.md/the prototype's own rule for this form specifically).
  */
-export const STUDENT_FORM_MAX_BIRTH_DATE = TODAY;
-
 export const studentFormSchema = z.object({
   firstName: z.string().trim().min(1, "Enter a first name"),
   middleName: z
@@ -75,7 +77,9 @@ export const studentFormSchema = z.object({
     .optional()
     .transform((value) => (value ? value : undefined)),
   lastName: z.string().trim().min(1, "Enter a last name"),
-  birthDate: z.iso.date("Enter a birth date").refine((value) => value <= TODAY, "Birth date cannot be in the future"),
+  birthDate: z.iso
+    .date("Enter a birth date")
+    .refine((value) => value <= studentFormMaxBirthDate(), "Birth date cannot be in the future"),
   lrn: z
     .union([lrnSchema, z.literal("")])
     .optional()

@@ -1,4 +1,10 @@
-import { MAIN_GATE_STATION_ID, studentsWithoutTapToday, todaysTap } from "@/features/attendance/status";
+import {
+  MAIN_GATE_STATION_ID,
+  schoolToday,
+  studentsWithoutTapToday,
+  todaysTap,
+  type AttendanceTimes,
+} from "@/features/attendance/status";
 import type { Tap } from "@/features/attendance/types";
 import { generateCardSerial } from "@/features/students/card-serial";
 import type { Card, Student } from "@/features/students/types";
@@ -10,7 +16,10 @@ export interface StationTapContext {
   students: Student[];
   taps: Tap[];
   cards: Card[];
+  /** The moment of the tap. Also decides which school day "already tapped today" means. */
   now: string;
+  /** The school's late and absent times. */
+  times: AttendanceTimes;
 }
 
 export interface StationTapIds {
@@ -59,10 +68,11 @@ export function resolveStationTap(
   context: StationTapContext,
   ids: StationTapIds,
 ): StationTapOutcome {
-  const { schoolId, students, taps, cards, now } = context;
+  const { schoolId, students, taps, cards, now, times } = context;
+  const day = schoolToday(now, times);
 
   if (kind === "valid") {
-    const waiting = studentsWithoutTapToday(students, taps, now);
+    const waiting = studentsWithoutTapToday(students, taps, day);
     const student = waiting.find((candidate) => activeCardFor(candidate.id, cards));
     if (!student) return { status: "empty", kind };
 
@@ -86,11 +96,11 @@ export function resolveStationTap(
 
   if (kind === "duplicate") {
     const student = students.find(
-      (candidate) => todaysTap(candidate.id, taps, now) && activeCardFor(candidate.id, cards),
+      (candidate) => todaysTap(candidate.id, taps, day) && activeCardFor(candidate.id, cards),
     );
     if (!student) return { status: "empty", kind };
 
-    const existingTap = todaysTap(student.id, taps, now)!;
+    const existingTap = todaysTap(student.id, taps, day)!;
     return { status: "ignored", kind: "duplicate", existingTap, studentName: fullName(student) };
   }
 

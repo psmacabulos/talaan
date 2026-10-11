@@ -14,6 +14,7 @@ export function StudentDrawer({
   open,
   student,
   cards,
+  today,
   onOpenChange,
   onSuccess,
 }: {
@@ -21,6 +22,8 @@ export function StudentDrawer({
   student?: Student;
   /** That student's card history — ignored when `student` is undefined (a brand-new, not-yet-saved student has nothing to link a card to). */
   cards: Card[];
+  /** The page's today on the school's clock, for the form's age preview. */
+  today: string;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
 }) {
@@ -43,6 +46,7 @@ export function StudentDrawer({
             key={student?.id ?? "new"}
             student={student}
             cards={cards}
+            today={today}
             onSuccess={onSuccess}
             onCancel={() => onOpenChange(false)}
           />

@@ -1,8 +1,17 @@
 import type { Alert, Tap } from "@/features/attendance/types";
 import { cardSerialAt } from "./cards";
+import { schoolTimeToIso } from "@/lib/school-time";
 import { ROSTER_STUDENT_COUNT, seedStudents } from "./students";
 
 const STATION_ID = "station-main-gate";
+
+/**
+ * The demo morning. Times below are written as the school's own clock
+ * ("07:56") and stored as the real instant (src/lib/school-time.ts), the
+ * same way a real tap at the gate is: 7:56 AM in the Philippines is 23:56
+ * UTC the day before.
+ */
+export const SEED_DATE = "2026-06-20";
 
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
@@ -28,7 +37,7 @@ const scenarioTaps: Tap[] = [
     stationId: STATION_ID,
     cardSerial: cardSerialAt(1000),
     studentId: seedStudents[0].id,
-    tappedAt: "2026-06-20T07:56:00Z",
+    tappedAt: schoolTimeToIso(SEED_DATE, "07:56"),
   },
   // students 0002-0005 (Rizal, grade 7) tapping in on time. Deliberately
   // stops short of the whole section: student-0006 is left with no tap, so
@@ -41,7 +50,7 @@ const scenarioTaps: Tap[] = [
     stationId: STATION_ID,
     cardSerial: cardSerialAt(i + 1),
     studentId: student.id,
-    tappedAt: `2026-06-20T${timeAt(7, 57, i)}:00Z`,
+    tappedAt: schoolTimeToIso(SEED_DATE, timeAt(7, 57, i)),
   })),
   // student-0007 (Bonifacio, grade 8) tapping in late.
   {
@@ -50,7 +59,7 @@ const scenarioTaps: Tap[] = [
     stationId: STATION_ID,
     cardSerial: cardSerialAt(6),
     studentId: seedStudents[6].id,
-    tappedAt: "2026-06-20T08:16:00Z",
+    tappedAt: schoolTimeToIso(SEED_DATE, "08:16"),
   },
   // The lost-card scenario: someone taps student-0001's OLD, already-lost
   // card. `studentId` is still that student — a lost card doesn't erase who
@@ -61,7 +70,7 @@ const scenarioTaps: Tap[] = [
     stationId: STATION_ID,
     cardSerial: cardSerialAt(0),
     studentId: seedStudents[0].id,
-    tappedAt: "2026-06-20T08:05:00Z",
+    tappedAt: schoolTimeToIso(SEED_DATE, "08:05"),
   },
 ];
 
@@ -95,8 +104,8 @@ const bulkTaps: Tap[] = seedStudents.flatMap((student, index): Tap[] => {
 
   const isLate = index % 5 === 0;
   const tappedAt = isLate
-    ? `2026-06-20T${timeAt(8, 12, index % 20)}:00Z`
-    : `2026-06-20T${timeAt(7, 35, index % 29)}:00Z`;
+    ? schoolTimeToIso(SEED_DATE, timeAt(8, 12, index % 20))
+    : schoolTimeToIso(SEED_DATE, timeAt(7, 35, index % 29));
 
   return [
     {
@@ -119,7 +128,7 @@ export const seedAlerts: Alert[] = [
     schoolId: "school-balanga",
     tapId: "00000000-0000-4000-8000-000000000008",
     type: "lost_card_tapped",
-    createdAt: "2026-06-20T08:05:00Z",
+    createdAt: schoolTimeToIso(SEED_DATE, "08:05"),
     acknowledged: false,
   },
 ];

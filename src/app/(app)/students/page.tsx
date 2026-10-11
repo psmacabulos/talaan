@@ -1,6 +1,8 @@
 import { PageHeader } from "@/components/page-header";
 import { staffRepository, tapRepository } from "@/data/repositories";
 import { NoSchoolSelected } from "@/features/attendance/no-school-selected";
+import { DEFAULT_ATTENDANCE_TIMES, schoolToday } from "@/features/attendance/status";
+import { getNow } from "@/lib/clock";
 import { getSession } from "@/lib/session";
 import { parseStudentListParams } from "@/features/students/search-params";
 import { searchStudents } from "@/features/students/search-students";
@@ -24,13 +26,17 @@ export default async function StudentsPage({ searchParams }: PageProps<"/student
   const isTeacher = session.role === "teacher";
   const signedInStaff = isTeacher ? await staffRepository.getById(session.userId) : null;
 
+  // Each student's status pill and age are as of today on the school's clock.
+  const day = schoolToday(getNow(), DEFAULT_ATTENDANCE_TIMES);
+
   const params = parseStudentListParams(await searchParams);
   const { items, total } = await searchStudents(session.schoolId, params, {
+    today: day.date,
     restrictTo: isTeacher
       ? { gradeLevel: signedInStaff?.advisoryGradeLevel, section: signedInStaff?.advisorySection }
       : undefined,
   });
-  const taps = await tapRepository.listBySchool(session.schoolId);
+  const taps = await tapRepository.listBySchoolOnDate(session.schoolId, day.date);
 
   return (
     <StudentsDirectory
@@ -46,6 +52,7 @@ export default async function StudentsPage({ searchParams }: PageProps<"/student
       items={items}
       total={total}
       taps={taps}
+      day={day}
       showGradeFilter={!isTeacher}
       canEdit={!isTeacher}
     />
