@@ -9,6 +9,8 @@ const oceanSchool: School = {
   theme: { kind: "preset", presetId: "ocean" },
   showDepedLogo: false,
   notificationPreference: "time_in_only",
+  lateAfter: "08:05",
+  absentFrom: "09:00",
 };
 
 describe("resolveSchoolTheme", () => {

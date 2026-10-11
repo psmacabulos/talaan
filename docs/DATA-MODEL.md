@@ -32,6 +32,8 @@ erDiagram
         SchoolTheme theme "preset id, or a custom brand color"
         boolean showDepedLogo
         NotificationPreference notificationPreference "off, time_in_only, time_in_and_time_out"
+        string lateAfter "HH:MM, default 08:05 (Step 44.5)"
+        string absentFrom "HH:MM, default 09:00 (Step 44.5)"
     }
     STAFF {
         string id PK

@@ -30,6 +30,21 @@ export const schoolThemeSchema = z.discriminatedUnion("kind", [
  */
 export const notificationPreferenceSchema = z.enum(["off", "time_in_only", "time_in_and_time_out"]);
 
+/** A time on the school's clock, "HH:MM" in 24-hour form, e.g. "08:05". */
+export const clockTimeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Enter a time like 08:05");
+
+/**
+ * Settings > Attendance times (Step 44.5). Absent has to come after late,
+ * or nobody could ever be late. Comparing "HH:MM" strings with `>` works
+ * because both are zero-padded to the same length.
+ */
+export const attendanceTimesSchema = z
+  .object({ lateAfter: clockTimeSchema, absentFrom: clockTimeSchema })
+  .refine((times) => times.absentFrom > times.lateAfter, {
+    message: "The absent time has to be later than the late time",
+    path: ["absentFrom"],
+  });
+
 export const schoolSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1, "Enter a school name"),
@@ -39,14 +54,19 @@ export const schoolSchema = z.object({
   // school explicitly turns it on. See CLAUDE.md's domain rules.
   showDepedLogo: z.boolean(),
   notificationPreference: notificationPreferenceSchema,
+  // When a tap counts as late, and when no tap counts as absent, on the
+  // school's own clock (Step 44.5). Checked against each other only by
+  // attendanceTimesSchema, where a principal actually sets them.
+  lateAfter: clockTimeSchema,
+  absentFrom: clockTimeSchema,
 });
 
 /**
- * Step 25's add-school form. Unlike `schoolSchema`, `id`, `showDepedLogo`
- * and `notificationPreference` are assigned by the server action, not the
- * form: a new school starts with the DepEd logo off (permission pending)
- * and time-in-only notifications, which its principal can change later on
- * the Settings page. The form does collect the principal's name and email
+ * Step 25's add-school form. Unlike `schoolSchema`, `id`, `showDepedLogo`,
+ * `notificationPreference` and the attendance times are assigned by the
+ * server action, not the form: a new school starts with the DepEd logo off
+ * (permission pending), time-in-only notifications and the default 8:05 /
+ * 9:00 times, which its principal can change later on the Settings page. The form does collect the principal's name and email
  * so the action can create their invited account alongside the school
  * (the prototype's "invite sent" behavior) — see `createSchool` in
  * actions.ts.

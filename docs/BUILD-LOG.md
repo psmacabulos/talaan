@@ -1836,3 +1836,15 @@ Checked while building (the owner's full routine still to run):
 - On `talaan_test` (reset with the new seed), `listBySchoolOnDate("school-balanga", "2026-06-20")` returned 28 taps. The first is stored as `2026-06-19T23:35:00.000Z` and shown as `7:35 AM`. Counts at 9:15 AM: present 21, late 6, absent 13. Nothing came back for the 19th.
 
 Not checked yet: `npm run build`, the browser tests, and the app in a browser. The owner's own `talaan` database still has the old fake-UTC times until `npm run db:reset`.
+
+## Step 44.5: each school sets its own late and absent times (2026-10-11)
+
+Built from its recipe (`docs/backend/step-44.5-attendance-times.md`) after the owner said "go ahead". The recipe's "What changed while building" section has the details. In short:
+
+- **Schema and migration.** Two text columns on `School`, `lateAfter` (default `"08:05"`) and `absentFrom` (default `"09:00"`). `npx prisma migrate dev --name add_school_attendance_times` created and applied `20261011050532_add_school_attendance_times` to the local `talaan` database: two `ADD COLUMN … NOT NULL DEFAULT` lines, so existing rows got the defaults without a separate data step.
+- **One small design choice.** `schoolToday(now, times)` takes `{ lateAfter, absentFrom }`, and a `School` already has exactly those two fields. So the pages pass the school itself (`school ?? DEFAULT_ATTENDANCE_TIMES`) instead of copying the two fields into a new object everywhere.
+- **The dashboard's load order.** Its tap query used `day.date`, but `day` now depends on the school, which is loaded in the same `Promise.all`. Rather than add a second round trip, the tap query uses `schoolDateOf(now)` (the same date) and `day` is built after the load.
+- **Fixtures.** `npx tsc --noEmit` listed 7 errors, all test fixtures building a `School` without the new fields (repository, schools list, active theme and schema tests). Each got `lateAfter: "08:05", absentFrom: "09:00"`. There were no errors in app code.
+- **Checking the demo numbers for the recipe.** A throwaway `tsx` script counted Balanga's seed morning at 9:15 AM. Default times: 21 present, 6 late, 13 absent. Late after 08:15: 22 present, 5 late. Only one seeded late tap (8:12 AM) falls between 8:05 and 8:15. The other late taps are 8:16 and later. The recipe's Verify step now gives these exact numbers instead of "the late count drops".
+
+Run while building: `npx tsc --noEmit` (clean after the fixture fix) and `npx vitest run` on the status, schools, school repository and theme tests (9 files, 97 tests passing). Not run: lint, check:tokens, the full test suite, build, the browser tests, and the Settings form in a browser. Those are the owner's checks.

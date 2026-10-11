@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createSchoolSchema, notificationPreferenceSchema, schoolSchema } from "./schemas";
+import { attendanceTimesSchema, createSchoolSchema, notificationPreferenceSchema, schoolSchema } from "./schemas";
 
 const validSchool = {
   id: "school-balanga",
@@ -7,6 +7,8 @@ const validSchool = {
   theme: { kind: "preset" as const, presetId: "school" },
   showDepedLogo: false,
   notificationPreference: "time_in_only" as const,
+  lateAfter: "08:05",
+  absentFrom: "09:00",
 };
 
 const validCreateSchool = {
@@ -57,6 +59,34 @@ describe("schoolSchema", () => {
     const withoutPreference: Record<string, unknown> = { ...validSchool };
     delete withoutPreference.notificationPreference;
     expect(schoolSchema.safeParse(withoutPreference).success).toBe(false);
+  });
+
+  it("requires both attendance times", () => {
+    const withoutTimes: Record<string, unknown> = { ...validSchool };
+    delete withoutTimes.lateAfter;
+    expect(schoolSchema.safeParse(withoutTimes).success).toBe(false);
+  });
+});
+
+describe("attendanceTimesSchema", () => {
+  it("accepts two zero-padded 24-hour times, absent after late", () => {
+    expect(attendanceTimesSchema.safeParse({ lateAfter: "08:05", absentFrom: "09:00" }).success).toBe(true);
+    expect(attendanceTimesSchema.safeParse({ lateAfter: "13:30", absentFrom: "14:00" }).success).toBe(true);
+  });
+
+  it("rejects a time that isn't HH:MM", () => {
+    expect(attendanceTimesSchema.safeParse({ lateAfter: "8:05", absentFrom: "09:00" }).success).toBe(false);
+    expect(attendanceTimesSchema.safeParse({ lateAfter: "08:05", absentFrom: "25:00" }).success).toBe(false);
+    expect(attendanceTimesSchema.safeParse({ lateAfter: "08:60", absentFrom: "09:00" }).success).toBe(false);
+  });
+
+  it("rejects an absent time at or before the late time, on the absent field", () => {
+    const same = attendanceTimesSchema.safeParse({ lateAfter: "08:15", absentFrom: "08:15" });
+    const before = attendanceTimesSchema.safeParse({ lateAfter: "08:15", absentFrom: "08:00" });
+    expect(same.success).toBe(false);
+    expect(before.success).toBe(false);
+    expect(before.error?.issues[0]?.path).toEqual(["absentFrom"]);
+    expect(before.error?.issues[0]?.message).toBe("The absent time has to be later than the late time");
   });
 });
 

@@ -21,6 +21,8 @@ export function toSchool(row: SchoolRow): School {
     logoUrl: row.logoUrl ?? undefined,
     showDepedLogo: row.showDepedLogo,
     notificationPreference: row.notificationPreference,
+    lateAfter: row.lateAfter,
+    absentFrom: row.absentFrom,
   });
 }
 
@@ -32,6 +34,8 @@ export function toSchoolData(school: School) {
     logoUrl: school.logoUrl ?? null,
     showDepedLogo: school.showDepedLogo,
     notificationPreference: school.notificationPreference,
+    lateAfter: school.lateAfter,
+    absentFrom: school.absentFrom,
   };
 }
 

@@ -682,6 +682,17 @@ Then Step 13 built the dashboard on top of it, and the same data suddenly said s
 ### A number on screen can be the clearest bug report you'll get
 The dashboard's first render said "0 Present, 7 Late" — every single student late. No error, no failing test, nothing a type-checker could catch. But the number was obviously wrong on sight, and it pointed straight at a cutoff time set to 7:30 AM when the sample taps (7:56-8:01, described in their own comments as "on time") assumed something closer to 8:05. Worth remembering that "the screen shows a number that can't be right" is real evidence, and often faster to act on than re-reading the code that produced it.
 
+### What is the "demo day", and does it matter for a live demo? (asked before Step 44.6)
+The **demo day** is the one date all the sample taps are placed on: a whole made-up morning of about 40 students arriving, some late, some absent, one lost card. It's sample data in the database, nothing more.
+
+Since Step 44 the app runs on the **real clock**, so it only shows that sample morning in two situations:
+- **`DEMO_NOW` is set.** This pins the app's clock to the demo morning. The browser tests always set it, so they see the same numbers on every run ("6 late", "13 absent"). You can also set it in `.env` to show or screenshot a full-looking dashboard.
+- **You browse to that date** on the Attendance page (`/attendance?date=…`).
+
+**A live demo at the school doesn't use it.** Leave `DEMO_NOW` out of `.env`. Then the dashboard shows the real today, and a card you tap live appears with the real time. With `DEMO_NOW` set, a live tap would be stamped with the pinned demo time instead, which is confusing in front of an audience. One catch: if you demo on a Saturday or Sunday, the app will correctly be in weekend mode (Step 44.6): "Came in", no Late or Absent.
+
+**Why the demo day had to move from 20 June to 19 June 2026:** 20 June turned out to be a Saturday. Once weekends stop showing late and absent, the sample morning would have shown none either, and the browser tests that expect late and absent students would fail. Friday 19 June keeps the sample morning a normal school day.
+
 ---
 
 ## Search, filters and sorting living in the URL (Step 14)

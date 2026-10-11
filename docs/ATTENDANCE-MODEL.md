@@ -89,8 +89,10 @@ A `SchoolDay` (`src/features/attendance/status.ts`) carries everything the rules
 
 - **`date`**: the school's calendar date being shown.
 - **`minutesNow`**: how far into that day it is. Today, it's the current time. A past day is over (1440), so a student with no tap is absent. A future day hasn't started (0), so nobody is absent yet.
-- **`lateAfter`**: 8:05 AM by default (`DEFAULT_ATTENDANCE_TIMES`), an 8:00 start with five minutes' grace. Tap at or before it and you're present; after it, late.
+- **`lateAfter`**: 8:05 AM by default, an 8:00 start with five minutes' grace. Tap at or before it and you're present; after it, late.
 - **`absentFrom`**: 9:00 AM by default. Before this, a student with no tap is just "not yet tapped", since they might still be on the way. From it on, absent.
+
+**Each school sets its own two times (Step 44.5).** They are columns on the `School` row (`lateAfter`, `absentFrom`, text like `"08:05"`), edited in **Settings › Attendance times**. Every page loads its school and passes it straight in: `schoolToday(now, school)` works because a `School` already has both fields. `DEFAULT_ATTENDANCE_TIMES` matches the database defaults and is used only for a new school, the seed data, tests, and the fallback when a school record can't be found. `attendanceTimesSchema` (`src/features/schools/schemas.ts`) checks the form and the save action: both times must be `HH:MM`, and absent must be later than late.
 
 **Two details that are easy to get wrong:**
 
@@ -192,7 +194,7 @@ Every `Tap` used everywhere above this point — the dashboard, the attendance p
 
 ## Quick recipes
 
-**I want to change when "late" starts.** The defaults are `DEFAULT_ATTENDANCE_TIMES` in `src/features/attendance/status.ts` ("08:05" and "09:00"). From Step 44.5 each school sets its own in Settings. The unit tests in `status.test.ts` assert the boundary on both sides.
+**I want to change when "late" starts for one school.** Sign in as its principal (or open it as super admin) and change **Settings › Attendance times**. Nothing in the code changes. To change the starting values for *new* schools, change both the `@default` on `School.lateAfter`/`absentFrom` in `prisma/schema.prisma` (with a migration) and `DEFAULT_ATTENDANCE_TIMES` in `src/features/attendance/status.ts`, so the two stay twins. The unit tests in `status.test.ts` assert the boundary on both sides, and with non-default times.
 
 **I want the app to show a different moment of the school day.** Set `DEMO_NOW` in `.env` and restart `npm run dev`, for example `DEMO_NOW="2026-06-20T08:30:00+08:00"`. Before 9:00 AM un-tapped students read as "not yet tapped" rather than "absent"; before 8:05 AM everyone who has tapped reads as present. Remove it again to get the real clock back.
 

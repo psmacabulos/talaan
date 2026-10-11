@@ -1,7 +1,7 @@
 import { AccessDenied } from "@/components/app-shell/access-denied";
 import { hasNavAccess } from "@/components/app-shell/nav-items";
 import { PageHeader } from "@/components/page-header";
-import { cardRepository, studentRepository, tapRepository } from "@/data/repositories";
+import { cardRepository, schoolRepository, studentRepository, tapRepository } from "@/data/repositories";
 import { NoSchoolSelected } from "@/features/attendance/no-school-selected";
 import { DEFAULT_ATTENDANCE_TIMES } from "@/features/attendance/status";
 import { TapStationKiosk } from "@/features/station/tap-station-kiosk";
@@ -30,7 +30,10 @@ export default async function StationPage() {
     );
   }
 
-  const students = await studentRepository.listBySchool(session.schoolId);
+  const [school, students] = await Promise.all([
+    schoolRepository.getById(session.schoolId),
+    studentRepository.listBySchool(session.schoolId),
+  ]);
   const now = getNow();
   const taps = await tapRepository.listBySchoolOnDate(session.schoolId, schoolDateOf(now));
   // No school-wide "list every card" method exists (Step 16 only ever
@@ -47,7 +50,7 @@ export default async function StationPage() {
         students={students}
         taps={taps}
         cards={cards}
-        attendanceTimes={DEFAULT_ATTENDANCE_TIMES}
+        attendanceTimes={school ?? DEFAULT_ATTENDANCE_TIMES}
         pinnedNow={isDemoClock() ? now : null}
       />
     </div>

@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "School" ADD COLUMN     "absentFrom" TEXT NOT NULL DEFAULT '09:00',
+ADD COLUMN     "lateAfter" TEXT NOT NULL DEFAULT '08:05';

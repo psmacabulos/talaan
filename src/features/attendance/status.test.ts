@@ -76,6 +76,19 @@ describe("studentStatus", () => {
     const taps = [tap("s1", at("08:00")), tap("s1", at("07:00"))];
     expect(studentStatus("s1", taps, DAY)).toBe("present");
   });
+
+  it("judges the same tap against each school's own late time", () => {
+    const taps = [tap("s1", at("08:10"))];
+    const graceUntil815 = schoolToday(NOW, { lateAfter: "08:15", absentFrom: "09:30" });
+    expect(studentStatus("s1", taps, DAY)).toBe("late");
+    expect(studentStatus("s1", taps, graceUntil815)).toBe("present");
+  });
+
+  it("judges a missing tap against each school's own absent time", () => {
+    const absentFrom930 = schoolToday(NOW, { lateAfter: "08:15", absentFrom: "09:30" });
+    expect(studentStatus("s1", [], DAY)).toBe("absent");
+    expect(studentStatus("s1", [], absentFrom930)).toBe("idle");
+  });
 });
 
 describe("school time", () => {

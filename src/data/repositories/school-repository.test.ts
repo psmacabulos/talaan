@@ -8,6 +8,8 @@ const schoolA: School = {
   theme: { kind: "preset", presetId: "school" },
   showDepedLogo: false,
   notificationPreference: "off",
+  lateAfter: "08:05",
+  absentFrom: "09:00",
 };
 
 const schoolB: School = {
@@ -16,6 +18,8 @@ const schoolB: School = {
   theme: { kind: "preset", presetId: "ocean" },
   showDepedLogo: false,
   notificationPreference: "time_in_only",
+  lateAfter: "08:05",
+  absentFrom: "09:00",
 };
 
 describe("createMockSchoolRepository", () => {

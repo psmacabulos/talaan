@@ -1,7 +1,13 @@
 import { CalendarCheck } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
-import { cardRepository, staffRepository, studentRepository, tapRepository } from "@/data/repositories";
+import {
+  cardRepository,
+  schoolRepository,
+  staffRepository,
+  studentRepository,
+  tapRepository,
+} from "@/data/repositories";
 import { AttendanceList } from "@/features/attendance/attendance-list";
 import type { AttendanceRow } from "@/features/attendance/attendance-table";
 import {
@@ -90,9 +96,10 @@ export default async function AttendancePage({ searchParams }: PageProps<"/atten
     ? `Your advisory class, Grade ${selected.gradeLevel} – ${selected.section}.`
     : "Pick a date and class to see who tapped in.";
 
-  const [taps, cardsByStudent] = await Promise.all([
+  const [taps, cardsByStudent, school] = await Promise.all([
     tapRepository.listBySchoolOnDate(session.schoolId, date),
     Promise.all(classStudents.map((student) => cardRepository.listByStudent(student.id))),
+    schoolRepository.getById(session.schoolId),
   ]);
 
   // A finished day with no taps at all, anywhere in the school, was most
@@ -112,7 +119,7 @@ export default async function AttendancePage({ searchParams }: PageProps<"/atten
       student,
       cardStatus: deriveCardStatus(cardsByStudent[index] ?? []),
     }));
-    const day = schoolDayFor(date, now, DEFAULT_ATTENDANCE_TIMES);
+    const day = schoolDayFor(date, now, school ?? DEFAULT_ATTENDANCE_TIMES);
     body = <AttendanceList rows={rows} taps={taps} day={day} counts={countByStatus(classStudents, taps, day)} />;
   }
 

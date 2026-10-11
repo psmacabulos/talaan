@@ -8,7 +8,7 @@ import {
   tapRepository,
 } from "@/data/repositories";
 import { getNow } from "@/lib/clock";
-import { schoolMinutesOf } from "@/lib/school-time";
+import { schoolDateOf, schoolMinutesOf } from "@/lib/school-time";
 import { getSession } from "@/lib/session";
 import { AttendanceHero } from "@/features/attendance/attendance-hero";
 import { ClassRoll } from "@/features/attendance/class-roll";
@@ -66,13 +66,13 @@ export default async function DashboardPage() {
   // Everything on this page is about today on the school's clock: the real
   // time, or the demo morning when DEMO_NOW pins it (src/lib/clock.ts).
   const now = getNow();
-  const day = schoolToday(now, DEFAULT_ATTENDANCE_TIMES);
-
   const [school, students, taps] = await Promise.all([
     schoolRepository.getById(session.schoolId),
     studentRepository.listBySchool(session.schoolId),
-    tapRepository.listBySchoolOnDate(session.schoolId, day.date),
+    tapRepository.listBySchoolOnDate(session.schoolId, schoolDateOf(now)),
   ]);
+  // Judged against this school's own late and absent times (Step 44.5).
+  const day = schoolToday(now, school ?? DEFAULT_ATTENDANCE_TIMES);
 
   const firstName = signedInStaff?.firstName ?? "there";
   const greeting = `${greetingAt(now)}, ${firstName}`;

@@ -7,7 +7,12 @@ import type { Tap } from "./types";
 /** The one tap station this demo has (CLAUDE.md's domain rules don't need more than one yet). Shared by the dashboard's "Simulate a tap" and the Step 19 tap station, so a tap from either always looks like it came from the same real place. */
 export const MAIN_GATE_STATION_ID = "station-main-gate";
 
-/** The times a school uses until it sets its own (Step 44.5): late after 8:05 AM, absent from 9:00 AM. */
+/**
+ * Late after 8:05 AM, absent from 9:00 AM: the same defaults as the `School`
+ * columns in prisma/schema.prisma. Each school changes its own in Settings
+ * (Step 44.5); this is only for a new school, the seed data, tests, and a
+ * page whose school record somehow can't be found.
+ */
 export const DEFAULT_ATTENDANCE_TIMES: AttendanceTimes = { lateAfter: "08:05", absentFrom: "09:00" };
 
 /** A school's two attendance times on its own clock, "HH:MM". */

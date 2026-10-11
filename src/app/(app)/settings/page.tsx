@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/page-header";
 import { schoolRepository } from "@/data/repositories";
 import { NoSchoolSelected } from "@/features/attendance/no-school-selected";
 import { AppearanceSettingsForm } from "@/features/schools/appearance-settings-form";
+import { AttendanceTimesForm } from "@/features/schools/attendance-times-form";
 import { NotificationSettingsForm } from "@/features/schools/notification-settings-form";
 import { getSession } from "@/lib/session";
 
@@ -47,6 +48,19 @@ export default async function SettingsPage() {
             </p>
           </div>
           <AppearanceSettingsForm currentTheme={school.theme} />
+        </section>
+      ) : null}
+
+      {school ? (
+        <section className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 sm:p-6">
+          <div className="flex flex-col gap-1">
+            <h3 className="font-heading text-base font-semibold text-foreground">Attendance times</h3>
+            <p className="text-sm text-muted-foreground">
+              When a student counts as late, and when a student with no tap counts as absent, on school days at this
+              school.
+            </p>
+          </div>
+          <AttendanceTimesForm currentTimes={{ lateAfter: school.lateAfter, absentFrom: school.absentFrom }} />
         </section>
       ) : null}
 

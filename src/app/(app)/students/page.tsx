@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/page-header";
-import { staffRepository, tapRepository } from "@/data/repositories";
+import { schoolRepository, staffRepository, tapRepository } from "@/data/repositories";
 import { NoSchoolSelected } from "@/features/attendance/no-school-selected";
 import { DEFAULT_ATTENDANCE_TIMES, schoolToday } from "@/features/attendance/status";
 import { getNow } from "@/lib/clock";
@@ -27,7 +27,8 @@ export default async function StudentsPage({ searchParams }: PageProps<"/student
   const signedInStaff = isTeacher ? await staffRepository.getById(session.userId) : null;
 
   // Each student's status pill and age are as of today on the school's clock.
-  const day = schoolToday(getNow(), DEFAULT_ATTENDANCE_TIMES);
+  const school = await schoolRepository.getById(session.schoolId);
+  const day = schoolToday(getNow(), school ?? DEFAULT_ATTENDANCE_TIMES);
 
   const params = parseStudentListParams(await searchParams);
   const { items, total } = await searchStudents(session.schoolId, params, {

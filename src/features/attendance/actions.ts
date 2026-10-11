@@ -58,7 +58,8 @@ export async function simulateTap(): Promise<SimulateTapResult> {
   // Stamped with the app's clock: the real time, or the demo morning when
   // DEMO_NOW pins it (src/lib/clock.ts).
   const now = getNow();
-  const day = schoolToday(now, DEFAULT_ATTENDANCE_TIMES);
+  const school = await schoolRepository.getById(session.schoolId);
+  const day = schoolToday(now, school ?? DEFAULT_ATTENDANCE_TIMES);
   const taps = await tapRepository.listBySchoolOnDate(session.schoolId, day.date);
   const waiting = studentsWithoutTapToday(candidates, taps, day);
 

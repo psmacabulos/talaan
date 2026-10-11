@@ -3,13 +3,19 @@
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { schoolRepository, staffRepository } from "@/data/repositories";
+import { DEFAULT_ATTENDANCE_TIMES, type AttendanceTimes } from "@/features/attendance/status";
 import { getSession } from "@/lib/session";
 import { setDevSession } from "@/lib/session-actions";
 import { clearThemeOverride } from "@/lib/theme/theme-override-actions";
-import { createSchoolSchema, notificationPreferenceSchema, schoolThemeSchema } from "./schemas";
+import { attendanceTimesSchema, createSchoolSchema, notificationPreferenceSchema, schoolThemeSchema } from "./schemas";
 import type { CreateSchoolFormInput, NotificationPreference, SchoolTheme } from "./types";
 
 export type NotificationSettingsActionResult = { ok: true } | { ok: false; formError?: string };
+
+export type AttendanceTimesFieldErrors = Partial<Record<keyof AttendanceTimes, string>>;
+
+export type AttendanceTimesActionResult =
+  { ok: true } | { ok: false; formError?: string; fieldErrors?: AttendanceTimesFieldErrors };
 
 export type AppearanceSettingsActionResult = { ok: true } | { ok: false; formError: string };
 
@@ -58,6 +64,41 @@ export async function updateNotificationPreference(
   }
 
   await schoolRepository.update({ ...school, notificationPreference: parsed.data });
+
+  refresh();
+  return { ok: true };
+}
+
+/**
+ * Step 44.5's "Save" on Settings > Attendance times. Re-validates with the
+ * same `attendanceTimesSchema` the form already checked (CLAUDE.md:
+ * "validated on both sides"), including "absent after late", and hands any
+ * field message back so the form can show it under the right input.
+ */
+export async function updateAttendanceTimes(times: AttendanceTimes): Promise<AttendanceTimesActionResult> {
+  const session = await getSession();
+  if (!session.schoolId || session.role === "teacher") {
+    return { ok: false, formError: "You don't have permission to change attendance times." };
+  }
+
+  const parsed = attendanceTimesSchema.safeParse(times);
+  if (!parsed.success) {
+    const fieldErrors: AttendanceTimesFieldErrors = {};
+    for (const issue of parsed.error.issues) {
+      const field = issue.path[0];
+      if ((field === "lateAfter" || field === "absentFrom") && !fieldErrors[field]) {
+        fieldErrors[field] = issue.message;
+      }
+    }
+    return { ok: false, fieldErrors };
+  }
+
+  const school = await schoolRepository.getById(session.schoolId);
+  if (!school) {
+    return { ok: false, formError: "Your school could not be found." };
+  }
+
+  await schoolRepository.update({ ...school, ...parsed.data });
 
   refresh();
   return { ok: true };
@@ -131,10 +172,11 @@ export async function createSchool(input: CreateSchoolFormInput): Promise<Create
     theme: { kind: "preset", presetId },
     logoUrl,
     // A new school starts with the DepEd logo off (permission still
-    // pending) and time-in-only notifications; its principal changes
-    // either later on the Settings page.
+    // pending), time-in-only notifications and the default attendance
+    // times; its principal changes any of them later on the Settings page.
     showDepedLogo: false,
     notificationPreference: "time_in_only",
+    ...DEFAULT_ATTENDANCE_TIMES,
   });
 
   await staffRepository.create({

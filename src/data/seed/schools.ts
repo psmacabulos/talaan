@@ -1,3 +1,4 @@
+import { DEFAULT_ATTENDANCE_TIMES } from "@/features/attendance/status";
 import type { School } from "@/features/schools/types";
 
 /**
@@ -6,6 +7,9 @@ import type { School } from "@/features/schools/types";
  * different presets, so switching between them in the dev school switcher
  * (Step 11) visibly recolors the app. See CLAUDE.md's "two demo schools
  * with different colors."
+ *
+ * All three use the default 8:05 / 9:00 attendance times (Step 44.5), so
+ * the demo morning's late and absent counts stay what the tests expect.
  */
 export const seedSchools: School[] = [
   {
@@ -15,6 +19,7 @@ export const seedSchools: School[] = [
     showDepedLogo: false,
     // The pilot school wants the full notify-on-arrival-and-dismissal experience.
     notificationPreference: "time_in_and_time_out",
+    ...DEFAULT_ATTENDANCE_TIMES,
   },
   {
     id: "school-oceanview",
@@ -22,6 +27,7 @@ export const seedSchools: School[] = [
     theme: { kind: "preset", presetId: "ocean" },
     showDepedLogo: false,
     notificationPreference: "time_in_only",
+    ...DEFAULT_ATTENDANCE_TIMES,
   },
   {
     id: "school-crimsonridge",
@@ -30,5 +36,6 @@ export const seedSchools: School[] = [
     showDepedLogo: false,
     // Demonstrates a school that's turned notifications off entirely.
     notificationPreference: "off",
+    ...DEFAULT_ATTENDANCE_TIMES,
   },
 ];
