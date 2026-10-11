@@ -43,6 +43,15 @@ export function createPrismaCardRepository(db: PrismaClient = prisma): CardRepos
       const row = await db.card.findUnique({ where: { serial } });
       return row ? toCard(row) : null;
     },
+    async listBySerialPrefix(schoolId, firstFourBytes) {
+      // A few hundred cards a school, so a prefix search is cheap whether
+      // or not Postgres uses the serial's index for it.
+      const rows = await db.card.findMany({
+        where: { schoolId, serial: { startsWith: firstFourBytes } },
+        orderBy: { linkedAt: "asc" },
+      });
+      return rows.map(toCard);
+    },
     async create(card) {
       const row = await db.card.upsert({
         where: { id: card.id },

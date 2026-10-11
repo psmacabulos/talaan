@@ -70,10 +70,17 @@ test.describe("Students", () => {
     // Now in the waiting state, ready to tap a new card.
     await expect(dialog.getByText("Hold the card against the reader")).toBeVisible();
 
-    // Simulate a card tap.
-    await dialog.getByRole("button", { name: "Simulate a card tap" }).click();
-    // Toast confirms the new card.
-    await expect(page.getByText(/Card.*linked/)).toBeVisible();
+    // Link a real card the way the USB reader does it (Step 44.7): it types
+    // a card's 10 digits into the focused field and presses Enter. Random,
+    // so the mobile and desktop runs never link the same card twice.
+    await expect(dialog.getByRole("button", { name: "Simulate a card tap" })).toBeVisible();
+    const readerDigits = String(Math.floor(Math.random() * 0xffffffff)).padStart(10, "0");
+    const serialField = dialog.getByLabel("Card serial");
+    await expect(serialField).toBeFocused();
+    await serialField.fill(readerDigits);
+    await serialField.press("Enter");
+    // Toast confirms the new card, in the stored form (4 hex bytes).
+    await expect(page.getByText(/Card ([0-9A-F]{2}:){3}[0-9A-F]{2} linked/)).toBeVisible();
 
     // Card should now show as linked (active) again.
     await expect(dialog.getByText("Linked", { exact: true })).toBeVisible();

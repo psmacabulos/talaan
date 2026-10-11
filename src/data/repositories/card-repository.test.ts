@@ -52,6 +52,40 @@ describe("createMockCardRepository", () => {
     await expect(repo.getBySerial("04:11:22:33:44:55:66")).resolves.toEqual(activeCard);
   });
 
+  it("lists a school's cards that start with the same 4 bytes", async () => {
+    const repo = createMockCardRepository(
+      [
+        {
+          id: "c1",
+          schoolId: "school-a",
+          studentId: "s1",
+          serial: "53:2E:98:0C:14:00:01",
+          status: "active",
+          linkedAt: "2026-06-15T08:00:00Z",
+        },
+        {
+          id: "c2",
+          schoolId: "school-a",
+          studentId: "s2",
+          serial: "53:2E:98:0D",
+          status: "active",
+          linkedAt: "2026-06-15T08:00:00Z",
+        },
+        {
+          id: "c3",
+          schoolId: "school-b",
+          studentId: "s3",
+          serial: "53:2E:98:0C",
+          status: "active",
+          linkedAt: "2026-06-15T08:00:00Z",
+        },
+      ],
+      { latencyMs: 0 },
+    );
+    const cards = await repo.listBySerialPrefix("school-a", "53:2E:98:0C");
+    expect(cards.map((card) => card.id)).toEqual(["c1"]);
+  });
+
   it("returns null for an unknown serial", async () => {
     const repo = createMockCardRepository(allCards, { latencyMs: 0 });
     await expect(repo.getBySerial("00:00:00:00:00:00:00")).resolves.toBeNull();

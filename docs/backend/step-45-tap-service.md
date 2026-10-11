@@ -49,9 +49,9 @@ flowchart TD
 
 ## Steps
 
-### 1. Turn what the reader types into a serial
+### 1. Turn what the reader types into a serial (built in Step 44.7)
 
-`src/services/taps/card-serial.ts`:
+**Already built.** Step 44.7 (Link a real card) needed the same conversion, so `normalizeCardSerial` and `firstFourBytes` live in `src/features/students/card-serial.ts`, with these tests. The service imports them from there. For reference:
 
 ```ts
 const READER_DIGITS = /^\d{10}$/;
@@ -83,7 +83,7 @@ Both rows are two of your own five stickers. `0213292883` is `0x0CB69753` in hex
 
 ### 2. Find the card
 
-`CardRepository` gains one method, in both the Prisma and mock versions:
+`CardRepository.listBySerialPrefix` is also already built (Step 44.7):
 
 ```ts
 /** This school's cards whose serial starts with these 4 bytes ("53:2E:98:0C"): the exact card and any 4/7-byte twin. */
@@ -194,13 +194,12 @@ Connected as "Main gate tablet" (Balanga City National Science High School). Tap
   duplicate  Juan Dela Cruz already tapped at 7:56 AM
 ```
 
-Click the terminal and tap a sticker on the USB reader. The reader types its 10 digits and presses Enter, exactly as it will on the gate tablet. Your stickers aren't linked to students yet, so they come back as **unknown card** (see "What's next"). A seed card's serial typed by hand gives the student path. You can find seed serials on any student's ID card box.
+Click the terminal and tap a sticker on the USB reader. The reader types its 10 digits and presses Enter, exactly as it will on the gate tablet. A sticker you linked to a student in Step 44.7 comes back as that student's time in. A sticker you haven't linked comes back as **unknown card**.
 
 The script uses the real clock, or `DEMO_NOW` if it's set. It's a development tool, like `device:create`. The tablet will use Step 46's web address instead.
 
 ### 7. Tests
 
-- `normalizeCardSerial`: every row of the table in step 1.
 - `matchCard`:
   - an exact match;
   - 4 bytes in finding a 7-byte card, and 7 bytes in finding a 4-byte card;
@@ -226,8 +225,8 @@ The script uses the real clock, or `DEMO_NOW` if it's set. It's a development to
 1. The checks, as usual: `npm run lint && npm run check:tokens && npm run typecheck && npm run test && npm run build`, then `npx playwright test`. Nothing on screen changes in this step, so the browser tests should pass untouched.
 2. Make a gate device if you don't still have one from Step 43: `npm run device:create -- --school school-balanga --kind gate --label "Main gate tablet"`, and copy the token.
 3. `npm run tap:record -- --token tal_dev_…`, then:
-   - **Tap a sticker:** "unknown card 53:2E:98:0C" (or that sticker's own bytes).
-   - **Type a seed student's serial** (from any student's ID card box in the app): "time in" with their name. Type it again straight away: "duplicate".
+   - **Tap a sticker you linked in Step 44.7:** "time in" with that student's name. Tap it again straight away: "duplicate".
+   - **Tap a sticker you haven't linked:** "unknown card 53:…".
    - **Type a lost card's serial** (a student whose card was replaced shows the old one as lost): "lost card", and the dashboard's **Needs attention** shows a new alert.
    - **Type `hello`:** "not a card serial".
 4. In `psql`, the tap is there with the gate's id as its station, and the gate's last-seen time moved:
@@ -239,5 +238,4 @@ The script uses the real clock, or `DEMO_NOW` if it's set. It's a development to
 
 ## What's next
 
-- **A gap this step makes visible: there's no way yet to link a *real* card to a student.** The student drawer's "Link card" button is Phase 1's "Simulate a card tap": it makes up a random serial. For the demo, each sticker has to be linked to a student. I suggest a small **Step 45.5, "Link a real card"**: the drawer gets a "Card serial" field. Click it, tap the sticker on the USB reader, and its 10 digits go through the same `normalizeCardSerial`. Typed hex works too. The serial is checked and linked, and "Simulate a card tap" stays for demos without a reader. Say if you want it, and whether before or after Step 46.
 - **Step 46:** the web address the tablet calls, `POST /api/v1/gate/taps`, which is a thin wrapper around `recordTap()`, plus `GET /api/v1/gate/roster`.

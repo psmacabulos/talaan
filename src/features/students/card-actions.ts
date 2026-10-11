@@ -3,10 +3,32 @@
 import { refresh } from "next/cache";
 import { getSession } from "@/lib/session";
 import { cardRepository, studentRepository } from "@/data/repositories";
-import { generateCardSerial, isSerialAvailable } from "./card-serial";
+import {
+  findSerialConflict,
+  firstFourBytes,
+  generateCardSerial,
+  isSerialAvailable,
+  normalizeCardSerial,
+  type SerialConflict,
+} from "./card-serial";
 import type { Card } from "./types";
 
 export type CardActionResult = { ok: true; card: Card } | { ok: false; formError: string };
+
+/** `fieldError` belongs under the serial field; `formError` is anything else (shown as a toast). */
+export type LinkRealCardResult = { ok: true; card: Card } | { ok: false; fieldError?: string; formError?: string };
+
+const NOT_A_SERIAL = "That isn't a card serial. Tap the card on the reader, or type its serial, like 53:2E:98:0C.";
+
+const CONFLICT_MESSAGE: Record<SerialConflict, string> = {
+  linked: "This card is already linked to another student.",
+  used_before: "This card was reported lost or retired, so it can't be linked again. Use a different card.",
+  same_first_bytes:
+    "Another student's card starts with the same 4 bytes, and the gate reader can't tell the two apart. Use a different card.",
+};
+
+/** Longer than any serial, typed or scanned; stops a huge string before any work is done. */
+const MAX_RAW_SERIAL_LENGTH = 64;
 
 const MAX_SERIAL_GENERATION_ATTEMPTS = 5;
 
@@ -59,6 +81,46 @@ export async function linkCard(studentId: string): Promise<CardActionResult> {
   if (!available) {
     return { ok: false, formError: "Couldn't generate a free card serial — try again." };
   }
+
+  const card = await cardRepository.create({
+    id: crypto.randomUUID(),
+    schoolId: guard.schoolId,
+    studentId,
+    serial,
+    status: "active",
+    linkedAt: new Date().toISOString(),
+  });
+
+  refresh();
+  return { ok: true, card };
+}
+
+/**
+ * "Link card" with a real card (Step 44.7): the USB reader types the
+ * card's 10 digits into the drawer's serial field and presses Enter, or a
+ * person types hex from an NFC app. `normalizeCardSerial` turns either into
+ * the stored form, the same function the gate uses (Step 45), so a card
+ * linked here is the card the gate finds.
+ */
+export async function linkRealCard(studentId: string, rawSerial: string): Promise<LinkRealCardResult> {
+  const guard = await assertCanManageCards(studentId);
+  if (!guard.ok) return guard;
+
+  const serial =
+    typeof rawSerial === "string" && rawSerial.length <= MAX_RAW_SERIAL_LENGTH ? normalizeCardSerial(rawSerial) : null;
+  if (!serial) return { ok: false, fieldError: NOT_A_SERIAL };
+
+  const existingActive = await cardRepository.getActiveForStudent(studentId);
+  if (existingActive) {
+    return { ok: false, formError: "This student already has a linked card. Replace it instead." };
+  }
+
+  const [sameSerial, sameFirstBytes] = await Promise.all([
+    cardRepository.getBySerial(serial),
+    cardRepository.listBySerialPrefix(guard.schoolId, firstFourBytes(serial)),
+  ]);
+  const conflict = findSerialConflict(serial, sameSerial, sameFirstBytes);
+  if (conflict) return { ok: false, fieldError: CONFLICT_MESSAGE[conflict] };
 
   const card = await cardRepository.create({
     id: crypto.randomUUID(),
