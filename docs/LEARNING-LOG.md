@@ -34,6 +34,38 @@ Short, plain-language notes explaining things along the way — for whenever I w
 ### One commit per change, and why Claude can't make them (owner question, 2026-10-11/12)
 Claude never runs git commands that change anything (CLAUDE.md, "Git: hands off"), so every commit is yours. Steps 46–49 were built in one go without a commit in between, and splitting them afterwards wasn't practical: several files (the plan, the build log, `package.json`, the gate route) were changed by more than one step, so they went in as one commit. **From 2026-10-12, Claude stops after every change worth a commit** (a step, a review fix) and waits for you to commit before touching more code. Only docs may change in between. That keeps the history one change per commit, so a rollback (`git revert <commit>`) undoes exactly one thing.
 
+### Checking work that was committed while you were away (owner question, 2026-10-13)
+Steps 50.5 and 51 were committed overnight with your go-ahead. Checking a commit after the fact works the same way as before it, in four passes:
+1. **See what changed.** `git show --stat <commit>` lists the files in one commit. `git diff 97631cc..fb721a7` shows both steps together (the `..` means "from this commit to that one"). In VS Code, the Source Control panel's graph lets you click a commit and open each file side by side.
+2. **Read the decisions.** Each step's recipe has a "What changed while building" section listing everything decided without you.
+3. **Run the checks yourself** (the routine below). A result reported to you isn't the same as one you saw.
+4. **Click through it** using the recipe's "Verify it worked" steps.
+
+If something is wrong, `git revert <commit>` makes a new commit that undoes it, without rewriting history. It's safe even after a push.
+
+### Can a teacher reset their own password? (owner question, 2026-10-13)
+Not yet. A forgotten password needs someone who can prove it's really you without the password. Most apps do that with an email: "click this link". Talaan has no email service (it costs money and needs a sending domain), so in Step 50.5 the **principal** stands in for the email. The principal makes the reset link and sends it by Messenger, Viber or SMS. The principal already knows their staff, so that's the check.
+
+Who resets whose password:
+- **Teacher:** asks the principal, who uses ⋮ → Copy password reset link.
+- **Principal:** can't make a link for themselves. They ask the super admin, who opens the school, then uses Staff → ⋮.
+- **Super admin:** the terminal, with `npm run staff:link -- --email …` (see `COMMANDS.md` §7b).
+
+Two separate features would let staff do more themselves:
+- **"Change password" while signed in.** Type the old password, then the new one. It's free and small to build.
+- **"Forgot password?" on the sign-in page.** This needs an email service. Its link would be the same kind of signed, one-time link the principal makes today.
+
+### What would an email service cost? (owner question, 2026-10-13)
+Probably nothing per month for the pilot, plus a domain: roughly $10–15 a year for a `.com` (a `.ph` usually costs more). Email here only covers staff invitations and password resets, which is a few dozen a month for one school. Parents get push notifications, not email. Free plans, as listed in October 2026 (check the provider's page before signing up):
+- **Resend:** 3,000 a month, at most 100 a day.
+- **Brevo:** 300 a day.
+- **Amazon SES:** about $0.10 per 1,000, with no lasting free plan.
+- **Cloudflare Email Service:** needs the $5-a-month Workers plan.
+
+Every provider needs a **domain you own** to send from, with a few DNS records that prove the email is really yours, so it doesn't land in spam. To keep the provider easy to change (CLAUDE.md, "easy to move"), the app would send through **SMTP**, the standard email protocol all of them speak, configured only by environment variables.
+
+**A domain name only, no "hosting" package.** The domain is just the name. Heroku (Step 52) runs the app, and the email provider sends the mail. Pointing the name at them is a few DNS records. To *receive* mail at that domain (for example `support@…`), free forwarding to an existing Gmail is enough (Cloudflare Email Routing does this). A registrar's "hosting" or "email hosting" add-ons aren't needed.
+
 ### Moving files in Bash (`mv`)
 `mv <source> <destination>` moves or renames a file/folder. `./` as the destination means "the current folder."
 

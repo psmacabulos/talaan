@@ -9,3 +9,7 @@ export const TOO_MANY_TRIES_MESSAGE = "Too many tries. Wait 15 minutes and try a
 
 /** A set-password link that has expired, was already used, or was never real (Step 50.5). */
 export const LINK_USED_MESSAGE = "This link has expired or was already used. Ask your principal for a new one.";
+
+/** "Forgot your password?" on the sign-in screen. There's no email service yet, so a reset link comes from a person (Step 50.5). */
+export const FORGOT_PASSWORD_MESSAGE =
+  "Ask your principal for a password reset link. If you're the principal, ask your Talaan administrator.";

@@ -2179,6 +2179,8 @@ Things found while the owner tested Steps 46–49 at home, besides the review fi
 
 The new browser tests: a principal invites a teacher, a fresh browser sets a password through the link and lands on the dashboard, the same link then says it doesn't work any more, and the new password signs in from the sign-in screen; plus a made-up link refused.
 
+**Owner review fix (2026-10-13): "Forgot your password?"** It still showed the Phase 1 toast, "Password reset isn't available in this preview". A toast disappears after a few seconds and told staff nothing useful. The owner asked for it to say who to ask instead. It's now a toggle (`aria-expanded`, `aria-controls`) that shows a note under the link: "Ask your principal for a password reset link. If you're the principal, ask your Talaan administrator." (`FORGOT_PASSWORD_MESSAGE` in `src/features/auth/messages.ts`). An inline note was chosen over a dialog because it's one sentence and stays on screen while the person reads it. The new `src/features/auth/login-form.test.tsx` covers opening and closing it. Checked by eye at 360 px (light) and 1280 px (dark).
+
 ## Step 51: one school can never see another's data (2026-10-12)
 
 **Built unattended**, like Step 50.5, with every recipe decision taken as recommended. The recipe's "What changed while building" lists everything decided along the way. The "Owner review" box stays unticked.

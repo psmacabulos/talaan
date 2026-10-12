@@ -4,23 +4,25 @@ import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginSchema } from "./schemas";
 import type { LoginInput } from "./types";
 import { signIn } from "./actions";
+import { FORGOT_PASSWORD_MESSAGE } from "./messages";
 
 /**
  * Staff sign-in (Step 50.1): validates in the browser, then `signIn`
  * checks the real password on the server and redirects to the dashboard.
  * A refusal ("isn't right", "Too many tries") shows above the button,
- * and the typed email stays.
+ * and the typed email stays. "Forgot your password?" opens a note saying
+ * who to ask for a reset link, since there's no email service yet.
  */
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [showForgotHelp, setShowForgotHelp] = useState(false);
   const [isPending, startTransition] = useTransition();
   const {
     register,
@@ -110,13 +112,20 @@ export function LoginForm() {
         )}
       </Button>
 
-      <button
-        type="button"
-        onClick={() => toast("Password reset isn't available in this preview")}
-        className="text-sm text-link underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm w-fit"
-      >
-        Forgot your password?
-      </button>
+      <div className="flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={() => setShowForgotHelp((shown) => !shown)}
+          aria-expanded={showForgotHelp}
+          aria-controls="login-forgot-help"
+          className="text-sm text-link underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm w-fit"
+        >
+          Forgot your password?
+        </button>
+        <p id="login-forgot-help" hidden={!showForgotHelp} className="text-sm text-muted-foreground">
+          {FORGOT_PASSWORD_MESSAGE}
+        </p>
+      </div>
     </form>
   );
 }
