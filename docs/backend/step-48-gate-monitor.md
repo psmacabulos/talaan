@@ -2,6 +2,8 @@
 
 > **Fast-track recipe.** Written before the code, then built on 2026-10-11 when the owner said "build 46 to 49". Claude ran the checks and looked at the monitor at 360 and 1280 px, light and dark. "What changed while building" (just before "Verify it worked") lists where the real code differs from the plan.
 
+> **Changed on 2026-10-12: the tap card.** The monitor's newest tap and its Earlier list use the gate's `TapCard` and `TapListItem` (`src/features/gate/tap-card.tsx`), so both screens look alike, with time out in blue. See `docs/BUILD-LOG.md`, "Review change: a refined tap card on the gate and the monitor".
+
 ## Why
 
 The guardhouse TV shows every tap live: a large photo, name and grade for the newest, and a short list of the ones before it. The guard can check faces against cards from inside the guardhouse, and the principal can watch arrivals from their own office.

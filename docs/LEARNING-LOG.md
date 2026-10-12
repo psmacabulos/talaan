@@ -31,6 +31,9 @@ Short, plain-language notes explaining things along the way — for whenever I w
 
 ## Command line & Git basics
 
+### One commit per change, and why Claude can't make them (owner question, 2026-10-11/12)
+Claude never runs git commands that change anything (CLAUDE.md, "Git: hands off"), so every commit is yours. Steps 46–49 were built in one go without a commit in between, and splitting them afterwards wasn't practical: several files (the plan, the build log, `package.json`, the gate route) were changed by more than one step, so they went in as one commit. **From 2026-10-12, Claude stops after every change worth a commit** (a step, a review fix) and waits for you to commit before touching more code. Only docs may change in between. That keeps the history one change per commit, so a rollback (`git revert <commit>`) undoes exactly one thing.
+
 ### Moving files in Bash (`mv`)
 `mv <source> <destination>` moves or renames a file/folder. `./` as the destination means "the current folder."
 
@@ -192,6 +195,10 @@ Usual causes:
 - **A copied line that isn't a command**, such as a line from `package.json` (`"device:create": "tsx scripts/create-device.ts",`). That's what the command *is called*. Type `npm run device:create -- …` instead.
 
 ## Keeping local and CI in sync
+
+### A page stuck on "Rendering…" after big changes: restart `npm run dev` (2026-10-12)
+"Simulate a tap" sat on "Rendering…" with nothing happening. The same click on a freshly started server answered in under half a second, with the same code and the same data. The server that froze had been running since before several steps changed the database code and regenerated the Prisma Client. Live reload swaps your own files, but not always generated code or a changed package. **After a step that installs a package, changes the database, or regenerates Prisma, stop `npm run dev` (`Ctrl+C`) and start it again.** It's the first thing to try whenever a page acts on old code; see [`docs/COMMANDS.md`](COMMANDS.md), section 9.
+
 
 ### Why a check can pass for Claude but fail in CI
 This happened with `npm run typecheck`: it passed here, then failed as soon as it ran in GitHub Actions. The reason wasn't the workflow file — it was that Next.js generates some special files (type definitions, in a hidden `.next` folder) the first time you run `npm run dev` or `npm run build`. Locally, that folder already existed from earlier work, so the check quietly relied on it without anyone asking it to. GitHub Actions always starts from a completely empty, fresh copy of the repo — no `.next` folder, no leftovers — so anything that secretly depended on "stuff left over from before" gets exposed immediately.
@@ -1047,6 +1054,15 @@ Without `id: student.id` in the seed, two things go wrong:
 The `...` spread copies every property of an object into the new one. Writing `id` first and then spreading is just "this object's columns, plus an id".
 
 ## Database and migrations (Phase 2)
+
+### Do I need to run a migration? Is `prisma migrate dev` safe? (owner questions, 2026-10-12)
+`npm run db:reset` only refills the **data**. It never changes the **tables**. When a step adds a database change (a new migration folder in `prisma/migrations/`), the tables need it too:
+- **`npx prisma migrate deploy`** applies migrations that are already written. It never deletes anything and never asks questions. It's safe every day, and it's what the live server will run (Step 52).
+- **`npx prisma migrate dev`** does that too, and it also **writes a new migration** when `schema.prisma` changed. If your database doesn't match the migration history, it offers to **reset it, deleting every row**. Answer **N** and ask. Use it only when a step changes the schema; in the fast-track steps, Claude runs it while building.
+- **Do I need `db:reset` after a fix?** Only when the fix changes the seed data. A reset also deletes your gate and monitor devices, so make new tokens afterwards.
+
+The daily start-up and every database command: [`docs/COMMANDS.md`](COMMANDS.md), sections 1, 5 and 6.
+
 
 ### "Cannot read properties of undefined (reading 'findMany')" right after a new model (owner question, Step 42)
 Not a bug in the code. A dev server that was already running kept using an **old Prisma Client**.

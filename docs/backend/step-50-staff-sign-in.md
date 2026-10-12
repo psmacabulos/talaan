@@ -168,12 +168,12 @@ The key is the lower-cased email. Parents' sign-in uses the same throttle with a
 
 ### 7. Every caller of `getSession()`
 
-19 files call it today. Each one changes in one of two ways:
+17 files call it (recounted 2026-10-12, after the review changes removed `photo-actions.ts`). Each one changes in one of two ways:
 
 | Where | Change |
 |---|---|
 | `src/app/(app)/layout.tsx` and the 7 staff pages | `requireSession()`. Signed out means a redirect to `/`. |
-| The 8 action files (students, cards, photos, staff, attendance, station, schools, theme) | `const session = await getSession(); if (!session) return { ok: false, formError: "Your session has expired. Sign in again." }` |
+| The 7 action files: `students/actions.ts` (which now also saves the photo and card), `students/card-actions.ts` (`checkCardSerial`), staff, attendance, station, schools, theme | `const session = await getSession(); if (!session) return { ok: false, formError: "Your session has expired. Sign in again." }` |
 | `monitor-viewer.ts`, `photo-viewer.ts` | A null session is "not allowed", which already gives the not-connected page and a 404. |
 
 **Open school** (`openSchool` in `src/features/schools/actions.ts`) calls `startStaffSession(session.userId, schoolId)` instead of switching to the principal. Super admins keep their own name in the top bar, and every action they take is theirs.
@@ -232,6 +232,15 @@ New tests in `e2e/login.spec.ts`:
   - a right password signs in;
   - wrong password, unknown email and no-password-yet all give the same message;
   - a locked email is refused even with the right password.
+
+## Docs to update with this step
+
+- **`docs/COMMANDS.md`:**
+  - §1: the `SESSION_SECRET` line in `.env`, and how to make one (`openssl rand -base64 32`);
+  - §9: "signed out after a restart?" (the secret changed);
+  - signing in as each demo account with `Talaan123!`.
+- **`docs/AUTH.md`:** rewritten for the signed cookie (it still describes the Phase 1 stand-in).
+- **`docs/ARCHITECTURE.md`:** the auth section says "our own signed cookie", not Auth.js.
 
 ## Verify it worked
 

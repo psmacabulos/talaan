@@ -6,6 +6,8 @@
 
 > **Also fixed on 2026-10-12.** After a reload the gate showed initials instead of photos: a "roster unchanged" answer skipped loading the photos. They now load whenever this page hasn't loaded them yet. See `docs/BUILD-LOG.md`, "Review fix: the gate showed initials instead of photos".
 
+> **Changed on 2026-10-12: the tap card.** The big panel and the Recent rows are now `TapCard` and `TapListItem` in `src/features/gate/tap-card.tsx`: a white card, the 4:5 portrait, a badge (Attendance recorded / Already tapped / Card reported lost / …), then a TIME IN (green) / TIME OUT (blue) / FIRST TAPPED AT (amber) stamp, or what to do next. `describeScan` gained `kind`, `stampAt` and `detail`. See `docs/BUILD-LOG.md`, "Review change: a refined tap card on the gate and the monitor".
+
 ## Why
 
 This is the screen on the Android tablet at the gate, with the USB reader plugged in. A student taps their card, and the screen shows **their photo, name and grade straight away**, then "Time in 7:56 AM" a moment later when the server answers. The guard glances at the photo to check the card belongs to the student holding it.

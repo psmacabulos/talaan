@@ -2076,3 +2076,16 @@ The 8 students tests passed at both widths, and the "not saved yet" states were 
 **Checks.** Typecheck, lint, `check:tokens` and the `gate-display` tests pass. The gate and monitor browser tests passed (17, plus 1 desktop-only test skipped on the phone). Screenshots of every state at 360 and 1280 px, light and dark, looked right.
 
 **Known:** under the pinned demo clock, a duplicate's Recent entry shows the tablet's real time (`at` is when the card was read), while the stamp shows the pinned time. In real use the two agree.
+
+## Notes from the home test with the real reader (2026-10-11/12)
+
+Things found while the owner tested Steps 46–49 at home, besides the review fixes above:
+
+- **"Simulate a tap" stuck on "Rendering…".**
+  - **Checked:** `npx prisma migrate status` said the database was up to date, so no migration was missing.
+  - **Reproduced** on a fresh server against the test database (`next dev -p 3200`, Playwright clicking the button as the teacher and as the principal): every click answered in about 0.1–0.4 s, with no console errors.
+  - **Conclusion:** the owner's server had been running since before the Prisma Client was regenerated. Restarting `npm run dev` fixes it. Now in the learning log and `docs/COMMANDS.md` §9.
+- **The reader beeped but typed nothing,** even in a plain console listener. The Mac had slept with the reader plugged in; unplugging and replugging it fixed it (macOS and USB, not the app). The search turned up the real focus bug fixed in "Review fix: the gate missed taps after a click". A tablet checklist (keep the screen on, keep it charging, a test tap every morning) is in the learning log.
+- **The Docker Postgres container stopped while the Mac slept** (`Exited (255)`). `docker start talaan-postgres` brings it back; now in `docs/COMMANDS.md` §5.
+- **Why Steps 46–49 are one commit** (`1b25e1d`): the owner asked for one commit per step after the fact. Rebuilding each step's files from the session history was started, then dropped as too fiddly, because several files were changed by more than one step. From then on, every change gets its own commit before the next one starts (see the learning log, "One commit per change").
+- **`docs/COMMANDS.md`** was written the same day: every command, grouped by task, with the files behind each. It's updated whenever a step adds a command.

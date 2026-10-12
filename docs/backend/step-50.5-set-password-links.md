@@ -117,6 +117,10 @@ It prints the path (`/set-password?token=…`). You put your site's address in f
   - opening the same link again says it was already used;
   - the new password signs in from the sign-in screen.
 
+## Docs to update with this step
+
+**`docs/COMMANDS.md`:** a "Staff accounts" section with `npm run staff:link -- --email …` and `--create-super-admin`, what the printed path is for, and the same command on Heroku.
+
 ## Verify it worked
 
 1. Restart `npm run dev`. Sign in as Balanga's principal and open **Staff**.

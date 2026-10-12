@@ -176,6 +176,11 @@ This is the app's contract, written for tomorrow:
   7. Six wrong passwords give `429`.
 - `e2e/parent.spec.ts` (the web portal) runs unchanged and must stay green.
 
+## Docs to update with this step
+
+- **`docs/COMMANDS.md`:** a "Parent API" section with the `curl` sign-in, `/me` and notifications examples below, and how to get a token.
+- **`docs/PARENT-API.md`:** new, the contract for the Expo app.
+
 ## Verify it worked
 
 1. Your checks (or ask me to run them).

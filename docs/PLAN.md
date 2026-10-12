@@ -1,7 +1,7 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: █████████████████░░░ 87%**  (189 of 218 tasks, 53 of 63 steps approved)
+**Overall progress: █████████████████░░░ 87%**  (192 of 221 tasks, 53 of 63 steps approved)
 
 **Next up:** Step 46, The tap API and the gate's roster (ready for your review)
 
@@ -62,8 +62,8 @@
 | 45 | The tap service | ██████████ 100% | Approved |
 | 46 | The tap API and the gate's roster | ████████░░  75% | Ready for your review |
 | 46.5 | Student photos | █████████░  86% | Ready for your review |
-| 47 | The `/gate` page | ████████░░  80% | Ready for your review |
-| 48 | The `/gate/display` guardhouse monitor | ████████░░  80% | Ready for your review |
+| 47 | The `/gate` page | █████████░  86% | Ready for your review |
+| 48 | The `/gate/display` guardhouse monitor | ████████░░  83% | Ready for your review |
 | 49 | Time in and time out on the attendance page | ████████░░  75% | Ready for your review |
 | 50 | Real staff sign-in | ░░░░░░░░░░   0% | Not started |
 | 50.5 | Set-password links | ░░░░░░░░░░   0% | Not started |
@@ -362,6 +362,30 @@ Unlike Phase 1, the owner writes every line of backend code personally, to learn
 
 Steps 41–52 are ordered demo-first (decided 2026-10-09): everything a live gate demo needs comes before what can wait. Phase 3 (the Expo parent app) follows Phase 2.
 
+### Where we are (hand-over note, updated 2026-10-12)
+Read this first in a new conversation, together with `CLAUDE.md`.
+
+- **Built and committed:** Steps 30–49, plus the review changes listed under Steps 44.7, 46.5, 47 and 48:
+  - the drawer saves the card and photo only on Save;
+  - the gate reads taps after a click;
+  - gate photos load after a reload;
+  - photos are 4:5 portraits;
+  - a refined tap card on the gate and the monitor.
+
+  Each is explained in `docs/BUILD-LOG.md` ("Review change/fix: …", and "Notes from the home test with the real reader").
+- **Waiting for the owner:** the "Owner review" box of Steps **46, 46.5, 47, 48 and 49**. The owner has tested them with the real USB reader and committed every fix. Each step's box is ticked only when the owner writes "approved" (CLAUDE.md, step protocol). Ask the owner for it first.
+- **Next to build: Step 50**, real staff sign-in. Its recipe is ready (`docs/backend/step-50-staff-sign-in.md`), and so are the recipes for 50.5, 51, 52 and 53. Each recipe lists decisions for the owner to confirm before building.
+- **The owner's goal:** finish the web app (Steps 50–53), so the Expo parent app (Phase 3) can start against the parent API (Step 53).
+- **Owner accounts needed for Step 52:** Heroku (with the GitHub Student credit) and Cloudflare R2. See that recipe's "Your part".
+- **Working rules (2026-10-12), on top of CLAUDE.md:**
+  - Stop after every change worth a commit, give the commit message, and wait for the owner to commit before touching more code. Docs-only edits may happen in between.
+  - The owner runs the full checks. Claude may run the one spec file a change touches, and screenshots for UI.
+  - Every new or changed command goes into `docs/COMMANDS.md` in the same change.
+  - Every owner question gets a `docs/LEARNING-LOG.md` entry.
+- **Known small gaps, after the demo:**
+  - the gate's photos don't load from the tablet's cache when the server can't be reached at start-up (offline work);
+  - under the pinned demo clock, a duplicate's Recent entry shows the tablet's real time.
+
 ### Step 30: Install Docker Desktop and run a local Postgres database
 - [x] Install Docker Desktop; confirm `docker --version` and `docker run hello-world` both work.
 - [x] Run a local Postgres container for this project (`talaan-postgres`, with a named volume so data survives restarts) and confirm it's reachable — `docker ps` shows it `Up`, and a `psql` session inside the container shows an empty `talaan` database.
@@ -565,6 +589,8 @@ Recipe: `docs/backend/step-47-gate-page.md`
 - [x] Reader input with no on-screen keyboard (`createScanBuffer`), and Android NFC where supported. Every scan is sent at once and never waits for another. Results by outcome, in status colours, announced in an `aria-live` region.
 - [x] The tablet's own roster (ETag, every 5 minutes) and photo cache, wiped on a 401. Phone full screen, tablet split with Recent, and an idle clock.
 - [x] Unit tests, and `e2e/gate.spec.ts`: a test-only gate token, a reader-style typed scan giving Time in and then Already tapped, at both widths.
+- [x] Review fixes (2026-10-12): taps are read even after a button was clicked, with a banner when the page lacks the keyboard; photos load after a reload, not only on the first visit.
+- [x] Review change (2026-10-12): a refined tap card (`tap-card.tsx`) for every state: a white card, the 4:5 portrait, a badge, then a TIME IN (green) / TIME OUT (blue) / FIRST TAPPED AT (amber) stamp, or what to do next.
 Done when: a linked sticker tapped on the USB reader shows the student and Time in, three quick taps all land, and every check passes.
 Commit: `feat(gate): the gate page for the tablet and USB reader`
 - [ ] Owner review: I checked it and said "approved"
@@ -575,6 +601,7 @@ Recipe: `docs/backend/step-48-gate-monitor.md`
 - [x] Who may watch: a monitor device's cookie (`/gate/display/connect?key=…`), or a principal or super admin session. Teachers and everyone else get nothing.
 - [x] The `/gate/display` page (newest large, the previous 11 below, Reconnecting…), and an Open gate monitor link on the dashboard.
 - [x] Unit tests, and `e2e/gate-monitor.spec.ts`: a tap through the API appears on the open monitor with no reload.
+- [x] Review change (2026-10-12): the monitor uses the gate's tap card and list item, so both screens look alike.
 Done when: a sticker tapped at `/gate` appears on `/gate/display` within a second, a revoked monitor stops, and every check passes.
 Commit: `feat(gate): the live guardhouse monitor`
 - [ ] Owner review: I checked it and said "approved"

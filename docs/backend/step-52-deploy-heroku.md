@@ -114,6 +114,15 @@ How the deploy works (the diagram above), every config var with what it's for (n
 - **Back up now:** `heroku pg:backups:capture --app <name>`. Essential plans keep automatic backups too; check `heroku pg:backups`.
 - **What it costs, and where to check the credit.**
 
+## Docs to update with this step
+
+**`docs/COMMANDS.md`:** a "The live server (Heroku)" section:
+- logs, releases and rollback;
+- `heroku run` for `device:create`, `staff:link` and `prisma db seed`;
+- `heroku pg:psql` and backups;
+- `heroku config` (names only);
+- what "deploy" means now: push to `main`, then CI, then Heroku.
+
 ## First deploy, together
 
 Once the accounts are ready and this step's code is committed and pushed:

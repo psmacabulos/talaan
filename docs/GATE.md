@@ -152,6 +152,20 @@ scripts/record-tap.ts                    npm run tap:record: taps from the termi
 
 ## Quick recipes
 
+**The reader beeps but the gate does nothing.**
+1. Click on the gate page. The reader types into whichever window has the keyboard, and the page shows an orange bar when it doesn't have it.
+2. Click into any text box and tap. No digits there either means a USB problem: unplug and replug the reader (it happens after a computer sleeps).
+3. A `db:reset` deletes the gate device, so make a new token.
+
+Since 2026-10-12 a click on Disconnect or Cancel no longer swallows later taps (`onKey` in `gate-kiosk.tsx`).
+
+**The gate shows initials instead of a photo.**
+- Check that the student has a photo: their row in Students shows it.
+- A photo added after the gate page opened appears within 5 minutes (`ROSTER_EVERY_MS`), or straight away after a reload.
+- Before 2026-10-12, a reload showed initials for everyone (`photosLoadedFor` in `gate-kiosk.tsx` fixed it).
+
+**Change how a state looks** (a colour, a word on the badge, the stamp's label). Edit the `KIND` table in `src/features/gate/tap-card.tsx`. Both the gate and the monitor follow it.
+
 **Try the real gate page on a laptop.** Run `npm run dev`, open `http://localhost:3000/gate?token=<a gate token>`, plug in the USB reader and tap. No reader? Click the page and type a card's 10 digits quickly (or paste them), then press Enter.
 
 **Try the gate without the tablet.** Create a gate device with `npm run device:create -- --school school-balanga --kind gate --label "Main gate tablet"` and copy the token. Run `npm run tap:record -- --token tal_dev_…`, click the terminal, and tap stickers on the USB reader. Each line printed is what the gate screen will show.
