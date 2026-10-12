@@ -2178,3 +2178,48 @@ Things found while the owner tested Steps 46–49 at home, besides the review fi
 - `npx playwright test`, every spec including the accessibility audit: 211 passed, 13 skipped (the existing phone-only and desktop-only tests).
 
 The new browser tests: a principal invites a teacher, a fresh browser sets a password through the link and lands on the dashboard, the same link then says it doesn't work any more, and the new password signs in from the sign-in screen; plus a made-up link refused.
+
+## Step 51: one school can never see another's data (2026-10-12)
+
+**Built unattended**, like Step 50.5, with every recipe decision taken as recommended. The recipe's "What changed while building" lists everything decided along the way. The "Owner review" box stays unticked.
+
+**What was built.**
+- Lookups by id take the school, in the mock and Prisma versions:
+  - students: `getInSchool`, `update(schoolId, …)`;
+  - staff: `getInSchool`, `remove(schoolId, …)`;
+  - cards: `listByStudent`, `getActiveForStudent`, `markLost`;
+  - taps: `listByStudent`, `getInSchool`;
+  - notifications: `listByStudent`, `getInSchool`, `markRead`.
+
+  The Prisma versions put both `id` and `schoolId` in the `where`, so another school's id matches no row.
+- Every caller was updated. TypeScript listed them once the signatures changed: pages, actions, `recordTap`, `publishStoredTap`, `notifyParentsForTap`, the parent pages and the parent bell's data. The `existing.schoolId !== session.schoolId` checks after lookups went away, since the lookup itself now refuses.
+- `docs/SCHOOL-ISOLATION.md` (new, linked from the README): the rule, every repository method scoped or not and why, every way in and where its school comes from, the tests, and why row-level security waits.
+- `src/data/repositories/README.md`: the one rule for new repository methods.
+- Tests:
+  - `src/features/isolation.test.ts`: five actions called as Oceanview with Balanga's ids.
+  - `src/data/repositories/prisma-isolation.test.ts`: the real queries, against the test database.
+  - `e2e/isolation.spec.ts`: student search, a photo, an Oceanview gate's tap and roster, and link-a-child.
+  - A "never reaches another school's …" test in each mock repository's tests.
+  - New test fixtures: an Oceanview gate in `create-test-devices.ts`, and an `oceanview_principal` persona.
+
+**A real hole: the tap station.** Writing the cross-school action tests meant reading what each action does with what the browser sends. `syncStationTaps` writes taps the kiosk page resolved in the browser, and it stored `outcome.tap` as given, including `tap.schoolId` and `tap.studentId`. A signed-in principal at Oceanview could post a tap with `schoolId: "school-balanga"` and a Balanga student, and it would land in Balanga's attendance and notify Balanga's parents. **Fix:** the action takes its school from the session (`stationSchoolId()`). It drops any tap whose `schoolId` differs, and any tap naming a student `studentRepository.getInSchool` can't find in that school. The unit test sends both forgeries and expects `{ synced: 0 }` with Balanga's taps unchanged; it fails without the fix.
+
+**Smaller tightenings found on the way.**
+- `recordTap`, after losing a race to store the same tap id, now checks the winning tap is the same gate's school before replaying it.
+- `markNotificationRead` looks the notification up in the parent's own school, so another school's id is "no longer exists".
+- `getParentNotifications` takes the session's school rather than trusting each link's.
+
+**Problems hit.**
+- **TypeScript narrowing in callbacks.** After `if (!session.schoolId) return …`, TypeScript knows `session.schoolId` is a string, but not inside a `.map((student) => …)` callback. Narrowing a property doesn't carry into a function defined later. The attendance, dashboard and station pages capture `const schoolId = session.schoolId;` after the check and use that.
+- **A shared fixture mutated by an earlier test.** The new notification test's last line expected `notification-a` unread, but an earlier test in the same file marks it read inside the shared fixture array. It now checks the id only.
+- **The same unknown card tapped twice.** The browser isolation test taps a Balanga card at the Oceanview gate. The phone and desktop projects run at once, so the second tap within 2 minutes was a duplicate, not an unknown card. That's correct behaviour, and nothing leaked. Each project now taps its own Balanga card.
+- **`.env` in a unit test.** Vitest doesn't load `.env` into `process.env`, so the database test imports `dotenv/config` itself, like the scripts do. It also runs in Node instead of jsdom (`// @vitest-environment node`).
+
+**Checks, all run before the commit:**
+- lint and `check:tokens`: clean;
+- typecheck: clean;
+- unit tests: 597 passing, in 85 files. That includes the database test, which ran against the test database rather than being skipped.
+- `npm run build`: passes;
+- `npx playwright test`, every spec: 219 passed, 13 skipped (the existing phone-only and desktop-only tests).
+
+The server log printed "The destination stream closed early" once during the students tests. That's a page still streaming when the test closed it. It isn't related to this step, and every test passed.

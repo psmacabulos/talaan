@@ -96,9 +96,10 @@ export default async function AttendancePage({ searchParams }: PageProps<"/atten
     ? `Your advisory class, Grade ${selected.gradeLevel} – ${selected.section}.`
     : "Pick a date and class to see who tapped in.";
 
+  const schoolId = session.schoolId;
   const [taps, cardsByStudent, school] = await Promise.all([
     tapRepository.listBySchoolOnDate(session.schoolId, date),
-    Promise.all(classStudents.map((student) => cardRepository.listByStudent(student.id))),
+    Promise.all(classStudents.map((student) => cardRepository.listByStudent(schoolId, student.id))),
     schoolRepository.getById(session.schoolId),
   ]);
 

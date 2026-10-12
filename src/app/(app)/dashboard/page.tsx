@@ -90,7 +90,10 @@ export default async function DashboardPage() {
     // inside Step 13 instead of reopening Step 9's repository interfaces.
     // The full card history, not just the active card, so a phone can tell
     // "No card" from "Lost" (Step 27.8), the same as the Attendance page.
-    const cardsByStudent = await Promise.all(classStudents.map((student) => cardRepository.listByStudent(student.id)));
+    const schoolId = session.schoolId;
+    const cardsByStudent = await Promise.all(
+      classStudents.map((student) => cardRepository.listByStudent(schoolId, student.id)),
+    );
     const rollRows = classStudents.map((student, index) => ({
       student,
       cardStatus: deriveCardStatus(cardsByStudent[index] ?? []),
@@ -130,9 +133,10 @@ export default async function DashboardPage() {
     );
   }
 
-  const alerts = await alertRepository.listBySchool(session.schoolId);
+  const schoolId = session.schoolId;
+  const alerts = await alertRepository.listBySchool(schoolId);
   const openAlerts = alerts.filter((alert) => !alert.acknowledged);
-  const alertTaps = (await Promise.all(openAlerts.map((alert) => tapRepository.getById(alert.tapId)))).filter(
+  const alertTaps = (await Promise.all(openAlerts.map((alert) => tapRepository.getInSchool(schoolId, alert.tapId)))).filter(
     (tap) => tap !== null,
   );
 

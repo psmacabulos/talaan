@@ -13,12 +13,14 @@ export { countUnreadNotifications, notificationKindLabel, type ParentNotificatio
  * so one link per student is already guaranteed by the data.
  */
 
-export async function getParentNotifications(parentId: string): Promise<ParentNotificationItem[]> {
+export async function getParentNotifications(parentId: string, schoolId: string): Promise<ParentNotificationItem[]> {
   const links = await parentStudentLinkRepository.listByParent(parentId);
 
-  const students = await Promise.all(links.map((link) => studentRepository.getById(link.studentId)));
+  // Only the parent's own school (Step 51): a link can only ever point
+  // there, and the school comes from the signed session, never the link.
+  const students = await Promise.all(links.map((link) => studentRepository.getInSchool(schoolId, link.studentId)));
   const notificationsByStudent = await Promise.all(
-    links.map((link) => notificationRepository.listByStudent(link.studentId)),
+    links.map((link) => notificationRepository.listByStudent(schoolId, link.studentId)),
   );
 
   const items: ParentNotificationItem[] = [];

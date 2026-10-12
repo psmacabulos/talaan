@@ -18,7 +18,7 @@ export default async function NotificationsPage() {
   const session = await getParentSession();
   if (!session) redirect("/parent/login");
 
-  const items = await getParentNotifications(session.parentId);
+  const items = await getParentNotifications(session.parentId, session.schoolId);
   const unread = countUnreadNotifications(items);
 
   return (

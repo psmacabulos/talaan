@@ -54,7 +54,7 @@ export async function notifyParentsForTap(tap: Tap, deps: NotifyParentsDeps): Pr
   const school = await deps.schoolRepository.getById(tap.schoolId);
   if (!school) return null;
 
-  const studentTaps = await deps.tapRepository.listByStudent(tap.studentId);
+  const studentTaps = await deps.tapRepository.listByStudent(tap.schoolId, tap.studentId);
   const kind = deriveTapKind(tap, studentTaps);
   if (!shouldNotifyParents(school.notificationPreference, kind)) return null;
 

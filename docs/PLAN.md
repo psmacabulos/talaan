@@ -1,7 +1,7 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ███████████████████░ 93%**  (211 of 226 tasks, 60 of 64 steps approved)
+**Overall progress: ███████████████████░ 95%**  (214 of 226 tasks, 60 of 64 steps approved)
 
 **Next up:** Step 50.5, Set-password links (ready for your review)
 
@@ -68,7 +68,7 @@
 | 50 | Signed staff sessions | ██████████ 100% | Approved |
 | 50.1 | The real sign-in form | ██████████ 100% | Approved |
 | 50.5 | Set-password links | ████████░░  80% | Ready for your review |
-| 51 | One school can never see another's data | ░░░░░░░░░░   0% | Not started |
+| 51 | One school can never see another's data | ████████░░  75% | Ready for your review |
 | 52 | Deploy the demo to Heroku | ░░░░░░░░░░   0% | Not started |
 | 53 | The parent API | ░░░░░░░░░░   0% | Not started |
 
@@ -376,7 +376,8 @@ Read this first in a new conversation, together with `CLAUDE.md`.
 
   Each is explained in `docs/BUILD-LOG.md` ("Review change/fix: …", and "Notes from the home test with the real reader").
 - **Approved on 2026-10-12:** Steps 46, 46.5, 47, 48 and 49, tested by the owner with the real USB reader.
-- **Next to build: Step 50**, signed staff sessions, then **Step 50.1**, the real sign-in form (split on 2026-10-12; option A, our own signed cookie, confirmed after the owner compared it with JWT, Better Auth, Auth.js and hosted services). Recipes are ready for 50, 50.1, 50.5, 51, 52 and 53.
+- **Built and committed overnight, 2026-10-12 (owner away, authorized to build, test and commit without pushing):** Step 50.5 (`dafb62e`) and Step 51. Both passed every check before committing. Their "Owner review" boxes are unticked until the owner reviews them; each recipe's "What changed while building" lists every decision made without the owner. Step 51 also fixed a real hole: the tap station's save trusted the school in the browser's tap.
+- **Next:** the owner reviews 50.5 and 51, then Step 52 (deploy to Heroku), then Step 53 (the parent API).
 - **The owner's goal:** finish the web app (Steps 50–53, including 50.1), so the Expo parent app (Phase 3) can start against the parent API (Step 53).
 - **Owner accounts needed for Step 52:** Heroku (with the GitHub Student credit) and Cloudflare R2. See that recipe's "Your part".
 - **Working rules (2026-10-12), on top of CLAUDE.md:**
@@ -649,9 +650,9 @@ Commit: `feat(auth): set-password links for new staff and password resets`
 
 ### Step 51: One school can never see another's data
 Recipe: `docs/backend/step-51-school-isolation.md`
-- [ ] Repository lookups by id take `schoolId` (`getInSchool`, and `update`, `remove`, `markLost`, `markRead` scoped), in Prisma and in the mocks. Every caller is updated.
-- [ ] `docs/SCHOOL-ISOLATION.md`: every way into the data and where its school comes from, plus why row-level security waits.
-- [ ] Isolation tests: every action called as Oceanview with Balanga's ids, the Prisma `where` clauses against the test database, and `e2e/isolation.spec.ts` for pages, photos, the gate, the monitor and link-a-child.
+- [x] Repository lookups by id take `schoolId` (`getInSchool`, and `update`, `remove`, `markLost`, `markRead` scoped), in Prisma and in the mocks. Every caller is updated. Also fixed (2026-10-12): the tap station's save trusted the school in the browser's tap.
+- [x] `docs/SCHOOL-ISOLATION.md`: every way into the data and where its school comes from, plus why row-level security waits.
+- [x] Isolation tests: every action called as Oceanview with Balanga's ids, the Prisma `where` clauses against the test database, and `e2e/isolation.spec.ts` for pages, photos, the gate and link-a-child (the monitor's stream is covered by unit tests only; see the recipe).
 Done when: every isolation test passes and every check passes.
 Commit: `feat(security): scope every lookup to the school, with isolation tests`
 - [ ] Owner review: I checked it and said "approved"

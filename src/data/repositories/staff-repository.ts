@@ -9,7 +9,14 @@ export type StaffWithPasswordHash = { staff: Staff; passwordHash: string | null 
 export interface StaffRepository {
   /** A school's own staff — never includes the global super admin. */
   listBySchool(schoolId: string): Promise<Staff[]>;
+  /**
+   * Any staff member by id, at any school. Unscoped on purpose: only used to
+   * look up the signed-in person themselves (`session.userId`), whose own
+   * account decides their school. For anyone else, use `getInSchool`.
+   */
   getById(id: string): Promise<Staff | null>;
+  /** A staff member only if they belong to `schoolId` (Step 51); another school's id answers null, like a made-up one. */
+  getInSchool(schoolId: string, id: string): Promise<Staff | null>;
   /** Case-insensitive. Emails are unique across every school, so this finds at most one person. */
   findByEmail(email: string): Promise<Staff | null>;
   /** For `resolveSession` (src/lib/session.ts): the staff member and their password hash, null when the hash isn't set. */
@@ -22,8 +29,8 @@ export interface StaffRepository {
   list(): Promise<Staff[]>;
   /** Appends a newly invited staff member (Step 18). Idempotent by `id`, same shape as `StudentRepository.create`. */
   create(staff: Staff): Promise<Staff>;
-  /** Removes a staff member's access (Step 27.6). A no-op for an unknown id, so a repeated click can't fail. */
-  remove(id: string): Promise<void>;
+  /** Removes a staff member's access (Step 27.6), only within `schoolId`. A no-op for an unknown id, or another school's, so a repeated click can't fail. */
+  remove(schoolId: string, id: string): Promise<void>;
 }
 
 export function createMockStaffRepository(
@@ -45,6 +52,10 @@ export function createMockStaffRepository(
     async getById(id) {
       await simulateLatency(latencyMs);
       return data.find((staff) => staff.id === id) ?? null;
+    },
+    async getInSchool(schoolId, id) {
+      await simulateLatency(latencyMs);
+      return data.find((staff) => staff.id === id && staff.schoolId === schoolId) ?? null;
     },
     async findByEmail(email) {
       await simulateLatency(latencyMs);
@@ -81,9 +92,9 @@ export function createMockStaffRepository(
       }
       return staff;
     },
-    async remove(id) {
+    async remove(schoolId, id) {
       await simulateLatency(latencyMs);
-      const index = data.findIndex((staff) => staff.id === id);
+      const index = data.findIndex((staff) => staff.id === id && staff.schoolId === schoolId);
       if (index !== -1) data.splice(index, 1);
     },
   };

@@ -4,11 +4,16 @@ import { DEFAULT_LATENCY_MS, simulateLatency } from "./latency";
 
 export interface StudentRepository {
   listBySchool(schoolId: string): Promise<Student[]>;
-  getById(id: string): Promise<Student | null>;
+  /**
+   * One student, only if they belong to `schoolId` (Step 51): another
+   * school's student id answers null, exactly like a made-up id, so no
+   * caller can leak a row by forgetting to compare schools afterwards.
+   */
+  getInSchool(schoolId: string, id: string): Promise<Student | null>;
   /** Appends a new student (Step 15's "Add student"). Idempotent by `id`, same as `TapRepository.create`. */
   create(student: Student): Promise<Student>;
-  /** Replaces an existing student by `id`. Returns `null` if no student with that id exists. */
-  update(student: Student): Promise<Student | null>;
+  /** Replaces an existing student by `id`, only within `schoolId`. Returns `null` if there's no such student there. */
+  update(schoolId: string, student: Student): Promise<Student | null>;
   /**
    * Step 22's "link a child" lookup — the three details CLAUDE.md's domain
    * rules say a parent already has on hand (LRN, last name, birth date),
@@ -32,9 +37,9 @@ export function createMockStudentRepository(
       await simulateLatency(latencyMs);
       return data.filter((student) => student.schoolId === schoolId);
     },
-    async getById(id) {
+    async getInSchool(schoolId, id) {
       await simulateLatency(latencyMs);
-      return data.find((student) => student.id === id) ?? null;
+      return data.find((student) => student.id === id && student.schoolId === schoolId) ?? null;
     },
     async create(student) {
       await simulateLatency(latencyMs);
@@ -43,12 +48,13 @@ export function createMockStudentRepository(
       }
       return student;
     },
-    async update(student) {
+    async update(schoolId, student) {
       await simulateLatency(latencyMs);
-      const index = data.findIndex((existing) => existing.id === student.id);
+      const index = data.findIndex((existing) => existing.id === student.id && existing.schoolId === schoolId);
       if (index === -1) return null;
-      data[index] = student;
-      return student;
+      const updated = { ...student, schoolId };
+      data[index] = updated;
+      return updated;
     },
     async findForLink(schoolId, { lrn, lastName, birthDate }) {
       await simulateLatency(latencyMs);

@@ -88,7 +88,7 @@ The database must be running (section 5) for `build` and the browser tests. CI o
 
 ## 3. Unit tests (Vitest)
 
-Fast tests of single functions and components, with no browser and no database.
+Fast tests of single functions and components, with no browser and no database. One exception: `prisma-isolation.test.ts` (Step 51) checks the real database queries against the browser tests' database, and is skipped when `E2E_DATABASE_URL` isn't in `.env`.
 
 | Command | What it does |
 |---|---|
@@ -96,6 +96,7 @@ Fast tests of single functions and components, with no browser and no database.
 | `npx vitest run src/features/gate` | Only the tests in one folder. |
 | `npx vitest run src/features/gate/scan-buffer.test.ts` | Only one file. |
 | `npx vitest run -t "duplicate"` | Only the tests whose name contains "duplicate". |
+| `npx vitest run isolation` | The school-isolation tests (Step 51): every action tried across schools, and the real database queries. |
 | `npx vitest` | Watch mode: reruns the tests whenever you save a file. `q` quits. |
 
 **Files:** every `*.test.ts` / `*.test.tsx` next to the code it tests (for example `src/services/taps/record-tap.test.ts`), `vitest.config.ts`, `vitest.setup.ts`. More in `docs/TESTING.md`.
@@ -120,7 +121,7 @@ A real Chrome clicks through the app, at **phone width (`mobile`, 360 px)** and 
 | `npx playwright test --reporter=html` then `npx playwright show-report` | A clickable report with screenshots of failures. |
 
 **What happens when you run them:**
-1. `e2e/global-setup.ts` brings the **test database** (`E2E_DATABASE_URL` in `.env`) up to date, resets it to the demo data, and creates a test gate and a test monitor (`e2e/create-test-devices.ts`).
+1. `e2e/global-setup.ts` brings the **test database** (`E2E_DATABASE_URL` in `.env`) up to date, resets it to the demo data, and creates a test gate, a test monitor and a second school's gate (`e2e/create-test-devices.ts`).
 2. Playwright starts the built app on **port 3100** (`playwright.config.ts`, `webServer`), with the clock pinned to the demo morning.
 3. Both widths run at the same time on the same database. That's why each test uses a different student per width.
 
@@ -130,10 +131,10 @@ A real Chrome clicks through the app, at **phone width (`mobile`, 360 px)** and 
 |---|---|
 | `playwright.config.ts` | Port, the two widths, the test database, the pinned clock. |
 | `e2e/global-setup.ts`, `e2e/database.ts` | Resetting the test database before each run. |
-| `e2e/create-test-devices.ts` | The test gate and monitor, and their tokens. |
-| `e2e/sessions.ts` | `signInAs(...)`: how a test becomes the principal, a teacher or a parent. |
+| `e2e/create-test-devices.ts` | The test gate and monitor, an Oceanview gate (Step 51), and their tokens. |
+| `e2e/sessions.ts` | `signInAs(...)`: how a test becomes the principal, a teacher, a parent, or Oceanview's principal, with a signed cookie. |
 | `e2e/test-data.ts` | Test tokens, `readerDigitsFor` (a card as the USB reader types it), `activeCardSerialFor`. |
-| `e2e/*.spec.ts` | The tests: `students`, `gate`, `gate-monitor`, `attendance`, `station`, `parent`, `login`, `theme`, `a11y`. |
+| `e2e/*.spec.ts` | The tests: `students`, `gate`, `gate-monitor`, `attendance`, `station`, `parent`, `login`, `theme`, `isolation`, `a11y`. |
 | `e2e/fixtures/` | Files the tests upload (`photo.png`). |
 | `test-results/` | **After a failure:** one folder per failed test, with `error-context.md` (what the page looked like) and a screenshot. |
 

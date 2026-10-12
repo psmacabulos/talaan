@@ -69,7 +69,7 @@ export async function simulateTap(): Promise<SimulateTapResult> {
   const cardless: string[] = [];
 
   for (const student of waiting) {
-    const card = await cardRepository.getActiveForStudent(student.id);
+    const card = await cardRepository.getActiveForStudent(session.schoolId, student.id);
     if (!card) {
       cardless.push(`${student.firstName} ${student.lastName}`);
       continue;

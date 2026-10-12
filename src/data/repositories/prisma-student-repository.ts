@@ -67,8 +67,8 @@ export function createPrismaStudentRepository(db: PrismaClient = prisma): Studen
       const rows = await db.student.findMany({ where: { schoolId }, orderBy: OLDEST_FIRST });
       return rows.map(toStudent);
     },
-    async getById(id) {
-      const row = await db.student.findUnique({ where: { id } });
+    async getInSchool(schoolId, id) {
+      const row = await db.student.findFirst({ where: { id, schoolId } });
       return row ? toStudent(row) : null;
     },
     async create(student) {
@@ -79,9 +79,14 @@ export function createPrismaStudentRepository(db: PrismaClient = prisma): Studen
       });
       return toStudent(row);
     },
-    async update(student) {
+    async update(schoolId, student) {
       try {
-        const row = await db.student.update({ where: { id: student.id }, data: toStudentData(student) });
+        // Both in the where: a student id from another school matches no row
+        // (P2025, null below), and the school itself can never be changed.
+        const row = await db.student.update({
+          where: { id: student.id, schoolId },
+          data: toStudentData({ ...student, schoolId }),
+        });
         return toStudent(row);
       } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === RECORD_NOT_FOUND) {

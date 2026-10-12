@@ -107,13 +107,21 @@ describe("createMockStaffRepository", () => {
 
   it("removes a staff member", async () => {
     const repo = createMockStaffRepository([principalA, teacherB], { latencyMs: 0 });
-    await repo.remove("staff-teacher-b");
+    await repo.remove("school-b", "staff-teacher-b");
     await expect(repo.list()).resolves.toEqual([principalA]);
+  });
+
+  it("never reaches another school's staff (Step 51)", async () => {
+    const repo = createMockStaffRepository([principalA, teacherB], { latencyMs: 0 });
+    await expect(repo.getInSchool("school-b", "staff-principal-a")).resolves.toBeNull();
+    await expect(repo.getInSchool("school-a", "staff-principal-a")).resolves.toEqual(principalA);
+    await repo.remove("school-b", "staff-principal-a");
+    await expect(repo.list()).resolves.toEqual([principalA, teacherB]);
   });
 
   it("ignores removing an unknown id", async () => {
     const repo = createMockStaffRepository([principalA], { latencyMs: 0 });
-    await repo.remove("staff-missing");
+    await repo.remove("school-a", "staff-missing");
     await expect(repo.list()).resolves.toEqual([principalA]);
   });
 });

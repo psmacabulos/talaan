@@ -29,37 +29,52 @@ describe("createMockStudentRepository", () => {
 
   it("gets a student by id", async () => {
     const repo = createMockStudentRepository([studentA, studentB], { latencyMs: 0 });
-    await expect(repo.getById("student-b")).resolves.toEqual(studentB);
+    await expect(repo.getInSchool("school-b", "student-b")).resolves.toEqual(studentB);
+  });
+
+  it("never reaches another school's students (Step 51)", async () => {
+    const students = [studentA, studentB];
+    const repo = createMockStudentRepository([...students], { latencyMs: 0 });
+    await expect(repo.getInSchool("school-b", "student-a")).resolves.toBeNull();
+    await expect(repo.update("school-b", { ...studentA, firstName: "Changed" })).resolves.toBeNull();
+    await expect(repo.getInSchool("school-a", "student-a")).resolves.toEqual(studentA);
+  });
+
+  it("keeps a student in their school on update, whatever the object says", async () => {
+    const repo = createMockStudentRepository([studentA], { latencyMs: 0 });
+    await expect(repo.update("school-a", { ...studentA, schoolId: "school-b" })).resolves.toMatchObject({
+      schoolId: "school-a",
+    });
   });
 
   it("returns null for an unknown id", async () => {
     const repo = createMockStudentRepository([studentA], { latencyMs: 0 });
-    await expect(repo.getById("nope")).resolves.toBeNull();
+    await expect(repo.getInSchool("school-a", "nope")).resolves.toBeNull();
   });
 
   it("creates a new student", async () => {
     const repo = createMockStudentRepository([studentA], { latencyMs: 0 });
     const created: Student = { ...studentB };
     await expect(repo.create(created)).resolves.toEqual(created);
-    await expect(repo.getById("student-b")).resolves.toEqual(created);
+    await expect(repo.getInSchool("school-b", "student-b")).resolves.toEqual(created);
   });
 
   it("is idempotent when creating with an id that already exists", async () => {
     const repo = createMockStudentRepository([studentA], { latencyMs: 0 });
     await repo.create({ ...studentA, firstName: "Different" });
-    await expect(repo.getById("student-a")).resolves.toEqual(studentA);
+    await expect(repo.getInSchool("school-a", "student-a")).resolves.toEqual(studentA);
   });
 
   it("updates an existing student", async () => {
     const repo = createMockStudentRepository([studentA], { latencyMs: 0 });
     const updated: Student = { ...studentA, firstName: "Juanito" };
-    await expect(repo.update(updated)).resolves.toEqual(updated);
-    await expect(repo.getById("student-a")).resolves.toEqual(updated);
+    await expect(repo.update("school-a", updated)).resolves.toEqual(updated);
+    await expect(repo.getInSchool("school-a", "student-a")).resolves.toEqual(updated);
   });
 
   it("returns null when updating an unknown id", async () => {
     const repo = createMockStudentRepository([studentA], { latencyMs: 0 });
-    await expect(repo.update(studentB)).resolves.toBeNull();
+    await expect(repo.update("school-a", studentB)).resolves.toBeNull();
   });
 
   it("finds a student for linking by school, LRN, last name and birth date", async () => {

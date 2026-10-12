@@ -79,19 +79,22 @@ export type StaffRowActionResult = { ok: true } | { ok: false; error: string };
  * session, or someone at another school (Phase 2 enforces the same rule
  * in the database).
  */
-async function findActionTarget(staffId: string): Promise<{ staff: Staff; userId: string } | { error: string }> {
+async function findActionTarget(
+  staffId: string,
+): Promise<{ staff: Staff; userId: string; schoolId: string } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: SIGNED_OUT_MESSAGE };
   if (!session.schoolId || session.role === "teacher") {
     return { error: "You don't have permission to manage staff." };
   }
 
-  const staff = await staffRepository.getById(staffId);
-  if (!staff || staff.schoolId !== session.schoolId) {
+  // Only this school's staff (Step 51): another school's id is "not found".
+  const staff = await staffRepository.getInSchool(session.schoolId, staffId);
+  if (!staff) {
     return { error: "That staff member no longer exists." };
   }
 
-  return { staff, userId: session.userId };
+  return { staff, userId: session.userId, schoolId: session.schoolId };
 }
 
 export type SignInLinkActionResult = { ok: true; link: SignInLink } | { ok: false; error: string };
@@ -123,7 +126,7 @@ export async function removeStaff(staffId: string): Promise<StaffRowActionResult
     return { ok: false, error: "You can't remove your own account." };
   }
 
-  await staffRepository.remove(staffId);
+  await staffRepository.remove(target.schoolId, staffId);
   refresh();
   return { ok: true };
 }

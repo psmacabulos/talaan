@@ -141,8 +141,9 @@ export async function updateStudent(
     return { ok: false, formError: "You don't have permission to edit students." };
   }
 
-  const existing = await studentRepository.getById(id);
-  if (!existing || existing.schoolId !== session.schoolId) {
+  // Only this school's student (Step 51): another school's id is "not found".
+  const existing = await studentRepository.getInSchool(session.schoolId, id);
+  if (!existing) {
     return { ok: false, formError: "That student could not be found." };
   }
 
@@ -150,7 +151,7 @@ export async function updateStudent(
   if (!checked.ok) return checked.result;
 
   const photoKey = await storePhoto(session.schoolId, id, checked, existing.photoKey);
-  await studentRepository.update({ ...existing, ...checked.data, photoKey });
+  await studentRepository.update(session.schoolId, { ...existing, ...checked.data, photoKey });
   if (existing.photoKey && existing.photoKey !== photoKey) await getPhotoStorage().delete(existing.photoKey);
   const cardError = await applyCard(checked.card, id);
 

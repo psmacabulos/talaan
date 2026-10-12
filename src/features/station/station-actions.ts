@@ -1,18 +1,26 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { alertRepository, tapRepository, schoolRepository, notificationRepository } from "@/data/repositories";
+import {
+  alertRepository,
+  notificationRepository,
+  schoolRepository,
+  studentRepository,
+  tapRepository,
+} from "@/data/repositories";
 import { SIGNED_OUT_MESSAGE } from "@/features/auth/messages";
 import { getSession } from "@/lib/session";
 import { notifyParentsForTap } from "@/features/attendance/notify-parents";
 import type { StationTapOutcome } from "./resolve-station-tap";
 
-async function assertStationAccess(): Promise<void> {
+/** The signed-in school, or an error for anyone who can't use the tap station. */
+async function stationSchoolId(): Promise<string> {
   const session = await getSession();
   if (!session) throw new Error(SIGNED_OUT_MESSAGE);
   if (!session.schoolId || session.role === "teacher") {
     throw new Error("You don't have permission to use the tap station.");
   }
+  return session.schoolId;
 }
 
 /**
@@ -28,11 +36,16 @@ async function assertStationAccess(): Promise<void> {
  * out, once connectivity returns."
  */
 export async function syncStationTaps(outcomes: StationTapOutcome[]): Promise<{ synced: number }> {
-  await assertStationAccess();
+  const schoolId = await stationSchoolId();
 
   let synced = 0;
   for (const outcome of outcomes) {
     if (outcome.status !== "recorded") continue;
+    // The browser resolved this tap, so its contents are only a claim
+    // (Step 51): a tap for another school, or naming a student who isn't
+    // this school's, is dropped instead of written into that school's day.
+    if (outcome.tap.schoolId !== schoolId) continue;
+    if (outcome.tap.studentId && !(await studentRepository.getInSchool(schoolId, outcome.tap.studentId))) continue;
 
     await tapRepository.create(outcome.tap);
     if (outcome.kind === "valid") {

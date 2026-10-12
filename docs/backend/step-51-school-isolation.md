@@ -1,6 +1,6 @@
 # Step 51: One school can never see another's data
 
-> **Fast-track recipe.** Written before the code on 2026-10-11, for the owner to approve before it's built. When it's built, a "What changed while building" section (just before "Verify it worked") will list where the real code differs from this plan.
+> **Fast-track recipe.** Written before the code on 2026-10-11. Built on 2026-10-12 while the owner was away, with the owner's go-ahead to build, test and commit Steps 50.5 and 51 unattended; every decision below was taken as recommended, and "What changed while building" (just before "Verify it worked") lists where the code differs from this plan. The owner reviews it the next day.
 
 ## Why
 
@@ -25,7 +25,7 @@ flowchart LR
     X["Balanga student id,<br/>asked by Oceanview"] -.->|"null: not found"| Repo
 ```
 
-## Decisions in this recipe (please confirm or change)
+## Decisions (taken as recommended, 2026-10-12; for the owner to review)
 
 1. **Scope inside the repositories, and prove it with tests. Postgres row-level security waits.** The original Phase 2 note mentioned row-level security (RLS): the database itself filters every query by a "current school" setting. With Prisma and its connection pool, that means wrapping *every* request in a transaction that first runs `set_config('app.school_id', …)`. That changes how every repository is called, adds a database round trip to every request, and is easy to get subtly wrong (a pooled connection keeping the last school's setting). For one pilot school, repository scoping plus tests gives the same protection for much less risk. RLS is listed for after the pilot, when a second school joins.
 2. **"Not found", never "forbidden".** Another school's student id gives exactly what a made-up id gives, so nobody can probe which ids exist.
@@ -101,10 +101,26 @@ Each must answer "not found" (or "That notification isn't for your children."), 
 
 `src/data/repositories/README.md` (short) states the rule: "a method that finds one row by id takes `schoolId` first, unless its comment says why not". The quick recipe in `SCHOOL-ISOLATION.md` says the same, so the next repository method follows it.
 
+## What changed while building
+
+Decided without the owner, for review:
+
+- **A real hole, found and fixed.** `syncStationTaps` (the simulated tap station's save) stored each tap exactly as the browser sent it, `schoolId` and `studentId` included. A principal at one school could have written a tap, and its parent notification, into another school. It now takes its school from the session, drops a tap for any other school, and drops a tap naming a student who isn't that school's. The cross-school unit test fails without the fix.
+- **Kept unscoped, each with a comment:** `staffRepository.getById` (the signed-in person themselves), `tapRepository.getById` (the gate's replay check), `cardRepository.getBySerial` (a serial is one physical card across all schools, and the refusal names nobody), `schoolRepository.getById`/`update` (always the session's school), and the sign-in lookups. `StudentRepository.getById` and `NotificationRepository.getById` were removed: nothing needs them unscoped.
+- **`update(schoolId, student)` also forces the school**: a student object claiming another school is still saved in the caller's.
+- **`recordTap`'s replay after a lost race** now checks the winning tap is the same gate's school before answering with it.
+- **`markNotificationRead` was reshaped**: it reads the parent session first, then looks the notification up in the parent's school, so another school's notification is "no longer exists", like a made-up id.
+- **`getParentNotifications(parentId, schoolId)`** takes the session's school instead of trusting each link.
+- **The unit tests are one file**, `src/features/isolation.test.ts`, rather than one per action file: one shared in-memory setup, five crossings (edit a student, remove or link a staff member, link a card, sync station taps, mark a notification read). `resendStaffInvite` no longer exists (Step 50.5).
+- **The browser tests** cover the student search, a photo, an Oceanview gate's tap and roster, and link-a-child. **Not covered by a browser test:** the monitor's live stream across schools. It's guarded by `resolveMonitorViewer` (unit-tested) and the per-school channel in `tapEvents`; a browser test would need two open streams and a timing window, and was left out.
+- **`checkCardSerial` with another school's card** says the card can't be linked, not "not found": a physical card can't belong to two schools. The test checks the answer never names the student.
+- **The database test loads `.env` itself** (`import "dotenv/config"`), since Vitest doesn't, and runs in Node (`// @vitest-environment node`).
+- **`docs/SCHOOL-ISOLATION.md`** also lists every repository method, scoped or not and why, beyond the recipe's table of ways in.
+
 ## Verify it worked
 
-1. Your checks (or ask me to run them). The new tests are `npm test -- isolation` and `npx playwright test e2e/isolation.spec.ts`.
-2. By hand: sign in as Oceanview's principal (`principal@school-oceanview.talaan.example`, `Talaan123!`). Search Students for "Juan Cruz", a Balanga student: nothing.
+1. The checks (run before the commit, 2026-10-12). The new tests are `npx vitest run isolation` and `npx playwright test e2e/isolation.spec.ts`.
+2. By hand: sign in as Oceanview's principal (`principal@school-oceanview.talaan.example`, `Talaan123!`). Search Students for a Balanga student's name (copy one from Balanga's student list first): nothing.
 3. Open `http://localhost:3000/api/v1/photos/school-balanga/…` with the address of a Balanga photo (copy it from Balanga's student list): "Not found".
 4. Read `docs/SCHOOL-ISOLATION.md`'s table, and check every page you know is in it.
 

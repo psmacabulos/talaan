@@ -29,10 +29,10 @@ export function toGateTapEvent(result: RecordTapResult, photo: string | null): G
 /** Sends a newly stored tap to every open monitor of its school (Step 48). */
 export async function publishStoredTap(
   result: RecordTapResult,
-  students: Pick<StudentRepository, "getById"> = studentRepository,
+  students: Pick<StudentRepository, "getInSchool"> = studentRepository,
 ): Promise<void> {
   if (!("tap" in result) || result.replayed) return;
-  const student = result.tap.studentId ? await students.getById(result.tap.studentId) : null;
+  const student = result.tap.studentId ? await students.getInSchool(result.tap.schoolId, result.tap.studentId) : null;
   const event = toGateTapEvent(result, student?.photoKey ? photoPath(student.photoKey) : null);
   if (event) publishTap(result.tap.schoolId, event);
 }

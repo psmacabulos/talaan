@@ -86,7 +86,7 @@ export async function prepareCardChange(
 ): Promise<PreparedCardChange> {
   if (!change.replaceLost && !change.link) return { ok: true, apply: async () => {} };
 
-  const active = studentId ? await deps.cards.getActiveForStudent(studentId) : null;
+  const active = studentId ? await deps.cards.getActiveForStudent(schoolId, studentId) : null;
   if (change.replaceLost && !active) return { ok: false, message: "This student has no linked card to replace." };
   if (change.link && active && !change.replaceLost) {
     return { ok: false, message: "This student already has a linked card. Replace it instead." };
@@ -105,7 +105,7 @@ export async function prepareCardChange(
   return {
     ok: true,
     apply: async (savedStudentId) => {
-      if (change.replaceLost && active) await deps.cards.markLost(active.id);
+      if (change.replaceLost && active) await deps.cards.markLost(schoolId, active.id);
       if (serial) {
         await deps.cards.create({
           id: crypto.randomUUID(),

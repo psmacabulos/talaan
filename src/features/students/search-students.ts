@@ -84,7 +84,7 @@ export async function searchStudents(
   const filteredByGrade =
     params.grade === "all" ? filteredByText : filteredByText.filter((student) => student.gradeLevel === params.grade);
 
-  const cardsByStudent = await Promise.all(filteredByGrade.map((student) => cards.listByStudent(student.id)));
+  const cardsByStudent = await Promise.all(filteredByGrade.map((student) => cards.listByStudent(schoolId, student.id)));
   const rows: StudentRow[] = filteredByGrade.map((student, index) => ({
     student,
     cardStatus: deriveCardStatus(cardsByStudent[index] ?? []),

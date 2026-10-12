@@ -57,6 +57,10 @@ export function createPrismaStaffRepository(db: PrismaClient = prisma): StaffRep
       const row = await db.staff.findUnique({ where: { id } });
       return row ? toStaff(row) : null;
     },
+    async getInSchool(schoolId, id) {
+      const row = await db.staff.findFirst({ where: { id, schoolId } });
+      return row ? toStaff(row) : null;
+    },
     async findByEmail(email) {
       const row = await findRowByEmail(email);
       return row ? toStaff(row) : null;
@@ -85,10 +89,11 @@ export function createPrismaStaffRepository(db: PrismaClient = prisma): StaffRep
       });
       return toStaff(row);
     },
-    async remove(id) {
-      // deleteMany, not delete: removing someone who's already gone is a
-      // no-op (0 rows), the same as the mock, instead of a P2025 error.
-      await db.staff.deleteMany({ where: { id } });
+    async remove(schoolId, id) {
+      // deleteMany, not delete: removing someone who's already gone, or who
+      // belongs to another school, is a no-op (0 rows), the same as the
+      // mock, instead of a P2025 error.
+      await db.staff.deleteMany({ where: { id, schoolId } });
     },
   };
 }

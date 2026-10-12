@@ -34,17 +34,17 @@ const allCards = [lostCard, activeCard, otherStudentCard];
 describe("createMockCardRepository", () => {
   it("lists a student's full card history", async () => {
     const repo = createMockCardRepository(allCards, { latencyMs: 0 });
-    await expect(repo.listByStudent("student-a")).resolves.toEqual([lostCard, activeCard]);
+    await expect(repo.listByStudent("school-a", "student-a")).resolves.toEqual([lostCard, activeCard]);
   });
 
   it("finds only the active card for a student", async () => {
     const repo = createMockCardRepository(allCards, { latencyMs: 0 });
-    await expect(repo.getActiveForStudent("student-a")).resolves.toEqual(activeCard);
+    await expect(repo.getActiveForStudent("school-a", "student-a")).resolves.toEqual(activeCard);
   });
 
   it("returns null when a student has no active card", async () => {
     const repo = createMockCardRepository([lostCard], { latencyMs: 0 });
-    await expect(repo.getActiveForStudent("student-a")).resolves.toBeNull();
+    await expect(repo.getActiveForStudent("school-a", "student-a")).resolves.toBeNull();
   });
 
   it("looks a card up by its serial", async () => {
@@ -113,13 +113,21 @@ describe("createMockCardRepository", () => {
 
   it("marks a card lost", async () => {
     const repo = createMockCardRepository([activeCard], { latencyMs: 0 });
-    const result = await repo.markLost("card-active");
+    const result = await repo.markLost("school-a", "card-active");
     expect(result?.status).toBe("lost");
-    await expect(repo.getActiveForStudent("student-a")).resolves.toBeNull();
+    await expect(repo.getActiveForStudent("school-a", "student-a")).resolves.toBeNull();
+  });
+
+  it("never reaches another school's cards (Step 51)", async () => {
+    const repo = createMockCardRepository([activeCard], { latencyMs: 0 });
+    await expect(repo.listByStudent("school-b", "student-a")).resolves.toEqual([]);
+    await expect(repo.getActiveForStudent("school-b", "student-a")).resolves.toBeNull();
+    await expect(repo.markLost("school-b", "card-active")).resolves.toBeNull();
+    await expect(repo.getActiveForStudent("school-a", "student-a")).resolves.toEqual(activeCard);
   });
 
   it("returns null when marking an unknown card lost", async () => {
     const repo = createMockCardRepository([activeCard], { latencyMs: 0 });
-    await expect(repo.markLost("nope")).resolves.toBeNull();
+    await expect(repo.markLost("school-a", "nope")).resolves.toBeNull();
   });
 });

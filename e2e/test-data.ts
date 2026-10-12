@@ -59,6 +59,8 @@ export function findBalangaStudentByFullName(fullName: string) {
 export const TEST_GATE_TOKEN = "tal_dev_e2e_test_gate_token_not_for_real_use";
 /** The test guardhouse monitor's token (Step 48), likewise only in the test database. */
 export const TEST_MONITOR_TOKEN = "tal_dev_e2e_test_monitor_token_not_for_real_use";
+/** A gate at the second demo school, Oceanview (Step 51's isolation tests), likewise only in the test database. */
+export const TEST_OCEANVIEW_GATE_TOKEN = "tal_dev_e2e_oceanview_gate_token_not_for_real_use";
 
 /**
  * What the owner's USB reader types for a card: its first 4 bytes, read as

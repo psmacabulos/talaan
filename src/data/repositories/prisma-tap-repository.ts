@@ -48,12 +48,16 @@ export function createPrismaTapRepository(db: PrismaClient = prisma): TapReposit
       });
       return rows.map(toTap);
     },
-    async listByStudent(studentId) {
-      const rows = await db.tap.findMany({ where: { studentId }, orderBy: EARLIEST_FIRST });
+    async listByStudent(schoolId, studentId) {
+      const rows = await db.tap.findMany({ where: { studentId, schoolId }, orderBy: EARLIEST_FIRST });
       return rows.map(toTap);
     },
     async getById(id) {
       const row = await db.tap.findUnique({ where: { id } });
+      return row ? toTap(row) : null;
+    },
+    async getInSchool(schoolId, id) {
+      const row = await db.tap.findFirst({ where: { id, schoolId } });
       return row ? toTap(row) : null;
     },
     async findByCardBetween(schoolId, cardSerial, from, to) {

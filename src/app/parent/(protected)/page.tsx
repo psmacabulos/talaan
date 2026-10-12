@@ -27,9 +27,14 @@ export default async function ParentHomePage() {
     schoolRepository.getById(session.schoolId),
   ]);
 
-  const students = await Promise.all(links.map((link) => studentRepository.getById(link.studentId)));
+  // Only the parent's own school, from the signed session (Step 51).
+  const students = await Promise.all(
+    links.map((link) => studentRepository.getInSchool(session.schoolId, link.studentId)),
+  );
   const linkedStudents = students.filter((student): student is Student => student !== null);
-  const tapsByStudent = await Promise.all(linkedStudents.map((student) => tapRepository.listByStudent(student.id)));
+  const tapsByStudent = await Promise.all(
+    linkedStudents.map((student) => tapRepository.listByStudent(session.schoolId, student.id)),
+  );
   // A parent belongs to one school, and so does every child they link, so
   // that school's attendance times judge every child here.
   const day = schoolToday(getNow(), school ?? DEFAULT_ATTENDANCE_TIMES);

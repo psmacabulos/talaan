@@ -56,8 +56,9 @@ export type RecordTapResult =
 
 export type RecordTapDeps = {
   cards: Pick<CardRepository, "listBySerialPrefix" | "getBySerial">;
+  // getById stays unscoped on purpose: the replay check compares the stored tap's school with the device's (Step 51).
   taps: Pick<TapRepository, "getById" | "findByCardBetween" | "listByStudent">;
-  students: Pick<StudentRepository, "getById">;
+  students: Pick<StudentRepository, "getInSchool">;
   schools: Pick<SchoolRepository, "getById">;
   writer: TapWriter;
 };
@@ -79,7 +80,7 @@ function toTapStudent(student: Student | null): TapStudent | null {
 /** Time in or time out, and whether the school sends it to parents. */
 async function directionOf(tap: Tap, studentId: string, deps: RecordTapDeps) {
   const [studentTaps, school] = await Promise.all([
-    deps.taps.listByStudent(studentId),
+    deps.taps.listByStudent(tap.schoolId, studentId),
     deps.schools.getById(tap.schoolId),
   ]);
   const direction = deriveTapKind(tap, studentTaps);
@@ -97,7 +98,7 @@ async function replay(tap: Tap, deps: RecordTapDeps): Promise<RecordTapResult> {
   if (!tap.studentId) return { outcome: "unknown_card", tap, replayed: true };
 
   const [student, card] = await Promise.all([
-    deps.students.getById(tap.studentId),
+    deps.students.getInSchool(tap.schoolId, tap.studentId),
     deps.cards.getBySerial(tap.cardSerial),
   ]);
   if (card?.status === "lost" && card.studentId === tap.studentId) {
@@ -153,7 +154,9 @@ export async function recordTap(input: RecordTapInput, deps: RecordTapDeps = DEF
     new Date(at + DEBOUNCE_MS).toISOString(),
   );
   if (previousTap) {
-    const student = previousTap.studentId ? await deps.students.getById(previousTap.studentId) : null;
+    const student = previousTap.studentId
+      ? await deps.students.getInSchool(device.schoolId, previousTap.studentId)
+      : null;
     return { outcome: "duplicate", previousTap, student: toTapStudent(student) };
   }
 
@@ -170,7 +173,7 @@ export async function recordTap(input: RecordTapInput, deps: RecordTapDeps = DEF
     tappedAt,
   });
 
-  const student = studentId ? await deps.students.getById(studentId) : null;
+  const student = studentId ? await deps.students.getInSchool(device.schoolId, studentId) : null;
   let alert: Alert | null = null;
   let notification: Notification | null = null;
   let result: RecordTapResult;
@@ -211,7 +214,7 @@ export async function recordTap(input: RecordTapInput, deps: RecordTapDeps = DEF
   });
   if (written === "exists") {
     const winner = await deps.taps.getById(tap.id);
-    if (winner) return replay(winner, deps);
+    if (winner && winner.schoolId === device.schoolId) return replay(winner, deps);
   }
   return result;
 }

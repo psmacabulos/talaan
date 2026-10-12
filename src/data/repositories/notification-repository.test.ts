@@ -39,17 +39,17 @@ describe("createMockNotificationRepository", () => {
 
   it("lists a student's notifications", async () => {
     const repo = createMockNotificationRepository(allNotifications, { latencyMs: 0 });
-    await expect(repo.listByStudent("student-a")).resolves.toEqual([notifA]);
+    await expect(repo.listByStudent("school-a", "student-a")).resolves.toEqual([notifA]);
   });
 
   it("gets a notification by id", async () => {
     const repo = createMockNotificationRepository(allNotifications, { latencyMs: 0 });
-    await expect(repo.getById("notification-b")).resolves.toEqual(notifB);
+    await expect(repo.getInSchool("school-a", "notification-b")).resolves.toEqual(notifB);
   });
 
   it("returns null for an unknown id", async () => {
     const repo = createMockNotificationRepository(allNotifications, { latencyMs: 0 });
-    await expect(repo.getById("nope")).resolves.toBeNull();
+    await expect(repo.getInSchool("school-a", "nope")).resolves.toBeNull();
   });
 
   it("appends a created notification", async () => {
@@ -78,18 +78,27 @@ describe("createMockNotificationRepository", () => {
     };
     await repo.create(created);
     await repo.create(created);
-    await expect(repo.listByStudent("student-a")).resolves.toEqual([notifA, created]);
+    await expect(repo.listByStudent("school-a", "student-a")).resolves.toEqual([notifA, created]);
   });
 
   it("marks a notification read", async () => {
     const repo = createMockNotificationRepository(allNotifications, { latencyMs: 0 });
-    const marked = await repo.markRead("notification-a");
+    const marked = await repo.markRead("school-a", "notification-a");
     expect(marked).toEqual({ ...notifA, read: true });
-    await expect(repo.getById("notification-a")).resolves.toEqual({ ...notifA, read: true });
+    await expect(repo.getInSchool("school-a", "notification-a")).resolves.toEqual({ ...notifA, read: true });
+  });
+
+  it("never reaches another school's notifications (Step 51)", async () => {
+    const repo = createMockNotificationRepository([...allNotifications], { latencyMs: 0 });
+    await expect(repo.getInSchool("school-b", "notification-a")).resolves.toBeNull();
+    await expect(repo.listByStudent("school-b", "student-a")).resolves.toEqual([]);
+    await expect(repo.markRead("school-b", "notification-a")).resolves.toBeNull();
+    // Its own school still finds it (an earlier test may have marked it read).
+    await expect(repo.getInSchool("school-a", "notification-a")).resolves.toMatchObject({ id: "notification-a" });
   });
 
   it("returns null when marking an unknown id", async () => {
     const repo = createMockNotificationRepository(allNotifications, { latencyMs: 0 });
-    await expect(repo.markRead("nope")).resolves.toBeNull();
+    await expect(repo.markRead("school-a", "nope")).resolves.toBeNull();
   });
 });

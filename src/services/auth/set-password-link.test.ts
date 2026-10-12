@@ -53,7 +53,7 @@ describe("set-password links", () => {
   it("refuses a link for a staff member who was removed", async () => {
     const { staff, deps } = setup();
     const token = makeSetPasswordToken(invited.id, null, SECRET, NOW);
-    await staff.remove(invited.id);
+    await staff.remove("school-a", invited.id);
     await expect(readSetPasswordToken(token, deps)).resolves.toBeNull();
   });
 

@@ -35,12 +35,12 @@ export function createPrismaNotificationRepository(db: PrismaClient = prisma): N
       const rows = await db.notification.findMany({ where: { schoolId }, orderBy: EARLIEST_FIRST });
       return rows.map(toNotification);
     },
-    async listByStudent(studentId) {
-      const rows = await db.notification.findMany({ where: { studentId }, orderBy: EARLIEST_FIRST });
+    async listByStudent(schoolId, studentId) {
+      const rows = await db.notification.findMany({ where: { studentId, schoolId }, orderBy: EARLIEST_FIRST });
       return rows.map(toNotification);
     },
-    async getById(id) {
-      const row = await db.notification.findUnique({ where: { id } });
+    async getInSchool(schoolId, id) {
+      const row = await db.notification.findFirst({ where: { id, schoolId } });
       return row ? toNotification(row) : null;
     },
     async create(notification) {
@@ -51,10 +51,11 @@ export function createPrismaNotificationRepository(db: PrismaClient = prisma): N
       });
       return toNotification(row);
     },
-    async markRead(id) {
-      // updateMany, like Step 37's deleteMany: an unknown id changes 0 rows
-      // instead of throwing, and the interface promises `null` for that.
-      const { count } = await db.notification.updateMany({ where: { id }, data: { read: true } });
+    async markRead(schoolId, id) {
+      // updateMany, like Step 37's deleteMany: an unknown id, or another
+      // school's, changes 0 rows instead of throwing, and the interface
+      // promises `null` for that.
+      const { count } = await db.notification.updateMany({ where: { id, schoolId }, data: { read: true } });
       if (count === 0) return null;
       const row = await db.notification.findUniqueOrThrow({ where: { id } });
       return toNotification(row);

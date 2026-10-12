@@ -26,7 +26,7 @@ export default async function ParentProtectedLayout({ children }: { children: Re
   // The bell's items come from this layout so every parent page has them
   // without each page re-fetching; the server actions' `refresh()`
   // re-renders this layout too, which is how the badge updates after a mark-read.
-  const notifications = await getParentNotifications(session.parentId);
+  const notifications = await getParentNotifications(session.parentId, session.schoolId);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">

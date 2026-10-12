@@ -31,12 +31,12 @@ const RECORD_NOT_FOUND = "P2025";
 
 export function createPrismaCardRepository(db: PrismaClient = prisma): CardRepository {
   return {
-    async listByStudent(studentId) {
-      const rows = await db.card.findMany({ where: { studentId }, orderBy: { linkedAt: "asc" } });
+    async listByStudent(schoolId, studentId) {
+      const rows = await db.card.findMany({ where: { studentId, schoolId }, orderBy: { linkedAt: "asc" } });
       return rows.map(toCard);
     },
-    async getActiveForStudent(studentId) {
-      const row = await db.card.findFirst({ where: { studentId, status: "active" } });
+    async getActiveForStudent(schoolId, studentId) {
+      const row = await db.card.findFirst({ where: { studentId, schoolId, status: "active" } });
       return row ? toCard(row) : null;
     },
     async getBySerial(serial) {
@@ -64,9 +64,10 @@ export function createPrismaCardRepository(db: PrismaClient = prisma): CardRepos
       });
       return toCard(row);
     },
-    async markLost(cardId) {
+    async markLost(schoolId, cardId) {
       try {
-        const row = await db.card.update({ where: { id: cardId }, data: { status: "lost" } });
+        // Another school's card id matches no row: P2025, null below.
+        const row = await db.card.update({ where: { id: cardId, schoolId }, data: { status: "lost" } });
         return toCard(row);
       } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === RECORD_NOT_FOUND) {

@@ -69,7 +69,14 @@ describe("createMockTapRepository", () => {
 
   it("lists a student's taps only", async () => {
     const repo = createMockTapRepository(allTaps, { latencyMs: 0 });
-    await expect(repo.listByStudent("student-a")).resolves.toEqual([tapA]);
+    await expect(repo.listByStudent("school-a", "student-a")).resolves.toEqual([tapA]);
+  });
+
+  it("never reaches another school's taps (Step 51)", async () => {
+    const repo = createMockTapRepository(allTaps, { latencyMs: 0 });
+    await expect(repo.listByStudent("school-b", "student-a")).resolves.toEqual([]);
+    await expect(repo.getInSchool("school-b", tapA.id)).resolves.toBeNull();
+    await expect(repo.getInSchool("school-a", tapA.id)).resolves.toEqual(tapA);
   });
 
   it("returns an empty list for a school/student with no taps", async () => {

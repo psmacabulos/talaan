@@ -26,6 +26,8 @@ export const PERSONAS = {
   super_admin: { kind: "staff", staffId: "staff-0001" },
   principal: { kind: "staff", staffId: "staff-principal-school-balanga" },
   teacher: { kind: "staff", staffId: "staff-teacher-school-balanga" },
+  // The second demo school's principal, for the isolation tests (Step 51).
+  oceanview_principal: { kind: "staff", staffId: "staff-principal-school-oceanview" },
   parent: { kind: "parent", parentId: "parent-balanga-1" },
 } as const;
 
