@@ -1,6 +1,7 @@
 "use client";
 
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import type { SignInLink } from "@/features/staff/sign-in-link";
 import { SchoolForm } from "./school-form";
 
 /**
@@ -21,7 +22,7 @@ export function SchoolDrawer({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSuccess: (principalLink: SignInLink) => void;
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

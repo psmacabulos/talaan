@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, MoreVertical, Send, UserMinus } from "lucide-react";
+import { KeyRound, Link2, Loader2, MoreVertical, UserMinus } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -22,8 +22,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MAIN_CONTENT_ID } from "@/components/skip-link";
 import { cn } from "@/lib/utils";
-import { removeStaff, resendStaffInvite } from "./actions";
+import { createSignInLink, removeStaff } from "./actions";
 import { staffRowActions } from "./row-actions";
+import type { SignInLink } from "./sign-in-link";
+import { SignInLinkDialog } from "./sign-in-link-dialog";
 import { staffName } from "./staff-display";
 import type { Staff } from "./types";
 
@@ -48,19 +50,24 @@ export function StaffRowMenu({
   currentUserId: string;
   className?: string;
 }) {
-  const { canResend, canRemove } = staffRowActions(staff, currentUserId);
+  const { canMakeLink, canRemove } = staffRowActions(staff, currentUserId);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [link, setLink] = useState<SignInLink | null>(null);
   const [isPending, startTransition] = useTransition();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const removedRef = useRef(false);
   const name = staffName(staff);
 
-  if (!canResend && !canRemove) return null;
+  if (!canMakeLink && !canRemove) return null;
 
-  function handleResend() {
+  // Step 50.5: an invited account gets its first-password link, an active
+  // one a password reset link. The server decides which from the account.
+  const isInvited = staff.status === "invited";
+
+  function handleMakeLink() {
     startTransition(async () => {
-      const result = await resendStaffInvite(staff.id);
-      if (result.ok) toast(`Invitation sent again to ${staff.email}`);
+      const result = await createSignInLink(staff.id);
+      if (result.ok) setLink(result.link);
       else toast.error(result.error);
     });
   }
@@ -101,13 +108,17 @@ export function StaffRowMenu({
             {staff.email}
           </DropdownMenuLabel>
           <DropdownMenuSeparator className="md:hidden" />
-          {canResend ? (
-            <DropdownMenuItem onSelect={handleResend} className={ITEM_CLASS}>
-              <Send className="text-muted-foreground" aria-hidden="true" />
-              Resend invitation
+          {canMakeLink ? (
+            <DropdownMenuItem onSelect={handleMakeLink} className={ITEM_CLASS}>
+              {isInvited ? (
+                <Link2 className="text-muted-foreground" aria-hidden="true" />
+              ) : (
+                <KeyRound className="text-muted-foreground" aria-hidden="true" />
+              )}
+              {isInvited ? "Copy sign-in link" : "Copy password reset link"}
             </DropdownMenuItem>
           ) : null}
-          {canResend && canRemove ? <DropdownMenuSeparator /> : null}
+          {canMakeLink && canRemove ? <DropdownMenuSeparator /> : null}
           {canRemove ? (
             <DropdownMenuItem variant="destructive" onSelect={() => setConfirmOpen(true)} className={ITEM_CLASS}>
               <UserMinus aria-hidden="true" />
@@ -149,6 +160,8 @@ export function StaffRowMenu({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <SignInLinkDialog link={link} onClose={() => setLink(null)} />
     </>
   );
 }

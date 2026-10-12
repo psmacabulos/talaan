@@ -7,7 +7,7 @@ import type { Staff } from "./types";
 // their own rules (row-actions.test.ts), and mocking them keeps next/cache
 // and the mock repositories out of this pure rendering test.
 vi.mock("./actions", () => ({
-  resendStaffInvite: vi.fn(),
+  createSignInLink: vi.fn(),
   removeStaff: vi.fn(),
 }));
 
@@ -75,14 +75,20 @@ describe("StaffCompactList", () => {
     expect(screen.queryByText("Active")).not.toBeInTheDocument();
   });
 
-  it("keeps the email in the ⋮ menu, with resend and remove for a pending invite", () => {
+  it("keeps the email in the ⋮ menu, with a sign-in link and remove for a pending invite", () => {
     render(<StaffCompactList items={[teacher]} currentUserId="staff-principal" />);
     expect(screen.queryByText("teacher@school.example")).not.toBeInTheDocument();
     openMenu("Jose Pascual");
 
     expect(screen.getByText("teacher@school.example")).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "Resend invitation" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Copy sign-in link" })).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: "Remove" })).toBeInTheDocument();
+  });
+
+  it("offers a password reset link for someone else's active account", () => {
+    render(<StaffCompactList items={[principal]} currentUserId="someone-else" />);
+    openMenu("Maria Ramos");
+    expect(screen.getByRole("menuitem", { name: "Copy password reset link" })).toBeInTheDocument();
   });
 
   it("has no menu on the signed-in person's own, already accepted, account", () => {

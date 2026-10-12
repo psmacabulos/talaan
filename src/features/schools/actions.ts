@@ -6,6 +6,7 @@ import { schoolRepository, staffRepository } from "@/data/repositories";
 import { DEFAULT_ATTENDANCE_TIMES, type AttendanceTimes } from "@/features/attendance/status";
 import { SIGNED_OUT_MESSAGE } from "@/features/auth/messages";
 import { EMAIL_IN_USE_MESSAGE } from "@/features/staff/messages";
+import { makeSignInLink, type SignInLink } from "@/features/staff/sign-in-link";
 import { getSession, startStaffSession } from "@/lib/session";
 import { clearThemeOverride } from "@/lib/theme/theme-override-actions";
 import { attendanceTimesSchema, createSchoolSchema, notificationPreferenceSchema, schoolThemeSchema } from "./schemas";
@@ -23,7 +24,7 @@ export type AppearanceSettingsActionResult = { ok: true } | { ok: false; formErr
 export type CreateSchoolFieldErrors = Partial<Record<keyof CreateSchoolFormInput, string>>;
 
 export type CreateSchoolActionResult =
-  { ok: true } | { ok: false; formError?: string; fieldErrors?: CreateSchoolFieldErrors };
+  { ok: true; principalLink: SignInLink } | { ok: false; formError?: string; fieldErrors?: CreateSchoolFieldErrors };
 
 /** Only failure returns — on success `openSchool` redirects instead. */
 export type OpenSchoolActionResult = { ok: false; formError: string };
@@ -190,7 +191,7 @@ export async function createSchool(input: CreateSchoolFormInput): Promise<Create
     ...DEFAULT_ATTENDANCE_TIMES,
   });
 
-  await staffRepository.create({
+  const principal = await staffRepository.create({
     id: crypto.randomUUID(),
     schoolId,
     role: "principal",
@@ -201,7 +202,7 @@ export async function createSchool(input: CreateSchoolFormInput): Promise<Create
   });
 
   refresh();
-  return { ok: true };
+  return { ok: true, principalLink: await makeSignInLink(principal) };
 }
 
 /**

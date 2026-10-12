@@ -2147,3 +2147,34 @@ Things found while the owner tested Steps 46–49 at home, besides the review fi
 **Checks run while building.** Unit tests for the new and touched files: the throttle, `checkStaffSignIn`, `resolveParentSession`, the staff repository and the session (42 tests, passing). The full checks and the browser tests are the owner's to run.
 
 **Fix after the owner's check run: `src/app/page.test.tsx` failed.** `npm test` reported "Unable to find an accessible element with the role "heading" and name `/attendance portal/i`", with an empty `<div />` rendered. The login page became an `async` Server Component in this step (it awaits `getSession()` to redirect a signed-in visitor), and the old test rendered `<LoginPage />` like a plain component, which renders nothing for an async function. Missed because only the files this step touched were run while building, and the test lives next to the page rather than with the auth code. **Fix:** the test stubs `@/lib/session`'s `getSession`, `next/navigation`'s `redirect` and the auth Server Actions, then renders `await LoginPage()`. Two cases were added: production leaves out the demo shortcuts, and a signed-in visitor is redirected to `/dashboard`.
+
+## Step 50.5: set-password links (2026-10-12)
+
+**Built unattended.** The owner authorized Steps 50.5 and 51 to be built, tested and committed (not pushed) overnight, and removed the `git add` / `git commit` deny rules from `.claude/settings.json` for it (push stays denied). Every recipe decision was taken as recommended; the recipe's "What changed while building" lists everything decided along the way, for the owner's review. The "Owner review" box stays unticked.
+
+**What was built.**
+- `src/services/auth/set-password-link.ts`: `makeSetPasswordToken`, `readSetPasswordToken` (returns the staff member), `setPasswordPath`. The token is a Step 50 signed value with the purpose `set-password`, 7 days, carrying the password fingerprint at the time it was made.
+- `StaffRepository.setPassword(id, hash)`, which also marks the account active (mock and Prisma).
+- `src/features/staff/sign-in-link.ts` (`makeSignInLink`, server-only) and `src/lib/request-origin.ts`.
+- `createSignInLink` replaces `resendStaffInvite`. `inviteStaff` and `createSchool` return the new person's link.
+- `SignInLinkDialog`, opened after Invite staff, after Add school, and from the ⋮ menu ("Copy sign-in link" / "Copy password reset link").
+- `/set-password` (`src/app/set-password/page.tsx`, `SetPasswordForm`, `setPasswordWithLink`).
+- `npm run staff:link` (`scripts/staff-link.ts`), including `--create-super-admin`.
+- One shared `passwordSchema` (8 characters) for staff and parents.
+
+**The link's address.** A link must carry the site's full address, and nothing about the site should be hard-coded. `requestOrigin()` uses the `Origin` header a browser sends with every Server Action call, which is exactly the address the principal is using. It falls back to `x-forwarded-proto`/`x-forwarded-host` (Heroku's router) and then `host`. The first draft guessed `https` in production from `NODE_ENV` alone, which would have broken the browser tests: they run a production build on `http://localhost:3100`. Using `Origin` first avoids the guess.
+
+**Browser-safe constant.** The dialog shows "works once, for 7 days". Importing that number from the service would have pulled `node:crypto` (through `signed-value.ts` and `password.ts`) into browser code. It moved to `src/features/auth/set-password-rules.ts`, a file with no imports, which both the service and the dialog use.
+
+**A test mutating shared data.** The mock repository's new `setPassword` replaces the row in the array it was given. The first version of its unit test passed the shared `allStaff` array, which would have changed the "invited" teacher for every later test in that file. The test now passes a copy.
+
+**Checked by eye** through a dev server on the local database. The local `staff:link` command printed a real link, which was opened but not used, so nothing in the database changed. Screenshots: the set-password page at 360 px (light), and the reset-link dialog at 360 px (light) and 1280 px (dark). At 360 px the dialog's title ran under its close button; `pr-8` on the title fixed it.
+
+**Checks, all run before the commit:**
+- lint and `check:tokens`: clean;
+- typecheck: clean;
+- unit tests: 581 passing, in 83 files;
+- `npm run build`: passes, with the new `/set-password` route;
+- `npx playwright test`, every spec including the accessibility audit: 211 passed, 13 skipped (the existing phone-only and desktop-only tests).
+
+The new browser tests: a principal invites a teacher, a fresh browser sets a password through the link and lands on the dashboard, the same link then says it doesn't work any more, and the new password signs in from the sign-in screen; plus a made-up link refused.

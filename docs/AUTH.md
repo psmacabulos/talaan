@@ -4,7 +4,7 @@ Talaan has four kinds of sign-in, one per kind of visitor:
 
 | Who | Proves who they are with | Carries | Built in |
 |---|---|---|---|
-| Staff (super admin, principal, teacher) | Email and password | A **signed** `talaan_session` cookie | Steps 50 and 50.1 |
+| Staff (super admin, principal, teacher) | Email and password, first set through a link | A **signed** `talaan_session` cookie | Steps 50, 50.1 and 50.5 |
 | Parents, web portal | Email and password | A **signed** `talaan_parent_session` cookie | Step 22; hashed passwords Step 41; signed Step 50.1 |
 | Gate tablet, guardhouse TV | A device token typed once | A random `tal_dev_…` token, kept hashed | Steps 43 and 48 (`docs/GATE.md`) |
 | Parents, Expo app | Email and password | A random `tal_par_…` token, kept hashed | Step 53 |
@@ -128,6 +128,30 @@ flowchart LR
 
 **The page.** `/` sends a signed-in visitor straight to `/dashboard`. The "Try the prototype as" buttons only render outside production, where `setDevSession` works; in production the form is the only way in. **Sign out** is a `<form action={signOut}>` button (`src/components/app-shell/sign-out-button.tsx`) in the top bar (icon only below md) and at the bottom of the mobile drawer, so it works before JavaScript loads.
 
+### First passwords and resets: set-password links (Step 50.5)
+
+Staff never sign themselves up, and there's no email service. A new account is **invited**, with no password, until its owner uses a link the app makes and the principal sends however they like (Messenger, Viber, SMS).
+
+```mermaid
+sequenceDiagram
+    participant P as Principal
+    participant App as Staff page
+    participant T as Teacher
+    participant SP as /set-password
+    P->>App: Invite staff (or ⋮ Copy sign-in link)
+    App-->>P: dialog with https://…/set-password?token=…
+    P->>T: sends it on Messenger
+    T->>SP: opens it, types a password twice
+    SP->>SP: setPasswordWithLink: link still good? hash, mark active
+    SP-->>T: signed in, on /dashboard
+    Note over SP: The password fingerprint changed, so the link is used up
+```
+
+- **The token** (`src/services/auth/set-password-link.ts`) is `signValue({ staffId, pv, exp }, "set-password", secret)`: 7 days, its own purpose, and the password fingerprint *when the link was made* (`"none"` for an invited account). Setting a password changes the fingerprint, so a link works once, and a reset link signs the person out of every other browser too. No table of links is kept. A newer link doesn't cancel an older unused one; removing the staff member kills both.
+- **Who can make one:** a principal (or a super admin viewing the school) for anyone at that school except themselves, through `createSignInLink` and `inviteStaff` (`src/features/staff/actions.ts`); a super admin for a new school's principal, through `createSchool`; and anyone with the server's terminal, through `npm run staff:link` (below). `makeSignInLink` (`src/features/staff/sign-in-link.ts`) builds the full address from the request (`src/lib/request-origin.ts`) and is not a Server Action.
+- **The page** (`src/app/set-password/page.tsx`) reads the token, greets the person by first name and shows their email, never the school. A bad link says "This link has expired or was already used. Ask your principal for a new one." `setPasswordWithLink` reads the token *again* on submit, stores the scrypt hash with `staffRepository.setPassword` (which also marks the account active), and starts the session.
+- **The first super admin** on a new server: `npm run staff:link -- --create-super-admin --email … --first-name … --last-name …` creates the account and prints its link's path. `npm run staff:link -- --email …` prints a link for any existing account. Both use the same `SESSION_SECRET` as the app, so the app accepts the link.
+
 ## The parent session
 
 The parent web portal works the same way, with its own cookie and code:
@@ -157,6 +181,6 @@ if (!session.schoolId || session.role === "teacher") return { ok: false, formErr
 
 **Sign everyone out.** Change `SESSION_SECRET`. Every cookie's stamp stops matching.
 
-**Sign one person out everywhere.** Change their password (Step 50.5's reset link). Their `pv` changes.
+**Sign one person out everywhere.** Send them a password reset link (Staff → ⋮ → Copy password reset link, or `npm run staff:link -- --email …`). When they set a new password, their `pv` changes.
 
 **A new kind of signed value** (a link, another cookie). Add a purpose to `SignPurpose` in `src/lib/signed-value.ts`, sign with `signValue`, read with `readSignedValue`, and check the payload's fields with a Zod schema, as `readStaffSessionCookie` does.

@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████████░░ 91%**  (206 of 226 tasks, 59 of 64 steps approved)
+**Overall progress: ███████████████████░ 93%**  (211 of 226 tasks, 60 of 64 steps approved)
 
-**Next up:** Step 50.1, The real sign-in form (ready for your review)
+**Next up:** Step 50.5, Set-password links (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -66,8 +66,8 @@
 | 48 | The `/gate/display` guardhouse monitor | ██████████ 100% | Approved |
 | 49 | Time in and time out on the attendance page | ██████████ 100% | Approved |
 | 50 | Signed staff sessions | ██████████ 100% | Approved |
-| 50.1 | The real sign-in form | ████████░░  80% | Ready for your review |
-| 50.5 | Set-password links | ░░░░░░░░░░   0% | Not started |
+| 50.1 | The real sign-in form | ██████████ 100% | Approved |
+| 50.5 | Set-password links | ████████░░  80% | Ready for your review |
 | 51 | One school can never see another's data | ░░░░░░░░░░   0% | Not started |
 | 52 | Deploy the demo to Heroku | ░░░░░░░░░░   0% | Not started |
 | 53 | The parent API | ░░░░░░░░░░   0% | Not started |
@@ -635,14 +635,14 @@ Recipe: `docs/backend/step-50.1-sign-in-form.md`
 - [x] Unit tests for the limit and the sign-in action, and browser tests for sign-in, a wrong password, sign out and a forged cookie.
 Done when: the principal signs in with `Talaan123!`; the fifth wrong password says "Too many tries"; Sign out works; a hand-typed parent cookie is ignored; and every check passes.
 Commit: `feat(auth): real staff sign-in, sign out, and a signed parent cookie`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 50.5: Set-password links
 Recipe: `docs/backend/step-50.5-set-password-links.md`
-- [ ] `makeSetPasswordToken`/`readSetPasswordToken`: signed, 7 days, and dead once used (through the password fingerprint).
-- [ ] The link dialog after Add staff, "Copy sign-in link" and "Copy password reset link" in the staff ⋮ menu, and "Copy principal's sign-in link" on the Schools page.
-- [ ] `/set-password`: set a password, become active, and sign in. `npm run staff:link`, including `--create-super-admin`.
-- [ ] Unit tests, and a browser test of add, copy, set, and a used link refused.
+- [x] `makeSetPasswordToken`/`readSetPasswordToken`: signed, 7 days, and dead once used (through the password fingerprint).
+- [x] The link dialog after Add staff, "Copy sign-in link" and "Copy password reset link" in the staff ⋮ menu, and the new principal's link after Add school (changed 2026-10-12: the Schools page has no ⋮ menu; see the recipe).
+- [x] `/set-password`: set a password, become active, and sign in. `npm run staff:link`, including `--create-super-admin`.
+- [x] Unit tests, and a browser test of add, copy, set, and a used link refused.
 Done when: a teacher added on the Staff page signs in through their link, the same link then says it was used, and every check passes.
 Commit: `feat(auth): set-password links for new staff and password resets`
 - [ ] Owner review: I checked it and said "approved"

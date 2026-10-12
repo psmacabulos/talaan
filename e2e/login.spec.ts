@@ -185,3 +185,61 @@ test.describe("Staff session (Steps 50 and 50.1)", () => {
     await expect(page).toHaveURL("/parent/login");
   });
 });
+
+test.describe("Set-password links (Step 50.5)", () => {
+  test("a new teacher sets their password through their link, which then stops working", async ({
+    browser,
+    context,
+    page,
+    baseURL,
+  }, testInfo) => {
+    const email = `new-teacher-${testInfo.project.name}-${Date.now()}@talaan.example`;
+    const password = "Chalkboard-2026";
+
+    // The principal adds a teacher and gets the link to send them.
+    await signInAs(context, "principal", baseURL!);
+    await page.goto("/staff");
+    await page.getByRole("button", { name: "Invite staff" }).click();
+    const drawer = page.getByRole("dialog", { name: "Invite staff" });
+    await drawer.getByLabel("First name").fill("Lorna");
+    await drawer.getByLabel("Surname").fill("Villanueva");
+    await drawer.getByLabel("Email").fill(email);
+    await drawer.getByRole("button", { name: "Invite staff" }).click();
+    const linkDialog = page.getByRole("dialog", { name: "Send this link to Lorna Villanueva" });
+    await expect(linkDialog).toBeVisible();
+    const link = await linkDialog.getByLabel("Link").inputValue();
+    expect(link).toContain("/set-password?token=");
+
+    // The teacher opens it in their own browser and sets a password.
+    // Fresh browsers of their own, as if on the teacher's phone.
+    const teacherContext = await browser.newContext({ baseURL });
+    const teacher = await teacherContext.newPage();
+    await teacher.goto(link);
+    await expect(teacher.getByRole("heading", { name: "Set your password, Lorna" })).toBeVisible();
+    await teacher.getByLabel("New password").fill(password);
+    await teacher.getByLabel("Confirm password").fill(password);
+    await teacher.getByRole("button", { name: "Set password and sign in" }).click();
+    await expect(teacher).toHaveURL("/dashboard");
+
+    // The same link is used up.
+    await teacher.goto(link);
+    await expect(teacher.getByRole("heading", { name: "This link doesn't work any more" })).toBeVisible();
+
+    // The new password works on the sign-in screen.
+    const laterContext = await browser.newContext({ baseURL });
+    const later = await laterContext.newPage();
+    await later.goto("/");
+    await later.getByLabel("Email").fill(email);
+    await later.getByLabel("Password", { exact: true }).fill(password);
+    await later.getByRole("button", { name: "Sign in", exact: true }).click();
+    await expect(later).toHaveURL("/dashboard");
+
+    await teacherContext.close();
+    await laterContext.close();
+  });
+
+  test("a made-up link is refused", async ({ page }) => {
+    await page.goto("/set-password?token=made.up");
+    await expect(page.getByRole("heading", { name: "This link doesn't work any more" })).toBeVisible();
+  });
+});

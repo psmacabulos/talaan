@@ -16,6 +16,8 @@ export interface StaffRepository {
   getForSession(id: string): Promise<StaffWithPasswordHash | null>;
   /** For the sign-in form (Step 50.1): the account behind an email, case-insensitive, with its password hash. */
   findForSignIn(email: string): Promise<StaffWithPasswordHash | null>;
+  /** Step 50.5's set-password link: stores a new hash and makes an invited account active. A no-op for an unknown id. */
+  setPassword(id: string, passwordHash: string): Promise<void>;
   /** Every staff member, every school, plus the super admin — the Step 11 dev switcher's full persona list. */
   list(): Promise<Staff[]>;
   /** Appends a newly invited staff member (Step 18). Idempotent by `id`, same shape as `StudentRepository.create`. */
@@ -53,6 +55,14 @@ export function createMockStaffRepository(
       await simulateLatency(latencyMs);
       const staff = data.find((member) => member.id === id);
       return staff ? { staff, passwordHash: passwordHashes.get(id) ?? null } : null;
+    },
+    async setPassword(id, passwordHash) {
+      await simulateLatency(latencyMs);
+      const index = data.findIndex((staff) => staff.id === id);
+      const staff = data[index];
+      if (!staff) return;
+      data[index] = { ...staff, status: "active" };
+      passwordHashes.set(id, passwordHash);
     },
     async findForSignIn(email) {
       await simulateLatency(latencyMs);

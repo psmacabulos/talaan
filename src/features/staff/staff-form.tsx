@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SheetFooter } from "@/components/ui/sheet";
 import type { GradeLevel } from "@/features/students/types";
 import { inviteStaff } from "./actions";
+import type { SignInLink } from "./sign-in-link";
 import { staffFormSchema } from "./schemas";
 import type { StaffFormInput, StaffFormValues, StaffInviteRole } from "./types";
 
@@ -41,7 +42,13 @@ function emptyValues(): StaffFormValues {
  * action re-validates the same schema (CLAUDE.md: "validated on both
  * sides").
  */
-export function StaffForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: () => void }) {
+export function StaffForm({
+  onSuccess,
+  onCancel,
+}: {
+  onSuccess: (link: SignInLink) => void;
+  onCancel: () => void;
+}) {
   const [isPending, startTransition] = useTransition();
   const {
     register,
@@ -63,7 +70,7 @@ export function StaffForm({ onSuccess, onCancel }: { onSuccess: () => void; onCa
 
       if (result.ok) {
         toast(`${data.firstName} ${data.lastName} was invited`);
-        onSuccess();
+        onSuccess(result.link);
         return;
       }
 

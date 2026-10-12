@@ -6,13 +6,14 @@ import { SIGNED_OUT_MESSAGE } from "@/features/auth/messages";
 import { getSession } from "@/lib/session";
 import { EMAIL_IN_USE_MESSAGE } from "./messages";
 import { staffRowActions } from "./row-actions";
+import { makeSignInLink, type SignInLink } from "./sign-in-link";
 import { staffFormSchema } from "./schemas";
 import type { Staff, StaffFormInput } from "./types";
 
 export type StaffFormFieldErrors = Partial<Record<keyof StaffFormInput, string>>;
 
 export type StaffFormActionResult =
-  { ok: true } | { ok: false; formError?: string; fieldErrors?: StaffFormFieldErrors };
+  { ok: true; link: SignInLink } | { ok: false; formError?: string; fieldErrors?: StaffFormFieldErrors };
 
 function fieldErrorsFrom(error: import("zod").ZodError<StaffFormInput>): StaffFormFieldErrors {
   const flattened = error.flatten().fieldErrors;
@@ -31,9 +32,9 @@ function fieldErrorsFrom(error: import("zod").ZodError<StaffFormInput>): StaffFo
  * happens to call it, same reasoning as `createStudent`
  * (src/features/students/actions.ts).
  *
- * No real invitation email goes out — Phase 1 has no backend to send one.
- * The invited person is just added with `status: "invited"`, which is
- * exactly what this step's "Done when" line asks for.
+ * No email goes out: the answer carries a set-password link (Step 50.5)
+ * that the principal sends however they like. The person stays
+ * `invited`, with no password, until they use it.
  */
 export async function inviteStaff(input: StaffFormInput): Promise<StaffFormActionResult> {
   const session = await getSession();
@@ -55,7 +56,7 @@ export async function inviteStaff(input: StaffFormInput): Promise<StaffFormActio
     return { ok: false, fieldErrors: { email: EMAIL_IN_USE_MESSAGE } };
   }
 
-  await staffRepository.create({
+  const staff = await staffRepository.create({
     id: crypto.randomUUID(),
     schoolId: session.schoolId,
     status: "invited",
@@ -67,7 +68,7 @@ export async function inviteStaff(input: StaffFormInput): Promise<StaffFormActio
   });
 
   refresh();
-  return { ok: true };
+  return { ok: true, link: await makeSignInLink(staff) };
 }
 
 export type StaffRowActionResult = { ok: true } | { ok: false; error: string };
@@ -93,20 +94,24 @@ async function findActionTarget(staffId: string): Promise<{ staff: Staff; userId
   return { staff, userId: session.userId };
 }
 
+export type SignInLinkActionResult = { ok: true; link: SignInLink } | { ok: false; error: string };
+
 /**
- * Step 27.6's "Resend invitation". Like `inviteStaff`, no real email goes
- * out in Phase 1 — this only checks the invite is still pending, so the
- * menu's toast is honest about what would have happened.
+ * The ⋮ menu's "Copy sign-in link" (an invited account) or "Copy password
+ * reset link" (an active one), Step 50.5. Only for staff at the caller's
+ * own school, and never for the caller themselves: they're signed in
+ * already. Using a reset link signs that person out everywhere else,
+ * through the session's password fingerprint.
  */
-export async function resendStaffInvite(staffId: string): Promise<StaffRowActionResult> {
+export async function createSignInLink(staffId: string): Promise<SignInLinkActionResult> {
   const target = await findActionTarget(staffId);
   if ("error" in target) return { ok: false, error: target.error };
 
-  if (!staffRowActions(target.staff, target.userId).canResend) {
-    return { ok: false, error: "This person has already accepted their invitation." };
+  if (!staffRowActions(target.staff, target.userId).canMakeLink) {
+    return { ok: false, error: "You can't make a link for your own account." };
   }
 
-  return { ok: true };
+  return { ok: true, link: await makeSignInLink(target.staff) };
 }
 
 /** Step 27.6's "Remove". The menu asks for confirmation first; this re-checks the same rules. */

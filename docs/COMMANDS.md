@@ -12,6 +12,7 @@ Every command this project needs, grouped by what you're doing, with what each o
 5. [The database (Docker and Postgres)](#5-the-database-docker-and-postgres)
 6. [Database changes (Prisma migrations)](#6-database-changes-prisma-migrations)
 7. [The gate, the monitor and the USB reader](#7-the-gate-the-monitor-and-the-usb-reader)
+   - [Staff accounts and set-password links](#7b-staff-accounts-and-set-password-links-step-505)
 8. [Git: saving your work](#8-git-saving-your-work)
 9. [When something is stuck](#9-when-something-is-stuck)
 
@@ -209,6 +210,21 @@ The tables are described in `prisma/schema.prisma`. Each change to it becomes a 
 - `scripts/create-device.ts`, `scripts/record-tap.ts`.
 
 More in `docs/GATE.md`.
+
+---
+
+## 7b. Staff accounts and set-password links (Step 50.5)
+
+| Command | What it does |
+|---|---|
+| `npm run staff:link -- --email teacher@school-balanga.talaan.example` | Prints a link's path for that account: their first password if they're invited, a password reset if they're active. Works once, for 7 days. |
+| `npm run staff:link -- --create-super-admin --email you@example.com --first-name Pat --last-name Santos` | Creates a super admin, then prints their link. How the very first account on a new server gets in. |
+
+It prints a path like `/set-password?token=…`. Put the site's address in front of it: `http://localhost:3000/set-password?token=…` locally. On Heroku (Step 52) the same command runs as `heroku run npm run staff:link -- …`, and the address is the Heroku one.
+
+In the app, a principal gets the same links without the terminal: the dialog after **Invite staff**, or Staff → ⋮ → **Copy sign-in link** / **Copy password reset link**. A super admin gets a new school's principal's link right after **Add school**.
+
+**Files:** `scripts/staff-link.ts`, `src/services/auth/set-password-link.ts`, `src/app/set-password/page.tsx`. Needs `SESSION_SECRET` in `.env`, the same one the app uses, or the app won't accept the link.
 
 ---
 

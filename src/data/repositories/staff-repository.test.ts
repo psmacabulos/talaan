@@ -77,6 +77,16 @@ describe("createMockStaffRepository", () => {
     await expect(repo.findForSignIn("nobody@talaan.example")).resolves.toBeNull();
   });
 
+  it("sets a password, making an invited account active", async () => {
+    // A copy: setPassword replaces the row in the array it was given.
+    const repo = createMockStaffRepository([...allStaff], { latencyMs: 0 });
+    await repo.setPassword("staff-teacher-b", "scrypt:new:hash");
+    await expect(repo.getForSession("staff-teacher-b")).resolves.toEqual({
+      staff: { ...teacherB, status: "active" },
+      passwordHash: "scrypt:new:hash",
+    });
+  });
+
   it("lists every staff member, including the super admin", async () => {
     const repo = createMockStaffRepository(allStaff, { latencyMs: 0 });
     await expect(repo.list()).resolves.toEqual(allStaff);

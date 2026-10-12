@@ -5,6 +5,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import type { SignInLink } from "@/features/staff/sign-in-link";
+import { SignInLinkDialog } from "@/features/staff/sign-in-link-dialog";
 import { SchoolDrawer } from "./school-drawer";
 import { SchoolsCardList } from "./schools-card-list";
 import { SchoolsTable } from "./schools-table";
@@ -18,6 +20,8 @@ import type { SchoolRow } from "./types";
  */
 export function SchoolsDirectory({ items }: { items: SchoolRow[] }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // The new principal's set-password link, shown once the drawer closes (Step 50.5).
+  const [principalLink, setPrincipalLink] = useState<SignInLink | null>(null);
 
   return (
     <div className="flex flex-col gap-6">
@@ -49,7 +53,15 @@ export function SchoolsDirectory({ items }: { items: SchoolRow[] }) {
         </>
       )}
 
-      <SchoolDrawer open={drawerOpen} onOpenChange={setDrawerOpen} onSuccess={() => setDrawerOpen(false)} />
+      <SchoolDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        onSuccess={(link) => {
+          setDrawerOpen(false);
+          setPrincipalLink(link);
+        }}
+      />
+      <SignInLinkDialog link={principalLink} onClose={() => setPrincipalLink(null)} />
     </div>
   );
 }

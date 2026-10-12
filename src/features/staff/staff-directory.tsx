@@ -5,6 +5,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import type { SignInLink } from "./sign-in-link";
+import { SignInLinkDialog } from "./sign-in-link-dialog";
 import { StaffCompactList } from "./staff-compact-list";
 import { StaffDrawer } from "./staff-drawer";
 import { StaffTable } from "./staff-table";
@@ -23,6 +25,8 @@ import type { Staff } from "./types";
  */
 export function StaffDirectory({ items, currentUserId }: { items: Staff[]; currentUserId: string }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // The new person's set-password link, shown once the drawer closes (Step 50.5).
+  const [newLink, setNewLink] = useState<SignInLink | null>(null);
 
   return (
     <div className="flex flex-col gap-6">
@@ -52,7 +56,15 @@ export function StaffDirectory({ items, currentUserId }: { items: Staff[]; curre
         </>
       )}
 
-      <StaffDrawer open={drawerOpen} onOpenChange={setDrawerOpen} onSuccess={() => setDrawerOpen(false)} />
+      <StaffDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        onSuccess={(link) => {
+          setDrawerOpen(false);
+          setNewLink(link);
+        }}
+      />
+      <SignInLinkDialog link={newLink} onClose={() => setNewLink(null)} />
     </div>
   );
 }

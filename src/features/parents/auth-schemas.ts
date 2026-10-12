@@ -1,13 +1,6 @@
 import { z } from "zod";
+import { passwordSchema } from "@/features/auth/schemas";
 import { lrnSchema, phMobileSchema } from "@/features/students/schemas";
-
-/**
- * Phase 1's mock parent repository stores this as plain text (see
- * data/repositories/parent-repository.ts's own comment) — real hashing
- * arrives with Auth.js in Phase 2 (CLAUDE.md). Still a real minimum-length
- * check so the form behaves like the eventual real one.
- */
-export const parentPasswordSchema = z.string().min(8, "Use at least 8 characters");
 
 /**
  * Step 22's signup. A parent picks their child's school here, from a plain
@@ -24,7 +17,7 @@ export const parentSignupSchema = z
     mobile: phMobileSchema,
     email: z.email("Enter a valid email address"),
     schoolId: z.string().min(1, "Select your child's school"),
-    password: parentPasswordSchema,
+    password: passwordSchema,
     confirmPassword: z.string().min(1, "Confirm your password"),
   })
   .refine((value) => value.password === value.confirmPassword, {

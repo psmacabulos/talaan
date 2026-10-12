@@ -15,9 +15,10 @@ const invitedTeacher: Staff = {
 const activePrincipal: Staff = { ...invitedTeacher, id: "staff-principal", role: "principal", status: "active" };
 
 describe("staffRowActions", () => {
-  it("offers resend only while an invite is pending", () => {
-    expect(staffRowActions(invitedTeacher, "someone-else").canResend).toBe(true);
-    expect(staffRowActions(activePrincipal, "someone-else").canResend).toBe(false);
+  it("offers a sign-in link for anyone except the signed-in person", () => {
+    expect(staffRowActions(invitedTeacher, "staff-principal").canMakeLink).toBe(true);
+    expect(staffRowActions(activePrincipal, "someone-else").canMakeLink).toBe(true);
+    expect(staffRowActions(activePrincipal, "staff-principal").canMakeLink).toBe(false);
   });
 
   it("offers remove for anyone except the signed-in person", () => {

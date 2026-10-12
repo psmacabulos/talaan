@@ -1,6 +1,6 @@
 # Step 50.5: Set-password links
 
-> **Fast-track recipe.** Written before the code on 2026-10-11, for the owner to approve before it's built. When it's built, a "What changed while building" section (just before "Verify it worked") will list where the real code differs from this plan.
+> **Fast-track recipe.** Written before the code on 2026-10-11. Built on 2026-10-12 while the owner was away, with the owner's go-ahead to build, test and commit Steps 50.5 and 51 unattended; every decision below was taken as recommended, and "What changed while building" (just before "Verify it worked") lists where the code differs from this plan. The owner reviews it the next day.
 
 ## Why
 
@@ -26,7 +26,7 @@ sequenceDiagram
     Note over SP: The link stops working the moment it's used
 ```
 
-## Decisions in this recipe (please confirm or change)
+## Decisions (taken as recommended, 2026-10-12; for the owner to review)
 
 1. **A link works for 7 days, and only once.** It carries the same `pv` fingerprint as the session cookie (Step 50): a fingerprint of the password hash at the time the link was made. Setting a password changes the hash, so the link stops matching. "Only once" comes with no table of used links.
 2. **A new link doesn't cancel an older unused one.** Both work until one is used or they expire. Stopping that would need a stored link id. One week is short, and the link only lets someone set a password the staff member then replaces, so it's acceptable for a pilot. Removing the staff member kills every link at once.
@@ -121,6 +121,22 @@ It prints the path (`/set-password?token=…`). You put your site's address in f
 
 **`docs/COMMANDS.md`:** a "Staff accounts" section with `npm run staff:link -- --email …` and `--create-super-admin`, what the printed path is for, and the same command on Heroku.
 
+## What changed while building
+
+Decided without the owner, for review:
+
+- **No ⋮ menu on the Schools page.** That page has no row menu to add to. A super admin gets a principal's link two ways instead: the dialog that opens right after **Add school** (`createSchool` now returns the new principal's link), or **Open** the school, then Staff → ⋮ → "Copy sign-in link", since a super admin viewing a school can use its Staff page.
+- **"Resend invitation" is gone.** It sent nothing (there was never an email). The ⋮ menu now offers **Copy sign-in link** (invited) or **Copy password reset link** (active), for anyone except yourself. `staffRowActions` returns `{ canMakeLink, canRemove }`.
+- **`pv` for an account with no password is `"none"`**, Step 50's `passwordVersion(null)`, not a fingerprint of the empty string.
+- **The token reader returns the staff member**, not just the id, so the page can greet them by name. It's in `src/services/auth/set-password-link.ts`; the link's lifetime, `SET_PASSWORD_LINK_DAYS`, lives in `src/features/auth/set-password-rules.ts` so the dialog (browser code) can show it without importing `node:crypto`.
+- **The page also shows the person's own email**, under "Set your password, Maria": they need to know which address to sign in with. Still nothing about the school.
+- **The link's address comes from the request** (`src/lib/request-origin.ts`): the browser's `Origin` header on a Server Action, otherwise `x-forwarded-proto`/`x-forwarded-host` (Heroku's router), otherwise `host`. Nothing hard-coded.
+- **`makeSignInLink` (`src/features/staff/sign-in-link.ts`) is not a Server Action.** It makes a link for anyone it's given, so only actions that have already checked the caller use it, the same rule as `startStaffSession`.
+- **`setPassword(id, hash)` also marks the account active**, in one write.
+- **`passwordSchema` and `setPasswordSchema` live in `src/features/auth/schemas.ts`**; the parent sign-up uses `passwordSchema` too (it was `parentPasswordSchema`).
+- **No `staff/actions.test.ts`.** The rules it would test (own school, not yourself, no teachers) are `findActionTarget` and `staffRowActions`, already covered by `row-actions.test.ts` and the browser test; mocking the session, repositories and headers for one more layer added little.
+- **The dialog keeps showing the last link while it fades out**, and its title has room for the close button on a phone.
+
 ## Verify it worked
 
 1. Restart `npm run dev`. Sign in as Balanga's principal and open **Staff**.
@@ -129,7 +145,7 @@ It prints the path (`/set-password?token=…`). You put your site's address in f
 4. Open the same link again: "This link has expired or was already used."
 5. As the principal, use ⋮ → **Copy password reset link** on that teacher. Set another password through it. The teacher's first browser is signed out on its next click.
 6. In a terminal: `npm run staff:link -- --email teacher@school-balanga.talaan.example`, then open `http://localhost:3000` followed by the printed path.
-7. Your checks (or ask me to run them).
+7. The checks (run before the commit, 2026-10-12: lint, `check:tokens`, typecheck, 581 unit tests, the build and every browser test).
 
 ## What's next
 

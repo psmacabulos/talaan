@@ -1,6 +1,7 @@
 "use client";
 
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import type { SignInLink } from "./sign-in-link";
 import { StaffForm } from "./staff-form";
 
 /**
@@ -23,7 +24,7 @@ export function StaffDrawer({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSuccess: (link: SignInLink) => void;
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

@@ -65,6 +65,10 @@ export function createPrismaStaffRepository(db: PrismaClient = prisma): StaffRep
       const row = await db.staff.findUnique({ where: { id } });
       return row ? { staff: toStaff(row), passwordHash: row.passwordHash } : null;
     },
+    async setPassword(id, passwordHash) {
+      // updateMany, not update: an unknown id is a no-op, like the mock.
+      await db.staff.updateMany({ where: { id }, data: { passwordHash, status: "active" } });
+    },
     async findForSignIn(email) {
       const row = await findRowByEmail(email);
       return row ? { staff: toStaff(row), passwordHash: row.passwordHash } : null;

@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { SheetFooter } from "@/components/ui/sheet";
 import { presetToScopedCss } from "@/lib/theme/apply-preset";
 import { getThemePreset } from "@/lib/theme/presets";
+import type { SignInLink } from "@/features/staff/sign-in-link";
 import { createSchool } from "./actions";
 import { LogoUploader } from "./logo-uploader";
 import { PresetPicker } from "./preset-picker";
@@ -43,7 +44,13 @@ function emptyValues(): CreateSchoolFormValues {
  * both sides"). The form also collects the principal's name and email so
  * `createSchool` can create their invited account alongside the school.
  */
-export function SchoolForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: () => void }) {
+export function SchoolForm({
+  onSuccess,
+  onCancel,
+}: {
+  onSuccess: (principalLink: SignInLink) => void;
+  onCancel: () => void;
+}) {
   const [isPending, startTransition] = useTransition();
   const {
     register,
@@ -71,7 +78,7 @@ export function SchoolForm({ onSuccess, onCancel }: { onSuccess: () => void; onC
 
       if (result.ok) {
         toast(`${data.name} was added`);
-        onSuccess();
+        onSuccess(result.principalLink);
         return;
       }
 
