@@ -8,8 +8,9 @@ import {
   schoolRepository,
   studentRepository,
 } from "@/data/repositories";
-import { getParentSession } from "@/lib/parent-session";
-import { clearParentSession, setParentSession } from "@/lib/parent-session-actions";
+import { SIGNED_OUT_MESSAGE, TOO_MANY_TRIES_MESSAGE, WRONG_SIGN_IN_MESSAGE } from "@/features/auth/messages";
+import { clearParentSession, getParentSession, setParentSession } from "@/lib/parent-session";
+import { loginThrottle, parentThrottleKey } from "@/services/auth/login-throttle";
 import { linkChildSchema, parentLoginSchema, parentSignupSchema } from "./auth-schemas";
 import type { LinkChildInput, ParentLoginInput, ParentSignupInput } from "./types";
 
@@ -77,7 +78,10 @@ export async function signUpParent(input: ParentSignupInput): Promise<ParentSign
 
 /**
  * Step 22's sign-in. Deliberately vague about which of email or password
- * was wrong, the same reasoning any real login screen would use.
+ * was wrong, the same reasoning any real login screen would use. Since
+ * Step 50.1, 5 wrong passwords for one email in 15 minutes lock it for 15
+ * minutes, counted apart from staff sign-in (real clock, never DEMO_NOW).
+ * Step 53 moves this check into a service the Expo app's API shares.
  */
 export async function signInParent(input: ParentLoginInput): Promise<ParentLoginActionResult> {
   const parsed = parentLoginSchema.safeParse(input);
@@ -85,11 +89,19 @@ export async function signInParent(input: ParentLoginInput): Promise<ParentLogin
     return { ok: false, formError: "Enter a valid email and password." };
   }
 
-  const parent = await parentRepository.verifyPassword(parsed.data.email, parsed.data.password);
-  if (!parent) {
-    return { ok: false, formError: "That email or password isn't right." };
+  const key = parentThrottleKey(parsed.data.email);
+  const now = Date.now();
+  if (loginThrottle.isLocked(key, now)) {
+    return { ok: false, formError: TOO_MANY_TRIES_MESSAGE };
   }
 
+  const parent = await parentRepository.verifyPassword(parsed.data.email, parsed.data.password);
+  if (!parent) {
+    const locked = loginThrottle.recordFailure(key, now);
+    return { ok: false, formError: locked ? TOO_MANY_TRIES_MESSAGE : WRONG_SIGN_IN_MESSAGE };
+  }
+
+  loginThrottle.recordSuccess(key);
   await setParentSession(parent.id);
   redirect("/parent");
 }
@@ -108,7 +120,7 @@ export async function signOutParent(): Promise<void> {
 export async function linkChild(input: LinkChildInput): Promise<LinkChildActionResult> {
   const session = await getParentSession();
   if (!session) {
-    return { ok: false, formError: "Your session has expired — sign in again." };
+    return { ok: false, formError: SIGNED_OUT_MESSAGE };
   }
 
   const parsed = linkChildSchema.safeParse(input);

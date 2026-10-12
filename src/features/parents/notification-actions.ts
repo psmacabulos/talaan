@@ -2,6 +2,7 @@
 
 import { refresh } from "next/cache";
 import { notificationRepository, parentStudentLinkRepository } from "@/data/repositories";
+import { SIGNED_OUT_MESSAGE } from "@/features/auth/messages";
 import { getParentSession } from "@/lib/parent-session";
 
 export type NotificationActionResult = { ok: true } | { ok: false; formError: string };
@@ -39,7 +40,7 @@ export async function markNotificationRead(id: string): Promise<NotificationActi
 export async function markAllNotificationsRead(): Promise<NotificationActionResult> {
   const session = await getParentSession();
   if (!session) {
-    return { ok: false, formError: "Your session has expired — sign in again." };
+    return { ok: false, formError: SIGNED_OUT_MESSAGE };
   }
 
   const links = await parentStudentLinkRepository.listByParent(session.parentId);

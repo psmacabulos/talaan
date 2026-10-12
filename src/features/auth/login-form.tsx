@@ -10,17 +10,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginSchema } from "./schemas";
 import type { LoginInput } from "./types";
-import { signInAsDemo } from "./actions";
-import { DEFAULT_SIGN_IN_STAFF_ID } from "./demo-personas";
+import { signIn } from "./actions";
 
 /**
- * Phase 1's real sign-in behaves exactly like the prototype's own "Sign in"
- * button: it validates for real, but a valid submission always lands as
- * the demo principal (see schemas.ts, demo-personas.ts) — there are no
- * real accounts yet to check against.
+ * Staff sign-in (Step 50.1): validates in the browser, then `signIn`
+ * checks the real password on the server and redirects to the dashboard.
+ * A refusal ("isn't right", "Too many tries") shows above the button,
+ * and the typed email stays.
  */
-export function LoginForm({ signInEnabled }: { signInEnabled: boolean }) {
+export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const {
     register,
@@ -31,14 +31,12 @@ export function LoginForm({ signInEnabled }: { signInEnabled: boolean }) {
     defaultValues: { email: "", password: "" },
   });
 
-  function onSubmit() {
-    if (!signInEnabled) {
-      toast("Sign-in isn't connected yet", {
-        description: "That's Phase 2 — try one of the preview buttons below instead.",
-      });
-      return;
-    }
-    startTransition(() => signInAsDemo(DEFAULT_SIGN_IN_STAFF_ID));
+  function onSubmit(values: LoginInput) {
+    setFormError(null);
+    startTransition(async () => {
+      const result = await signIn(values);
+      if (result && !result.ok) setFormError(result.formError);
+    });
   }
 
   return (
@@ -94,6 +92,12 @@ export function LoginForm({ signInEnabled }: { signInEnabled: boolean }) {
           </p>
         )}
       </div>
+
+      {formError && (
+        <p role="alert" className="text-sm text-destructive">
+          {formError}
+        </p>
+      )}
 
       <Button type="submit" size="lg" disabled={isPending} className="mt-2 w-full">
         {isPending ? (

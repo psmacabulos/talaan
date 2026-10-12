@@ -21,9 +21,10 @@ const staffSessionCookieSchema = z.object({
 export type StaffSessionCookie = z.infer<typeof staffSessionCookieSchema>;
 
 /**
- * The cookie's value, signed and expiring 30 days after `now`. Kept apart
- * from session.ts (which reads Next.js's cookie store and the database) so
- * the browser tests can make the same cookie (e2e/sessions.ts).
+ * The cookie's value, signed and expiring 30 days after `now`. This file is
+ * kept apart from session.ts and parent-session.ts (which read Next.js's
+ * cookie store and the database) so the browser tests can make the same
+ * cookies (e2e/sessions.ts).
  */
 export function makeStaffSessionCookie(contents: StaffSessionCookie, secret: string, now: Date): string {
   const exp = Math.floor(now.getTime() / 1000) + SESSION_MAX_AGE_SECONDS;
@@ -34,4 +35,21 @@ export function makeStaffSessionCookie(contents: StaffSessionCookie, secret: str
 export function readStaffSessionCookie(raw: string | undefined, secret: string, now: Date): StaffSessionCookie | null {
   const parsed = staffSessionCookieSchema.safeParse(readSignedValue(raw, "staff-session", secret, now));
   return parsed.success ? parsed.data : null;
+}
+
+/** The parent web portal's session (Step 50.1). The Expo app uses a bearer token instead (Step 53). */
+export const PARENT_SESSION_COOKIE = "talaan_parent_session";
+
+const parentSessionCookieSchema = z.object({ parentId: z.string().min(1) });
+
+/** Signed with its own purpose, so a staff cookie never works as a parent one, or the other way round. Also 30 days. */
+export function makeParentSessionCookie(parentId: string, secret: string, now: Date): string {
+  const exp = Math.floor(now.getTime() / 1000) + SESSION_MAX_AGE_SECONDS;
+  return signValue({ parentId, exp }, "parent-session", secret);
+}
+
+/** The parent id, or null when the cookie is missing, forged, expired or the wrong shape. */
+export function readParentSessionCookie(raw: string | undefined, secret: string, now: Date): string | null {
+  const parsed = parentSessionCookieSchema.safeParse(readSignedValue(raw, "parent-session", secret, now));
+  return parsed.success ? parsed.data.parentId : null;
 }

@@ -2,29 +2,21 @@
 
 import { useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { signInAsDemo } from "./actions";
 import { DEMO_PERSONAS } from "./demo-personas";
 
 /**
- * The prototype's "Try the prototype as" row — a stand-in for real accounts
- * until Phase 2, same as the Step 11 dev switcher it shares `signInAsDemo`
- * with. Kept as a permanent Phase 1 fixture (not dev-only like the
- * switcher): a first-time reviewer with no seeded credentials still needs a
- * way in.
+ * The prototype's "Try the prototype as" row: sign in as a demo account
+ * with one click, no password. Development only: the sign-in page doesn't
+ * render it in production, and `signInAsDemo` throws there anyway
+ * (Step 50.1).
  */
-export function DemoShortcuts({ signInEnabled }: { signInEnabled: boolean }) {
+export function DemoShortcuts() {
   const [isPending, startTransition] = useTransition();
   const [pendingStaffId, setPendingStaffId] = useState<string | null>(null);
 
   function signInAs(staffId: string) {
-    if (!signInEnabled) {
-      toast("Sign-in isn't connected yet", {
-        description: "That's Phase 2 — this preview button will work once real accounts exist.",
-      });
-      return;
-    }
     setPendingStaffId(staffId);
     startTransition(() => signInAsDemo(staffId));
   }
@@ -49,7 +41,7 @@ export function DemoShortcuts({ signInEnabled }: { signInEnabled: boolean }) {
           </Button>
         ))}
       </div>
-      <p className="text-sm text-muted-foreground">Sample data only. Nothing here is saved.</p>
+      <p className="text-sm text-muted-foreground">Development only. Every demo account&apos;s password is Talaan123!</p>
     </div>
   );
 }

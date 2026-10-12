@@ -1,6 +1,6 @@
 # Step 50.1: The real sign-in form
 
-> **Fast-track recipe.** Split out of Step 50 on 2026-10-12, from the first Step 50 plan's sections 5, 6, 8 and its sign-in tests, and updated to build on what Step 50 actually made. Written before the code, for the owner to approve. A "What changed while building" section will be added when it's built.
+> **Fast-track recipe.** Split out of Step 50 on 2026-10-12, from the first Step 50 plan's sections 5, 6, 8 and its sign-in tests. Written before the code; the owner confirmed its four decisions the same day. "What changed while building" (just before "Verify it worked") lists where the code differs from this plan.
 
 ## Why
 
@@ -15,7 +15,7 @@ flowchart LR
     Start --> Dashboard["/dashboard"]
 ```
 
-## Decisions in this recipe (please confirm or change)
+## Decisions (confirmed by the owner, 2026-10-12)
 
 1. **5 wrong passwords for one email in 15 minutes locks that email for 15 minutes**, with "Too many tries. Wait 15 minutes and try again." The count is kept in the server's memory: on one Heroku dyno that covers every request, and it resets when the app restarts, which is acceptable for a pilot.
 2. **Every failure gives the same answer**, "That email or password isn't right.": a wrong password, an unknown email, and an invited account with no password yet. The form never reveals which emails have accounts.
@@ -83,6 +83,19 @@ Browser (`e2e/login.spec.ts`, replacing "shows phase 2 message"):
 - a hand-typed `talaan_parent_session` is signed out of the parent portal.
 
 `e2e/sessions.ts`'s parent persona signs its cookie with the test secret.
+
+## What changed while building
+
+- **The password check is a service**, `checkStaffSignIn(input, { staff, throttle, now })` in `src/services/auth/staff-sign-in.ts`, so it's unit-tested without Next.js. `signIn` validates, calls it, then starts the session.
+- **scrypt always runs.** When there's no account, or no password yet, the check runs against a decoy hash of a random password, so an unknown email doesn't answer faster and give itself away.
+- **Keys are `staff:<email>` and `parent:<email>`**, and `recordFailure` returns true when that failure locked the key, so the 5th wrong try itself answers "Too many tries".
+- **The messages live together** in `src/features/auth/messages.ts` (signed out, isn't right, too many tries), shared by staff and parents.
+- **A refusal shows inline**, above the Sign in button (`role="alert"`), not as a toast, and the typed email stays.
+- **The demo shortcuts aren't rendered in production**, instead of showing "isn't connected yet" when clicked. Their note now says "Development only. Every demo account's password is Talaan123!".
+- **Sign out also clears the theme preview cookie**, like switching persona does. Its button is `src/components/app-shell/sign-out-button.tsx`: icon only below md in the top bar, a full row in the drawer's footer.
+- **`setParentSession` and `clearParentSession` moved into `parent-session.ts`**, and `parent-session-actions.ts` was deleted. The parent cookie's format sits next to the staff one in `session-cookie.ts`, so the browser tests can make it. It carries no password fingerprint: parents can't change a password yet.
+- **Parent sign-in's decoy hash waits for Step 53**, which moves parent sign-in into a service: today an unknown parent email still answers a little faster. Noted in that recipe.
+- **The browser tests' wrong passwords use made-up emails** (one per run), so locally, where Playwright reuses a running server, failures never pile up against a real account's limit. Each of the 5 tries waits for its own Server Action response, so no two overlap.
 
 ## Docs to update with this step
 

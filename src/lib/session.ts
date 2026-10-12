@@ -108,6 +108,11 @@ export async function startStaffSession(staffId: string, school?: string): Promi
   });
 }
 
+/** Signs this browser out (Step 50.1's Sign out). Not a Server Action, for the same reason as `startStaffSession`. */
+export async function endStaffSession(): Promise<void> {
+  (await cookies()).delete(SESSION_COOKIE);
+}
+
 /**
  * The guard behind "impossible to enable in production" (CLAUDE.md). Called
  * first inside setDevSession (src/lib/session-actions.ts) — Server

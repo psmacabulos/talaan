@@ -43,6 +43,11 @@ export function toStaffData(staff: Staff) {
 const OLDEST_FIRST = [{ createdAt: "asc" as const }, { id: "asc" as const }];
 
 export function createPrismaStaffRepository(db: PrismaClient = prisma): StaffRepository {
+  /** Case-insensitive, like the mock. Emails are stored in lower case (Step 50), so this finds at most one. */
+  function findRowByEmail(email: string) {
+    return db.staff.findFirst({ where: { email: { equals: email.trim(), mode: "insensitive" } } });
+  }
+
   return {
     async listBySchool(schoolId) {
       const rows = await db.staff.findMany({ where: { schoolId }, orderBy: OLDEST_FIRST });
@@ -53,11 +58,15 @@ export function createPrismaStaffRepository(db: PrismaClient = prisma): StaffRep
       return row ? toStaff(row) : null;
     },
     async findByEmail(email) {
-      const row = await db.staff.findFirst({ where: { email: { equals: email.trim(), mode: "insensitive" } } });
+      const row = await findRowByEmail(email);
       return row ? toStaff(row) : null;
     },
     async getForSession(id) {
       const row = await db.staff.findUnique({ where: { id } });
+      return row ? { staff: toStaff(row), passwordHash: row.passwordHash } : null;
+    },
+    async findForSignIn(email) {
+      const row = await findRowByEmail(email);
       return row ? { staff: toStaff(row), passwordHash: row.passwordHash } : null;
     },
     async list() {

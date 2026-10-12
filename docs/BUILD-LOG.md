@@ -2122,3 +2122,28 @@ Things found while the owner tested Steps 46–49 at home, besides the review fi
 - Stale comments on six pages ("no 'view school X' mechanism until Step 20/25") were replaced, since a super admin now opens a school and stays a super admin.
 
 **Checks run while building.** Only the unit test files this change touches: `signed-value`, `session`, `password`, both staff repositories, `monitor-viewer` (47 tests), and the schools, staff and attendance feature tests (117), all passing. Lint, typecheck, `check:tokens`, the full unit suite, the build and the browser tests are the owner's to run. No screen changed visually, so no screenshots were taken.
+
+## Step 50.1: the real sign-in form (2026-10-12)
+
+**Decisions confirmed first.** The owner confirmed the recipe's four decisions, and pointed out that parents will sign in through the Expo app, not the web. Checked against `docs/backend/step-53-parent-api.md`: Step 53 moves parent sign-in into a service that both the web portal and `/api/v1/parents/login` call, so the wrong-try limit and the single "isn't right" answer reach the app too. Signing the web portal's cookie still mattered: the portal stays live until the app exists, and its unsigned cookie would have let anyone who typed `parent-balanga-1` see that parent's children once deployed.
+
+**What was built.**
+- `src/services/auth/login-throttle.ts`: 5 wrong passwords per key in 15 minutes lock it for 15 minutes. In memory, with a sweep once more than 1,000 keys are held, so a flood of made-up emails can't grow it forever.
+- `src/services/auth/staff-sign-in.ts` (`checkStaffSignIn`) and `StaffRepository.findForSignIn`.
+- `signIn`, `signOut` and `signInAsDemo` in `src/features/auth/actions.ts`, plus `endStaffSession` in `src/lib/session.ts`.
+- The form shows a refusal inline. `/` redirects a signed-in visitor to `/dashboard`, and the demo shortcuts only render outside production.
+- `SignOutButton` in the top bar and the mobile drawer's footer.
+- The parent cookie signed as `talaan_parent_session`, read by `resolveParentSession`. `signInParent` now uses the limit.
+- `src/features/auth/messages.ts` holds the three shared messages.
+
+**Another public door, closed.** `setParentSession(parentId)` lived in `src/lib/parent-session-actions.ts`, a `"use server"` file, since Step 22. That made it a Server Action anyone could call with a direct POST and any parent id. It was the same hole Step 50 avoided for staff, already present for parents. Fixed by moving `setParentSession` and `clearParentSession` into `parent-session.ts` (no `"use server"`) and deleting the old file. Its only caller was `auth-actions.ts`, which calls them after its own checks.
+
+**Timing.** The first version checked the password only when an account existed. An unknown email then answered without running scrypt, tens of milliseconds sooner, which tells a stranger which emails have accounts even though the message is the same. `checkStaffSignIn` now runs `passwordMatches` against a decoy hash (a random password, hashed once per server) when there's no real one. The parent path still has the gap, and Step 53's recipe now says to close it when parent sign-in becomes a service.
+
+**Browser test design.** Playwright reuses a running server locally (`reuseExistingServer`), and the limit lives in that server's memory. A test typing wrong passwords for the principal's email would count against it across runs, and could lock the principal out of the very next run's sign-in test. So the wrong-password and "Too many tries" tests use a made-up email with the project name and a timestamp. The "Too many tries" test waits for each try's Server Action response (a POST with a `Next-Action` header) before the next. The button only disables after the form's async validation, so waiting on "enabled" could let two tries overlap. Next's route announcer is also `role="alert"`, so the tests match the alert by its text.
+
+**Checked by eye.** Screenshots through the running dev server: Sign out in the top bar at 1280 px (light), at the bottom of the drawer at 360 px (dark), and the inline "That email or password isn't right." at 360 px. All placed as intended. The Next.js development badge overlaps the drawer's corner in development only.
+
+**Checks run while building.** Unit tests for the new and touched files: the throttle, `checkStaffSignIn`, `resolveParentSession`, the staff repository and the session (42 tests, passing). The full checks and the browser tests are the owner's to run.
+
+**Fix after the owner's check run: `src/app/page.test.tsx` failed.** `npm test` reported "Unable to find an accessible element with the role "heading" and name `/attendance portal/i`", with an empty `<div />` rendered. The login page became an `async` Server Component in this step (it awaits `getSession()` to redirect a signed-in visitor), and the old test rendered `<LoginPage />` like a plain component, which renders nothing for an async function. Missed because only the files this step touched were run while building, and the test lives next to the page rather than with the auth code. **Fix:** the test stubs `@/lib/session`'s `getSession`, `next/navigation`'s `redirect` and the auth Server Actions, then renders `await LoginPage()`. Two cases were added: production leaves out the demo shortcuts, and a signed-in visitor is redirected to `/dashboard`.

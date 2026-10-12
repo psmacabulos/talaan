@@ -67,6 +67,16 @@ describe("createMockStaffRepository", () => {
     await expect(repo.getForSession("nope")).resolves.toBeNull();
   });
 
+  it("finds an account to sign in by email, with its password hash", async () => {
+    const repo = createMockStaffRepository(allStaff, { latencyMs: 0 });
+    await expect(repo.findForSignIn("ANA@talaan.example")).resolves.toEqual({
+      staff: principalA,
+      passwordHash: SEED_STAFF_PASSWORD_HASH,
+    });
+    await expect(repo.findForSignIn("mark@talaan.example")).resolves.toEqual({ staff: teacherB, passwordHash: null });
+    await expect(repo.findForSignIn("nobody@talaan.example")).resolves.toBeNull();
+  });
+
   it("lists every staff member, including the super admin", async () => {
     const repo = createMockStaffRepository(allStaff, { latencyMs: 0 });
     await expect(repo.list()).resolves.toEqual(allStaff);

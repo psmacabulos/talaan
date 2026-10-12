@@ -35,7 +35,16 @@ npm run dev                    # 4. the app, at http://localhost:3000
 
 **Files:** `.env` (your settings: `DATABASE_URL`, `SESSION_SECRET`, and optionally `DEMO_NOW`; see `.env.example` for every setting), `prisma/reset-demo.ts`, `prisma/demo-data.ts`, `src/data/seed/` (the demo students, cards and taps).
 
-**Signing in (Step 50):** every staff page needs a signed-in session. In development, use the "Try the prototype as" buttons on the sign-in screen, or the "Preview as" menu in the top bar. Every active demo account's password is `Talaan123!` (the form checks it from Step 50.1). The browser tests sign in on their own.
+**Signing in (Steps 50 and 50.1):** every staff page needs a signed-in session. Type an account's email and password at `http://localhost:3000`, or, in development only, use the "Try the prototype as" buttons or the top bar's "Preview as" menu. Every active demo account's password is `Talaan123!`:
+
+| Account | Email |
+|---|---|
+| Super admin | `admin@talaan.example` |
+| Balanga's principal | `principal@school-balanga.talaan.example` |
+| Balanga's teacher | `teacher@school-balanga.talaan.example` |
+| A demo parent (at `/parent/login`) | `parent-one@balanga.example` |
+
+The other schools follow the same pattern (`principal@school-oceanview.talaan.example`). The browser tests sign in on their own.
 
 **`SESSION_SECRET` (once, Step 50):** the secret that stamps sign-in cookies so they can't be faked. Make one and paste it into `.env`:
 
@@ -230,5 +239,6 @@ The usual order: the checks (section 2), then `git add -A`, then `git commit -m 
 | Everything is strange after changing packages | `rm -rf node_modules .next && npm ci`: a clean install, like CI does. |
 | A browser test failed | Read `test-results/<test name>/error-context.md`, or rerun that one test with `--headed` (section 4). |
 | Every staff page shows "SESSION_SECRET is missing or shorter than 32 characters" | Add `SESSION_SECRET` to `.env` (section 1), then restart `npm run dev`. |
+| "Too many tries. Wait 15 minutes and try again." | 5 wrong passwords for that email in 15 minutes. Wait, or restart `npm run dev` (the count is kept in the server's memory). |
 | Signed out after a restart, or on every page | The `SESSION_SECRET` in `.env` changed, or the cookie is more than 30 days old. Sign in again. |
 | `prisma migrate dev` asks to reset | Answer **N**, and send the message. Nothing is lost while you haven't answered yes. |

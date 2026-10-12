@@ -4,12 +4,12 @@ Talaan has four kinds of sign-in, one per kind of visitor:
 
 | Who | Proves who they are with | Carries | Built in |
 |---|---|---|---|
-| Staff (super admin, principal, teacher) | Email and password | A **signed** `talaan_session` cookie | Step 50 (this page); the real form in Step 50.1 |
-| Parents, web portal | Email and password | A `talaan-parent-session` cookie (a plain id until Step 50.1 signs it) | Step 22, passwords hashed since Step 41 |
+| Staff (super admin, principal, teacher) | Email and password | A **signed** `talaan_session` cookie | Steps 50 and 50.1 |
+| Parents, web portal | Email and password | A **signed** `talaan_parent_session` cookie | Step 22; hashed passwords Step 41; signed Step 50.1 |
 | Gate tablet, guardhouse TV | A device token typed once | A random `tal_dev_…` token, kept hashed | Steps 43 and 48 (`docs/GATE.md`) |
 | Parents, Expo app | Email and password | A random `tal_par_…` token, kept hashed | Step 53 |
 
-This page covers the two cookie sessions. For what cookies, sessions and JWTs are, and why Talaan signs its own cookie instead of using an auth library, see the interactive page [Talaan Sign-in Options](https://claude.ai/artifact/3AsAcMHFBbZbzjJya1tZAK) and `docs/LEARNING-LOG.md`'s "Cookies, sessions and JWTs" entry.
+This page covers the two cookie sessions. For a step-by-step walkthrough of every journey (getting an account, signing in, every page load, signing out, and the planned phone app), see [Talaan Accounts and Sign-in](https://claude.ai/artifact/2cQbiVqHAhz3cYs1Tjtqhz). For what cookies, sessions and JWTs are, and why Talaan signs its own cookie instead of using an auth library, see the interactive page [Talaan Sign-in Options](https://claude.ai/artifact/3AsAcMHFBbZbzjJya1tZAK) and `docs/LEARNING-LOG.md`'s "Cookies, sessions and JWTs" entry.
 
 ## The staff session (Step 50)
 
@@ -18,11 +18,11 @@ flowchart LR
     subgraph start["Signing in"]
         Dev["Dev switcher / demo shortcuts<br/>setDevSession()<br/>throws in production"]
         Open["Open school<br/>openSchool()"]
-        Form["Sign-in form<br/>(Step 50.1)"]
+        Form["Sign-in form<br/>signIn() checks the password"]
     end
     Dev --> Start["startStaffSession(staffId, school?)<br/>src/lib/session.ts<br/>not a Server Action"]
     Open --> Start
-    Form -.-> Start
+    Form --> Start
     Start --> Cookie["talaan_session cookie<br/>{ staffId, pv, school?, exp }.stamp<br/>httpOnly, 30 days"]
     Cookie --> Get["getSession()<br/>stamp? expiry? staff exists?<br/>pv matches?"]
     Get -->|yes| Session["{ userId, role, schoolId }"]
@@ -92,7 +92,9 @@ Each page checks for itself, not only the layout: Next.js doesn't re-run a layou
 `startStaffSession(staffId, school?)` in `src/lib/session.ts` sets the cookie (httpOnly, `sameSite: "lax"`, `secure` in production, 30 days). It is **not** a Server Action, on purpose. Every exported function in a `"use server"` file is a public endpoint that anyone can call with any arguments, and this function takes any staff id. So it's only called by server code that has already decided the person may sign in:
 - `setDevSession` (`src/lib/session-actions.ts`), the dev switcher and demo shortcuts, which throws in production;
 - `openSchool` (`src/features/schools/actions.ts`), after checking the caller is a super admin;
-- the sign-in form, after the password checks out (Step 50.1).
+- `signIn`, the sign-in form's action, after the password checks out (below).
+
+`endStaffSession()`, next to it, deletes the cookie. Sign out (`signOut` in `src/features/auth/actions.ts`) calls it, clears any theme preview, and goes to `/`.
 
 ### Passwords and emails
 
@@ -104,11 +106,40 @@ Seed accounts: every **active** demo staff member's hash is `SEED_STAFF_PASSWORD
 
 `e2e/sessions.ts` makes the same signed cookie with `TEST_SESSION_SECRET`, which `playwright.config.ts` gives the test server as `SESSION_SECRET`. `signInAs(context, "principal", baseURL)` works exactly as before.
 
+### Signing in with the form (Step 50.1)
+
+```mermaid
+flowchart LR
+    Form["/ sign-in form"] --> SignIn["signIn()<br/>loginSchema again"]
+    SignIn --> Check["checkStaffSignIn()<br/>src/services/auth/staff-sign-in.ts"]
+    Check -->|locked| Many["Too many tries.<br/>Wait 15 minutes and try again."]
+    Check -->|no account, no password, wrong password| Wrong["That email or password isn't right."]
+    Check -->|right| Start["startStaffSession()<br/>then /dashboard"]
+```
+
+`checkStaffSignIn(input, { staff, throttle, now })` is a plain function, so it's unit-tested without Next.js:
+
+1. **The limit first.** A locked email is refused before the password is looked at, so the right password can't be found by guessing past the limit.
+2. **`findForSignIn(email)`** finds the account and its hash, ignoring case.
+3. **`passwordMatches` always runs**, against a decoy hash when there's no account or no password yet. Without it, an unknown email would answer a few dozen milliseconds faster than a known one, and that difference alone would tell a stranger which emails have accounts.
+4. **One answer for every failure:** "That email or password isn't right." The 5th failure in 15 minutes answers "Too many tries. Wait 15 minutes and try again." instead (`src/features/auth/messages.ts`).
+
+**The limit** (`src/services/auth/login-throttle.ts`) counts wrong passwords per key: `staff:<email>` or `parent:<email>`, so the two never share a count. 5 within 15 minutes lock that key for 15 minutes; a right password clears the count. It lives in the server's memory: on one server that covers every request, and a restart clears it. With several servers, each would count on its own; it would then move to the database. It uses the real clock, never `DEMO_NOW`.
+
+**The page.** `/` sends a signed-in visitor straight to `/dashboard`. The "Try the prototype as" buttons only render outside production, where `setDevSession` works; in production the form is the only way in. **Sign out** is a `<form action={signOut}>` button (`src/components/app-shell/sign-out-button.tsx`) in the top bar (icon only below md) and at the bottom of the mobile drawer, so it works before JavaScript loads.
+
 ## The parent session
 
-`src/lib/parent-session.ts`'s `getParentSession()` returns `{ parentId, schoolId }` or null, and `src/app/parent/(protected)/layout.tsx` redirects to `/parent/login` when it's null. The password check is real (`ParentRepository.verifyPassword`, scrypt hashes in Postgres since Step 41). The cookie, however, still holds a plain parent id, so anyone who types `parent-balanga-1` into their browser's cookie store is that parent. **Step 50.1 signs it** with the same `signValue` (purpose `parent-session`). Until then, don't deploy.
+The parent web portal works the same way, with its own cookie and code:
 
-The two sessions never share a cookie or code: a browser can be signed in as staff and as a parent at the same time.
+- **`talaan_parent_session`** holds `makeParentSessionCookie(parentId, …)` (`src/lib/session-cookie.ts`): a signed `{ parentId, exp }` with the purpose `parent-session`, 30 days, httpOnly, `secure` in production. A hand-typed parent id, or a staff cookie pasted in its place, is signed out.
+- **`resolveParentSession(raw, deps)`** (`src/lib/parent-session.ts`) checks the stamp and that the parent still exists. `getParentSession()` wraps it, and `src/app/parent/(protected)/layout.tsx` redirects to `/parent/login` when it's null.
+- **`setParentSession` and `clearParentSession`** live in `parent-session.ts`, which has no `"use server"`. Until Step 50.1 `setParentSession` was in its own `"use server"` file, which made it a public endpoint: anyone could have asked it to sign them in as any parent.
+- **`signInParent`** uses the same limit (key `parent:<email>`) and the same messages as staff.
+
+The two sessions never share a cookie: a browser can be signed in as staff and as a parent at the same time.
+
+**The phone app is different.** Parents will mostly use the Expo app (Phase 3), which can't hold this cookie. Step 53 gives it a bearer token (`tal_par_…`, kept hashed) through `/api/v1/parents/login`, and moves the parent sign-in check into a service both the web portal and the API call. So the limit and the single "isn't right" answer apply to the app too.
 
 ## Quick recipes
 

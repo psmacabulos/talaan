@@ -1,7 +1,12 @@
 import type { BrowserContext } from "@playwright/test";
 import { SEED_STAFF_PASSWORD_HASH } from "../src/data/seed/staff-password";
 import { passwordVersion } from "../src/lib/password";
-import { makeStaffSessionCookie, SESSION_COOKIE } from "../src/lib/session-cookie";
+import {
+  makeParentSessionCookie,
+  makeStaffSessionCookie,
+  PARENT_SESSION_COOKIE,
+  SESSION_COOKIE,
+} from "../src/lib/session-cookie";
 
 /**
  * The test server's SESSION_SECRET (playwright.config.ts passes it), so the
@@ -12,9 +17,9 @@ export const TEST_SESSION_SECRET = "e2e-only-session-secret-not-for-real-use-012
 /**
  * Signs a browser in by setting the same cookies a real sign-in sets, so a
  * test can open any screen as any role without clicking through a form.
- * Staff get the signed session cookie (Step 50), with the seed password's
- * fingerprint, which every active seed account shares. Parents still get
- * their plain id until Step 50.1 signs that cookie too.
+ * Both are signed with the test secret: staff (Step 50) with the seed
+ * password's fingerprint, which every active seed account shares, and
+ * parents (Step 50.1) with their id.
  */
 export const PERSONAS = {
   anonymous: null,
@@ -40,7 +45,7 @@ export async function signInAs(context: BrowserContext, persona: Persona, baseUR
   const cookie =
     session.kind === "staff"
       ? { name: SESSION_COOKIE, value: staffSessionCookieValue(session.staffId) }
-      : { name: "talaan-parent-session", value: session.parentId };
+      : { name: PARENT_SESSION_COOKIE, value: makeParentSessionCookie(session.parentId, TEST_SESSION_SECRET, new Date()) };
   await context.addCookies([{ ...cookie, url: baseURL }]);
 }
 

@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████████░░ 89%**  (201 of 226 tasks, 58 of 64 steps approved)
+**Overall progress: ██████████████████░░ 91%**  (206 of 226 tasks, 59 of 64 steps approved)
 
-**Next up:** Step 50, Signed staff sessions (ready for your review)
+**Next up:** Step 50.1, The real sign-in form (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -65,8 +65,8 @@
 | 47 | The `/gate` page | ██████████ 100% | Approved |
 | 48 | The `/gate/display` guardhouse monitor | ██████████ 100% | Approved |
 | 49 | Time in and time out on the attendance page | ██████████ 100% | Approved |
-| 50 | Signed staff sessions | ████████░░  80% | Ready for your review |
-| 50.1 | The real sign-in form | ░░░░░░░░░░   0% | Not started |
+| 50 | Signed staff sessions | ██████████ 100% | Approved |
+| 50.1 | The real sign-in form | ████████░░  80% | Ready for your review |
 | 50.5 | Set-password links | ░░░░░░░░░░   0% | Not started |
 | 51 | One school can never see another's data | ░░░░░░░░░░   0% | Not started |
 | 52 | Deploy the demo to Heroku | ░░░░░░░░░░   0% | Not started |
@@ -625,14 +625,14 @@ Recipe: `docs/backend/step-50-staff-sign-in.md`
 - [x] The browser tests sign in with signed cookies, made with a fixed test secret. Unit tests for signing, the session and the repositories.
 Done when: signed out, `/dashboard` goes to the sign-in screen; a demo shortcut signs in; an edited cookie is signed out; a super admin who opens Balanga is still a super admin; and every check passes.
 Commit: `feat(auth): signed staff session cookie, and signed out by default`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 50.1: The real sign-in form
 Recipe: `docs/backend/step-50.1-sign-in-form.md`
-- [ ] The sign-in form checks the real password (`findForSignIn`, `passwordMatches`), with one answer for every failure and a 5-tries-in-15-minutes limit per email.
-- [ ] Sign out in the top bar and the mobile drawer; `/` goes to the dashboard when already signed in.
-- [ ] The parent portal's cookie is signed (`talaan_parent_session`), and parent sign-in uses the same limit.
-- [ ] Unit tests for the limit and the sign-in action, and browser tests for sign-in, a wrong password, sign out and a forged cookie.
+- [x] The sign-in form checks the real password (`findForSignIn`, `passwordMatches`), with one answer for every failure and a 5-tries-in-15-minutes limit per email.
+- [x] Sign out in the top bar and the mobile drawer; `/` goes to the dashboard when already signed in.
+- [x] The parent portal's cookie is signed (`talaan_parent_session`), and parent sign-in uses the same limit.
+- [x] Unit tests for the limit and the sign-in action, and browser tests for sign-in, a wrong password, sign out and a forged cookie.
 Done when: the principal signs in with `Talaan123!`; the fifth wrong password says "Too many tries"; Sign out works; a hand-typed parent cookie is ignored; and every check passes.
 Commit: `feat(auth): real staff sign-in, sign out, and a signed parent cookie`
 - [ ] Owner review: I checked it and said "approved"

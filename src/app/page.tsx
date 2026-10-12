@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/session";
 import { LoginArtPanel } from "@/features/auth/login-art-panel";
 import { LoginMobileHeader } from "@/features/auth/login-mobile-header";
 import { LoginForm } from "@/features/auth/login-form";
@@ -14,12 +16,14 @@ import { ThemeToggle } from "@/components/theme-toggle";
  * both the desktop art panel (login-art-panel.tsx) and the compact heading
  * below (mobile only) carry generic product branding, never one school's.
  */
-export default function LoginPage() {
-  // Signing in only actually sets a session outside development — Phase 1
-  // has no real accounts yet, so this mirrors the Step 11 dev switcher's
-  // own production guard (setDevSession throws there). See login-form.tsx
-  // and demo-shortcuts.tsx for what happens when this is false.
-  const signInEnabled = process.env.NODE_ENV !== "production";
+export default async function LoginPage() {
+  // Already signed in: straight to the dashboard, so a bookmark of this
+  // page doesn't ask for the password again (Step 50.1).
+  if (await getSession()) redirect("/dashboard");
+
+  // The one-click demo accounts are for development only. In production
+  // the form is the only way in.
+  const showDemoShortcuts = process.env.NODE_ENV !== "production";
 
   return (
     <main className="relative grid min-h-screen flex-1 lg:grid-cols-[1.05fr_1fr]">
@@ -42,8 +46,8 @@ export default function LoginPage() {
             <p className="text-sm text-muted-foreground">Use the account your school gave you.</p>
           </div>
 
-          <LoginForm signInEnabled={signInEnabled} />
-          <DemoShortcuts signInEnabled={signInEnabled} />
+          <LoginForm />
+          {showDemoShortcuts && <DemoShortcuts />}
 
           <p className="text-center text-sm text-muted-foreground">
             Parent or guardian?{" "}

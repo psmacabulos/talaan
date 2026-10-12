@@ -1,11 +1,6 @@
 import { z } from "zod";
 
-/**
- * Phase 1 has no real accounts to check this against — a valid submission
- * signs in as the demo principal, the same way the "Principal" shortcut
- * does (see login-form.tsx). Validation still runs for real, so the form
- * behaves like the eventual Phase 2 one.
- */
+/** The staff sign-in form, checked in the browser and again by `signIn` (src/features/auth/actions.ts). */
 export const loginSchema = z.object({
   email: z.email("Enter a valid email address"),
   password: z.string().min(1, "Enter your password"),

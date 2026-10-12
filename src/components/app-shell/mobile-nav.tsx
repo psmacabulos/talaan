@@ -3,10 +3,19 @@
 import { useState } from "react";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import type { Role } from "@/features/staff/types";
 import type { School } from "@/features/schools/types";
 import { NavLinks } from "./nav-links";
+import { SignOutButton } from "./sign-out-button";
 import { SidebarBrand } from "./sidebar";
 
 /** The <900px equivalent of the sidebar (design/school-portal-prototype.html) — an off-canvas drawer, closing itself once a link is tapped. */
@@ -29,6 +38,9 @@ export function MobileNav({ role, school }: { role: Role; school: School | null 
           <SidebarBrand school={school} />
         </SheetHeader>
         <NavLinks role={role} onNavigate={() => setOpen(false)} className="p-4" />
+        <SheetFooter className="border-t border-border">
+          <SignOutButton placement="drawer" />
+        </SheetFooter>
       </SheetContent>
     </Sheet>
   );

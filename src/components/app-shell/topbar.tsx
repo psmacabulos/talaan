@@ -5,6 +5,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { MobileNav } from "./mobile-nav";
 import { TopbarTitle } from "./topbar-title";
 import { DevSwitcher } from "./dev-switcher";
+import { SignOutButton } from "./sign-out-button";
 import { ThemeDropdown } from "./theme-dropdown";
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -69,6 +70,7 @@ export function Topbar({
             {school ? `, ${school.name}` : ""}
           </span>
         )}
+        <SignOutButton placement="topbar" />
       </div>
     </header>
   );

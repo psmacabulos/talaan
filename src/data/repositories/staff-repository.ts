@@ -14,6 +14,8 @@ export interface StaffRepository {
   findByEmail(email: string): Promise<Staff | null>;
   /** For `resolveSession` (src/lib/session.ts): the staff member and their password hash, null when the hash isn't set. */
   getForSession(id: string): Promise<StaffWithPasswordHash | null>;
+  /** For the sign-in form (Step 50.1): the account behind an email, case-insensitive, with its password hash. */
+  findForSignIn(email: string): Promise<StaffWithPasswordHash | null>;
   /** Every staff member, every school, plus the super admin — the Step 11 dev switcher's full persona list. */
   list(): Promise<Staff[]>;
   /** Appends a newly invited staff member (Step 18). Idempotent by `id`, same shape as `StudentRepository.create`. */
@@ -51,6 +53,12 @@ export function createMockStaffRepository(
       await simulateLatency(latencyMs);
       const staff = data.find((member) => member.id === id);
       return staff ? { staff, passwordHash: passwordHashes.get(id) ?? null } : null;
+    },
+    async findForSignIn(email) {
+      await simulateLatency(latencyMs);
+      const normalized = email.trim().toLowerCase();
+      const staff = data.find((member) => member.email.toLowerCase() === normalized);
+      return staff ? { staff, passwordHash: passwordHashes.get(staff.id) ?? null } : null;
     },
     async list() {
       await simulateLatency(latencyMs);

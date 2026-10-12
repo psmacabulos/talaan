@@ -33,7 +33,7 @@ function MonitorAvatar({ event, className }: { event: GateTapEvent; className: s
       <span
         aria-hidden="true"
         className={cn(
-          "flex aspect-[4/5] w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground",
+          "flex aspect-4/5 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground",
           className,
         )}
       >

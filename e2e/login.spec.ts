@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { SEED_STAFF_PASSWORD_HASH } from "../src/data/seed/staff-password";
 import { passwordVersion } from "../src/lib/password";
-import { makeStaffSessionCookie, SESSION_COOKIE } from "../src/lib/session-cookie";
+import { makeStaffSessionCookie, PARENT_SESSION_COOKIE, SESSION_COOKIE } from "../src/lib/session-cookie";
 import { signInAs, staffSessionCookieValue, TEST_SESSION_SECRET } from "./sessions";
 
 const BALANGA = "Balanga City National Science High School";
@@ -15,22 +15,54 @@ test.describe("Login", () => {
     await expect(page.getByText(/Enter a valid email address/i)).toBeVisible();
   });
 
-  test("staff sign-in with valid email and password shows phase 2 message", async ({ page }) => {
+  test("the principal signs in with their email and password", async ({ page }) => {
     await page.goto("/");
-    await page.getByLabel("Email").fill("principal@example.com");
-    await page.getByLabel("Password", { exact: true }).fill("password123");
+    await page.getByLabel("Email").fill("principal@school-balanga.talaan.example");
+    await page.getByLabel("Password", { exact: true }).fill("Talaan123!");
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
-    // Phase 1 hasn't connected real accounts yet, so the button shows this.
-    await expect(page.getByText("Sign-in isn't connected yet", { exact: true })).toBeVisible();
-    // Still on login, not redirected.
-    await expect(page).toHaveURL("/");
+    await expect(page).toHaveURL("/dashboard");
+    await expect(page.getByRole("heading", { level: 2, name: /^Good (morning|afternoon|evening)/ })).toBeVisible();
   });
 
-  test("demo shortcuts are visible and clickable", async ({ page }) => {
+  test("a wrong email or password is refused, with no session", async ({ context, page }, testInfo) => {
     await page.goto("/");
-    await expect(page.getByRole("button", { name: "Principal" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Teacher" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Super admin" })).toBeVisible();
+    // An address of its own, so this run's failures never count against a real account's limit.
+    await page.getByLabel("Email").fill(`nobody-${testInfo.project.name}-${Date.now()}@talaan.example`);
+    await page.getByLabel("Password", { exact: true }).fill("not-the-password");
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "That email or password isn't right." })).toBeVisible();
+    await expect(page).toHaveURL("/");
+    expect((await context.cookies()).some((cookie) => cookie.name === SESSION_COOKIE)).toBe(false);
+  });
+
+  test("the 5th wrong try says 'Too many tries'", async ({ page }, testInfo) => {
+    await page.goto("/");
+    await page.getByLabel("Email").fill(`locked-${testInfo.project.name}-${Date.now()}@talaan.example`);
+    await page.getByLabel("Password", { exact: true }).fill("not-the-password");
+    const signIn = page.getByRole("button", { name: "Sign in", exact: true });
+    // Next's route announcer is also an alert, so match on the text.
+    const alert = page.getByRole("alert").filter({ hasText: /isn't right|Too many tries/ });
+    // Each try waits for its own answer from the server (a Server Action
+    // is a POST with a Next-Action header), so no two tries overlap.
+    async function tryOnce() {
+      const answered = page.waitForResponse(
+        (response) => response.request().method() === "POST" && "next-action" in response.request().headers(),
+      );
+      await signIn.click();
+      await answered;
+    }
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      await tryOnce();
+      await expect(alert).toHaveText("That email or password isn't right.");
+    }
+    await tryOnce();
+    await expect(alert).toHaveText("Too many tries. Wait 15 minutes and try again.");
+  });
+
+  test("the demo shortcuts aren't offered in a production build", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+    await expect(page.getByText("Try the prototype as")).toHaveCount(0);
   });
 
   test("parent sign-in form shows validation errors when empty", async ({ page }) => {
@@ -72,7 +104,7 @@ test.describe("Login", () => {
   });
 });
 
-test.describe("Staff session (Step 50)", () => {
+test.describe("Staff session (Steps 50 and 50.1)", () => {
   async function expectSignInScreen(page: import("@playwright/test").Page) {
     await expect(page).toHaveURL("/");
     await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
@@ -125,5 +157,31 @@ test.describe("Staff session (Step 50)", () => {
     await page.goto("/schools");
     await expect(page.getByRole("heading", { name: "Schools" }).first()).toBeVisible();
     await expect(page.getByText("Only a super admin manages schools")).toHaveCount(0);
+  });
+
+  test("Sign out ends the session", async ({ context, page, baseURL }, testInfo) => {
+    await signInAs(context, "principal", baseURL!);
+    await page.goto("/dashboard");
+    if (testInfo.project.name === "mobile") {
+      await page.getByRole("button", { name: "Open navigation menu" }).click();
+      await page.getByRole("dialog").getByRole("button", { name: "Sign out" }).click();
+    } else {
+      await page.getByRole("banner").getByRole("button", { name: "Sign out" }).click();
+    }
+    await expectSignInScreen(page);
+    await page.goto("/dashboard");
+    await expectSignInScreen(page);
+  });
+
+  test("signed in, the sign-in page goes straight to the dashboard", async ({ context, page, baseURL }) => {
+    await signInAs(context, "principal", baseURL!);
+    await page.goto("/");
+    await expect(page).toHaveURL("/dashboard");
+  });
+
+  test("a hand-typed parent cookie is signed out of the parent portal", async ({ context, page, baseURL }) => {
+    await context.addCookies([{ name: PARENT_SESSION_COOKIE, value: "parent-balanga-1", url: baseURL! }]);
+    await page.goto("/parent");
+    await expect(page).toHaveURL("/parent/login");
   });
 });
