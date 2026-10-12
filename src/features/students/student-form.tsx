@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
@@ -15,6 +15,7 @@ import { ageInYears } from "./age";
 import { CardBox } from "./card-box";
 import { PhotoBox } from "./photo-box";
 import { studentFormMaxBirthDate, studentFormSchema } from "./schemas";
+import { NO_CARD_CHANGE, type PendingCard } from "./student-changes";
 import type { Card, GradeLevel, Student, StudentFormInput, StudentFormValues } from "./types";
 
 const GRADE_LEVELS: readonly GradeLevel[] = [7, 8, 9, 10, 11, 12];
@@ -55,6 +56,10 @@ function valuesFrom(student: Student): StudentFormValues {
  * (schemas.ts); the server action re-validates the same schema and this
  * form also surfaces whatever it reports back (CLAUDE.md: "validated on
  * both sides").
+ *
+ * The Photo and ID card sections save nothing on their own (2026-10-12):
+ * what's chosen there is held here and saved by the same Save button, in
+ * one call with the fields. Cancel, or closing the drawer, throws it away.
  */
 export function StudentForm({
   student,
@@ -64,7 +69,7 @@ export function StudentForm({
   onCancel,
 }: {
   student?: Student;
-  /** Only meaningful when editing (`student` set) — a brand-new student has nothing to link a card to yet. */
+  /** The student's saved cards; none for a new student. */
   cards?: Card[];
   /** The page's today on the school's clock, for the age preview. */
   today: string;
@@ -85,11 +90,33 @@ export function StudentForm({
   });
 
   const birthDate = useWatch({ control, name: "birthDate" });
+  const [firstName, lastName] = useWatch({ control, name: ["firstName", "lastName"] });
   const busy = isPending || isSubmitting;
+
+  const [pendingCard, setPendingCard] = useState<PendingCard>(NO_CARD_CHANGE);
+  const [cardError, setCardError] = useState<string | null>(null);
+  const [pendingPhoto, setPendingPhoto] = useState<{ thumbnail: Blob; url: string } | null>(null);
+  const [removePhoto, setRemovePhoto] = useState(false);
+
+  // The preview's object URL holds the thumbnail in memory until released.
+  useEffect(() => {
+    return () => {
+      if (pendingPhoto) URL.revokeObjectURL(pendingPhoto.url);
+    };
+  }, [pendingPhoto]);
 
   function onSubmit(data: StudentFormInput) {
     startTransition(async () => {
-      const result = isEditing && student ? await updateStudent(student.id, data) : await createStudent(data);
+      const changes = { card: pendingCard, removePhoto };
+      let photoForm: FormData | undefined;
+      if (pendingPhoto) {
+        photoForm = new FormData();
+        photoForm.set("photo", pendingPhoto.thumbnail, "photo");
+      }
+      const result =
+        isEditing && student
+          ? await updateStudent(student.id, data, changes, photoForm)
+          : await createStudent(data, changes, photoForm);
 
       if (result.ok) {
         toast(
@@ -105,6 +132,10 @@ export function StudentForm({
         for (const [field, message] of Object.entries(result.fieldErrors) as [keyof StudentFormInput, string][]) {
           setError(field, { message });
         }
+      }
+      if (result.cardError) {
+        setCardError(result.cardError);
+        toast.error(result.cardError);
       }
       if (result.formError) {
         toast.error(result.formError);
@@ -268,8 +299,30 @@ export function StudentForm({
           </div>
         </fieldset>
 
-        {student ? <PhotoBox student={student} /> : null}
-        {student ? <CardBox studentId={student.id} cards={cards ?? []} /> : null}
+        <PhotoBox
+          name={{ firstName: firstName ?? "", lastName: lastName ?? "" }}
+          savedPhotoKey={student?.photoKey}
+          pendingPhotoUrl={pendingPhoto?.url ?? null}
+          removePhoto={removePhoto}
+          onPhotoChosen={(thumbnail) => {
+            setPendingPhoto({ thumbnail, url: URL.createObjectURL(thumbnail) });
+            setRemovePhoto(false);
+          }}
+          onRemove={() => setRemovePhoto(true)}
+          onUndo={() => {
+            setPendingPhoto(null);
+            setRemovePhoto(false);
+          }}
+        />
+        <CardBox
+          cards={cards ?? []}
+          pending={pendingCard}
+          onPendingChange={(next) => {
+            setPendingCard(next);
+            setCardError(null);
+          }}
+          error={cardError}
+        />
       </div>
 
       <SheetFooter className="flex-row justify-end border-t border-border [&>button]:h-11 [&>button]:flex-1 sm:[&>button]:h-8 sm:[&>button]:flex-none">

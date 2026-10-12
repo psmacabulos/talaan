@@ -1976,3 +1976,31 @@ Built from `docs/backend/step-49-time-in-time-out.md`. Its "What changed while b
 - **The seed:** three extra taps for Precious Rivera and Rodel Espiritu (`comingsAndGoings` in `taps.ts`, ids `…000000000901`–`903`). A throwaway `tsx` script printed the counts at 9:15 (still 21 / 6 / 13) and both students' labelled taps before the browser test was written. `seed.test.ts` now locks the counts in.
 - **The screenshot that changed the layout:** at 360 px, "In 8:17 AM · Out 8:40 AM" next to "Precious Rivera" forced the name to break as "Preciou / s Rivera". Out now goes on its own line under In, and a second screenshot confirmed the fix.
 - **Browser test** (`e2e/attendance.spec.ts`, both widths): Precious's 8:40 AM is visible, Rodel's "3 taps" dialog lists In 8:01, Out 8:20 and In 8:52 in order, and Escape closes it with focus back on the button. Each width renders both the table and the phone list (CSS hides one), so the test picks the visible copy with `locator("visible=true")`.
+
+## Review change: the drawer saves only on Save (2026-10-12)
+
+**What the owner found.** Testing with the real USB reader at home: tapping a sticker in the student drawer linked it **at once**, with no Save. A wrong sticker could only be undone with "Card lost? Replace it", which marks it lost, and a lost card can never be linked again (Step 44.7's `used_before` rule), so the sticker was wasted. The photo did the same: it was saved the moment it was chosen, and the drawer's Cancel undid neither.
+
+**What changed.** Nothing in the drawer saves on its own any more; the student form's Save saves everything in one call.
+- `src/features/students/student-changes.ts`: `PendingCard` (`replaceLost`, and `link`: a reader card or a simulated one) and `StudentChanges`, with a Zod schema the server re-checks.
+- **Card box** (`card-box.tsx`) is controlled by the form. Enter in the Card serial field calls `checkCardSerial` (`card-actions.ts`), which only checks the card (`checkSerial` in `card-changes.ts`) and answers with its stored form, so "already linked to another student" still shows at once. The box then shows "New card …, Not saved yet", plus "The current card … will be marked lost" when replacing, with Undo.
+- **Photo box** (`photo-box.tsx`) resizes the photo in the browser as before, then hands the thumbnail to the form, which previews it from an object URL (released when it changes or the form closes). Remove photo is held too.
+- **`createStudent` / `updateStudent`** (`actions.ts`) take `(input, changes, photoForm)`. `checkEverything` checks the fields, the card change (`prepareCardChange`, which re-runs every card check, since another drawer may have linked the card meanwhile) and the photo (`readPhotoUpload`, `photo-changes.ts`) **before writing anything**. Then: store the photo, save the student pointing at it, delete the old photo, and link the card (`apply`). A card needs its student to exist, so it's linked last. If that one write fails, the answer says the student was saved but the card wasn't.
+- `linkCard`, `linkRealCard`, `replaceCard` and `photo-actions.ts` were removed; nothing else used them.
+- The Add form now shows the Photo and ID card sections too, since both save with the new student.
+- `StudentAvatar` builds initials with `charAt(0)`, so an empty name while adding shows a blank circle instead of "UNDEFINED".
+
+**Tests.** `card-changes.test.ts`:
+- checking saves nothing;
+- the old card is marked lost only when applied;
+- a second card is refused without a replace;
+- the card is checked again on save;
+- a card links to a student added in the same save.
+
+`photo-changes.test.ts` covers the photo. One expected value in my first draft was wrong (`0211626835` is `53:2B:9D:0C`, not `53:2E:9D:0C`); the code was right.
+
+`e2e/students.spec.ts`:
+- the replace and photo tests now click Save and reopen the drawer to check;
+- a new test taps a card, cancels the drawer, and checks that the old card is still linked with no history (Jasmine Batumbakal on mobile, Reynaldo Abad on desktop).
+
+The 8 students tests passed at both widths, and the "not saved yet" states were checked in screenshots at 360 and 1280 px, light and dark. The owner runs the full checks.

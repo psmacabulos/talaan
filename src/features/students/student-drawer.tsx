@@ -20,7 +20,7 @@ export function StudentDrawer({
 }: {
   open: boolean;
   student?: Student;
-  /** That student's card history — ignored when `student` is undefined (a brand-new, not-yet-saved student has nothing to link a card to). */
+  /** That student's card history; empty for a new student. */
   cards: Card[];
   /** The page's today on the school's clock, for the form's age preview. */
   today: string;

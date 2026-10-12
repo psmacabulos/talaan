@@ -537,6 +537,8 @@ So the app takes the 10 digits, turns them back into those 4 bytes in their real
 
 **The catch:** the last 3 bytes never reach the app, so two stickers could in theory look the same. The database refuses a serial that's already linked (Step 39), so a clash shows up when staff link the card ("already linked", use another sticker), never as the wrong student at the gate. Some readers can be set to send the full ID, which removes the problem entirely.
 
+**Why the drawer's Card serial field shows the digits** (owner question, 2026-10-12): the field shows exactly what the reader typed, so for a moment it's the 10 digits. When the reader presses Enter, the app converts them and the box shows the card in the stored hex form, "New card 53:2B:9D:0C". Everything saved and shown afterwards is hex. If the digits just stay in the field, the Enter never arrived, or a red message under the field says why the card was refused.
+
 Full details: `docs/ARCHITECTURE.md`, "Open questions".
 
 ### Why notifications are created at tap time, not derived at read time (Step 24)

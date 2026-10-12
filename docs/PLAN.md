@@ -1,7 +1,7 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: █████████████████░░░ 87%**  (187 of 216 tasks, 53 of 63 steps approved)
+**Overall progress: █████████████████░░░ 87%**  (188 of 217 tasks, 53 of 63 steps approved)
 
 **Next up:** Step 46, The tap API and the gate's roster (ready for your review)
 
@@ -61,7 +61,7 @@
 | 44.7 | Link a real card | ██████████ 100% | Approved |
 | 45 | The tap service | ██████████ 100% | Approved |
 | 46 | The tap API and the gate's roster | ████████░░  75% | Ready for your review |
-| 46.5 | Student photos | ████████░░  80% | Ready for your review |
+| 46.5 | Student photos | ████████░░  83% | Ready for your review |
 | 47 | The `/gate` page | ████████░░  80% | Ready for your review |
 | 48 | The `/gate/display` guardhouse monitor | ████████░░  80% | Ready for your review |
 | 49 | Time in and time out on the attendance page | ████████░░  75% | Ready for your review |
@@ -553,6 +553,7 @@ Recipe: `docs/backend/step-46.5-student-photos.md`
 - [x] `Student.photoUrl` becomes `photoKey` (migration `student_photo_key`, a column rename). `newPhotoKey`, `detectPhotoType` and `MAX_PHOTO_BYTES`, with tests.
 - [x] The drawer's Photo section: the camera or a file, resized in the browser to a 256×256 WebP or JPEG, then `uploadStudentPhoto` and `removeStudentPhoto`. `StudentAvatar` shows the photo everywhere.
 - [x] `GET /api/v1/photos/[...key]` for the same school's staff, gate or monitor only (404 otherwise), cached privately for a year. The roster gains `photo`.
+- [x] Review change (2026-10-12): the drawer's photo and card are held until the student form's Save, and Cancel or Undo throws them away. A card tapped by mistake is never linked or marked lost. A new student can get both in the Add form.
 Done when: a photo added in the drawer shows in the lists, is about 15 KB in `.data/photos`, gives 404 without access and 200 with a Balanga gate token, and every check passes.
 Commit: `feat(students): student photos, stored as small thumbnails`
 - [ ] Owner review: I checked it and said "approved"

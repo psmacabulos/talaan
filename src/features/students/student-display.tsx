@@ -55,7 +55,7 @@ export function StudentAvatar({
         className,
       )}
     >
-      {`${student.firstName[0]}${student.lastName[0]}`.toUpperCase()}
+      {`${student.firstName.charAt(0)}${student.lastName.charAt(0)}`.toUpperCase()}
     </span>
   );
 }

@@ -2,6 +2,8 @@
 
 > **Fast-track recipe.** Written before the code, then built on 2026-10-11 when the owner said "build 46 to 49". Claude ran the checks. "What changed while building" (just before "Verify it worked") lists where the real code differs from the plan.
 
+> **Changed on 2026-10-12, during the review of Steps 46–49.** A chosen photo is no longer saved at once. `photo-actions.ts` (`uploadStudentPhoto`, `removeStudentPhoto`) is gone. The drawer shows a preview, "Not saved yet", and the student form's **Save** sends the thumbnail with the fields: `createStudent`/`updateStudent` check it with `readPhotoUpload` (`photo-changes.ts`), store it, then point the student at it. Remove photo and Undo are held the same way, and Cancel throws them away. A new student can now get a photo and a card in the Add form. See `docs/BUILD-LOG.md`, "Review change: the drawer saves only on Save".
+
 ## Why
 
 At the gate, the guard compares the photo on screen with the face of whoever is holding the card. Without a photo, a borrowed or found card can't be caught (decided 2026-10-10: the demo must show photos). This step lets staff add a photo in the student drawer, stores a small thumbnail, and serves it to the gate and the monitor.

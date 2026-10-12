@@ -6,43 +6,52 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { linkCard, linkRealCard, replaceCard } from "./card-actions";
+import { checkCardSerial } from "./card-actions";
 import { CardStatusBadge } from "./card-status-badge";
+import { hasCardChange, NO_CARD_CHANGE, type PendingCard } from "./student-changes";
 import type { Card } from "./types";
 
 type Mode = "idle" | "waiting" | "confirm";
 
 /**
- * The drawer's ID card section (Step 16) — only rendered for an existing
- * student (a brand-new, not-yet-saved one has nothing to link a card to).
- * In "waiting", a Card serial field takes a real card (Step 44.7): the USB
- * reader types into it and presses Enter. "Simulate a card tap" stays for
- * demos without a reader.
+ * The drawer's ID card section (Step 16). In "waiting", a Card serial field
+ * takes a real card (Step 44.7): the USB reader types into it and presses
+ * Enter. "Simulate a card tap" stays for demos without a reader.
  *
- * Owns a small state machine of its own, independent of the surrounding
- * React Hook Form, since linking/replacing a card saves immediately
- * through its own server actions rather than through the form's Save
- * button. Starts from the `cards` prop and updates optimistically from
- * each action's returned card — `refresh()` inside those actions keeps the
- * students table's own badge in sync for whenever the drawer is reopened.
+ * Saves nothing itself (2026-10-12): a tapped card is only checked, then
+ * held in `pending` until the student form's Save button, which links it
+ * (and marks the old card lost, when replacing) in the same save. Undo, or
+ * the form's Cancel, throws it away, so a sticker tapped by mistake is
+ * never linked or marked lost.
  */
-export function CardBox({ studentId, cards: initialCards }: { studentId: string; cards: Card[] }) {
-  const [cards, setCards] = useState(initialCards);
+export function CardBox({
+  cards,
+  pending,
+  onPendingChange,
+  error,
+}: {
+  /** The saved cards. */
+  cards: Card[];
+  pending: PendingCard;
+  onPendingChange: (pending: PendingCard) => void;
+  /** Why the last Save refused the card, if it did. */
+  error: string | null;
+}) {
   const [mode, setMode] = useState<Mode>("idle");
   const [serialInput, setSerialInput] = useState("");
   const [serialError, setSerialError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [isChecking, startChecking] = useTransition();
   const serialId = useId();
+  const errorId = useId();
   const serialRef = useRef<HTMLInputElement>(null);
 
   // The USB reader types into whatever has focus, so the field must have it
   // whenever the box is waiting for a card: when the panel opens, and again
-  // after a refused card. It waits until nothing is pending, because the
-  // field is disabled meanwhile and a disabled input can't take focus (why
-  // `autoFocus` alone missed it right after "Yes, replace card").
+  // after a refused card. It waits until the check is done, because the
+  // field is disabled meanwhile and a disabled input can't take focus.
   useEffect(() => {
-    if (mode === "waiting" && !isPending) serialRef.current?.focus();
-  }, [mode, isPending]);
+    if (mode === "waiting" && !isChecking) serialRef.current?.focus();
+  }, [mode, isChecking]);
 
   const activeCard = cards.find((card) => card.status === "active");
   // Oldest first, so "the current lost card" (if there's no active one) is
@@ -58,58 +67,41 @@ export function CardBox({ studentId, cards: initialCards }: { studentId: string;
     setMode("waiting");
   }
 
-  function handleLinkRealCard() {
+  function handleUseCard() {
     if (!serialInput.trim()) return;
-    startTransition(async () => {
-      const result = await linkRealCard(studentId, serialInput);
+    startChecking(async () => {
+      const result = await checkCardSerial(serialInput);
       if (!result.ok) {
         if (result.fieldError) setSerialError(result.fieldError);
         if (result.formError) toast.error(result.formError);
         return;
       }
-      setCards((current) => [...current, result.card]);
+      onPendingChange({ ...pending, link: { kind: "reader", serial: result.serial } });
       setMode("idle");
-      toast(`Card ${result.card.serial} linked`);
     });
   }
 
   // The card box sits inside the student form, so a plain Enter here would
   // submit the whole student. The USB reader presses Enter after every
-  // card, so Enter links the card instead.
+  // card, so Enter only checks the card; saving stays the Save button's job.
   function handleSerialKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key !== "Enter") return;
     event.preventDefault();
-    handleLinkRealCard();
+    handleUseCard();
   }
 
   function handleSimulateTap() {
-    startTransition(async () => {
-      const result = await linkCard(studentId);
-      if (!result.ok) {
-        toast.error(result.formError);
-        return;
-      }
-      setCards((current) => [...current, result.card]);
-      setMode("idle");
-      toast(`Card ${result.card.serial} linked`);
-    });
+    onPendingChange({ ...pending, link: { kind: "simulated" } });
+    setMode("idle");
   }
 
-  function handleConfirmReplace() {
-    startTransition(async () => {
-      const result = await replaceCard(studentId);
-      if (!result.ok) {
-        toast.error(result.formError);
-        setMode("idle");
-        return;
-      }
-      setCards((current) => current.map((card) => (card.id === result.card.id ? result.card : card)));
-      startWaiting();
-    });
+  function handleUndo() {
+    onPendingChange(NO_CARD_CHANGE);
+    setMode("idle");
   }
 
   return (
-    <fieldset className="flex flex-col gap-4">
+    <fieldset className="flex flex-col gap-4" aria-describedby={error ? errorId : undefined}>
       <legend className="mb-3 font-heading text-sm font-semibold text-foreground">ID card</legend>
 
       {mode === "waiting" ? (
@@ -133,7 +125,7 @@ export function CardBox({ studentId, cards: initialCards }: { studentId: string;
               spellCheck={false}
               className="font-mono"
               value={serialInput}
-              disabled={isPending}
+              disabled={isChecking}
               aria-invalid={serialError ? true : undefined}
               aria-describedby={serialError ? `${serialId}-error` : undefined}
               onChange={(event) => {
@@ -149,15 +141,15 @@ export function CardBox({ studentId, cards: initialCards }: { studentId: string;
             ) : null}
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" disabled={isPending || !serialInput.trim()} onClick={handleLinkRealCard}>
-              {isPending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-              Link card
+            <Button type="button" size="sm" disabled={isChecking || !serialInput.trim()} onClick={handleUseCard}>
+              {isChecking ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+              Use this card
             </Button>
-            <Button type="button" variant="outline" size="sm" disabled={isPending} onClick={handleSimulateTap}>
+            <Button type="button" variant="outline" size="sm" disabled={isChecking} onClick={handleSimulateTap}>
               <Nfc className="size-4" aria-hidden="true" />
               Simulate a card tap
             </Button>
-            <Button type="button" variant="ghost" size="sm" disabled={isPending} onClick={() => setMode("idle")}>
+            <Button type="button" variant="ghost" size="sm" disabled={isChecking} onClick={handleUndo}>
               Cancel
             </Button>
           </div>
@@ -169,17 +161,51 @@ export function CardBox({ studentId, cards: initialCards }: { studentId: string;
             <div>
               <p className="text-sm font-medium text-foreground">Mark this card as lost?</p>
               <p className="text-sm text-muted-foreground">
-                It will stop working at every tap station. You&apos;ll then tap a new card to link it.
+                Once you save, it stops working at every gate. You&apos;ll tap the new card next.
               </p>
             </div>
           </div>
           <div className="flex gap-2">
-            <Button type="button" variant="destructive" size="sm" disabled={isPending} onClick={handleConfirmReplace}>
-              {isPending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                onPendingChange({ replaceLost: true, link: null });
+                startWaiting();
+              }}
+            >
               Yes, replace card
             </Button>
-            <Button type="button" variant="ghost" size="sm" disabled={isPending} onClick={() => setMode("idle")}>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setMode("idle")}>
               Keep card
+            </Button>
+          </div>
+        </div>
+      ) : hasCardChange(pending) ? (
+        <div className="flex flex-col gap-3 rounded-lg border border-dashed border-primary p-4">
+          {pending.link ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium text-foreground">New card</span>
+              <span className="font-mono text-sm break-all text-foreground">
+                {pending.link.kind === "reader" ? pending.link.serial : "(a simulated card)"}
+              </span>
+            </div>
+          ) : null}
+          {pending.replaceLost && activeCard ? (
+            <p className="text-sm text-muted-foreground">
+              The current card, <span className="font-mono break-all">{activeCard.serial}</span>, will be marked lost.
+            </p>
+          ) : null}
+          <p className="text-sm text-muted-foreground">Not saved yet. It&apos;s saved when you save the student.</p>
+          <div className="flex flex-wrap gap-2">
+            {pending.link ? null : (
+              <Button type="button" size="sm" onClick={startWaiting}>
+                Link the new card
+              </Button>
+            )}
+            <Button type="button" variant="outline" size="sm" className="w-fit" onClick={handleUndo}>
+              Undo
             </Button>
           </div>
         </div>
@@ -216,6 +242,12 @@ export function CardBox({ studentId, cards: initialCards }: { studentId: string;
           )}
         </div>
       )}
+
+      {error ? (
+        <p id={errorId} className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
     </fieldset>
   );
 }

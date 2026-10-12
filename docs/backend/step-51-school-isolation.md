@@ -80,8 +80,8 @@ The doc also explains "why not RLS yet" (decision 1), and has a quick recipe: "I
 - `@/data/repositories`: the in-memory repositories, filled with the demo seed.
 
 Then they call every action with **Balanga's** ids:
-- `updateStudent`, `uploadStudentPhoto`, `removeStudentPhoto`;
-- `linkCard`, `linkRealCard`, `replaceCard`;
+- `updateStudent` (with a photo and a card change, since 2026-10-12);
+- `checkCardSerial`;
 - `removeStaff`, `resendStaffInvite`, `createSignInLink` (Step 50.5);
 - `simulateTap` and `syncStationTaps` with a Balanga card;
 - parents' `markNotificationRead` with a Balanga notification.

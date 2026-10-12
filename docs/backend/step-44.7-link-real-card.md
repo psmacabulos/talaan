@@ -2,6 +2,8 @@
 
 > **Fast-track recipe, written from the real diff.** You asked for this step to be built straight away (2026-10-11), so this file records what was built instead of being approved first.
 
+> **Changed on 2026-10-12, during the review of Steps 46–49.** A card read in the drawer is no longer linked at once. `linkRealCard`, `linkCard` and `replaceCard` are gone. The Card serial field now calls `checkCardSerial` (`card-actions.ts`), which only checks the card and shows "New card 53:2E:98:0C, Not saved yet". The student form's **Save** links it, and marks the old card lost when replacing, through `prepareCardChange` (`card-changes.ts`). Undo, or the form's Cancel, throws it away, so a sticker tapped by mistake is never linked or marked lost. See `docs/BUILD-LOG.md`, "Review change: the drawer saves only on Save".
+
 ## Why
 
 The student drawer's **Link card** button was Phase 1's "Simulate a card tap": it made up a random serial. Every pilot sticker has to be linked to a student before the gate can recognise it, so the drawer needs to accept a **real** card. Your USB reader acts as a keyboard: it types the card's 10 digits and presses Enter. The drawer just needs a field for it to type into.

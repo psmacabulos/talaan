@@ -86,14 +86,49 @@ test.describe("Students", () => {
     await expect(serialField).toBeFocused();
     await serialField.fill(readerDigits);
     await serialField.press("Enter");
-    // Toast confirms the new card, in the stored form (4 hex bytes).
-    await expect(page.getByText(/Card ([0-9A-F]{2}:){3}[0-9A-F]{2} linked/)).toBeVisible();
+    // Enter only checks the card: it's shown in its stored form (4 hex
+    // bytes), held until Save, and nothing is marked lost yet.
+    await expect(dialog.getByText(/^([0-9A-F]{2}:){3}[0-9A-F]{2}$/)).toBeVisible();
+    await expect(dialog.getByText("Not saved yet. It's saved when you save the student.")).toBeVisible();
 
-    // Card should now show as linked (active) again.
+    await dialog.getByRole("button", { name: "Save student" }).click();
+    await expect(page.getByText(`Saved changes to ${studentName}`)).toBeVisible();
+    await expect(dialog).toBeHidden();
+
+    // Reopened: the new card is linked (active), and the old one is in the history.
+    await page.getByRole("button", { name: `Edit ${studentName}` }).click();
     await expect(dialog.getByText("Linked", { exact: true })).toBeVisible();
-
-    // Old card should appear in the history.
     await expect(dialog.getByText(/Previous cards:/)).toBeVisible();
+  });
+
+  test("a card tapped by mistake isn't saved when you cancel", async ({ page, context, baseURL }, testInfo) => {
+    await signInAs(context, "principal", baseURL!);
+    await page.goto("/students");
+
+    // A different seed student with an active card per project; no other
+    // browser test touches these two.
+    const studentName = testInfo.project.name === "mobile" ? "Jasmine Batumbakal" : "Reynaldo Abad";
+    await page.getByLabel("Search students").fill(studentName);
+    await page.getByRole("button", { name: `Edit ${studentName}` }).click();
+    const dialog = page.getByRole("dialog");
+    const cardBox = dialog.getByRole("group", { name: "ID card" });
+    const serialBefore = await cardBox.locator(".font-mono").first().innerText();
+
+    await cardBox.getByRole("button", { name: "Card lost? Replace it" }).click();
+    await cardBox.getByRole("button", { name: "Yes, replace card" }).click();
+    const serialField = cardBox.getByLabel("Card serial");
+    await expect(serialField).toBeFocused();
+    await serialField.fill(String(Math.floor(Math.random() * 0xffffffff)).padStart(10, "0"));
+    await serialField.press("Enter");
+    await expect(cardBox.getByText("New card")).toBeVisible();
+
+    // Cancel the whole drawer: nothing was saved, so the old card is still linked.
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toBeHidden();
+    await page.getByRole("button", { name: `Edit ${studentName}` }).click();
+    await expect(cardBox.getByText("Linked", { exact: true })).toBeVisible();
+    await expect(cardBox.getByText(serialBefore, { exact: true })).toBeVisible();
+    await expect(cardBox.getByText(/Previous cards:/)).toBeHidden();
   });
 
   test("add a student's photo", async ({ page, context, baseURL }, testInfo) => {
@@ -111,10 +146,15 @@ test.describe("Students", () => {
     // A plain coloured square, not a face (e2e/fixtures/photo.png). The
     // browser crops and shrinks it to a thumbnail before it's sent.
     await dialog.getByLabel("Student photo").setInputFiles("e2e/fixtures/photo.png");
-    await expect(page.getByText("Photo saved")).toBeVisible();
-
-    // The drawer now shows the stored photo, loaded through the photo route.
+    // A preview only, held until Save.
     const photo = dialog.getByRole("group", { name: "Photo" }).locator("img");
+    await expect(photo).toHaveAttribute("src", /^blob:/);
+    await dialog.getByRole("button", { name: "Save student" }).click();
+    await expect(page.getByText(`Saved changes to ${studentName}`)).toBeVisible();
+    await expect(dialog).toBeHidden();
+
+    // Reopened, the drawer shows the stored photo, loaded through the photo route.
+    await page.getByRole("button", { name: `Edit ${studentName}` }).click();
     await expect(photo).toHaveAttribute("src", /^\/api\/v1\/photos\/school-balanga\/student-\d+\/\w+\.(webp|jpeg)$/);
     await expect.poll(() => photo.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(256);
     await expect(dialog.getByRole("button", { name: "Change photo" })).toBeVisible();

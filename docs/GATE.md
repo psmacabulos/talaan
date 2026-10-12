@@ -87,7 +87,7 @@ if (READER_DIGITS.test(trimmed)) {
 
 Because a card can be stored with 4 bytes or 7, both linking and matching look at the **first 4 bytes**:
 
-- **Linking** (`linkRealCard`, Step 44.7) refuses a card whose first 4 bytes match another active card at the school. This reader couldn't tell the two apart.
+- **Linking** (`checkSerial` in `card-changes.ts`, Step 44.7; checked when the card is read and again on Save) refuses a card whose first 4 bytes match another active card at the school. This reader couldn't tell the two apart.
 - **Matching** (`matchCard`, Step 45) takes the exact serial first, then the card that shares the first 4 bytes. An active card beats a lost one, and two equal candidates give "unknown card" rather than a guess.
 
 Both use `CardRepository.listBySerialPrefix(schoolId, firstFourBytes)`, one query for the exact card and any twin.
@@ -135,7 +135,8 @@ The direction comes from `deriveTapKind` (1st tap of the day is time in, 2nd tim
 
 ```
 src/features/students/card-serial.ts     normalizeCardSerial, firstFourBytes, findSerialConflict (44.7)
-src/features/students/card-actions.ts    linkRealCard: the drawer's Card serial field (44.7)
+src/features/students/card-actions.ts    checkCardSerial: the drawer's Card serial field (44.7)
+src/features/students/card-changes.ts    checkSerial, prepareCardChange: linked by the form's Save (2026-10-12)
 src/features/attendance/notify-parents.ts  shouldNotifyParents: the school's notification rule
 src/services/taps/match-card.ts          which card a serial means
 src/services/taps/tap-time.ts            which time a tap gets
