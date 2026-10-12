@@ -16,11 +16,14 @@ describe("describeScan", () => {
   it("shows the roster's guess while checking", () => {
     expect(describeScan(scan({ kind: "checking" }))).toEqual({
       tone: "idle",
+      kind: "checking",
       name: "Juan Cruz",
       grade: "Grade 7 – Rizal",
       message: "Checking…",
       short: "Checking…",
       at: at756,
+      stampAt: null,
+      detail: null,
     });
   });
 
@@ -48,14 +51,16 @@ describe("describeScan", () => {
       replayed: false,
       student: juan,
     });
-    expect(describeScan(timeOut).message).toBe("Time out 7:56 AM");
+    expect(describeScan(timeOut)).toMatchObject({ kind: "time_out", message: "Time out 7:56 AM", stampAt: at756 });
   });
 
   it("shows a duplicate in amber with the earlier time", () => {
     expect(describeScan(answered({ outcome: "duplicate", previousTappedAt: at756, student: juan }))).toMatchObject({
       tone: "late",
+      kind: "duplicate",
       message: "Already tapped at 7:56 AM",
       short: "Already tapped",
+      stampAt: at756,
     });
   });
 

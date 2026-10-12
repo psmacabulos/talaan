@@ -43,6 +43,9 @@
   --status-absent-bg: oklch(94.4% 0.025 14.6);
   --status-idle: oklch(49.3% 0.046 260);
   --status-idle-bg: oklch(94.7% 0.013 255.5);
+  /* Time out at the gate (2026-10-12): blue, so it reads apart from a green time in. */
+  --status-out: oklch(50.5% 0.2 263);
+  --status-out-bg: oklch(95.6% 0.022 255);
 
   /* Destructive actions (Step 6) — fixed like the status colors above.
      The color itself is --status-absent (aliased in globals.css); this is
@@ -61,6 +64,8 @@
   --shadow-sm: 0 1px 2px oklch(32.5% 0.087 268.9 / 0.08);
   --shadow-md: 0 4px 12px oklch(32.5% 0.087 268.9 / 0.12);
   --shadow-lg: 0 12px 32px oklch(32.5% 0.087 268.9 / 0.16);
+  /* A wide, faint lift for a large white card on a pale page (the gate's tap card). */
+  --shadow-card: 0 12px 32px oklch(32.5% 0.087 268.9 / 0.06);
 
   /* Motion — short and purposeful */
   --duration-fast: 100ms;
@@ -97,6 +102,8 @@
   --status-absent-bg: oklch(27.3% 0.061 17.3);
   --status-idle: oklch(77.6% 0.036 260.4);
   --status-idle-bg: oklch(29.1% 0.051 263.3);
+  --status-out: oklch(78.5% 0.11 255);
+  --status-out-bg: oklch(29.5% 0.07 262);
 
   /* Dark-mode status-absent is bright (76.5% lightness), so its solid-fill
      foreground has to be dark, not light — see the light block above. */
@@ -105,4 +112,5 @@
   --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.24);
   --shadow-md: 0 4px 12px oklch(0% 0 0 / 0.32);
   --shadow-lg: 0 12px 32px oklch(0% 0 0 / 0.4);
+  --shadow-card: 0 12px 32px oklch(0% 0 0 / 0.3);
 }

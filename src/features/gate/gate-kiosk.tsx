@@ -20,9 +20,10 @@ import {
   syncPhotos,
   type StoredRoster,
 } from "./gate-client";
-import { describeScan, type GateScan, type GateTone } from "./gate-display";
+import { describeScan, type GateScan } from "./gate-display";
 import { findRosterStudent } from "./roster-match";
 import { createScanBuffer } from "./scan-buffer";
+import { TAP_CARD_PORTRAIT, TapCard, TapListItem } from "./tap-card";
 
 /** After this long with no new tap, the big panel tidies back to "Tap your card". It never holds up a tap. */
 const IDLE_AFTER_MS = 5_000;
@@ -30,19 +31,6 @@ const ROSTER_EVERY_MS = 5 * 60_000;
 /** A tablet clock this far off gets a warning; the server corrects badly wrong times anyway (Step 45). */
 const CLOCK_WARNING_MS = 2 * 60_000;
 const RECENT_COUNT = 6;
-
-const TONE_PANEL: Record<GateTone, string> = {
-  present: "border-status-present bg-status-present-bg",
-  late: "border-status-late bg-status-late-bg",
-  absent: "border-status-absent bg-status-absent-bg",
-  idle: "border-border bg-card",
-};
-const TONE_TEXT: Record<GateTone, string> = {
-  present: "text-status-present",
-  late: "text-status-late",
-  absent: "text-status-absent",
-  idle: "text-muted-foreground",
-};
 
 type NdefReaderLike = { scan(): Promise<void>; onreading: ((event: { serialNumber: string }) => void) | null };
 
@@ -344,7 +332,7 @@ export function GateKiosk() {
 
   return (
     <main className="flex min-h-dvh flex-col bg-background text-foreground">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-6">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-4 py-3 sm:px-6">
         <div>
           <h1 className="font-heading text-lg font-semibold">Gate</h1>
           <p className="text-sm text-muted-foreground">Connected as {phase.label}</p>
@@ -390,28 +378,15 @@ export function GateKiosk() {
       <div className="grid flex-1 md:grid-cols-[minmax(0,1fr)_20rem]">
         <section className="flex flex-col items-center justify-center gap-6 p-6 text-center">
           {current && display ? (
-            <div
-              className={cn(
-                "flex w-full max-w-xl flex-col items-center gap-5 rounded-3xl border-4 p-6 sm:p-8",
-                TONE_PANEL[display.tone],
-              )}
-            >
-              <ScanAvatar
-                name={display.name}
-                photoSrc={photoFor(current)}
-                className="w-[min(56vw,14rem)] rounded-2xl text-6xl"
-              />
-              {/* With nobody to name (an unknown card, a bad read), the message is the headline. */}
-              {display.name ? (
-                <div className="flex flex-col gap-1">
-                  <p className="font-heading text-3xl font-bold text-foreground sm:text-4xl">{display.name}</p>
-                  {display.grade ? <p className="text-lg text-muted-foreground">{display.grade}</p> : null}
-                </div>
-              ) : null}
-              <p className={cn("font-heading text-2xl font-semibold sm:text-3xl", TONE_TEXT[display.tone])}>
-                {display.message}
-              </p>
-            </div>
+            <TapCard
+              key={current.id}
+              kind={display.kind}
+              name={display.name}
+              grade={display.grade}
+              stampAt={display.stampAt}
+              detail={display.detail}
+              portrait={<ScanAvatar name={display.name} photoSrc={photoFor(current)} className={TAP_CARD_PORTRAIT} />}
+            />
           ) : (
             <div className="flex flex-col items-center gap-4">
               <Nfc className="size-20 text-primary" aria-hidden="true" />
@@ -426,26 +401,28 @@ export function GateKiosk() {
           </p>
         </section>
 
-        <aside aria-labelledby="gate-recent" className="hidden flex-col gap-3 border-l border-border p-4 md:flex">
+        <aside
+          aria-labelledby="gate-recent"
+          className="hidden flex-col gap-3 overflow-y-auto border-l border-border bg-card p-5 md:flex"
+        >
           <h2 id="gate-recent" className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
             Recent
           </h2>
           {scans.length === 0 ? (
             <p className="text-sm text-muted-foreground">No taps yet.</p>
           ) : (
-            <ul className="flex flex-col gap-2">
+            <ul className="flex flex-col gap-2.5">
               {scans.slice(0, RECENT_COUNT).map((scan) => {
                 const item = describeScan(scan);
                 return (
-                  <li key={scan.id} className="flex items-center gap-3 rounded-lg border border-border bg-card p-2">
-                    <ScanAvatar name={item.name} photoSrc={photoFor(scan)} className="w-9" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{item.name ?? "Unknown card"}</p>
-                      <p className={cn("text-xs", TONE_TEXT[item.tone])}>
-                        {item.short} · {formatSchoolTime(item.at)}
-                      </p>
-                    </div>
-                  </li>
+                  <TapListItem
+                    key={scan.id}
+                    kind={item.kind}
+                    name={item.name}
+                    label={item.short}
+                    at={item.at}
+                    portrait={<ScanAvatar name={item.name} photoSrc={photoFor(scan)} className="w-10" />}
+                  />
                 );
               })}
             </ul>

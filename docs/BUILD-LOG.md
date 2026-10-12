@@ -2043,3 +2043,36 @@ The 8 students tests passed at both widths, and the "not saved yet" states were 
 - Photos uploaded before this are 256 × 256. They still show, cropped slightly at the sides by `object-cover`; re-upload any that look wrong.
 
 **Checks.** Typecheck and lint are clean. The `portraitCrop` tests pass; my first draft expected the wrong landscape numbers (1920 × 1080 gives `x: 528, width: 864`). Screenshots of the gate (phone and desktop, light and dark), the student list and the drawer looked right. The Docker Postgres container had stopped (exit 255, probably the Mac's sleep) and was restarted with `docker start talaan-postgres`. `e2e/students.spec.ts` now also checks `naturalHeight` 320. The owner runs the full checks.
+
+## Review change: a refined tap card on the gate and the monitor (2026-10-12)
+
+**What the owner asked.** A visual refinement of the gate screen, in a pasted brief ("premium SaaS"), for every state, with the same look on the guardhouse monitor. The fonts, the scanning, the API and the data flow stay unchanged.
+
+**What changed.**
+- **`src/features/gate/tap-card.tsx` (new):**
+  - `TapCard`, the newest tap: a white card (`bg-card`, `border-border`, `rounded-3xl`, a new `--shadow-card`), the 4:5 portrait (`TAP_CARD_PORTRAIT`, `object-top`), a compact badge with an icon, the name (`text-2xl sm:text-3xl`, breaking long names) and grade, a divider, then a tinted stamp: a small uppercase label above the time (`tabular-nums`).
+  - `TapListItem`, one row of the gate's Recent list and the monitor's Earlier list.
+  - One `KIND` table decides each state's badge, icon and colours, so both screens can't drift apart.
+- **States** (`TapKind` in `gate-display.ts`):
+
+  | State | Badge | Card shows |
+  |---|---|---|
+  | time in | green "Attendance recorded" | stamp "TIME IN", green |
+  | time out | green "Attendance recorded" | stamp "TIME OUT", **blue** |
+  | duplicate | amber "Already tapped" | stamp "FIRST TAPPED AT" |
+  | lost card | red "Card reported lost" | "Please see the office." |
+  | unknown card | grey "Card not recognised" | "Please see the office." |
+  | unreadable | grey "Couldn't read the card" | "Tap the card again." |
+  | not sent | grey "Not sent" | the no-connection detail |
+  | checking | grey, spinning "Checking…" | nothing |
+
+  `describeScan` gained `kind`, `stampAt` and `detail`. Its `message` stays, for the screen reader announcement.
+- **A blue for time out:** new fixed status tokens `--status-out` / `--status-out-bg` in `tokens.css` (light and dark), mapped in `globals.css`. Checked with culori: 5.4:1 on its tint and 6.1:1 on white in light mode, 7.1:1 in dark. They're never themed, like the other status colours.
+- **No raw colours:** the brief's hex values were mapped onto the existing tokens (`background`, `card`, `foreground`, `muted-foreground`, `border` and the status colours), so `check:tokens` still passes and dark mode works.
+- **Motion and layout:** the card is keyed by the tap's id and fades in over 200 ms (`tw-animate-css`, none with reduced motion). A new tap never waits for it. The stamp area has a fixed minimum height, so the card doesn't jump when the answer arrives.
+- **Layout:** both headers are white (`bg-card`). The gate's Recent sidebar is white, scrolls on its own, and has 10 px gaps. The monitor's newest tap is the same centred card, with the Earlier grid below it.
+- **`e2e/gate.spec.ts`** now expects the badge and the stamp label ("Attendance recorded", "Time out", "Already tapped", "First tapped at", "Card not recognised") instead of the old one-line messages.
+
+**Checks.** Typecheck, lint, `check:tokens` and the `gate-display` tests pass. The gate and monitor browser tests passed (17, plus 1 desktop-only test skipped on the phone). Screenshots of every state at 360 and 1280 px, light and dark, looked right.
+
+**Known:** under the pinned demo clock, a duplicate's Recent entry shows the tablet's real time (`at` is when the card was read), while the stamp shows the pinned time. In real use the two agree.

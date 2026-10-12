@@ -23,14 +23,17 @@ test.describe("Gate (Step 47)", () => {
     await page.keyboard.press("Enter");
     const panel = page.getByRole("main");
     await expect(panel.getByText(studentName).first()).toBeVisible();
-    await expect(panel.getByText(/^Time out \d{1,2}:\d{2} [AP]M$/)).toBeVisible();
+    // The tap card (2026-10-12): a badge, then the stamp's label and time apart.
+    await expect(panel.getByText("Attendance recorded", { exact: true })).toBeVisible();
+    await expect(panel.getByText("Time out", { exact: true })).toBeVisible();
     await expect(page.locator('main section [aria-live="polite"]')).toHaveText(
       new RegExp(`^${studentName}: Time out `),
     );
 
     await page.keyboard.type(digits);
     await page.keyboard.press("Enter");
-    await expect(panel.getByText(/^Already tapped at \d{1,2}:\d{2} [AP]M$/)).toBeVisible();
+    await expect(panel.getByText("Already tapped", { exact: true })).toBeVisible();
+    await expect(panel.getByText("First tapped at", { exact: true })).toBeVisible();
   });
 
   test("an unknown card is sent to the office, and a bad token goes back to setup", async ({ page }, testInfo) => {
@@ -42,7 +45,9 @@ test.describe("Gate (Step 47)", () => {
     await page.keyboard.press("Enter");
     const message = "Card not recognised. Please see the office.";
     // Shown on the panel, and announced to screen readers in the live region.
-    await expect(page.getByRole("main").locator("section").getByText(message, { exact: true }).first()).toBeVisible();
+    await expect(
+      page.getByRole("main").locator("section").getByText("Card not recognised", { exact: true }),
+    ).toBeVisible();
     await expect(page.locator('main section [aria-live="polite"]')).toHaveText(message);
 
     await page.evaluate(() => window.localStorage.clear());

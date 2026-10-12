@@ -54,6 +54,8 @@
   --color-status-absent-bg: var(--status-absent-bg);
   --color-status-idle: var(--status-idle);
   --color-status-idle-bg: var(--status-idle-bg);
+  --color-status-out: var(--status-out);
+  --color-status-out-bg: var(--status-out-bg);
 
   --font-heading: var(--font-lexend);
   --font-body: var(--font-atkinson);

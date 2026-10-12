@@ -39,6 +39,7 @@ Both start with `authenticateGate()` (`src/services/devices/authenticate-gate.ts
 | `scan-buffer.ts` | Key presses become scans, with no input field (which would open Android's keyboard). Enter ends a scan, and a gap over 100 ms starts over, so a person's slow typing never becomes a card. |
 | `roster-match.ts` | Who a scan probably is, from the tablet's roster, by the server's rule (exact, else the first 4 bytes, never a guess), so the photo shows before the server answers. |
 | `gate-display.ts` | What the screen says for each state: checking, each outcome, or not sent. |
+| `tap-card.tsx` | How each state looks (2026-10-12): `TapCard`, the newest tap (portrait, badge, name, then a TIME IN / TIME OUT stamp or what to do next), and `TapListItem`, one row of Recent. Shared with the guardhouse monitor, so both screens look alike. Time out is blue (`--status-out`). |
 
 A scan gets its own UUID and is sent at once. Its entry updates when its own answer arrives, so three quick taps are three requests in flight together. Any `401` from any call wipes the tablet and returns to setup.
 

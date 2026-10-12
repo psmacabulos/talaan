@@ -7,23 +7,24 @@ import { StudentAvatar } from "@/features/students/student-display";
 import { formatSchoolTime } from "@/lib/school-time";
 import { cn } from "@/lib/utils";
 import type { GateTapEvent } from "@/services/taps/tap-events";
+import type { TapKind } from "./gate-display";
 import { mergeMonitorEvents } from "./monitor-events";
+import { TAP_CARD_PORTRAIT, TapCard, TapListItem } from "./tap-card";
 
-const OUTCOME_TEXT: Record<GateTapEvent["outcome"], string> = {
-  recorded: "text-status-present",
-  lost_card: "text-status-absent",
-  unknown_card: "text-muted-foreground",
-};
-const OUTCOME_BORDER: Record<GateTapEvent["outcome"], string> = {
-  recorded: "border-status-present",
-  lost_card: "border-status-absent",
-  unknown_card: "border-border",
-};
+/** A monitor event as a tap card kind (`tap-card.tsx`), so the monitor and the gate look alike. */
+function kindOf(event: GateTapEvent): TapKind {
+  if (event.outcome === "recorded") return event.direction === "time_out" ? "time_out" : "time_in";
+  return event.outcome;
+}
 
 function outcomeLabel(event: GateTapEvent): string {
   if (event.outcome === "lost_card") return "Lost card: see the office";
   if (event.outcome === "unknown_card") return "Card not recognised";
   return event.direction === "time_out" ? "Time out" : "Time in";
+}
+
+function nameOf(event: GateTapEvent): string | null {
+  return event.student ? `${event.student.firstName} ${event.student.lastName}` : null;
 }
 
 function MonitorAvatar({ event, className }: { event: GateTapEvent; className: string }) {
@@ -82,7 +83,7 @@ export function GateMonitor({ schoolName, loaded }: { schoolName: string; loaded
 
   return (
     <main className="flex min-h-dvh flex-col bg-background text-foreground">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-6">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-4 py-3 sm:px-6">
         <div>
           <h1 className="font-heading text-lg font-semibold">Gate monitor</h1>
           <p className="text-sm text-muted-foreground">{schoolName}</p>
@@ -99,28 +100,16 @@ export function GateMonitor({ schoolName, loaded }: { schoolName: string; loaded
 
       {newest ? (
         <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6">
-          <section
-            aria-live="polite"
-            aria-label="Newest tap"
-            className={cn(
-              "flex flex-col items-center gap-6 rounded-3xl border-4 bg-card p-6 text-center sm:flex-row sm:text-left",
-              OUTCOME_BORDER[newest.outcome],
-            )}
-          >
-            <MonitorAvatar event={newest} className="w-[min(48vw,12rem)] rounded-2xl text-6xl" />
-            <div className="flex flex-col gap-2">
-              <p className="font-heading text-4xl font-bold">
-                {newest.student ? `${newest.student.firstName} ${newest.student.lastName}` : "Unknown card"}
-              </p>
-              {newest.student ? (
-                <p className="text-xl text-muted-foreground">
-                  Grade {newest.student.gradeLevel} – {newest.student.section}
-                </p>
-              ) : null}
-              <p className={cn("font-heading text-3xl font-semibold", OUTCOME_TEXT[newest.outcome])}>
-                {outcomeLabel(newest)} · {formatSchoolTime(newest.tappedAt)}
-              </p>
-            </div>
+          <section aria-live="polite" aria-label="Newest tap" className="flex justify-center">
+            <TapCard
+              key={newest.id}
+              kind={kindOf(newest)}
+              name={nameOf(newest)}
+              grade={newest.student ? `Grade ${newest.student.gradeLevel} – ${newest.student.section}` : null}
+              stampAt={newest.outcome === "recorded" ? newest.tappedAt : null}
+              detail={newest.outcome === "recorded" ? null : "Please see the office."}
+              portrait={<MonitorAvatar event={newest} className={TAP_CARD_PORTRAIT} />}
+            />
           </section>
 
           {earlier.length > 0 ? (
@@ -133,17 +122,14 @@ export function GateMonitor({ schoolName, loaded }: { schoolName: string; loaded
               </h2>
               <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {earlier.map((event) => (
-                  <li key={event.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
-                    <MonitorAvatar event={event} className="w-12 text-lg" />
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">
-                        {event.student ? `${event.student.firstName} ${event.student.lastName}` : "Unknown card"}
-                      </p>
-                      <p className={cn("text-sm", OUTCOME_TEXT[event.outcome])}>
-                        {outcomeLabel(event)} · {formatSchoolTime(event.tappedAt)}
-                      </p>
-                    </div>
-                  </li>
+                  <TapListItem
+                    key={event.id}
+                    kind={kindOf(event)}
+                    name={nameOf(event)}
+                    label={outcomeLabel(event)}
+                    at={event.tappedAt}
+                    portrait={<MonitorAvatar event={event} className="w-10" />}
+                  />
                 ))}
               </ul>
             </section>
