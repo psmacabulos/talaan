@@ -103,11 +103,14 @@ export function GateKiosk() {
 
   const tokenRef = useRef<string | null>(null);
   const rosterRef = useRef<StoredRoster | null>(null);
+  /** The roster whose photos this page has loaded; null until the first load. */
+  const photosLoadedFor = useRef<StoredRoster | null>(null);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const disconnect = useCallback(async (error: string | null) => {
     tokenRef.current = null;
     rosterRef.current = null;
+    photosLoadedFor.current = null;
     await forgetGate();
     setPhotoUrls((current) => {
       current.forEach((url) => URL.revokeObjectURL(url));
@@ -123,10 +126,16 @@ export function GateKiosk() {
     async (token: string) => {
       try {
         const fresh = await refreshRoster(token, rosterRef.current);
-        if (fresh === rosterRef.current) return;
+        // "Nothing changed" means nothing to do only once this page has
+        // loaded the photos. Right after a reload the roster comes from the
+        // tablet's storage and the server answers "unchanged", but no photo
+        // is on screen yet; returning here showed initials for everyone
+        // (found 2026-10-12).
+        if (fresh === rosterRef.current && photosLoadedFor.current === fresh) return;
         rosterRef.current = fresh;
         setRoster(fresh);
         const urls = await syncPhotos(token, fresh.roster);
+        photosLoadedFor.current = fresh;
         setPhotoUrls((current) => {
           current.forEach((url) => URL.revokeObjectURL(url));
           return urls;

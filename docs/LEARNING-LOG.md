@@ -556,6 +556,13 @@ After the Mac went to sleep with the reader plugged in, the reader still beeped 
 
 **On the gate tablet:** keep the screen from sleeping (the kiosk browser's "keep screen on" setting; the gate page also asks for a wake lock), keep the tablet charging, and after any restart or long sleep, tap a test card before students arrive. If a tablet ever shows the same thing, replugging the reader fixes it.
 
+### How often does the gate check for new photos? (owner question, 2026-10-12)
+The gate doesn't ask about photos on their own. It asks for the **roster** (who could tap here, with each student's photo address) **when the page opens, and then every 5 minutes** (`ROSTER_EVERY_MS` in `gate-kiosk.tsx`).
+- **Nothing changed:** the server answers "unchanged" (`304`) in a few hundred bytes, and nothing is downloaded.
+- **A new or changed photo:** it has a new address (the key changes on every upload), so the roster changes and only that one photo downloads. Every other photo comes from the tablet's own saved copy.
+
+So a photo added in the drawer shows at the gate within 5 minutes, or straight away if the gate page is reloaded. Until then, that student's tap still works; it shows the initials, or the old photo. To change the wait, change `ROSTER_EVERY_MS`. Shorter means more checks: every 5 minutes is 12 small requests an hour.
+
 ### Does a tap station need a native app, or a login, to use an NFC reader?
 Discussed while reviewing Step 8's ER diagram (`Tap.stationId`) — full write-up in [`docs/DATA-MODEL.md`](DATA-MODEL.md) and the [[project-tap-api-hardware-agnostic]] / parent-notifications planning notes, kept short here.
 

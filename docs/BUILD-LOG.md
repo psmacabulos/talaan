@@ -2018,3 +2018,15 @@ The 8 students tests passed at both widths, and the "not saved yet" states were 
 - `createScanBuffer().key()` now answers true for the Enter that ended a scan, and the page calls `preventDefault()` on exactly that Enter, so it can't click the focused button. A person pressing Enter on a button still works.
 - When the window doesn't have the keyboard (`document.hasFocus()`, read through `useSyncExternalStore` with window focus and blur events), a banner says "Taps from the reader can't reach this page. Click or tap anywhere on it."
 - Tests: a unit test for `key()`'s answer, and an `e2e/gate.spec.ts` test that focuses Disconnect, reads a card, and expects the result with no Disconnect confirmation. The gate tests passed: 7, plus 1 desktop-only test skipped on mobile.
+
+## Review fix: the gate showed initials instead of photos (2026-10-12)
+
+**What the owner saw.** A tap at `/gate` showed the student's initials, not their photo. The database had photos for both students tapped (checked read-only with `psql`: `photoKey` set, files in `.data/photos`).
+
+**Cause.** `loadRoster` in `gate-kiosk.tsx` stopped early whenever the server answered "unchanged" (`refreshRoster` gives back the same stored object on a `304`), and that early return also skipped `syncPhotos`. On a first visit there's no stored roster, so the photos loaded. After any reload, the page took the roster from `localStorage`, the server said "unchanged", and no photo was ever put on screen. The browser tests never looked at the gate's photos.
+
+**Fix.** A `photosLoadedFor` ref remembers which roster's photos this page has loaded. The early return now needs both "unchanged" and "photos already loaded for it". `disconnect` clears it. Photos already in Cache Storage aren't downloaded again (`syncPhotos` checks the cache first), so a reload costs one roster check plus reading the cache.
+
+**Test.** `e2e/gate.spec.ts`, "a student's photo shows at the gate, also after the page is reloaded": add a photo in the drawer, open `/gate`, reload, tap, and expect the panel's image to come from the device (`blob:`). Angelica Santos runs on mobile and Mark Torres on desktop. Written and left for the owner to run.
+
+**Still open (after the demo):** if the server can't be reached when the page opens, the photos don't load from the cache either, because `syncPhotos` fails as a whole. The offline queue work is the place for that.

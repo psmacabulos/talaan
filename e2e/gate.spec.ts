@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { signInAs } from "./sessions";
 import { activeCardSerialFor, readerDigitsFor, TEST_GATE_TOKEN } from "./test-data";
 
 test.describe("Gate (Step 47)", () => {
@@ -60,6 +61,36 @@ test.describe("Gate (Step 47)", () => {
     const message = "Card not recognised. Please see the office.";
     await expect(page.locator('main section [aria-live="polite"]')).toHaveText(message);
     await expect(page.getByText("Disconnect? It will need a new token.")).toBeHidden();
+  });
+
+  test("a student's photo shows at the gate, also after the page is reloaded", async ({
+    page,
+    context,
+    baseURL,
+  }, testInfo) => {
+    // A different student per project, with an active card; no other browser test touches them.
+    const studentName = testInfo.project.name === "mobile" ? "Angelica Santos" : "Mark Torres";
+
+    await signInAs(context, "principal", baseURL!);
+    await page.goto("/students");
+    await page.getByLabel("Search students").fill(studentName);
+    await page.getByRole("button", { name: `Edit ${studentName}` }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Student photo").setInputFiles("e2e/fixtures/photo.png");
+    await dialog.getByRole("button", { name: "Save student" }).click();
+    await expect(page.getByText(`Saved changes to ${studentName}`)).toBeVisible();
+
+    // The first visit stores the roster and photos on the device. The reload
+    // is the case that used to show initials: the stored roster, and the
+    // server answering "unchanged" (2026-10-12).
+    await page.goto(`/gate?token=${TEST_GATE_TOKEN}`);
+    await expect(page.getByText("Tap your card")).toBeVisible();
+    await page.reload();
+    await expect(page.getByText("Tap your card")).toBeVisible();
+
+    await page.keyboard.type(readerDigitsFor(activeCardSerialFor(studentName)));
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("main").locator("section img").first()).toHaveAttribute("src", /^blob:/);
   });
 
   test("three cards read back to back all land, none waiting for another", async ({ page }, testInfo) => {
