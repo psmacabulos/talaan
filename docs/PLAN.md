@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: █████████████████░░░ 87%**  (192 of 221 tasks, 53 of 63 steps approved)
+**Overall progress: ██████████████████░░ 89%**  (201 of 226 tasks, 58 of 64 steps approved)
 
-**Next up:** Step 46, The tap API and the gate's roster (ready for your review)
+**Next up:** Step 50, Signed staff sessions (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -60,12 +60,13 @@
 | 44.6 | Weekends have no late or absent | ██████████ 100% | Approved |
 | 44.7 | Link a real card | ██████████ 100% | Approved |
 | 45 | The tap service | ██████████ 100% | Approved |
-| 46 | The tap API and the gate's roster | ████████░░  75% | Ready for your review |
-| 46.5 | Student photos | █████████░  86% | Ready for your review |
-| 47 | The `/gate` page | █████████░  86% | Ready for your review |
-| 48 | The `/gate/display` guardhouse monitor | ████████░░  83% | Ready for your review |
-| 49 | Time in and time out on the attendance page | ████████░░  75% | Ready for your review |
-| 50 | Real staff sign-in | ░░░░░░░░░░   0% | Not started |
+| 46 | The tap API and the gate's roster | ██████████ 100% | Approved |
+| 46.5 | Student photos | ██████████ 100% | Approved |
+| 47 | The `/gate` page | ██████████ 100% | Approved |
+| 48 | The `/gate/display` guardhouse monitor | ██████████ 100% | Approved |
+| 49 | Time in and time out on the attendance page | ██████████ 100% | Approved |
+| 50 | Signed staff sessions | ████████░░  80% | Ready for your review |
+| 50.1 | The real sign-in form | ░░░░░░░░░░   0% | Not started |
 | 50.5 | Set-password links | ░░░░░░░░░░   0% | Not started |
 | 51 | One school can never see another's data | ░░░░░░░░░░   0% | Not started |
 | 52 | Deploy the demo to Heroku | ░░░░░░░░░░   0% | Not started |
@@ -353,7 +354,8 @@ Unlike Phase 1, the owner writes every line of backend code personally, to learn
 - Step 47: The `/gate` kiosk page with the USB NFC reader (reader format answered 2026-10-09: 10 decimal digits, the first 4 UID bytes reversed, then Enter; see `docs/ARCHITECTURE.md`'s open question 1). Calls the heartbeat once, at token setup; no timer (decided 2026-10-09). **Shows the tapping student's photo on the gate screen itself (decided 2026-10-10):** phones full screen, tablets split (current result large, last few taps beside it). **A tap is never blocked or delayed by what's on screen:** every scan is sent the moment it's read, even while the previous student's photo is still showing, and the screen switches straight to the newest one. If nobody taps, the last result clears back to "Tap your card" after a few seconds. That timer only tidies the screen and never holds up a tap. Reads cards from the USB reader (keyboard mode), and on Android also from built-in NFC (Web NFC). **Keeps its own copy of the roster and photo thumbnails on the device (decided 2026-10-10):** downloaded once, refreshed by asking "anything new?" every few minutes, so the photo shows instantly from the device while the tap goes to the server, which still decides the status. Holds only what the screen shows (no LRN, birth date or guardian details) and wipes it when its token is revoked
 - Step 48: The `/gate/display` guardhouse monitor (live feed over server-sent events). A TV opens a link with a monitor key built in, swapped for a cookie on first visit; a signed-in principal or super admin can watch the same feed with no registration, and teachers don't get it; the monitor sends no heartbeat (decided 2026-10-09, `docs/ARCHITECTURE.md`)
 - Step 49: Time in and time out on the attendance page
-- Step 50: Real staff sign-in (decided 2026-10-11: our own signed, httpOnly session cookie with the Step 41 scrypt passwords, no Auth.js). The parent portal's cookie is signed too
+- Step 50: Signed staff sessions (decided 2026-10-11: our own signed, httpOnly session cookie with the Step 41 scrypt passwords, no Auth.js; re-confirmed 2026-10-12 as option A after comparing JWT, Better Auth, Auth.js and hosted services). No cookie means signed out. Split in two on 2026-10-12 so each half is reviewable in one sitting
+- Step 50.1: The real sign-in form: the password is checked, wrong tries are limited, Sign out, and the parent portal's cookie is signed too
 - Step 50.5: Set-password links: the app makes a one-time link the principal sends however they like (no email service), which also creates the first super admin from the terminal
 - Step 51: Every query scoped to the signed-in school, with tests proving one school can't see another's
 - Step 52: Deploy the demo to Heroku, with photos on Cloudflare R2 (decided 2026-10-11)
@@ -373,9 +375,9 @@ Read this first in a new conversation, together with `CLAUDE.md`.
   - a refined tap card on the gate and the monitor.
 
   Each is explained in `docs/BUILD-LOG.md` ("Review change/fix: …", and "Notes from the home test with the real reader").
-- **Waiting for the owner:** the "Owner review" box of Steps **46, 46.5, 47, 48 and 49**. The owner has tested them with the real USB reader and committed every fix. Each step's box is ticked only when the owner writes "approved" (CLAUDE.md, step protocol). Ask the owner for it first.
-- **Next to build: Step 50**, real staff sign-in. Its recipe is ready (`docs/backend/step-50-staff-sign-in.md`), and so are the recipes for 50.5, 51, 52 and 53. Each recipe lists decisions for the owner to confirm before building.
-- **The owner's goal:** finish the web app (Steps 50–53), so the Expo parent app (Phase 3) can start against the parent API (Step 53).
+- **Approved on 2026-10-12:** Steps 46, 46.5, 47, 48 and 49, tested by the owner with the real USB reader.
+- **Next to build: Step 50**, signed staff sessions, then **Step 50.1**, the real sign-in form (split on 2026-10-12; option A, our own signed cookie, confirmed after the owner compared it with JWT, Better Auth, Auth.js and hosted services). Recipes are ready for 50, 50.1, 50.5, 51, 52 and 53.
+- **The owner's goal:** finish the web app (Steps 50–53, including 50.1), so the Expo parent app (Phase 3) can start against the parent API (Step 53).
 - **Owner accounts needed for Step 52:** Heroku (with the GitHub Student credit) and Cloudflare R2. See that recipe's "Your part".
 - **Working rules (2026-10-12), on top of CLAUDE.md:**
   - Stop after every change worth a commit, give the commit message, and wait for the owner to commit before touching more code. Docs-only edits may happen in between.
@@ -569,7 +571,7 @@ Recipe: `docs/backend/step-46-tap-api.md`
 - [x] `GET /api/v1/gate/roster`: active cards and students (`CardRepository.listActiveBySchool`, `buildGateRoster`), with an ETag and `304 Not Modified`.
 Done when: the recipe's `curl` checks give 200 with an ETag, then 304, a recorded tap then a duplicate, 403 for a monitor, 400 for a bad body, and every check passes.
 Commit: `feat(api): the gate's tap and roster endpoints`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 46.5: Student photos
 Recipe: `docs/backend/step-46.5-student-photos.md`
@@ -581,7 +583,7 @@ Recipe: `docs/backend/step-46.5-student-photos.md`
 - [x] Review change (2026-10-12): the drawer's photo and card are held until the student form's Save, and Cancel or Undo throws them away. A card tapped by mistake is never linked or marked lost. A new student can get both in the Add form.
 Done when: a photo added in the drawer shows in the lists, is about 15 KB in `.data/photos`, gives 404 without access and 200 with a Balanga gate token, and every check passes.
 Commit: `feat(students): student photos, stored as small thumbnails`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 47: The `/gate` page
 Recipe: `docs/backend/step-47-gate-page.md`
@@ -593,7 +595,7 @@ Recipe: `docs/backend/step-47-gate-page.md`
 - [x] Review change (2026-10-12): a refined tap card (`tap-card.tsx`) for every state: a white card, the 4:5 portrait, a badge, then a TIME IN (green) / TIME OUT (blue) / FIRST TAPPED AT (amber) stamp, or what to do next.
 Done when: a linked sticker tapped on the USB reader shows the student and Time in, three quick taps all land, and every check passes.
 Commit: `feat(gate): the gate page for the tablet and USB reader`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 48: The `/gate/display` guardhouse monitor
 Recipe: `docs/backend/step-48-gate-monitor.md`
@@ -604,7 +606,7 @@ Recipe: `docs/backend/step-48-gate-monitor.md`
 - [x] Review change (2026-10-12): the monitor uses the gate's tap card and list item, so both screens look alike.
 Done when: a sticker tapped at `/gate` appears on `/gate/display` within a second, a revoked monitor stops, and every check passes.
 Commit: `feat(gate): the live guardhouse monitor`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 49: Time in and time out on the attendance page
 Recipe: `docs/backend/step-49-time-in-time-out.md`
@@ -613,16 +615,26 @@ Recipe: `docs/backend/step-49-time-in-time-out.md`
 - [x] Two seed students with a comings-and-goings morning (counts unchanged), and a browser test of the taps dialog.
 Done when: the demo morning shows a time out and a 3-taps list, the counts are still 21 / 6 / 13, and every check passes.
 Commit: `feat(attendance): time in and time out, with every tap of the day`
+- [x] Owner review: I checked it and said "approved"
+
+### Step 50: Signed staff sessions
+Recipe: `docs/backend/step-50-staff-sign-in.md`
+- [x] `SESSION_SECRET` (`src/lib/env.ts`), `signValue`/`readSignedValue` (HMAC with a purpose and an expiry), and `Staff.passwordHash` with a unique, lower-case email (migration `staff_password`). Seed staff get `Talaan123!`. Adding staff or a school refuses an email already in use.
+- [x] The `talaan_session` cookie is signed and carries a password fingerprint (`pv`). `getSession()` returns null when signed out, `requireSession()` sends pages to the sign-in screen, and every page and action handles both.
+- [x] The dev switcher and the demo shortcuts set the signed cookie (still development only). A super admin who opens a school stays a super admin.
+- [x] The browser tests sign in with signed cookies, made with a fixed test secret. Unit tests for signing, the session and the repositories.
+Done when: signed out, `/dashboard` goes to the sign-in screen; a demo shortcut signs in; an edited cookie is signed out; a super admin who opens Balanga is still a super admin; and every check passes.
+Commit: `feat(auth): signed staff session cookie, and signed out by default`
 - [ ] Owner review: I checked it and said "approved"
 
-### Step 50: Real staff sign-in
-Recipe: `docs/backend/step-50-staff-sign-in.md`
-- [ ] `SESSION_SECRET`, `signValue`/`readSignedValue` (HMAC with a purpose and an expiry), and `Staff.passwordHash` with a unique email (migration `staff_password`). Seed staff get `Talaan123!`.
-- [ ] `getSession()` returns null when signed out, `requireSession()` redirects to the sign-in screen, and every page and action handles both. A super admin opening a school stays a super admin.
-- [ ] The sign-in form checks the real password, with a 5-tries-in-15-minutes throttle. Sign out in the top bar and the mobile drawer. The dev switcher and demo shortcuts stay development-only.
-- [ ] The parent portal's cookie is signed. The browser tests sign in with signed cookies, and new tests cover sign-in, a wrong password, sign out and a forged cookie.
-Done when: signed out, `/dashboard` goes to the sign-in screen; the principal signs in with `Talaan123!`; an edited cookie is signed out; and every check passes.
-Commit: `feat(auth): real staff sign-in with a signed session cookie`
+### Step 50.1: The real sign-in form
+Recipe: `docs/backend/step-50.1-sign-in-form.md`
+- [ ] The sign-in form checks the real password (`findForSignIn`, `passwordMatches`), with one answer for every failure and a 5-tries-in-15-minutes limit per email.
+- [ ] Sign out in the top bar and the mobile drawer; `/` goes to the dashboard when already signed in.
+- [ ] The parent portal's cookie is signed (`talaan_parent_session`), and parent sign-in uses the same limit.
+- [ ] Unit tests for the limit and the sign-in action, and browser tests for sign-in, a wrong password, sign out and a forged cookie.
+Done when: the principal signs in with `Talaan123!`; the fifth wrong password says "Too many tries"; Sign out works; a hand-typed parent cookie is ignored; and every check passes.
+Commit: `feat(auth): real staff sign-in, sign out, and a signed parent cookie`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 50.5: Set-password links

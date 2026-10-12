@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Staff } from "@/features/staff/types";
+import { SEED_STAFF_PASSWORD_HASH } from "@/data/seed/staff-password";
 import { createMockStaffRepository } from "./staff-repository";
 
 const superAdmin: Staff = {
@@ -48,6 +49,22 @@ describe("createMockStaffRepository", () => {
   it("returns null for an unknown id", async () => {
     const repo = createMockStaffRepository(allStaff, { latencyMs: 0 });
     await expect(repo.getById("nope")).resolves.toBeNull();
+  });
+
+  it("finds a staff member by email, whatever the case", async () => {
+    const repo = createMockStaffRepository(allStaff, { latencyMs: 0 });
+    await expect(repo.findByEmail(" ANA@talaan.example ")).resolves.toEqual(principalA);
+    await expect(repo.findByEmail("nobody@talaan.example")).resolves.toBeNull();
+  });
+
+  it("gives an active account the demo password hash, and an invited one none", async () => {
+    const repo = createMockStaffRepository(allStaff, { latencyMs: 0 });
+    await expect(repo.getForSession("staff-principal-a")).resolves.toEqual({
+      staff: principalA,
+      passwordHash: SEED_STAFF_PASSWORD_HASH,
+    });
+    await expect(repo.getForSession("staff-teacher-b")).resolves.toEqual({ staff: teacherB, passwordHash: null });
+    await expect(repo.getForSession("nope")).resolves.toBeNull();
   });
 
   it("lists every staff member, including the super admin", async () => {

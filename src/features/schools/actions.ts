@@ -4,8 +4,9 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { schoolRepository, staffRepository } from "@/data/repositories";
 import { DEFAULT_ATTENDANCE_TIMES, type AttendanceTimes } from "@/features/attendance/status";
-import { getSession } from "@/lib/session";
-import { setDevSession } from "@/lib/session-actions";
+import { SIGNED_OUT_MESSAGE } from "@/features/auth/messages";
+import { EMAIL_IN_USE_MESSAGE } from "@/features/staff/messages";
+import { getSession, startStaffSession } from "@/lib/session";
 import { clearThemeOverride } from "@/lib/theme/theme-override-actions";
 import { attendanceTimesSchema, createSchoolSchema, notificationPreferenceSchema, schoolThemeSchema } from "./schemas";
 import type { CreateSchoolFormInput, NotificationPreference, SchoolTheme } from "./types";
@@ -49,6 +50,7 @@ export async function updateNotificationPreference(
   preference: NotificationPreference,
 ): Promise<NotificationSettingsActionResult> {
   const session = await getSession();
+  if (!session) return { ok: false, formError: SIGNED_OUT_MESSAGE };
   if (!session.schoolId || session.role === "teacher") {
     return { ok: false, formError: "You don't have permission to change notification settings." };
   }
@@ -77,6 +79,7 @@ export async function updateNotificationPreference(
  */
 export async function updateAttendanceTimes(times: AttendanceTimes): Promise<AttendanceTimesActionResult> {
   const session = await getSession();
+  if (!session) return { ok: false, formError: SIGNED_OUT_MESSAGE };
   if (!session.schoolId || session.role === "teacher") {
     return { ok: false, formError: "You don't have permission to change attendance times." };
   }
@@ -117,6 +120,7 @@ export async function updateAttendanceTimes(times: AttendanceTimes): Promise<Att
  */
 export async function updateSchoolTheme(theme: SchoolTheme): Promise<AppearanceSettingsActionResult> {
   const session = await getSession();
+  if (!session) return { ok: false, formError: SIGNED_OUT_MESSAGE };
   if (!session.schoolId || session.role === "teacher") {
     return { ok: false, formError: "You don't have permission to change this school's theme." };
   }
@@ -154,6 +158,7 @@ export async function updateSchoolTheme(theme: SchoolTheme): Promise<AppearanceS
  */
 export async function createSchool(input: CreateSchoolFormInput): Promise<CreateSchoolActionResult> {
   const session = await getSession();
+  if (!session) return { ok: false, formError: SIGNED_OUT_MESSAGE };
   if (session.role !== "super_admin") {
     return { ok: false, formError: "Only a super admin can add a school." };
   }
@@ -163,7 +168,13 @@ export async function createSchool(input: CreateSchoolFormInput): Promise<Create
     return { ok: false, fieldErrors: createSchoolFieldErrorsFrom(parsed.error) };
   }
 
-  const { name, principalFirstName, principalLastName, principalEmail, presetId, logoUrl } = parsed.data;
+  const { name, principalFirstName, principalLastName, presetId, logoUrl } = parsed.data;
+  // Checked before the school is made, so a refused email never leaves a
+  // school with no principal behind (same rule as inviteStaff).
+  const principalEmail = parsed.data.principalEmail.trim().toLowerCase();
+  if (await staffRepository.findByEmail(principalEmail)) {
+    return { ok: false, fieldErrors: { principalEmail: EMAIL_IN_USE_MESSAGE } };
+  }
   const schoolId = crypto.randomUUID();
 
   await schoolRepository.create({
@@ -194,26 +205,26 @@ export async function createSchool(input: CreateSchoolFormInput): Promise<Create
 }
 
 /**
- * Step 25's "Open" on a schools-list row (super admin only, dev builds).
- * The prototype's "open a school" — switch the dev session to that
- * school's principal, clear any theme override so the school's own real
- * theme shows (the same pair of calls the Step 11 dev switcher makes),
- * then land on the dashboard the way that principal sees it: their
- * school's colors, logo and data.
+ * Step 25's "Open" on a schools-list row. The super admin stays signed in
+ * as themselves and views that school (Step 50): the signed cookie now
+ * remembers which school (`school`), so every page shows that school's
+ * data and colors, the dashboard says "Viewing …", and every action is
+ * still the super admin's own. Clears any theme override so the school's
+ * real theme shows, then lands on the dashboard.
  */
 export async function openSchool(schoolId: string): Promise<OpenSchoolActionResult> {
   const session = await getSession();
+  if (!session) return { ok: false, formError: SIGNED_OUT_MESSAGE };
   if (session.role !== "super_admin") {
     return { ok: false, formError: "Only a super admin can open a school." };
   }
 
-  const staff = await staffRepository.listBySchool(schoolId);
-  const principal = staff.find((member) => member.role === "principal");
-  if (!principal) {
-    return { ok: false, formError: "This school has no principal account to open yet." };
+  const school = await schoolRepository.getById(schoolId);
+  if (!school) {
+    return { ok: false, formError: "That school no longer exists." };
   }
 
-  await setDevSession(principal.id);
+  await startStaffSession(session.userId, school.id);
   await clearThemeOverride();
   redirect("/dashboard");
 }

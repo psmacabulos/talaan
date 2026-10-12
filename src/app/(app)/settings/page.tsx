@@ -6,10 +6,10 @@ import { NoSchoolSelected } from "@/features/attendance/no-school-selected";
 import { AppearanceSettingsForm } from "@/features/schools/appearance-settings-form";
 import { AttendanceTimesForm } from "@/features/schools/attendance-times-form";
 import { NotificationSettingsForm } from "@/features/schools/notification-settings-form";
-import { getSession } from "@/lib/session";
+import { requireSession } from "@/lib/session";
 
 export default async function SettingsPage() {
-  const session = await getSession();
+  const session = await requireSession();
 
   if (!hasNavAccess(session.role, "settings")) {
     return (
@@ -17,8 +17,8 @@ export default async function SettingsPage() {
     );
   }
 
-  // Same guard as every other school-scoped page: only a super admin can be
-  // school-less, and there's no "view school X" mechanism until Step 25.
+  // Only a super admin can have no school: until they open one on the
+  // Schools page (Step 50), there's no school to show.
   if (!session.schoolId) {
     return (
       <div className="flex flex-col gap-6">

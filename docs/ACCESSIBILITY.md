@@ -32,19 +32,19 @@ flowchart TD
 
 ### Signing in without a login form
 
-Each screen is opened *as* a role by setting the same cookie the dev role switcher and the parent login set. From `e2e/sessions.ts`:
+Each screen is opened *as* a role by setting the same cookie a real sign-in sets. `e2e/sessions.ts` maps each persona to an account:
 
 ```ts
 export const PERSONAS = {
   anonymous: null,
-  super_admin: { cookie: "talaan-dev-session", value: "staff-0001" },
-  principal: { cookie: "talaan-dev-session", value: "staff-principal-school-balanga" },
-  teacher: { cookie: "talaan-dev-session", value: "staff-teacher-school-balanga" },
-  parent: { cookie: "talaan-parent-session", value: "parent-balanga-1" },
+  super_admin: { kind: "staff", staffId: "staff-0001" },
+  principal: { kind: "staff", staffId: "staff-principal-school-balanga" },
+  teacher: { kind: "staff", staffId: "staff-teacher-school-balanga" },
+  parent: { kind: "parent", parentId: "parent-balanga-1" },
 } as const;
 ```
 
-This works against a production build because only *changing* the dev session is blocked in production (`assertDevSessionMutationAllowed`). Reading the cookie is allowed.
+Since Step 50 the staff cookie is signed, so `signInAs` signs it with `TEST_SESSION_SECRET`, the secret `playwright.config.ts` gives the test server. See `docs/AUTH.md`.
 
 ### The check itself
 

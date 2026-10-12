@@ -33,7 +33,7 @@ import { notifyParentsForTap } from "./notify-parents";
  */
 export type SimulateTapResult =
   | { tapped: true; studentName: string }
-  | { tapped: false; reason: "no-school" | "everyone-in" }
+  | { tapped: false; reason: "signed-out" | "no-school" | "everyone-in" }
   /**
    * Nobody left who *can* tap, but some students still haven't — because
    * no ID card has been issued to them yet. Worth naming them rather than
@@ -45,6 +45,7 @@ export type SimulateTapResult =
 
 export async function simulateTap(): Promise<SimulateTapResult> {
   const session = await getSession();
+  if (!session) return { tapped: false, reason: "signed-out" };
   if (!session.schoolId) return { tapped: false, reason: "no-school" };
 
   const roster = await studentRepository.listBySchool(session.schoolId);

@@ -1,5 +1,6 @@
 "use server";
 
+import { SIGNED_OUT_MESSAGE } from "@/features/auth/messages";
 import { getSession } from "@/lib/session";
 import { checkSerial } from "./card-changes";
 
@@ -15,6 +16,7 @@ export type CheckCardSerialResult =
  */
 export async function checkCardSerial(rawSerial: string): Promise<CheckCardSerialResult> {
   const session = await getSession();
+  if (!session) return { ok: false, formError: SIGNED_OUT_MESSAGE };
   if (!session.schoolId || session.role === "teacher") {
     return { ok: false, formError: "You don't have permission to manage ID cards." };
   }

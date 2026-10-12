@@ -3,9 +3,9 @@ import { School } from "lucide-react";
 
 /**
  * A super admin's session has `schoolId: null` (staff.ts — only a super
- * admin can be school-less) and there's no "view this school as super
- * admin" mechanism yet (Step 25 is where that gets built, alongside real
- * school management). Rather than guess a school or crash, every
+ * admin can be school-less) until they open a school on the Schools page
+ * (Step 50 keeps that choice in their signed cookie). Rather than guess a
+ * school or crash, every
  * school-scoped page says so plainly — a real empty state, not a silent
  * fallback. `subject` names what needs a school (e.g. "student list",
  * "staff list") — it started as dashboard-only copy and was generalized

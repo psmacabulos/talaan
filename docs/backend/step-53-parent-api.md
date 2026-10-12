@@ -11,7 +11,7 @@ The web parent portal already does everything the app needs: sign up, sign in, l
 ```mermaid
 flowchart LR
     App["Expo parent app<br/>Authorization: Bearer tal_par_…"] --> API["/api/v1/parents/*<br/>(thin route handlers)"]
-    Web["/parent web portal<br/>signed cookie (Step 50)"] --> Actions["Server Actions<br/>(auth-actions.ts, …)"]
+    Web["/parent web portal<br/>signed cookie (Step 50.1)"] --> Actions["Server Actions<br/>(auth-actions.ts, …)"]
     API --> Services["src/services/parents/<br/>signUp · signIn · linkChild<br/>childrenToday · notifications"]
     Actions --> Services
     Services --> Repos[("repositories")]
@@ -86,7 +86,7 @@ The rules move here from `src/features/parents/auth-actions.ts`, `notification-a
 |---|---|---|
 | `parent-token.ts` | `issueParentToken(parentId, label)` / `authenticateParent(header)` | Makes a token, or turns `Bearer …` into `{ parentId, schoolId }`. It's null when missing, unknown, revoked or unused for 90 days, and updates `lastUsedAt` at most once an hour. |
 | `sign-up.ts` | `signUpParent(input)` | Validates, checks the school exists and the email is free, then hashes and creates. Returns the parent or field errors. |
-| `sign-in.ts` | `signInParent(email, password)` | The throttle (Step 50), then `verifyPassword`. Returns the parent or one vague error. |
+| `sign-in.ts` | `signInParent(email, password)` | The throttle (Step 50.1), then `verifyPassword`. Returns the parent or one vague error. |
 | `link-child.ts` | `linkChild(parent, details)` | LRN, last name and birth date at the parent's own school. Returns the student, "no match" or "already linked". |
 | `children-today.ts` | `childrenToday(parent, now)` | Each linked child, with `studentStatus` and `dayTapSummary` for today on their school's clock. |
 | `notifications.ts` | `listNotifications(parent, { before, limit })`, `markRead(parent, id)`, `markAllRead(parent)` | The feed, newest first, 30 at a time, and the read marks, with the ownership checks that exist today. |

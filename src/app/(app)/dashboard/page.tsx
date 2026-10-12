@@ -9,7 +9,7 @@ import {
 } from "@/data/repositories";
 import { getNow } from "@/lib/clock";
 import { schoolDateOf, schoolMinutesOf } from "@/lib/school-time";
-import { getSession } from "@/lib/session";
+import { requireSession } from "@/lib/session";
 import { AttendanceHero } from "@/features/attendance/attendance-hero";
 import { ClassRoll } from "@/features/attendance/class-roll";
 import { GradeBreakdown } from "@/features/attendance/grade-breakdown";
@@ -49,11 +49,11 @@ function greetingAt(now: string): string {
 }
 
 export default async function DashboardPage() {
-  const session = await getSession();
+  const session = await requireSession();
   const signedInStaff = await staffRepository.getById(session.userId);
 
-  // Only a super admin can be school-less (staff schema's own rule), and
-  // there's no "view school X as super admin" mechanism until Step 20.
+  // Only a super admin can have no school: until they open one on the
+  // Schools page (Step 50), there's no school to show.
   if (!session.schoolId) {
     return (
       <div className="flex flex-col gap-6">

@@ -16,8 +16,7 @@ export function canViewPhoto(key: string, viewer: PhotoViewer | null): boolean {
 /**
  * The viewer behind a photo request: a gate or monitor by its Bearer token
  * (the gate fetches photos into its own cache, Step 47), then a guardhouse
- * TV's cookie (Step 48), otherwise the staff session. Until real staff sign-in (Step 50), the dev session
- * stands in for the second.
+ * TV's cookie (Step 48), otherwise the signed-in staff session (Step 50).
  */
 export async function resolvePhotoViewer(authorization: string | null): Promise<PhotoViewer | null> {
   if (authorization) {
@@ -28,6 +27,7 @@ export async function resolvePhotoViewer(authorization: string | null): Promise<
   const monitor = await monitorDeviceFromCookie();
   if (monitor) return { schoolId: monitor.schoolId };
   const session = await getSession();
+  if (!session) return null;
   if (session.role === "super_admin" && !session.schoolId) return { allSchools: true };
   return session.schoolId ? { schoolId: session.schoolId } : null;
 }

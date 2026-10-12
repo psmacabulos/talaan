@@ -4,10 +4,10 @@ import { PageHeader } from "@/components/page-header";
 import { staffRepository } from "@/data/repositories";
 import { NoSchoolSelected } from "@/features/attendance/no-school-selected";
 import { StaffDirectory } from "@/features/staff/staff-directory";
-import { getSession } from "@/lib/session";
+import { requireSession } from "@/lib/session";
 
 export default async function StaffPage() {
-  const session = await getSession();
+  const session = await requireSession();
 
   if (!hasNavAccess(session.role, "staff")) {
     return (
@@ -15,9 +15,8 @@ export default async function StaffPage() {
     );
   }
 
-  // Same guard as the dashboard, Students and Attendance pages: only a
-  // super admin can be school-less, and there's no "view school X"
-  // mechanism until Step 25.
+  // Only a super admin can have no school: until they open one on the
+  // Schools page (Step 50), there's no school to show.
   if (!session.schoolId) {
     return (
       <div className="flex flex-col gap-6">

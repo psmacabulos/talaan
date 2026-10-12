@@ -86,7 +86,7 @@ erDiagram
         string schoolId FK "null ONLY for super_admin"
         Role role "super_admin, principal, teacher"
         string email
-        string passwordHash "NEW — Auth.js, Step 30s mock had none"
+        string passwordHash "scrypt hash, null until set (Step 50)"
         StaffStatus status "active, invited"
     }
     DEVICE {
@@ -132,11 +132,11 @@ Everything not shown above (`School`, `Student`, `Card`, `Alert`, `ParentStudent
 
 **`Notification` doubling as the outbox, instead of a separate table.** The pasted architecture spec describes "a row in a notification outbox" as its own thing from "a parent-visible notification." Phase 1 already has exactly one record per tap-that-should-notify-someone (`docs/NOTIFICATIONS.md`), and it already carries everything a feed needs. Adding `status`/`attempts`/`sentAt` to that same table, rather than introducing a second `NotificationOutbox` table that the worker drains into this one, means no join and no risk of the two ever disagreeing about what was actually sent. If delivery tracking grows more complex later (per-channel retries, per-parent-not-just-per-student state), split it out then — this is the simpler default, not a permanent constraint.
 
-**Why `Tap.deviceId` is nullable.** A tap can come from three different places: the real `/gate` kiosk (has a `deviceId`), a staff session typing into the dashboard's "Simulate a tap" (no device, has a staff session instead), or — once Auth.js exists — a staff member standing in for a station that doesn't have its own token yet (`docs/PLAN.md`'s "early stations may instead identify themselves by a logged-in staff session"). The column has to tolerate all three without forcing a fake device row into existence for the latter two.
+**Why `Tap.deviceId` is nullable.** A tap can come from three different places: the real `/gate` kiosk (has a `deviceId`), a staff session typing into the dashboard's "Simulate a tap" (no device, has a staff session instead), or a signed-in staff member standing in for a station that doesn't have its own token yet (`docs/PLAN.md`'s "early stations may instead identify themselves by a logged-in staff session"). The column has to tolerate all three without forcing a fake device row into existence for the latter two.
 
 ## API: endpoints under `/api/v1`
 
-Only endpoints a **non-browser client** needs to call move to this versioned, token-authenticated API. Admin web's own writes stay as Server Actions (`src/features/*/actions.ts`) — nothing calls them over HTTP from outside this app, so there's no API contract to version or document separately. Auth.js keeps its own conventional route (typically `/api/auth/*`), outside the `/v1` prefix — that's a fixed convention of the library, not a route we're designing.
+Only endpoints a **non-browser client** needs to call move to this versioned, token-authenticated API. Admin web's own writes stay as Server Actions (`src/features/*/actions.ts`) — nothing calls them over HTTP from outside this app, so there's no API contract to version or document separately. Staff sign-in is a Server Action too (Step 50.1), so it needs no route of its own.
 
 | Method & path | Who calls it | Auth | What it does |
 |---|---|---|---|
@@ -154,7 +154,7 @@ Only endpoints a **non-browser client** needs to call move to this versioned, to
 
 ## Auth: three kinds of identity, not one
 
-- **Staff** — Auth.js, a cookie session (JWT strategy, so no extra `Session` table). Browser-only; there's no staff-facing mobile client, so there's nothing to gain from also issuing staff a bearer token. This is already the Phase 2 roadmap's plan (`docs/PLAN.md`); nothing about the new architecture changes it.
+- **Staff** — our own signed, httpOnly session cookie (decided 2026-10-11 instead of Auth.js, and re-confirmed 2026-10-12 after comparing JWT, Better Auth, Auth.js and hosted services). The cookie carries `{ staffId, pv, school?, exp }` with an HMAC-SHA256 stamp, and each request checks that the staff member still exists and that `pv` still matches their password hash, so no `Session` table is needed. Built in Step 50: `src/lib/signed-value.ts`, `src/lib/session-cookie.ts`, `src/lib/session.ts`. See `docs/AUTH.md`. Browser-only; there's no staff-facing mobile client, so there's nothing to gain from also issuing staff a bearer token.
 - **Gate/monitor devices** — a long-lived opaque bearer token per device, created once by staff with `npm run device:create` (Step 43) and typed into the kiosk's own setup screen (or baked into the kiosk browser's start URL). Stored **hashed** in `Device.tokenHash`, the same way a password would be — the plaintext is shown exactly once, at creation. Sent as `Authorization: Bearer <token>` on every `/api/v1/gate/*` and `/api/v1/devices/heartbeat` call. Long-lived on purpose: a physical kiosk is set up once by staff, not signed into every morning. Built in Step 43: `src/services/devices/device-token.ts` (a `tal_dev_` prefix plus 32 random bytes, sha256 for the stored hash, since a random token has nothing to guess and the lookup needs the same hash every time) and `src/services/devices/authenticate-device.ts` (one `null` for missing, unknown and revoked alike).
 - **Parents** — a short-lived access token plus a longer-lived refresh token (both JWTs), issued by `/api/v1/parents/login` and `/signup`. The same pair, the same shape, works for both the web parent portal (held in an httpOnly cookie, same as any web session) and the Phase 3 Expo app (held in the device's secure storage) — one auth implementation serving both clients, which is the entire point of "token-based auth so web and mobile share it."
 

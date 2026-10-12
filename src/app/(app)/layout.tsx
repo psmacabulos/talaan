@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { getNow, isDemoClock } from "@/lib/clock";
 import { formatSchoolDate, formatSchoolTime } from "@/lib/school-time";
-import { getSession } from "@/lib/session";
+import { requireSession } from "@/lib/session";
 import { schoolRepository, staffRepository } from "@/data/repositories";
 import { getThemeOverride } from "@/lib/theme/theme-override";
 import { resolveActiveTheme } from "@/lib/theme/active-theme";
@@ -16,7 +16,7 @@ import { AppShell } from "@/components/app-shell/app-shell";
  * the existing root layout, not a second root layout.
  */
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  const session = await getSession();
+  const session = await requireSession();
   const school = session.schoolId ? await schoolRepository.getById(session.schoolId) : null;
   const overridePresetId = await getThemeOverride();
 

@@ -60,7 +60,7 @@ Every color a school sees comes from a **theme preset** — never a hardcoded va
 - [`docs/COMPONENTS.md`](docs/COMPONENTS.md) — the shadcn/ui component library: the Radix decision, how components pick up our tokens, and the shared `StatusPill`/`EmptyState`/`PageHeader` components.
 - [`docs/DATA-MODEL.md`](docs/DATA-MODEL.md) — the domain types, Zod schemas and seed data: what a School/Student/Card/Tap/Alert actually is, and how the sample data fits together.
 - [`docs/DATA-ACCESS.md`](docs/DATA-ACCESS.md) — the repository pattern and the dev-only session: how data actually gets read, and where `getSession()`/`setDevSession()` fit in.
-- [`docs/AUTH.md`](docs/AUTH.md) — the two independent sign-in mechanisms: staff's dev-only demo session and the parent portal's real signup/login/link-a-child, why they don't share code, and where a parent's password actually lives in Phase 1.
+- [`docs/AUTH.md`](docs/AUTH.md) — how sign-in works: the signed staff session cookie (Step 50), what it carries and how every page and action checks it, the parent portal's session, and quick recipes for new pages and actions.
 - [`docs/APP-SHELL.md`](docs/APP-SHELL.md) — the sidebar, top bar, mobile drawer, role-based navigation and route guards: how they connect, and how to add a new page or nav item.
 - [`docs/ATTENDANCE-MODEL.md`](docs/ATTENDANCE-MODEL.md) — how a tap becomes "present"/"late"/"absent": the cutoffs, why attendance is calculated rather than stored, and how "Simulate a tap" works end to end.
 - [`docs/NOTIFICATIONS.md`](docs/NOTIFICATIONS.md) — how a tap becomes a parent notification: the fan-out helper, the school preference gate, time-in/time-out derivation, and the shared-read simplification.

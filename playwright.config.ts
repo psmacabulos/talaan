@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { defineConfig, devices } from "@playwright/test";
 import { e2eDatabaseUrl } from "./e2e/database";
+import { TEST_SESSION_SECRET } from "./e2e/sessions";
 
 const PORT = 3100;
 
@@ -50,8 +51,13 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     // The app under test reads and writes the test database, not your own,
     // and runs on the demo morning's clock (src/lib/clock.ts), so every run
-    // sees the same day as the seed data whatever today's date is.
-    env: { DATABASE_URL: e2eDatabaseUrl(), DEMO_NOW: "2026-06-19T09:15:00+08:00" },
+    // sees the same day as the seed data whatever today's date is. Its own
+    // session secret lets the tests make signed cookies (e2e/sessions.ts).
+    env: {
+      DATABASE_URL: e2eDatabaseUrl(),
+      DEMO_NOW: "2026-06-19T09:15:00+08:00",
+      SESSION_SECRET: TEST_SESSION_SECRET,
+    },
     timeout: 120_000,
   },
 });

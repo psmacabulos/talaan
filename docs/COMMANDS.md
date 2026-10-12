@@ -33,7 +33,21 @@ npm run dev                    # 4. the app, at http://localhost:3000
 | `npm run db:reset` | Empties the database and refills it with the demo data. **It also deletes gate and monitor devices**, so make new ones afterwards (section 7). It refuses to run on anything but your own laptop. |
 | `npm run dev` | Runs the app with live reload. Stop it with `Ctrl+C`. After installing a package or a database change, stop it and start it again. |
 
-**Files:** `.env` (your settings: `DATABASE_URL`, and optionally `DEMO_NOW`; see `.env.example` for every setting), `prisma/reset-demo.ts`, `prisma/demo-data.ts`, `src/data/seed/` (the demo students, cards and taps).
+**Files:** `.env` (your settings: `DATABASE_URL`, `SESSION_SECRET`, and optionally `DEMO_NOW`; see `.env.example` for every setting), `prisma/reset-demo.ts`, `prisma/demo-data.ts`, `src/data/seed/` (the demo students, cards and taps).
+
+**Signing in (Step 50):** every staff page needs a signed-in session. In development, use the "Try the prototype as" buttons on the sign-in screen, or the "Preview as" menu in the top bar. Every active demo account's password is `Talaan123!` (the form checks it from Step 50.1). The browser tests sign in on their own.
+
+**`SESSION_SECRET` (once, Step 50):** the secret that stamps sign-in cookies so they can't be faked. Make one and paste it into `.env`:
+
+```bash
+openssl rand -base64 32
+```
+
+```
+SESSION_SECRET="<the 44 characters it printed>"
+```
+
+Without it, every staff page shows "SESSION_SECRET is missing or shorter than 32 characters". Changing it signs everyone out.
 
 **`DEMO_NOW`:** leave it out of `.env` for real taps with the real time. Set it (`DEMO_NOW="2026-06-19T09:15:00+08:00"`) to see the demo morning, when the seed data's taps happened.
 
@@ -215,4 +229,6 @@ The usual order: the checks (section 2), then `git add -A`, then `git commit -m 
 | Build or tests act strangely after many changes | `rm -rf .next`, then build again. |
 | Everything is strange after changing packages | `rm -rf node_modules .next && npm ci`: a clean install, like CI does. |
 | A browser test failed | Read `test-results/<test name>/error-context.md`, or rerun that one test with `--headed` (section 4). |
+| Every staff page shows "SESSION_SECRET is missing or shorter than 32 characters" | Add `SESSION_SECRET` to `.env` (section 1), then restart `npm run dev`. |
+| Signed out after a restart, or on every page | The `SESSION_SECRET` in `.env` changed, or the cookie is more than 30 days old. Sign in again. |
 | `prisma migrate dev` asks to reset | Answer **N**, and send the message. Nothing is lost while you haven't answered yes. |

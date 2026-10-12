@@ -3,17 +3,16 @@ import { schoolRepository, staffRepository, tapRepository } from "@/data/reposit
 import { NoSchoolSelected } from "@/features/attendance/no-school-selected";
 import { DEFAULT_ATTENDANCE_TIMES, schoolToday } from "@/features/attendance/status";
 import { getNow } from "@/lib/clock";
-import { getSession } from "@/lib/session";
+import { requireSession } from "@/lib/session";
 import { parseStudentListParams } from "@/features/students/search-params";
 import { searchStudents } from "@/features/students/search-students";
 import { StudentsDirectory } from "@/features/students/students-directory";
 
 export default async function StudentsPage({ searchParams }: PageProps<"/students">) {
-  const session = await getSession();
+  const session = await requireSession();
 
-  // Only a super admin can be school-less (staff schema's own rule), and
-  // there's no "view school X as super admin" mechanism until Step 20 —
-  // same guard the dashboard uses (src/app/(app)/dashboard/page.tsx).
+  // Only a super admin can have no school: until they open one on the
+  // Schools page (Step 50), there's no school to show.
   if (!session.schoolId) {
     return (
       <div className="flex flex-col gap-6">

@@ -52,6 +52,14 @@ export function createPrismaStaffRepository(db: PrismaClient = prisma): StaffRep
       const row = await db.staff.findUnique({ where: { id } });
       return row ? toStaff(row) : null;
     },
+    async findByEmail(email) {
+      const row = await db.staff.findFirst({ where: { email: { equals: email.trim(), mode: "insensitive" } } });
+      return row ? toStaff(row) : null;
+    },
+    async getForSession(id) {
+      const row = await db.staff.findUnique({ where: { id } });
+      return row ? { staff: toStaff(row), passwordHash: row.passwordHash } : null;
+    },
     async list() {
       const rows = await db.staff.findMany({ orderBy: OLDEST_FIRST });
       return rows.map(toStaff);

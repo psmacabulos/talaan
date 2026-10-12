@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { Nfc, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { SIGNED_OUT_MESSAGE } from "@/features/auth/messages";
 import { simulateTap } from "./actions";
 
 /**
@@ -40,7 +41,13 @@ export function SimulateTapButton() {
         return;
       }
 
-      toast(result.reason === "everyone-in" ? "Everyone has already tapped in" : "Pick a school first");
+      toast(
+        result.reason === "everyone-in"
+          ? "Everyone has already tapped in"
+          : result.reason === "signed-out"
+            ? SIGNED_OUT_MESSAGE
+            : "Pick a school first",
+      );
     });
   }
 

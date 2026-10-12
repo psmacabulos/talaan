@@ -22,7 +22,7 @@ import { countByStatus, DEFAULT_ATTENDANCE_TIMES, schoolDayFor } from "@/feature
 import { deriveCardStatus } from "@/features/students/card-status";
 import { getNow } from "@/lib/clock";
 import { schoolDateOf } from "@/lib/school-time";
-import { getSession } from "@/lib/session";
+import { requireSession } from "@/lib/session";
 
 function AttendancePageShell({ description, children }: { description: string; children: React.ReactNode }) {
   return (
@@ -34,10 +34,10 @@ function AttendancePageShell({ description, children }: { description: string; c
 }
 
 export default async function AttendancePage({ searchParams }: PageProps<"/attendance">) {
-  const session = await getSession();
+  const session = await requireSession();
 
-  // Same guard as the dashboard and Students list: only a super admin can be
-  // school-less, and there's no "view school X" mechanism until Step 25.
+  // Only a super admin can have no school: until they open one on the
+  // Schools page (Step 50), there's no school to show.
   if (!session.schoolId) {
     return (
       <AttendancePageShell description="Pick a date and class to see who tapped in.">

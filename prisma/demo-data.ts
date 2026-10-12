@@ -11,6 +11,7 @@ import {
   seedTaps,
 } from "@/data/seed";
 import { SEED_PARENT_PASSWORD } from "@/data/repositories/parent-repository";
+import { SEED_STAFF_PASSWORD_HASH } from "@/data/seed/staff-password";
 import { toAlertData } from "@/data/repositories/prisma-alert-repository";
 import { toCardData } from "@/data/repositories/prisma-card-repository";
 import { toNotificationData } from "@/data/repositories/prisma-notification-repository";
@@ -44,11 +45,17 @@ export async function insertDemoData(db: PrismaClient) {
     });
   }
 
+  // Every active demo staff account signs in with the demo password
+  // (SEED_STAFF_PASSWORD). An invited one has none until Step 50.5's link.
   for (const staff of seedStaff) {
     await db.staff.upsert({
       where: { id: staff.id },
       update: {},
-      create: { id: staff.id, ...toStaffData(staff) },
+      create: {
+        id: staff.id,
+        ...toStaffData(staff),
+        passwordHash: staff.status === "active" ? SEED_STAFF_PASSWORD_HASH : null,
+      },
     });
   }
 

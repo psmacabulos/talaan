@@ -1,73 +1,131 @@
-# How sign-in works: two separate sessions
+# How sign-in works
 
-Talaan has two completely independent sign-in mechanisms living side by side: staff (principals, teachers, super admins) and parents. They were built two steps apart — staff's dev session in Step 9, parents' real signup/login in Step 22 — and deliberately never share code, because they mean genuinely different things. Staff's session is a **dev-only stand-in** for a real sign-in that doesn't exist yet (Phase 2 adds Auth.js); parent's session is **the real feature**, built now because Step 22's own "done when" line requires an account that actually persists across a sign-out and sign-in. See `docs/BUILD-LOG.md`'s Step 22 entry for the decisions behind this, and `docs/LEARNING-LOG.md`'s "Two separate logins in one app" entry for the short version.
+Talaan has four kinds of sign-in, one per kind of visitor:
 
-## The shape of it
+| Who | Proves who they are with | Carries | Built in |
+|---|---|---|---|
+| Staff (super admin, principal, teacher) | Email and password | A **signed** `talaan_session` cookie | Step 50 (this page); the real form in Step 50.1 |
+| Parents, web portal | Email and password | A `talaan-parent-session` cookie (a plain id until Step 50.1 signs it) | Step 22, passwords hashed since Step 41 |
+| Gate tablet, guardhouse TV | A device token typed once | A random `tal_dev_…` token, kept hashed | Steps 43 and 48 (`docs/GATE.md`) |
+| Parents, Expo app | Email and password | A random `tal_par_…` token, kept hashed | Step 53 |
+
+This page covers the two cookie sessions. For what cookies, sessions and JWTs are, and why Talaan signs its own cookie instead of using an auth library, see the interactive page [Talaan Sign-in Options](https://claude.ai/artifact/3AsAcMHFBbZbzjJya1tZAK) and `docs/LEARNING-LOG.md`'s "Cookies, sessions and JWTs" entry.
+
+## The staff session (Step 50)
 
 ```mermaid
-flowchart TB
-    subgraph staff["Staff session (Step 9/11) — a demo stand-in"]
-        StaffCookie["talaan-dev-session cookie<br/>just a staffId"]
-        SetDevSession["setDevSession()<br/>session-actions.ts<br/>throws in production"]
-        GetSession["getSession()<br/>session.ts<br/>falls back to a default persona"]
-        StaffRepo["staffRepository"]
+flowchart LR
+    subgraph start["Signing in"]
+        Dev["Dev switcher / demo shortcuts<br/>setDevSession()<br/>throws in production"]
+        Open["Open school<br/>openSchool()"]
+        Form["Sign-in form<br/>(Step 50.1)"]
     end
-
-    subgraph parent["Parent session (Step 22) — the real thing"]
-        ParentCookie["talaan-parent-session cookie<br/>just a parentId"]
-        SetParentSession["setParentSession() / clearParentSession()<br/>parent-session-actions.ts"]
-        GetParentSession["getParentSession()<br/>parent-session.ts<br/>null if signed out — no fallback persona"]
-        ParentRepo["parentRepository<br/>verifyPassword(), findByEmail()"]
-    end
-
-    LoginForm["/ login form<br/>always signs in as a fixed demo persona"] --> SetDevSession
-    SetDevSession --> StaffCookie
-    StaffCookie --> GetSession
-    GetSession --> StaffRepo
-    GetSession --> AppLayout["src/app/(app)/layout.tsx<br/>every staff screen"]
-
-    ParentLoginForm["/parent/login<br/>real password check"] --> SetParentSession
-    ParentSignupForm["/parent/signup<br/>real account creation"] --> SetParentSession
-    SetParentSession --> ParentCookie
-    ParentCookie --> GetParentSession
-    GetParentSession --> ParentRepo
-    GetParentSession --> ParentLayout["src/app/parent/(protected)/layout.tsx<br/>redirects to /parent/login if null"]
-
-    style StaffCookie fill:#223060,color:#fff
-    style ParentCookie fill:#1C77A5,color:#fff
+    Dev --> Start["startStaffSession(staffId, school?)<br/>src/lib/session.ts<br/>not a Server Action"]
+    Open --> Start
+    Form -.-> Start
+    Start --> Cookie["talaan_session cookie<br/>{ staffId, pv, school?, exp }.stamp<br/>httpOnly, 30 days"]
+    Cookie --> Get["getSession()<br/>stamp? expiry? staff exists?<br/>pv matches?"]
+    Get -->|yes| Session["{ userId, role, schoolId }"]
+    Get -->|no| Null["null"]
+    Session --> Pages["requireSession() in the layout and every page"]
+    Session --> Actions["getSession() in every Server Action"]
+    Null --> Login["pages: redirect to /<br/>actions: 'Your session has expired'"]
 ```
 
-A browser can hold both cookies at once — signed in as a staff member and as a parent, in the same tab — because they're stored, read and cleared entirely separately. Neither `getSession()` nor `getParentSession()` knows the other exists.
+### The cookie
 
-## Why staff's session has a production guard and parent's doesn't
-
-Staff's `setDevSession()` calls `assertDevSessionMutationAllowed()`, which throws outside development. That guard exists because signing in as staff is currently just picking a name from a list (`DemoShortcuts`, or a valid-looking form submission that ignores what was actually typed) — a shortcut standing in for a real sign-in until Phase 2's Auth.js work lands. It has to be impossible to reach in production, per CLAUDE.md's own rule.
-
-Parent sign-in has no equivalent guard, because it isn't a shortcut. `signInParent()` genuinely checks a submitted password against `ParentRepository.verifyPassword()`, and `signUpParent()` genuinely creates a new account nothing else can see or use for you. It behaves the same way in every environment — the only thing that's still "Phase 1" about it is *where* the password lives (see below), not whether the check itself is real.
-
-## Where a parent's password actually lives
-
-Phase 1 has no database — every mock repository is really a JavaScript array sitting in server memory. `ParentRepository` follows that same pattern for passwords: `createMockParentRepository` keeps a plain `Map<parentId, password>` in its own closure, right alongside the array of `Parent` records, and never exposes it through any method that returns a `Parent`:
+`src/lib/session-cookie.ts` makes and reads the cookie's value:
 
 ```ts
-// src/data/repositories/parent-repository.ts
-const passwordsByParentId = new Map<string, string>(
-  data.map((parent) => [parent.id, options.seedPassword ?? SEED_PARENT_PASSWORD]),
-);
+export function makeStaffSessionCookie(contents: StaffSessionCookie, secret: string, now: Date): string {
+  const exp = Math.floor(now.getTime() / 1000) + SESSION_MAX_AGE_SECONDS;
+  return signValue({ ...contents, exp }, "staff-session", secret);
+}
 ```
 
-Two things fall out of that shape:
-- **A `Parent` object never carries a password.** Nothing has to remember to strip a secret field before rendering a parent's name somewhere — there's no field to strip, because the password lives in a completely separate map, keyed by id.
-- **Every seed parent can sign in.** The map is pre-filled with a fixed demo password (`SEED_PARENT_PASSWORD = "Talaan123!"`) for whatever data the repository starts with, so `parent-one@balanga.example` (one of Step 20's seed accounts, already linked to real students) can sign in today, not just a freshly-signed-up account.
+The value looks like `eyJzdGFmZklk….tQdbZ2Hik4CI…`: a base64url JSON payload, a dot, and a stamp. `src/lib/signed-value.ts` makes the stamp with HMAC-SHA256 over the purpose and the payload, using `SESSION_SECRET` (`src/lib/env.ts`). Change one character of the payload or the stamp, use another secret, or paste a value made for another purpose (a parent cookie, a set-password link), and `readSignedValue` returns null. It also returns null once `exp` has passed. It never throws, so a garbage cookie just means "signed out".
 
-This is a real password check against real (if in-memory) data — genuinely different from staff's "any password gets you in as the demo principal." What it *isn't* is secure: a plain-text map is fine when there's no real account behind it to protect, but it must not survive into Phase 2, where Auth.js brings real hashing. Every place this shows up in the code says so in a comment, so it can't quietly get mistaken for the real thing later.
+The payload is readable by anyone holding the cookie, since it's only encoded, not encrypted. It holds ids and a fingerprint, never a password or a student's details.
+
+| Field | What it's for |
+|---|---|
+| `staffId` | Who signed in. |
+| `pv` | `passwordVersion(passwordHash)` (`src/lib/password.ts`): the first 16 characters of a SHA-256 of the stored hash, or `"none"` for an invited account with no password yet. A new password means a new hash, so older cookies stop matching. That's how a password change signs out every other browser, with no sessions table. |
+| `school` | The school a super admin opened. Ignored for everyone else. |
+| `exp` | 30 days after sign-in, in seconds since 1970. |
+
+### Reading it: `resolveSession`
+
+```ts
+export async function resolveSession(raw: string | undefined, deps: SessionDeps): Promise<Session | null> {
+  const cookie = readStaffSessionCookie(raw, deps.secret, deps.now);
+  if (!cookie) return null;
+
+  const found = await deps.staff.getForSession(cookie.staffId);
+  if (!found || passwordVersion(found.passwordHash) !== cookie.pv) return null;
+
+  const { staff } = found;
+  if (staff.role !== "super_admin") {
+    return { userId: staff.id, role: staff.role, schoolId: staff.schoolId };
+  }
+  const viewing = cookie.school ? await deps.schools.getById(cookie.school) : null;
+  return { userId: staff.id, role: staff.role, schoolId: viewing?.id ?? null };
+}
+```
+
+- **One database lookup per request.** The stamp proves the cookie is ours. The lookup proves the person is still allowed in: a removed staff member is signed out on their next click, not in 30 days. `getSession` is wrapped in React's `cache`, so the layout and the page share that one lookup.
+- **The school only ever comes from this signed cookie.** A principal's or teacher's school is their own, whatever the cookie says. Only a super admin's `school` is read, and only if that school still exists.
+- **The real clock.** `getSession` passes `new Date()`, never `DEMO_NOW`: a cookie's expiry is about real time, even when the attendance pages are pinned to the demo morning.
+
+### Pages and actions
+
+| Where | Call | Signed out |
+|---|---|---|
+| `src/app/(app)/layout.tsx` and every page under it | `requireSession()` | Redirect to `/` |
+| Every staff Server Action | `getSession()`, then `if (!session) …` | `{ ok: false, formError: SIGNED_OUT_MESSAGE }` (or a thrown error for the two that already threw) |
+| `resolveMonitorViewer`, `resolvePhotoViewer` | `getSession()` | Not allowed (the monitor's not-connected page, a photo 404) |
+
+Each page checks for itself, not only the layout: Next.js doesn't re-run a layout on every navigation, and a Server Action can be called directly without any page at all (`node_modules/next/dist/docs/01-app/02-guides/authentication.md`, "Layouts and auth checks").
+
+### Starting a session
+
+`startStaffSession(staffId, school?)` in `src/lib/session.ts` sets the cookie (httpOnly, `sameSite: "lax"`, `secure` in production, 30 days). It is **not** a Server Action, on purpose. Every exported function in a `"use server"` file is a public endpoint that anyone can call with any arguments, and this function takes any staff id. So it's only called by server code that has already decided the person may sign in:
+- `setDevSession` (`src/lib/session-actions.ts`), the dev switcher and demo shortcuts, which throws in production;
+- `openSchool` (`src/features/schools/actions.ts`), after checking the caller is a super admin;
+- the sign-in form, after the password checks out (Step 50.1).
+
+### Passwords and emails
+
+`Staff.passwordHash` (migration `staff_password`) holds `hashPassword()`'s `scrypt:<salt>:<hash>`, or null for an invited account. `toStaff` never copies it into a `Staff` object; only `StaffRepository.getForSession` returns it, next to the staff member. Emails are unique across every school and stored in lower case, so sign-in will find exactly one person. Adding staff or a school with an email that's already used is refused with "Someone already uses this email."
+
+Seed accounts: every **active** demo staff member's hash is `SEED_STAFF_PASSWORD_HASH` (`src/data/seed/staff-password.ts`), the hash of `Talaan123!`, made once and kept fixed so the browser tests can compute the matching `pv`. Invited demo accounts have no password, the same as a real invited account.
+
+### The browser tests
+
+`e2e/sessions.ts` makes the same signed cookie with `TEST_SESSION_SECRET`, which `playwright.config.ts` gives the test server as `SESSION_SECRET`. `signInAs(context, "principal", baseURL)` works exactly as before.
+
+## The parent session
+
+`src/lib/parent-session.ts`'s `getParentSession()` returns `{ parentId, schoolId }` or null, and `src/app/parent/(protected)/layout.tsx` redirects to `/parent/login` when it's null. The password check is real (`ParentRepository.verifyPassword`, scrypt hashes in Postgres since Step 41). The cookie, however, still holds a plain parent id, so anyone who types `parent-balanga-1` into their browser's cookie store is that parent. **Step 50.1 signs it** with the same `signValue` (purpose `parent-session`). Until then, don't deploy.
+
+The two sessions never share a cookie or code: a browser can be signed in as staff and as a parent at the same time.
 
 ## Quick recipes
 
-**I want to add a new page only a signed-in parent can reach.** Put it under `src/app/parent/(protected)/` — the layout there already calls `getParentSession()` and redirects to `/parent/login` if it's `null`. Call `getParentSession()` again inside the page itself too (same pattern the dashboard/students pages use for the staff session) rather than trying to pass it down as a prop from the layout.
+**A new staff page.** Put it under `src/app/(app)/` and start it with `const session = await requireSession();`. Check the role yourself (`hasNavAccess`) if the page isn't for everyone.
 
-**I want to check whether the current visitor is signed in as a parent, from a Server Component or a server action.** `import { getParentSession } from "@/lib/parent-session"` — it returns `{ parentId, schoolId } | null`, never throws.
+**A new staff Server Action.**
 
-**I want to add a parent-facing mutation (a new server action).** Follow `linkChild` in `src/features/parents/auth-actions.ts`: call `getParentSession()` first and bail out with a `formError` if it's `null`, re-validate the input with the same Zod schema the form already checked, then call the repository.
+```ts
+const session = await getSession();
+if (!session) return { ok: false, formError: SIGNED_OUT_MESSAGE };
+if (!session.schoolId || session.role === "teacher") return { ok: false, formError: "You don't have permission to …" };
+```
 
-**I want to know if this is the staff session or the parent session.** If the code imports from `@/lib/session` or `@/lib/session-actions`, it's staff (dev-only, has a production guard). If it imports from `@/lib/parent-session` or `@/lib/parent-session-actions`, it's the parent portal (real, no guard).
+`SIGNED_OUT_MESSAGE` is in `src/features/auth/messages.ts`. Use `session.schoolId` for every lookup, never a school id the browser sent.
+
+**Sign everyone out.** Change `SESSION_SECRET`. Every cookie's stamp stops matching.
+
+**Sign one person out everywhere.** Change their password (Step 50.5's reset link). Their `pv` changes.
+
+**A new kind of signed value** (a link, another cookie). Add a purpose to `SignPurpose` in `src/lib/signed-value.ts`, sign with `signValue`, read with `readSignedValue`, and check the payload's fields with a Zod schema, as `readStaffSessionCookie` does.

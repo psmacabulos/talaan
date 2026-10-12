@@ -1,4 +1,4 @@
-import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 
 const scryptAsync = promisify(scrypt);
@@ -24,4 +24,15 @@ export async function passwordMatches(password: string, stored: string): Promise
   const expected = Buffer.from(hash, "base64");
   const actual = (await scryptAsync(password, Buffer.from(salt, "base64"), expected.length)) as Buffer;
   return timingSafeEqual(actual, expected);
+}
+
+/**
+ * A short fingerprint of a stored password hash, carried in the session
+ * cookie as `pv`. A new password means a new hash, so every cookie made
+ * before the change stops matching and that browser is signed out. "none"
+ * for an invited account that has no password yet.
+ */
+export function passwordVersion(stored: string | null): string {
+  if (!stored) return "none";
+  return createHash("sha256").update(stored).digest("base64url").slice(0, 16);
 }

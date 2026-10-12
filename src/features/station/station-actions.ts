@@ -2,12 +2,14 @@
 
 import { refresh } from "next/cache";
 import { alertRepository, tapRepository, schoolRepository, notificationRepository } from "@/data/repositories";
+import { SIGNED_OUT_MESSAGE } from "@/features/auth/messages";
 import { getSession } from "@/lib/session";
 import { notifyParentsForTap } from "@/features/attendance/notify-parents";
 import type { StationTapOutcome } from "./resolve-station-tap";
 
 async function assertStationAccess(): Promise<void> {
   const session = await getSession();
+  if (!session) throw new Error(SIGNED_OUT_MESSAGE);
   if (!session.schoolId || session.role === "teacher") {
     throw new Error("You don't have permission to use the tap station.");
   }

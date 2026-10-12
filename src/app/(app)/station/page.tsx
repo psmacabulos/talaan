@@ -7,10 +7,10 @@ import { DEFAULT_ATTENDANCE_TIMES } from "@/features/attendance/status";
 import { TapStationKiosk } from "@/features/station/tap-station-kiosk";
 import { getNow, isDemoClock } from "@/lib/clock";
 import { schoolDateOf } from "@/lib/school-time";
-import { getSession } from "@/lib/session";
+import { requireSession } from "@/lib/session";
 
 export default async function StationPage() {
-  const session = await getSession();
+  const session = await requireSession();
 
   if (!hasNavAccess(session.role, "station")) {
     return (
@@ -18,9 +18,8 @@ export default async function StationPage() {
     );
   }
 
-  // Same guard as the dashboard, Students, Attendance and Staff pages: only
-  // a super admin can be school-less, and there's no "view school X"
-  // mechanism until Step 25.
+  // Only a super admin can have no school: until they open one on the
+  // Schools page (Step 50), there's no school to show.
   if (!session.schoolId) {
     return (
       <div className="flex flex-col gap-6">

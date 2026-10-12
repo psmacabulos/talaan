@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { SIGNED_OUT_MESSAGE } from "@/features/auth/messages";
 import { getSession } from "@/lib/session";
 import { studentRepository } from "@/data/repositories";
 import { getPhotoStorage } from "@/lib/storage/photo-storage";
@@ -104,6 +105,7 @@ export async function createStudent(
   photoForm?: FormData,
 ): Promise<StudentFormActionResult> {
   const session = await getSession();
+  if (!session) return { ok: false, formError: SIGNED_OUT_MESSAGE };
   if (!session.schoolId || session.role === "teacher") {
     return { ok: false, formError: "You don't have permission to add students." };
   }
@@ -134,6 +136,7 @@ export async function updateStudent(
   photoForm?: FormData,
 ): Promise<StudentFormActionResult> {
   const session = await getSession();
+  if (!session) return { ok: false, formError: SIGNED_OUT_MESSAGE };
   if (!session.schoolId || session.role === "teacher") {
     return { ok: false, formError: "You don't have permission to edit students." };
   }

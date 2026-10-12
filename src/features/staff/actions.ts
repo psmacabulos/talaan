@@ -2,7 +2,9 @@
 
 import { refresh } from "next/cache";
 import { staffRepository } from "@/data/repositories";
+import { SIGNED_OUT_MESSAGE } from "@/features/auth/messages";
 import { getSession } from "@/lib/session";
+import { EMAIL_IN_USE_MESSAGE } from "./messages";
 import { staffRowActions } from "./row-actions";
 import { staffFormSchema } from "./schemas";
 import type { Staff, StaffFormInput } from "./types";
@@ -35,6 +37,7 @@ function fieldErrorsFrom(error: import("zod").ZodError<StaffFormInput>): StaffFo
  */
 export async function inviteStaff(input: StaffFormInput): Promise<StaffFormActionResult> {
   const session = await getSession();
+  if (!session) return { ok: false, formError: SIGNED_OUT_MESSAGE };
   if (!session.schoolId || session.role === "teacher") {
     return { ok: false, formError: "You don't have permission to invite staff." };
   }
@@ -45,6 +48,12 @@ export async function inviteStaff(input: StaffFormInput): Promise<StaffFormActio
   }
 
   const { advisoryGradeLevel, advisorySection, ...rest } = parsed.data;
+  // Stored in lower case, and one account per email across every school
+  // (Step 50), so sign-in finds exactly one person.
+  const email = rest.email.trim().toLowerCase();
+  if (await staffRepository.findByEmail(email)) {
+    return { ok: false, fieldErrors: { email: EMAIL_IN_USE_MESSAGE } };
+  }
 
   await staffRepository.create({
     id: crypto.randomUUID(),
@@ -54,6 +63,7 @@ export async function inviteStaff(input: StaffFormInput): Promise<StaffFormActio
     // invited teacher, even if the form somehow submitted them anyway.
     ...(rest.role === "teacher" ? { advisoryGradeLevel, advisorySection } : {}),
     ...rest,
+    email,
   });
 
   refresh();
@@ -70,6 +80,7 @@ export type StaffRowActionResult = { ok: true } | { ok: false; error: string };
  */
 async function findActionTarget(staffId: string): Promise<{ staff: Staff; userId: string } | { error: string }> {
   const session = await getSession();
+  if (!session) return { error: SIGNED_OUT_MESSAGE };
   if (!session.schoolId || session.role === "teacher") {
     return { error: "You don't have permission to manage staff." };
   }

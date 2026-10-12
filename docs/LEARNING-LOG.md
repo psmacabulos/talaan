@@ -441,6 +441,11 @@ The short version:
 - **The route stays thin:** it checks who's calling, does one thing, and returns a `Response`. The rules live in `src/services/`, and the database access in `src/data/repositories/`.
 - **Two ways to reach the back end.** *Route Handlers* (`route.ts`) are ordinary HTTP endpoints, for callers outside the admin website: the gate tablet, the guardhouse TV, the future parent app, `curl`. *Server Actions* (`"use server"` files) are functions a React component calls directly; Next.js makes the `POST` for you. Every admin and parent form uses those. Both call the same services.
 
+### Every exported function in a `"use server"` file is a public door (Step 50)
+A Server Action looks like a normal function your form calls, but Next.js turns it into a URL anyone can send a request to, with any arguments they like, whether or not a button on your site calls it (`node_modules/next/dist/docs/01-app/02-guides/data-security.md`). So each one must check who is asking before it does anything. The first Step 50 plan would have put `startStaffSession(staffId)` in a `"use server"` file. That would have been a public door saying "sign me in as whoever I name", so anyone could become the super admin. It went in `src/lib/session.ts` instead, a file without `"use server"`, and only code that has already checked (the guarded dev switcher, Open school for super admins, and the password check in Step 50.1) calls it. **Rule of thumb:** if a function would be dangerous when called by a stranger with made-up arguments, it doesn't belong in a `"use server"` file. Put it in a plain server file and call it from an action that checks first. More in `docs/BUILD-LOG.md`, Step 50.
+
+---
+
 ## Domain modeling: types vs. schemas
 
 ### What's the actual difference between a "domain type" and a "schema"? And is Step 8 front end or back end?
@@ -783,6 +788,9 @@ The staff login (`/`) was never a real login — it always signs in as a fixed d
 
 ### Storing a password with no real database yet
 Phase 1 has no database — every "table" is really just a JavaScript array of seed data sitting in memory, and it resets whenever the server restarts. Given that, hashing a password (the real, secure way — see `docs/AUTH.md` once Phase 2 writes it) would be Phase 2 work applied to something that isn't Phase 2 yet. Instead, this step keeps passwords in a small in-memory lookup right next to that same array, in plain text, clearly labeled as a placeholder. It's not a real security concern *yet* because there's no real data behind it to protect — but it's exactly the kind of shortcut that must not survive into Phase 2, which is why every place it appears in the code says so in a comment.
+
+### Cookies, sessions and JWTs, and why Step 50 builds its own sign-in (owner question, 2026-10-12)
+These are three different things, not three choices. A **session** is the idea "this browser is signed in as this person until this time". A **cookie** is where the browser carries it, sent back automatically on every request. A **JWT** is one format for a signed note, and it can travel in a cookie or in an `Authorization` header. The real choice is where the session's facts are kept: in a sessions table on the server (a coat-check ticket), or inside a signed note (a signed permission slip). Step 50's cookie is a signed note, effectively a JWT without its header, plus one database check per request so a removed account or a changed password signs people out. An auth library (Better Auth, Auth.js) or a hosted service was weighed and not chosen for now. Node's built-in `crypto` already provides the hard parts, Talaan has four kinds of sign-in that don't fit one user table, and the 17 pages and actions change with any option. The full explanation, with a hands-on "stamp lab" and the comparison table, is the interactive page [Talaan Sign-in Options](https://claude.ai/artifact/3AsAcMHFBbZbzjJya1tZAK).
 
 ## Accessibility: checking that everyone can use it (Step 27)
 

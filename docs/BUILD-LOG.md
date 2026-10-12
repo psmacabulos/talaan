@@ -2089,3 +2089,36 @@ Things found while the owner tested Steps 46–49 at home, besides the review fi
 - **The Docker Postgres container stopped while the Mac slept** (`Exited (255)`). `docker start talaan-postgres` brings it back; now in `docs/COMMANDS.md` §5.
 - **Why Steps 46–49 are one commit** (`1b25e1d`): the owner asked for one commit per step after the fact. Rebuilding each step's files from the session history was started, then dropped as too fiddly, because several files were changed by more than one step. From then on, every change gets its own commit before the next one starts (see the learning log, "One commit per change").
 - **`docs/COMMANDS.md`** was written the same day: every command, grouped by task, with the files behind each. It's updated whenever a step adds a command.
+
+## Step 50: signed staff sessions (2026-10-12)
+
+**Before building.** The owner asked what cookies, sessions and JWTs are, and whether an auth library would be quicker. An interactive explainer compared five options: our own signed cookie, the same in JWT format (`jose`), Better Auth, Auth.js, and a hosted service ([Talaan Sign-in Options](https://claude.ai/artifact/3AsAcMHFBbZbzjJya1tZAK)). The owner chose option A, our own signed cookie, and split the step: Step 50 makes the session signed and signed-out-by-default; Step 50.1 adds the real form, the wrong-password limit, Sign out and the signed parent cookie. `docs/PLAN.md` and the recipes were split to match (`docs/backend/step-50-staff-sign-in.md`, `docs/backend/step-50.1-sign-in-form.md`).
+
+**What was built.**
+- `src/lib/env.ts` (`sessionSecret()`), `src/lib/signed-value.ts` (`signValue`, `readSignedValue`), `src/lib/session-cookie.ts` (the `talaan_session` cookie's format), and a rewritten `src/lib/session.ts` (`resolveSession`, `getSession`, `requireSession`, `startStaffSession`).
+- `Staff.passwordHash` and a unique email (migration `20261012083808_staff_password`), `passwordVersion()` in `src/lib/password.ts`, and `SEED_STAFF_PASSWORD_HASH` for the active seed accounts.
+- `StaffRepository.findByEmail` and `getForSession`, in the mock and Prisma versions.
+- All 17 callers of `getSession()`: the layout and 7 pages use `requireSession()`; the actions answer "Your session has expired. Sign in again." (`src/features/auth/messages.ts`).
+- `openSchool` keeps the super admin and records the school in the cookie.
+- Adding staff or a school refuses an email that's already used.
+- `e2e/sessions.ts` signs cookies with a fixed test secret, which `playwright.config.ts` gives the test server. Five new browser tests in `e2e/login.spec.ts`.
+
+**A security hole in the first plan, caught while building.** The recipe put `startStaffSession(staffId, school?)` in `session-actions.ts`, a `"use server"` file. Every exported function in a `"use server"` file becomes a Server Action, which anyone can call with a direct POST and any arguments; Next.js's docs say so: "when a Server Action is created and exported, it is reachable via a direct POST request, not just through your application's UI" (`node_modules/next/dist/docs/01-app/02-guides/data-security.md`). A Server Action that takes any staff id and signs you in as them would have let anyone become the super admin. **Fix:** `startStaffSession` lives in `session.ts`, which has no `"use server"`. A plain async function can still set cookies when it runs inside a Server Action, so `setDevSession` (guarded, development only) and `openSchool` (super admins only) call it after their own checks. Step 50.1's recipe applies the same rule to the parent cookie's `setParentSession`.
+
+**`prisma migrate dev` refused to run.**
+- **Ran:** `npx prisma migrate dev --name staff_password --create-only`.
+- **Got:** a warning ("A unique constraint covering the columns `[email]` on the table `Staff` will be added. If there are existing duplicate values, this will fail.") and then "Prisma Migrate has detected that the environment is non-interactive, which is not supported." `migrate dev` asks you to confirm a warning, and the shell it ran in can't answer.
+- **Fix:** asked Prisma for the SQL instead, with the read-only `npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script`. It printed the `ALTER TABLE` and the `CREATE UNIQUE INDEX`. Those went into a hand-made `prisma/migrations/20261012083808_staff_password/migration.sql`, with `UPDATE "Staff" SET "email" = lower("email");` between them, since emails are stored in lower case from now on. `npx prisma migrate deploy` applied it to the local database without questions, and a second `migrate diff` printed "This is an empty migration", so the schema and the database match. `npx prisma generate` updated the client.
+
+**Why the seed password hash is a constant.** Every browser test signs in by setting a cookie, and the cookie's `pv` must match the database's password hash. The parent seed makes its hash at seed time with a random salt, so nothing outside the database could know it. Options considered: reading each hash from the test database inside `signInAs` (Prisma inside Playwright, for every test), or writing cookies to a file during global setup (one more generated file). Chosen: `SEED_STAFF_PASSWORD_HASH`, made once with `hashPassword`'s own method (`node -e` with `scryptSync`, same 16-byte salt and 64-byte key) and kept in `src/data/seed/staff-password.ts`, which has no imports so Playwright can load it. A unit test proves it still matches `Talaan123!`.
+
+**Smaller decisions.**
+- `readSignedValue` returns `Record<string, unknown> | null` instead of a generic `<T>`, so a caller can't assume a payload's shape without checking it. `readStaffSessionCookie` checks with Zod.
+- The stamp is compared as text, not decoded bytes: base64url's last character carries spare bits, so two spellings can decode to the same bytes. Comparing text means only the exact stamp we made counts, and the "one changed character fails" test can't pass or fail by luck.
+- `getSession` is wrapped in React's `cache`, so the layout and the page share one lookup per request (the pattern in `node_modules/next/dist/docs/01-app/02-guides/authentication.md`).
+- `getSession` uses `new Date()`, not `getNow()`: under `DEMO_NOW` the clock is pinned to June 2026, and a cookie's expiry must be judged on real time.
+- Invited seed staff get no password hash, so they behave like a real invited account (Step 50.5 gives them a link).
+- `.env.example`'s `SESSION_SECRET` is empty, so copying the file as-is fails loudly instead of quietly using a known secret.
+- Stale comments on six pages ("no 'view school X' mechanism until Step 20/25") were replaced, since a super admin now opens a school and stays a super admin.
+
+**Checks run while building.** Only the unit test files this change touches: `signed-value`, `session`, `password`, both staff repositories, `monitor-viewer` (47 tests), and the schools, staff and attendance feature tests (117), all passing. Lint, typecheck, `check:tokens`, the full unit suite, the build and the browser tests are the owner's to run. No screen changed visually, so no screenshots were taken.

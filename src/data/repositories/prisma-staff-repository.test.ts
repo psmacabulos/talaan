@@ -10,6 +10,7 @@ const row: StaffRow = {
   firstName: "Ana",
   lastName: "Reyes",
   email: "ana@school-a.example",
+  passwordHash: "scrypt:salt:hash",
   status: "active",
   advisoryGradeLevel: 7,
   advisorySection: "Rizal",
@@ -18,7 +19,7 @@ const row: StaffRow = {
 };
 
 describe("toStaff", () => {
-  it("turns a database row into the app's Staff, dropping the timestamps", () => {
+  it("turns a database row into the app's Staff, dropping the timestamps and the password hash", () => {
     expect(toStaff(row)).toEqual({
       id: "staff-a",
       schoolId: "school-a",

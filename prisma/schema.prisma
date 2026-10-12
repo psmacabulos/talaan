@@ -59,7 +59,11 @@ model Staff {
   role               Role
   firstName          String
   lastName           String
-  email              String
+  // One account per email, stored in lower case, so sign-in finds exactly one person.
+  email              String      @unique
+  // Never the password itself: see src/lib/password.ts. Null until the
+  // staff member sets one (Step 50.5).
+  passwordHash       String?
   status             StaffStatus @default(invited)
   advisoryGradeLevel Int?
   advisorySection    String?

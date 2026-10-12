@@ -7,7 +7,7 @@ import { openSchool } from "./actions";
 /**
  * "Open" for one school, shared by the desktop table's button and the phone
  * card (Step 27.8), so the two can't behave differently. On success
- * `openSchool` redirects to /dashboard as that school's principal, so the
+ * `openSchool` redirects to /dashboard, viewing that school, so the
  * promise never settles and only a failure shows a toast here.
  */
 export function useOpenSchool(schoolId: string) {

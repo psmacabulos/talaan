@@ -20,7 +20,7 @@ flowchart TB
     end
 
     subgraph lib["src/lib/"]
-        Session["session.ts<br/>getSession(), setDevSession()"]
+        Session["session.ts<br/>getSession(), requireSession()"]
     end
 
     Future["A future page or Server Action<br/>(Step 10 onward)"]
@@ -113,55 +113,11 @@ Every mock method awaits this before returning data, so nothing built against a 
 
 Every repository test passes `{ latencyMs: 0 }` explicitly, which the function short-circuits to an immediate resolve — so the "network realism" this exists for never slows down `npm run test`. 104 tests still run in about a second of actual test time.
 
-## The dev session: `getSession()` and `setDevSession()`
+## The session: `getSession()`
 
-CLAUDE.md: `getSession()` returns `{ userId, role, schoolId }` from a dev-only cookie, and switching it must be "impossible to enable in production." `src/lib/session.ts` splits this into two kinds of function on purpose:
+CLAUDE.md: everything goes through one `getSession()` returning `{ userId, role, schoolId }`. Until Step 50 it read a plain, dev-only cookie and fell back to Balanga's principal when there wasn't one. **Since Step 50 the cookie is signed, and no cookie means signed out:** `getSession()` returns null, and `requireSession()` sends a page to the sign-in screen. `docs/AUTH.md` explains how it works.
 
-**The actual logic — plain, unit-testable functions:**
-
-```ts
-export async function resolveSession(
-  staffId: string | undefined,
-  repository: StaffRepository,
-): Promise<Session> {
-  const staff =
-    (staffId ? await repository.getById(staffId) : null) ??
-    (await repository.getById(DEFAULT_DEV_STAFF_ID));
-  if (!staff) throw new Error(/* ... */);
-  return { userId: staff.id, role: staff.role, schoolId: staff.schoolId };
-}
-
-export function assertDevSessionMutationAllowed(): void {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("Dev session switching is disabled in production.");
-  }
-}
-```
-
-**Thin wrappers that touch Next.js's request-scoped `cookies()`:**
-
-```ts
-export async function getSession(): Promise<Session> {
-  const cookieStore = await cookies();
-  const staffId = cookieStore.get(DEV_SESSION_COOKIE)?.value;
-  return resolveSession(staffId, staffRepository);
-}
-
-export async function setDevSession(staffId: string): Promise<void> {
-  "use server";
-  assertDevSessionMutationAllowed();
-  const cookieStore = await cookies();
-  cookieStore.set(DEV_SESSION_COOKIE, staffId, { httpOnly: true, sameSite: "lax", path: "/" });
-}
-```
-
-**Why split it this way:** `cookies()` only works inside a real Next.js request (a Server Component, Server Action, or Route Handler) — calling it directly from a Vitest test throws, since there's no request to read cookies from. Rather than mocking `next/headers`, the actual decision-making logic (`resolveSession`'s fallback behavior, the production guard) is pulled out into plain functions that take their inputs as arguments — `src/lib/session.test.ts` tests those directly, with a small fake `StaffRepository`, no mocking needed. The two Next-specific functions are left as thin, low-risk glue (a couple of lines each) that isn't separately unit-tested.
-
-**The fallback persona.** If the cookie is missing (Step 11's switcher UI doesn't exist yet) or points at a staff id that no longer exists, `resolveSession` falls back to a fixed default (Balanga's principal) — so the app always has someone sensible to render as, today, with zero UI built for it yet.
-
-**`"use server"` is inline, not at the top of the file.** `session.ts` also exports plain types and functions (`Session`, `resolveSession`) that aren't Server Actions — a file-level `"use server"` directive would require *every* export to be an async function, which doesn't fit. Placing the directive as the first line inside just `setDevSession`'s body marks only that one function as a Server Function; everything else in the file stays a normal export. Confirmed this compiles and builds correctly (`npm run build`) before trusting it, not just assumed from Next's docs.
-
-**Why the guard is inside the function, not just left out of any UI:** a Server Function is reachable by a direct POST request from anywhere, not only from whatever button ends up calling it — Next's own docs warn about this explicitly. `assertDevSessionMutationAllowed()` runs as the very first line, so even a raw request to this function in a production deployment is refused, regardless of what UI does or doesn't exist to call it.
+The shape this section described is still the same: the decision lives in a plain, unit-tested function (`resolveSession(raw, deps)`, which takes its repositories, secret and clock as arguments), and only thin wrappers touch Next.js's request-scoped `cookies()`. `src/lib/session.test.ts` tests the decision directly, with no mocking of `next/headers`.
 
 ## Quick recipes
 

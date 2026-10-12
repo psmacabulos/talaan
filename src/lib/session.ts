@@ -1,15 +1,21 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import type { Role } from "@/features/staff/types";
-import { staffRepository, type StaffRepository } from "@/data/repositories";
-
-export const DEV_SESSION_COOKIE = "talaan-dev-session";
-
-/**
- * Who the app renders as whenever the dev session cookie is missing or
- * stale (before the Step 11 switcher has been used, or after seed data
- * changes) — Balanga's own principal, a sensible default persona for a demo.
- */
-const DEFAULT_DEV_STAFF_ID = "staff-principal-school-balanga";
+import {
+  schoolRepository,
+  staffRepository,
+  type SchoolRepository,
+  type StaffRepository,
+} from "@/data/repositories";
+import { sessionSecret } from "./env";
+import { passwordVersion } from "./password";
+import {
+  makeStaffSessionCookie,
+  readStaffSessionCookie,
+  SESSION_COOKIE,
+  SESSION_MAX_AGE_SECONDS,
+} from "./session-cookie";
 
 export type Session = {
   userId: string;
@@ -17,27 +23,89 @@ export type Session = {
   schoolId: string | null;
 };
 
+export type SessionDeps = {
+  staff: StaffRepository;
+  schools: SchoolRepository;
+  secret: string;
+  now: Date;
+};
+
 /**
- * The actual logic, kept separate from the two Next.js-specific functions
- * below so it can be unit-tested directly (with a small fake repository)
- * instead of needing to mock `next/headers`'s cookie store.
+ * What a session cookie means right now, or null for signed out: no
+ * cookie, a wrong stamp, an expired cookie, a staff member who no longer
+ * exists, or a password changed since the cookie was made (`pv`).
+ *
+ * The school never comes from anything the browser sends except this
+ * signed cookie. Everyone but a super admin gets their own school. A super
+ * admin gets the school they opened (`school`), if it still exists.
+ *
+ * Kept apart from the Next.js-specific functions below so it can be
+ * unit-tested with plain arguments.
  */
-export async function resolveSession(staffId: string | undefined, repository: StaffRepository): Promise<Session> {
-  const staff =
-    (staffId ? await repository.getById(staffId) : null) ?? (await repository.getById(DEFAULT_DEV_STAFF_ID));
+export async function resolveSession(raw: string | undefined, deps: SessionDeps): Promise<Session | null> {
+  const cookie = readStaffSessionCookie(raw, deps.secret, deps.now);
+  if (!cookie) return null;
 
-  if (!staff) {
-    throw new Error(`Default dev staff "${DEFAULT_DEV_STAFF_ID}" was not found in the seed data.`);
+  const found = await deps.staff.getForSession(cookie.staffId);
+  if (!found || passwordVersion(found.passwordHash) !== cookie.pv) return null;
+
+  const { staff } = found;
+  if (staff.role !== "super_admin") {
+    return { userId: staff.id, role: staff.role, schoolId: staff.schoolId };
   }
-
-  return { userId: staff.id, role: staff.role, schoolId: staff.schoolId };
+  const viewing = cookie.school ? await deps.schools.getById(cookie.school) : null;
+  return { userId: staff.id, role: staff.role, schoolId: viewing?.id ?? null };
 }
 
-/** Reads the dev session cookie. Usable in Server Components, Server Actions and Route Handlers. */
-export async function getSession(): Promise<Session> {
-  const cookieStore = await cookies();
-  const staffId = cookieStore.get(DEV_SESSION_COOKIE)?.value;
-  return resolveSession(staffId, staffRepository);
+/**
+ * The signed-in staff member, or null when signed out. For Server Actions
+ * and anything else that must answer rather than redirect. `cache` runs it
+ * once per request, so the layout and the page share one database lookup.
+ * Uses the real clock, never DEMO_NOW: a cookie's expiry is about real time.
+ */
+export const getSession = cache(async (): Promise<Session | null> => {
+  const raw = (await cookies()).get(SESSION_COOKIE)?.value;
+  return resolveSession(raw, {
+    staff: staffRepository,
+    schools: schoolRepository,
+    secret: sessionSecret(),
+    now: new Date(),
+  });
+});
+
+/** For pages: the session, or straight to the sign-in screen. */
+export async function requireSession(): Promise<Session> {
+  const session = await getSession();
+  if (!session) redirect("/");
+  return session;
+}
+
+/**
+ * Signs a browser in as `staffId` by setting the signed cookie. Only ever
+ * called from server code that has already decided this person may sign
+ * in: the guarded dev switcher, Open school, and (Step 50.1) the sign-in
+ * form after the password checks out.
+ *
+ * Deliberately not a Server Action (this file has no "use server"): every
+ * exported function in a "use server" file can be called by anyone with a
+ * direct request, and this one takes any staff id.
+ */
+export async function startStaffSession(staffId: string, school?: string): Promise<void> {
+  const found = await staffRepository.getForSession(staffId);
+  if (!found) throw new Error("Can't start a session for a staff member who doesn't exist.");
+
+  const value = makeStaffSessionCookie(
+    { staffId, pv: passwordVersion(found.passwordHash), school },
+    sessionSecret(),
+    new Date(),
+  );
+  (await cookies()).set(SESSION_COOKIE, value, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: SESSION_MAX_AGE_SECONDS,
+  });
 }
 
 /**

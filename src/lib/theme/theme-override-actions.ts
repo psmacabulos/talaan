@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { SIGNED_OUT_MESSAGE } from "@/features/auth/messages";
 import { getSession } from "@/lib/session";
 import type { ThemePresetId } from "./presets";
 import { THEME_OVERRIDE_COOKIE } from "./theme-override";
@@ -13,6 +14,7 @@ import { THEME_OVERRIDE_COOKIE } from "./theme-override";
  */
 export async function setThemeOverride(presetId: ThemePresetId): Promise<void> {
   const session = await getSession();
+  if (!session) throw new Error(SIGNED_OUT_MESSAGE);
   if (session.role === "teacher") {
     throw new Error("Teacher accounts can't change the theme.");
   }
