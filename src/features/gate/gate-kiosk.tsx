@@ -54,6 +54,19 @@ function ndefReaderClass(): (new () => NdefReaderLike) | undefined {
 /** Web NFC support never changes while the page is open, so there is nothing to subscribe to. */
 const noSubscription = () => () => undefined;
 
+/**
+ * Tells React when this browser window gains or loses the keyboard (2026-10-12).
+ * Used with `document.hasFocus()` to show the "can't reach this page" banner.
+ */
+function subscribeToWindowFocus(onChange: () => void): () => void {
+  window.addEventListener("focus", onChange);
+  window.addEventListener("blur", onChange);
+  return () => {
+    window.removeEventListener("focus", onChange);
+    window.removeEventListener("blur", onChange);
+  };
+}
+
 type Phase = { kind: "starting" } | { kind: "setup"; error: string | null } | { kind: "ready"; label: string };
 
 /**
@@ -75,6 +88,15 @@ export function GateKiosk() {
     noSubscription,
     () => Boolean(ndefReaderClass()),
     () => false,
+  );
+  // The reader types into whichever window has the keyboard. When it's
+  // another window (the terminal, the address bar), taps would vanish
+  // without a trace, so the page says so instead.
+  // On the server there's no window, so it assumes true (no banner).
+  const pageHasKeyboard = useSyncExternalStore(
+    subscribeToWindowFocus,
+    () => document.hasFocus(),
+    () => true,
   );
   const [nfcOn, setNfcOn] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
@@ -195,9 +217,15 @@ export function GateKiosk() {
   useEffect(() => {
     if (!ready) return;
     const buffer = createScanBuffer(handleScan);
+    // Read keys wherever focus is on the page, even on a button someone
+    // clicked (skipping those lost every tap after a click, 2026-10-12).
+    // Only the reader's Enter is stopped, so it can't also click that button.
     const onKey = (event: KeyboardEvent) => {
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLButtonElement) return;
-      buffer.key(event.key, event.timeStamp);
+      // Typing in a text field (the setup screen's token) is never a card.
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+      // `key` is true only for the Enter that finished a card; cancelling
+      // that one Enter keeps it from also pressing a focused button.
+      if (buffer.key(event.key, event.timeStamp)) event.preventDefault();
     };
     window.addEventListener("keydown", onKey);
     const rosterTimer = setInterval(() => tokenRef.current && void loadRoster(tokenRef.current), ROSTER_EVERY_MS);
@@ -336,6 +364,13 @@ export function GateKiosk() {
           )}
         </div>
       </header>
+
+      {/* Shown while another window has the keyboard, so a tap is never lost without a sign (2026-10-12). */}
+      {!pageHasKeyboard ? (
+        <p role="status" className="bg-status-late-bg px-4 py-3 text-base font-medium text-status-late sm:px-6">
+          Taps from the reader can&apos;t reach this page. Click or tap anywhere on it.
+        </p>
+      ) : null}
 
       {clockOffMinutes !== null ? (
         <p role="status" className="bg-status-late-bg px-4 py-2 text-sm text-status-late sm:px-6">

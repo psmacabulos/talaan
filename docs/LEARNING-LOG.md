@@ -544,6 +544,18 @@ Full details: `docs/ARCHITECTURE.md`, "Open questions".
 ### Why notifications are created at tap time, not derived at read time (Step 24)
 The first big build of this topic — the parent bell and feed — lives in [`docs/NOTIFICATIONS.md`](NOTIFICATIONS.md). The one contrast worth keeping in mind next to the attendance model: attendance *is* derived at read time (nothing stores "present"; it's computed from raw taps), but notifications are the **opposite** — a `Notification` row is written the moment a tap happens, and the bell/feed just read rows back. That's because a school's preference ("notify on time-in only") is a moment-in-time decision: if the principal turns notifications off tomorrow, yesterday's "your child tapped in" should still be in the feed. The parent was told; the record of being told should survive the setting change. So the read path has nothing to compute — it only joins, sorts, and counts unread rows.
 
+### How does `/gate` read the card when there's no text field? (owner question, 2026-10-12)
+The USB reader is a **keyboard**, not a device the page switches on. When a card touches it, it types the 10 digits and presses Enter, into **whatever window has the keyboard at that moment**, exactly like you typing.
+- **Linking a card:** the Card serial field has the cursor, so the digits land in it and you can see them.
+- **The gate page:** there's deliberately no field (on an Android tablet a field would pop up the on-screen keyboard). Instead the page listens to every key typed while it has the keyboard, and keystrokes that arrive very fast (under 100 ms apart) and end with Enter count as a card. Slow human typing is ignored.
+
+So nothing needs activating, but **the gate page must be the window with the keyboard**. If you clicked the terminal, the address bar, or Chrome's developer tools, the digits go there instead. Since 2026-10-12 the page shows an orange bar when it doesn't have the keyboard. On the real tablet, the kiosk browser keeps the gate page in front all day.
+
+### The reader beeps but nothing types (owner question, 2026-10-12)
+After the Mac went to sleep with the reader plugged in, the reader still beeped (it has its own power and light), but its keystrokes went nowhere until it was unplugged and plugged back in. The beep only means the reader saw the card, not that the computer received the digits. A quick test: click into any text field, such as a note or the address bar, and tap. If no digits appear there either, the problem is the USB connection, not the app.
+
+**On the gate tablet:** keep the screen from sleeping (the kiosk browser's "keep screen on" setting; the gate page also asks for a wake lock), keep the tablet charging, and after any restart or long sleep, tap a test card before students arrive. If a tablet ever shows the same thing, replugging the reader fixes it.
+
 ### Does a tap station need a native app, or a login, to use an NFC reader?
 Discussed while reviewing Step 8's ER diagram (`Tap.stationId`) — full write-up in [`docs/DATA-MODEL.md`](DATA-MODEL.md) and the [[project-tap-api-hardware-agnostic]] / parent-notifications planning notes, kept short here.
 

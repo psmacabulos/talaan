@@ -47,6 +47,13 @@ describe("createScanBuffer", () => {
     expect(scans).toEqual(["0211299923"]);
   });
 
+  it("answers true only for the Enter that ends a scan", () => {
+    const buffer = createScanBuffer(() => {});
+    expect(buffer.key("Enter", 0)).toBe(false);
+    for (const [index, key] of [..."0211299923"].entries()) expect(buffer.key(key, 10 + index)).toBe(false);
+    expect(buffer.key("Enter", 30)).toBe(true);
+  });
+
   it("ignores keys like Shift inside a scan", () => {
     const scans: string[] = [];
     const buffer = createScanBuffer((raw) => scans.push(raw));

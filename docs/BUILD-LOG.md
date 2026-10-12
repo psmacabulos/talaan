@@ -2004,3 +2004,17 @@ Built from `docs/backend/step-49-time-in-time-out.md`. Its "What changed while b
 - a new test taps a card, cancels the drawer, and checks that the old card is still linked with no history (Jasmine Batumbakal on mobile, Reynaldo Abad on desktop).
 
 The 8 students tests passed at both widths, and the "not saved yet" states were checked in screenshots at 360 and 1280 px, light and dark. The owner runs the full checks.
+
+## Review fix: the gate missed taps after a click (2026-10-12)
+
+**What the owner saw.** At home, `/gate` was connected in Chrome, and the USB reader beeped on every tap, but the page did nothing.
+
+**What it turned out to be.** The Mac had been asleep with the reader plugged in. After waking, the reader beeped but sent no keys to any window, and unplugging and replugging it fixed it. That's macOS and the USB device, not the app. Looking for the cause turned up a real app bug on the way, fixed here anyway:
+
+**The bug found on the way.** `gate-kiosk.tsx` skipped every key press whose target was a button. That was meant to stop the reader's Enter from clicking a focused button, such as Disconnect. But a button keeps focus after it's clicked, so after one click anywhere in the header, every tap that followed was silently dropped. The browser tests never clicked a button before typing a card, so they didn't catch it. The other way to lose taps is the page not having the keyboard at all (the terminal or the address bar has it), and the page said nothing in that case either.
+
+**Fix.**
+- Keys are read wherever focus is on the page; only inputs and text areas are skipped (the setup screen's token field).
+- `createScanBuffer().key()` now answers true for the Enter that ended a scan, and the page calls `preventDefault()` on exactly that Enter, so it can't click the focused button. A person pressing Enter on a button still works.
+- When the window doesn't have the keyboard (`document.hasFocus()`, read through `useSyncExternalStore` with window focus and blur events), a banner says "Taps from the reader can't reach this page. Click or tap anywhere on it."
+- Tests: a unit test for `key()`'s answer, and an `e2e/gate.spec.ts` test that focuses Disconnect, reads a card, and expects the result with no Disconnect confirmation. The gate tests passed: 7, plus 1 desktop-only test skipped on mobile.

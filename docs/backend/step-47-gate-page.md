@@ -2,6 +2,8 @@
 
 > **Fast-track recipe.** Written before the code, then built on 2026-10-11 when the owner said "build 46 to 49". Claude ran the checks and looked at every screen at 360 and 1280 px, light and dark. "What changed while building" (just before "Verify it worked") lists where the real code differs from the plan.
 
+> **Fixed on 2026-10-12, during review.** Key presses on a focused button used to be skipped, so after one click in the header every tap was lost. Keys are now read wherever focus is (except inputs), only the reader's Enter is stopped from clicking a button, and a banner shows when the page doesn't have the keyboard. See `docs/BUILD-LOG.md`, "Review fix: the gate missed taps after a click".
+
 ## Why
 
 This is the screen on the Android tablet at the gate, with the USB reader plugged in. A student taps their card, and the screen shows **their photo, name and grade straight away**, then "Time in 7:56 AM" a moment later when the server answers. The guard glances at the photo to check the card belongs to the student holding it.

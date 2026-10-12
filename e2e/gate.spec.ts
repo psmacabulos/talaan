@@ -49,6 +49,19 @@ test.describe("Gate (Step 47)", () => {
     await expect(page.getByText("That token doesn't work. Ask the office for a new one.")).toBeVisible();
   });
 
+  test("a card is still read after someone clicks a button on the page", async ({ page }, testInfo) => {
+    await page.goto(`/gate?token=${TEST_GATE_TOKEN}`);
+    await expect(page.getByText("Tap your card")).toBeVisible();
+    // Focus left on a button used to swallow every tap (found with the real
+    // reader, 2026-10-12). The reader's Enter must not click it either.
+    await page.getByRole("button", { name: "Disconnect" }).focus();
+    await page.keyboard.type(testInfo.project.name === "mobile" ? "0000000789" : "0000000790");
+    await page.keyboard.press("Enter");
+    const message = "Card not recognised. Please see the office.";
+    await expect(page.locator('main section [aria-live="polite"]')).toHaveText(message);
+    await expect(page.getByText("Disconnect? It will need a new token.")).toBeHidden();
+  });
+
   test("three cards read back to back all land, none waiting for another", async ({ page }, testInfo) => {
     // The Recent list is the tablet layout's; a phone shows only the newest.
     test.skip(testInfo.project.name !== "desktop", "Recent is only shown from 768px wide");
