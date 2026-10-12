@@ -52,7 +52,7 @@ export function AttendanceCardList({
                 : "py-3 first:pt-0 last:pb-0",
             )}
           >
-            <StudentAvatar student={student} className="size-10" />
+            <StudentAvatar student={student} className="w-9" />
             <div className="min-w-0 flex-1">
               <h4 className="text-base leading-snug font-semibold wrap-break-word text-foreground">
                 {studentName(student)}

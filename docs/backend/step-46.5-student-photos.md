@@ -2,6 +2,8 @@
 
 > **Fast-track recipe.** Written before the code, then built on 2026-10-11 when the owner said "build 46 to 49". Claude ran the checks. "What changed while building" (just before "Verify it worked") lists where the real code differs from the plan.
 
+> **Changed on 2026-10-12: portrait photos.** The thumbnail is now a 4:5 portrait, 256 × 320, not a 256 × 256 square: `portraitCrop` in `resize-photo.ts` replaces `centreSquare`, and cuts a tall photo mostly from the bottom (a quarter of the extra from the top) so the face stays in. `PHOTO_WIDTH`/`PHOTO_HEIGHT` live in `photo.ts`. `StudentAvatar` is a 4:5 rectangle everywhere (callers set only the width), and the drawer's hint asks for a portrait photo of 600 × 750 pixels or larger. See `docs/BUILD-LOG.md`, "Review change: portrait photos".
+
 > **Changed on 2026-10-12, during the review of Steps 46–49.** A chosen photo is no longer saved at once. `photo-actions.ts` (`uploadStudentPhoto`, `removeStudentPhoto`) is gone. The drawer shows a preview, "Not saved yet", and the student form's **Save** sends the thumbnail with the fields: `createStudent`/`updateStudent` check it with `readPhotoUpload` (`photo-changes.ts`), store it, then point the student at it. Remove photo and Undo are held the same way, and Cancel throws them away. A new student can now get a photo and a card in the Add form. See `docs/BUILD-LOG.md`, "Review change: the drawer saves only on Save".
 
 ## Why

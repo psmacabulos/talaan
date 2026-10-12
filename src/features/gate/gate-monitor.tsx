@@ -32,7 +32,7 @@ function MonitorAvatar({ event, className }: { event: GateTapEvent; className: s
       <span
         aria-hidden="true"
         className={cn(
-          "flex shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground",
+          "flex aspect-[4/5] w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground",
           className,
         )}
       >
@@ -107,7 +107,7 @@ export function GateMonitor({ schoolName, loaded }: { schoolName: string; loaded
               OUTCOME_BORDER[newest.outcome],
             )}
           >
-            <MonitorAvatar event={newest} className="size-[min(60vw,15rem)] text-6xl" />
+            <MonitorAvatar event={newest} className="w-[min(48vw,12rem)] rounded-2xl text-6xl" />
             <div className="flex flex-col gap-2">
               <p className="font-heading text-4xl font-bold">
                 {newest.student ? `${newest.student.firstName} ${newest.student.lastName}` : "Unknown card"}
@@ -134,7 +134,7 @@ export function GateMonitor({ schoolName, loaded }: { schoolName: string; loaded
               <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {earlier.map((event) => (
                   <li key={event.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
-                    <MonitorAvatar event={event} className="size-14 text-lg" />
+                    <MonitorAvatar event={event} className="w-12 text-lg" />
                     <div className="min-w-0">
                       <p className="truncate font-medium">
                         {event.student ? `${event.student.firstName} ${event.student.lastName}` : "Unknown card"}

@@ -1,8 +1,17 @@
 /** The two formats the drawer's resize produces: WebP, or JPEG where WebP can't be made (older Safari). */
 export type PhotoType = "webp" | "jpeg";
 
-/** A 256×256 thumbnail is about 15 KB; this leaves room and nothing more. */
+/** A 256×320 thumbnail is about 15–20 KB; this leaves room and nothing more. */
 export const MAX_PHOTO_BYTES = 100_000;
+
+/**
+ * Every stored photo is a 4:5 portrait, 256 × 320 (owner decision,
+ * 2026-10-12): an ID-photo shape for the gate and the guardhouse monitor,
+ * and the same file, smaller, in every list. One file, never cropped again
+ * on screen.
+ */
+export const PHOTO_WIDTH = 256;
+export const PHOTO_HEIGHT = 320;
 
 export const PHOTO_CONTENT_TYPE: Record<PhotoType, string> = { webp: "image/webp", jpeg: "image/jpeg" };
 

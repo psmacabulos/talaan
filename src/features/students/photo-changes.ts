@@ -3,7 +3,7 @@ import { detectPhotoType, MAX_PHOTO_BYTES, type PhotoType } from "./photo";
 /**
  * Reads the photo the student form sent with Save (Step 46.5, saved with
  * the form since 2026-10-12). The browser has already cropped and shrunk it
- * to a 256×256 thumbnail; this checks that's really what arrived: its size,
+ * to a 256×320 thumbnail; this checks that's really what arrived: its size,
  * and the file's own first bytes, not the type the browser claims.
  */
 export async function readPhotoUpload(

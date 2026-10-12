@@ -2030,3 +2030,16 @@ The 8 students tests passed at both widths, and the "not saved yet" states were 
 **Test.** `e2e/gate.spec.ts`, "a student's photo shows at the gate, also after the page is reloaded": add a photo in the drawer, open `/gate`, reload, tap, and expect the panel's image to come from the device (`blob:`). Angelica Santos runs on mobile and Mark Torres on desktop. Written and left for the owner to run.
 
 **Still open (after the demo):** if the server can't be reached when the page opens, the photos don't load from the cache either, because `syncPhotos` fails as a whole. The offline queue work is the place for that.
+
+## Review change: portrait photos (2026-10-12)
+
+**What the owner asked.** A half-body photo lost the face: the square crop took the photo's middle, which is the chest. The owner first asked for a recommended size for the shoot, then for a tall photo, since the gate shows the photo with the name below, like an ID. Decided together: **one stored photo, a 4:5 portrait**, shown large at the gate and on the monitor and as a small rectangle in every list. No second file, and no cropping on screen.
+
+**What changed.**
+- `photo.ts`: `PHOTO_WIDTH = 256`, `PHOTO_HEIGHT = 320`. About 15–20 KB, still far under `MAX_PHOTO_BYTES`.
+- `resize-photo.ts`: `portraitCrop(width, height)` replaces `centreSquare`. A wider picture (landscape or square) loses its sides equally. A taller one loses a quarter of its extra height from the top and the rest from the bottom (`TOP_SHARE`), because a face in a portrait sits high.
+- `StudentAvatar`: `aspect-[4/5] w-8 rounded-md` instead of a `size-9` circle, for the photo and for the initials alike, so a list lines up whether or not a student has a photo. Callers set only a width: `w-9` in the phone cards and the gate's Recent list, `w-12` in the monitor's list, `w-24` in the drawer, `w-[min(56vw,14rem)]` on the gate panel and `w-[min(48vw,12rem)]` for the monitor's newest tap. The unknown-card placeholders on the gate and the monitor follow the same shape.
+- The drawer's hint: "Best: a portrait photo, 600 × 750 pixels or larger, head and shoulders with the face near the top. Other shapes are cropped to fit."
+- Photos uploaded before this are 256 × 256. They still show, cropped slightly at the sides by `object-cover`; re-upload any that look wrong.
+
+**Checks.** Typecheck and lint are clean. The `portraitCrop` tests pass; my first draft expected the wrong landscape numbers (1920 × 1080 gives `x: 528, width: 864`). Screenshots of the gate (phone and desktop, light and dark), the student list and the drawer looked right. The Docker Postgres container had stopped (exit 255, probably the Mac's sleep) and was restarted with `docker start talaan-postgres`. `e2e/students.spec.ts` now also checks `naturalHeight` 320. The owner runs the full checks.

@@ -156,7 +156,9 @@ test.describe("Students", () => {
     // Reopened, the drawer shows the stored photo, loaded through the photo route.
     await page.getByRole("button", { name: `Edit ${studentName}` }).click();
     await expect(photo).toHaveAttribute("src", /^\/api\/v1\/photos\/school-balanga\/student-\d+\/\w+\.(webp|jpeg)$/);
+    // A 4:5 portrait, 256 × 320 (2026-10-12).
     await expect.poll(() => photo.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(256);
+    await expect.poll(() => photo.evaluate((img: HTMLImageElement) => img.naturalHeight)).toBe(320);
     await expect(dialog.getByRole("button", { name: "Change photo" })).toBeVisible();
   });
 });

@@ -399,7 +399,7 @@ export function GateKiosk() {
               <ScanAvatar
                 name={display.name}
                 photoSrc={photoFor(current)}
-                className="size-[min(60vw,17.5rem)] text-6xl"
+                className="w-[min(56vw,14rem)] rounded-2xl text-6xl"
               />
               {/* With nobody to name (an unknown card, a bad read), the message is the headline. */}
               {display.name ? (
@@ -438,7 +438,7 @@ export function GateKiosk() {
                 const item = describeScan(scan);
                 return (
                   <li key={scan.id} className="flex items-center gap-3 rounded-lg border border-border bg-card p-2">
-                    <ScanAvatar name={item.name} photoSrc={photoFor(scan)} className="size-10" />
+                    <ScanAvatar name={item.name} photoSrc={photoFor(scan)} className="w-9" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{item.name ?? "Unknown card"}</p>
                       <p className={cn("text-xs", TONE_TEXT[item.tone])}>
@@ -471,7 +471,7 @@ function ScanAvatar({
       <span
         aria-hidden="true"
         className={cn(
-          "flex shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground",
+          "flex aspect-[4/5] w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground",
           className,
         )}
       >

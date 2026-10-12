@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { photoPath } from "./photo";
+import { PHOTO_HEIGHT, PHOTO_WIDTH, photoPath } from "./photo";
 import type { Student } from "./types";
 
 /**
@@ -16,8 +16,10 @@ export function gradeAndSection(student: Student): string {
 }
 
 /**
- * The student's photo (Step 46.5), or their initials in a circle when there
- * isn't one. Hidden from screen readers, since the name always sits right
+ * The student's photo (Step 46.5), or their initials when there isn't one,
+ * always as a 4:5 portrait (2026-10-12), the stored photo's own shape, so
+ * nothing is cropped. Callers set only the width (`w-…`); the height
+ * follows. Hidden from screen readers, since the name always sits right
  * beside it. A plain <img>, not next/image: the photo route checks who is
  * asking, and the image optimizer would fetch it without the viewer's
  * cookie. The thumbnail is already small, so there's nothing to optimise.
@@ -41,9 +43,9 @@ export function StudentAvatar({
         alt=""
         aria-hidden="true"
         loading="lazy"
-        width={256}
-        height={256}
-        className={cn("size-9 shrink-0 rounded-full bg-accent object-cover", className)}
+        width={PHOTO_WIDTH}
+        height={PHOTO_HEIGHT}
+        className={cn("aspect-[4/5] w-8 shrink-0 rounded-md bg-accent object-cover", className)}
       />
     );
   }
@@ -51,7 +53,7 @@ export function StudentAvatar({
     <span
       aria-hidden="true"
       className={cn(
-        "flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-foreground",
+        "flex aspect-[4/5] w-8 shrink-0 items-center justify-center rounded-md bg-accent text-xs font-semibold text-accent-foreground",
         className,
       )}
     >

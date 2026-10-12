@@ -49,7 +49,7 @@ export function StudentsCardList({
                 "transition-colors hover:bg-muted/50 active:bg-muted has-focus-visible:border-ring has-focus-visible:ring-2 has-focus-visible:ring-ring/50",
             )}
           >
-            <StudentAvatar student={student} className="size-10" />
+            <StudentAvatar student={student} className="w-9" />
             <div className="min-w-0 flex-1">
               <h3 className="text-base leading-snug font-semibold wrap-break-word text-foreground">
                 {onCardClick ? (

@@ -10,7 +10,7 @@ import type { Student } from "./types";
 
 /**
  * The drawer's Photo section (Step 46.5). On a phone the file input offers
- * the camera; the photo is cropped and shrunk to a 256×256 thumbnail in the
+ * the camera; the photo is cropped to a 4:5 portrait and shrunk to 256×320 in the
  * browser. Saves nothing itself (2026-10-12): the new thumbnail, or "remove
  * the photo", is held by the student form and saved by its Save button.
  * Undo, or the form's Cancel, throws it away.
@@ -60,7 +60,7 @@ export function PhotoBox({
         <StudentAvatar
           student={{ ...name, photoKey: removePhoto ? undefined : savedPhotoKey }}
           photoSrc={pendingPhotoUrl ?? undefined}
-          className="size-24 text-xl"
+          className="w-24 rounded-lg text-xl"
         />
         <div className="flex flex-col gap-2">
           <p className="text-sm text-muted-foreground">
@@ -68,7 +68,7 @@ export function PhotoBox({
               ? "New photo. Not saved yet: it's saved when you save the student."
               : removePhoto
                 ? "The photo will be removed when you save the student. The gate will show initials instead."
-                : "The guard checks this photo at the gate. It's stored as a small thumbnail."}
+                : "Best: a portrait photo, 600 × 750 pixels or larger, head and shoulders with the face near the top. Other shapes are cropped to fit. The guard checks this photo at the gate."}
           </p>
           <div className="flex flex-wrap gap-2">
             <Button
