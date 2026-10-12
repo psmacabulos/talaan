@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     receivedAt: getNow(),
   });
 
-  // Every open guardhouse monitor of this school sees a newly stored tap (Step 48).
+  // Every open guardhouse monitor of this school sees a new tap or an unknown card (Step 48).
   await publishStoredTap(result);
   return Response.json(toGateTapResponse(result));
 }

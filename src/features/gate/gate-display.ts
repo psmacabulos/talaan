@@ -12,7 +12,7 @@ export type GateScan = {
   state: { kind: "checking" } | { kind: "answered"; response: GateTapResponse } | { kind: "failed" };
 };
 
-/** The fixed status colours (never themed): green, amber, red, grey. */
+/** The fixed status colours (never themed): green, amber, red, grey. Amber is also "stop and check". */
 export type GateTone = "present" | "late" | "absent" | "idle";
 
 /**
@@ -36,11 +36,17 @@ export type GateDisplay = {
   short: string;
   /** When it happened: the stored tap's time once the server has answered, else when the card was read. */
   at: string;
-  /** The time the card's stamp shows: the tap's, or for a duplicate the earlier tap's. Null when there's no stamp. */
+  /** The time the card's stamp shows: the tap's (an unknown card's too), or for a duplicate the earlier tap's. Null when there's no stamp. */
   stampAt: string | null;
   /** What to do next, under the badge when there's no stamp: "Please see the office." */
   detail: string | null;
 };
+
+/** What the person at the gate is told about an unknown card. */
+export const UNKNOWN_CARD_GATE_DETAIL = "Please ask the gate attendant for assistance.";
+
+/** What the guard is told about one, on the monitor. */
+export const UNKNOWN_CARD_MONITOR_DETAIL = "Check this person before letting them in.";
 
 type Named = { firstName: string; lastName: string; gradeLevel: number; section: string };
 
@@ -117,16 +123,19 @@ export function describeScan(scan: GateScan): GateDisplay {
         detail: "Please see the office.",
       };
     case "unknown_card":
+      // Somebody without a card of this school: staff have to check them
+      // (owner review, 2026-10-13). Amber, not red: a warning, not an
+      // alarm. Red stays for a card reported lost.
       return {
-        tone: "idle",
+        tone: "late",
         name: null,
         grade: null,
         kind: "unknown_card",
-        message: "Card not recognised. Please see the office.",
-        short: "Not recognised",
+        message: `Unknown card. ${UNKNOWN_CARD_GATE_DETAIL}`,
+        short: "Awaiting staff assistance",
         at: response.tappedAt,
-        stampAt: null,
-        detail: "Please see the office.",
+        stampAt: response.tappedAt,
+        detail: UNKNOWN_CARD_GATE_DETAIL,
       };
     case "invalid_serial":
       return {

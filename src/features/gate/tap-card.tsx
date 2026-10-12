@@ -2,9 +2,10 @@ import type { ReactNode } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
-  CircleHelp,
   Clock,
+  CreditCard,
   Loader2,
+  Nfc,
   RotateCcw,
   WifiOff,
   type LucideIcon,
@@ -19,7 +20,10 @@ import type { TapKind } from "./gate-display";
  * name, and either a time stamp or what to do next. Only the fixed status
  * colours are used, never the school's theme: green for a time in, blue
  * for a time out, amber for already tapped, red for a lost card, grey
- * otherwise.
+ * otherwise. An unknown card is amber too, as a warning (2026-10-13): the
+ * same card, but a small card-with-warning icon instead of a portrait, a
+ * headline, and an amber panel with the time, since nobody's attendance
+ * was recorded.
  */
 const KIND: Record<
   TapKind,
@@ -28,7 +32,9 @@ const KIND: Record<
     icon: LucideIcon;
     badgeClass: string;
     listClass: string;
-    stamp?: { label: string; className: string };
+    stamp?: { label: string; className: string; icon?: LucideIcon };
+    /** An unknown card: shown in place of the portrait, badge and name. */
+    warning?: { headline: string; message: string };
   }
 > = {
   checking: {
@@ -65,10 +71,16 @@ const KIND: Record<
     listClass: "text-status-absent",
   },
   unknown_card: {
-    badge: "Card not recognised",
-    icon: CircleHelp,
-    badgeClass: "bg-status-idle-bg text-status-idle",
-    listClass: "text-muted-foreground",
+    badge: "Unknown card",
+    icon: AlertTriangle,
+    badgeClass: "bg-status-late-bg text-status-late",
+    listClass: "text-status-late",
+    stamp: {
+      label: "Awaiting staff assistance",
+      className: "border border-status-late/30 bg-status-late-bg/60 text-status-late",
+      icon: Clock,
+    },
+    warning: { headline: "Unknown card", message: "This card isn't linked to a registered student." },
   },
   invalid_serial: {
     badge: "Couldn't read the card",
@@ -83,6 +95,40 @@ const KIND: Record<
     listClass: "text-muted-foreground",
   },
 };
+
+/** A card with a small warning sign: an unknown card, in place of a portrait. */
+export function UnknownCardIcon({ className }: { className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "relative flex size-14 shrink-0 items-center justify-center rounded-2xl bg-status-late-bg text-status-late",
+        className,
+      )}
+    >
+      <CreditCard className="size-1/2" strokeWidth={1.75} />
+      <span className="absolute right-[18%] bottom-[18%] flex size-[38%] items-center justify-center rounded-full bg-status-late-bg">
+        <AlertTriangle className="size-[80%]" strokeWidth={2.25} />
+      </span>
+    </span>
+  );
+}
+
+/** The portrait when there's no student to show: the card symbol, or for an unknown card the warning card. */
+export function NoPhotoPortrait({ kind, className }: { kind: TapKind; className?: string }) {
+  if (kind === "unknown_card") return <UnknownCardIcon className="size-10 rounded-lg" />;
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "flex aspect-4/5 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground",
+        className,
+      )}
+    >
+      <Nfc className="size-1/2" />
+    </span>
+  );
+}
 
 /** The large portrait's classes, shared so the gate and the monitor match. */
 export const TAP_CARD_PORTRAIT = "w-[min(56vw,15rem)] rounded-2xl border border-border object-top text-6xl";
@@ -113,17 +159,33 @@ export function TapCard({
 
   return (
     <div className="flex w-full max-w-md animate-in flex-col items-center gap-5 rounded-3xl border border-border bg-card p-6 text-center shadow-[var(--shadow-card)] duration-200 fade-in-0 motion-reduce:animate-none sm:p-8">
-      {portrait}
-
-      <span
-        className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium", style.badgeClass)}
-      >
-        <Icon
-          className={cn("size-4", kind === "checking" && "animate-spin motion-reduce:animate-none")}
-          aria-hidden="true"
-        />
-        {style.badge}
-      </span>
+      {style.warning ? (
+        <>
+          <UnknownCardIcon />
+          <div className="flex w-full flex-col gap-2">
+            <p className="font-heading text-[1.75rem] leading-tight font-bold text-foreground sm:text-3xl">
+              {style.warning.headline}
+            </p>
+            <p className="text-base text-muted-foreground">{style.warning.message}</p>
+          </div>
+        </>
+      ) : (
+        <>
+          {portrait}
+          <span
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium",
+              style.badgeClass,
+            )}
+          >
+            <Icon
+              className={cn("size-4", kind === "checking" && "animate-spin motion-reduce:animate-none")}
+              aria-hidden="true"
+            />
+            {style.badge}
+          </span>
+        </>
+      )}
 
       {name ? (
         <div className="flex w-full flex-col gap-1">
@@ -138,7 +200,14 @@ export function TapCard({
       <div className="flex min-h-[5.5rem] w-full flex-col justify-center border-t border-border pt-5">
         {style.stamp && stampAt ? (
           <div className={cn("rounded-xl px-4 py-3", style.stamp.className)}>
-            <p className="text-xs font-semibold tracking-wide uppercase">{style.stamp.label}</p>
+            {style.stamp.icon ? (
+              <p className="inline-flex items-center gap-1.5 text-sm font-medium">
+                <style.stamp.icon className="size-4" aria-hidden="true" />
+                {style.stamp.label}
+              </p>
+            ) : (
+              <p className="text-xs font-semibold tracking-wide uppercase">{style.stamp.label}</p>
+            )}
             <p className="font-heading text-[1.75rem] leading-tight font-bold tabular-nums">
               {formatSchoolTime(stampAt)}
             </p>
@@ -148,6 +217,8 @@ export function TapCard({
             {detail ?? ""}
           </p>
         )}
+        {/* An unknown card has both: the time above, and what to do here. */}
+        {style.warning && stampAt && detail ? <p className="mt-3 text-sm text-muted-foreground">{detail}</p> : null}
       </div>
     </div>
   );

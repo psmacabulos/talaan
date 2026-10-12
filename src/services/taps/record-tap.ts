@@ -50,6 +50,7 @@ export type RecordTapResult =
       replayed: boolean;
     }
   | { outcome: "lost_card"; tap: Tap; student: TapStudent | null; replayed: boolean }
+  /** A card that isn't this school's is never stored (2026-10-13): `tap` is then only what the gate read. */
   | { outcome: "unknown_card"; tap: Tap; replayed: boolean }
   | { outcome: "duplicate"; previousTap: Tap; student: TapStudent | null }
   | { outcome: "invalid_serial" };
@@ -123,7 +124,9 @@ function tapKindFor(card: Card | null): "valid" | "lost" | "unknown" {
  * (docs/backend/step-45-tap-service.md):
  * 1. turn the reader's digits or hex into a serial, or stop;
  * 2. a tap id already stored is a resend: answer as before;
- * 3. find the card at this school (exact, else the first 4 bytes);
+ * 3. find the card at this school (exact, else the first 4 bytes); a card
+ *    that isn't one of this school's active or lost cards is an unknown
+ *    card, answered every time and never stored;
  * 4. the same card within 2 minutes, before or after, is a duplicate;
  * 5. write the tap with its alert (lost card) or parent notification
  *    (active card, per the school's setting), and the gate's last-seen
@@ -142,9 +145,24 @@ export async function recordTap(input: RecordTapInput, deps: RecordTapDeps = DEF
   const tappedAt = chooseTapTime(input.clientTappedAt, input.receivedAt);
   const candidates = await deps.cards.listBySerialPrefix(device.schoolId, firstFourBytes(serial));
   const card = matchCard(serial, candidates);
-  // The card's own serial when one matched, so a 4-byte read of a 7-byte
-  // card is stored under one serial every time and the debounce sees it.
-  const cardSerial = card?.serial ?? serial;
+  const kind = tapKindFor(card);
+  if (!card || kind === "unknown") {
+    // Not stored, so it's never "already tapped": the guard is told every
+    // time (owner review, 2026-10-13). It isn't anyone's attendance.
+    const tap = tapSchema.parse({
+      id: input.clientTapId,
+      schoolId: device.schoolId,
+      stationId: device.id,
+      cardSerial: card?.serial ?? serial,
+      studentId: null,
+      tappedAt,
+    });
+    return { outcome: "unknown_card", tap, replayed: false };
+  }
+
+  // The card's own serial, so a 4-byte read of a 7-byte card is stored
+  // under one serial every time and the debounce sees it.
+  const cardSerial = card.serial;
 
   const at = Date.parse(tappedAt);
   const previousTap = await deps.taps.findByCardBetween(
@@ -160,10 +178,9 @@ export async function recordTap(input: RecordTapInput, deps: RecordTapDeps = DEF
     return { outcome: "duplicate", previousTap, student: toTapStudent(student) };
   }
 
-  const kind = tapKindFor(card);
   // A lost card's tap keeps its owner, so the alert can name them (recipe
-  // decision 4); an unknown card has nobody.
-  const studentId = card && kind !== "unknown" ? card.studentId : null;
+  // decision 4).
+  const studentId = card.studentId;
   const tap = tapSchema.parse({
     id: input.clientTapId,
     schoolId: device.schoolId,
@@ -202,6 +219,7 @@ export async function recordTap(input: RecordTapInput, deps: RecordTapDeps = DEF
     };
     result = { outcome: "lost_card", tap, student: toTapStudent(student), replayed: false };
   } else {
+    // An active card whose student is gone: stored, but nobody to show.
     result = { outcome: "unknown_card", tap, replayed: false };
   }
 

@@ -75,12 +75,15 @@ describe("describeScan", () => {
     expect(describeScan(lost)).toMatchObject({ tone: "absent", name: "Juan Cruz", short: "Lost card" });
   });
 
-  it("names nobody for an unknown card or a bad read", () => {
+  it("names nobody for an unknown card or a bad read, and warns the guard about the unknown card", () => {
     const unknown = answered({ outcome: "unknown_card", tappedAt: at756, cardSerial: "53:2E:98:0C", replayed: false });
     expect(describeScan(unknown)).toMatchObject({
-      tone: "idle",
+      tone: "late",
       name: null,
-      message: "Card not recognised. Please see the office.",
+      message: "Unknown card. Please ask the gate attendant for assistance.",
+      short: "Awaiting staff assistance",
+      stampAt: at756,
+      detail: "Please ask the gate attendant for assistance.",
     });
     expect(describeScan(answered({ outcome: "invalid_serial" }))).toMatchObject({ name: null, short: "Couldn't read" });
   });

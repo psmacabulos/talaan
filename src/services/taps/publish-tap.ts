@@ -4,8 +4,9 @@ import type { RecordTapResult } from "./record-tap";
 import { publishTap, type GateTapEvent } from "./tap-events";
 
 /**
- * The monitor's view of a `recordTap()` answer, or null when nothing new was
- * stored: a duplicate, a resend, or a card that couldn't be read.
+ * The monitor's view of a `recordTap()` answer, or null when there's nothing
+ * new to show: a duplicate, a resend, or a card that couldn't be read. An
+ * unknown card isn't stored, but the guard still sees it, every time.
  */
 export function toGateTapEvent(result: RecordTapResult, photo: string | null): GateTapEvent | null {
   if (result.outcome === "duplicate" || result.outcome === "invalid_serial" || result.replayed) return null;
@@ -26,7 +27,7 @@ export function toGateTapEvent(result: RecordTapResult, photo: string | null): G
   return { ...base, outcome: "recorded", direction: result.direction, student };
 }
 
-/** Sends a newly stored tap to every open monitor of its school (Step 48). */
+/** Sends a new tap, or an unknown card, to every open monitor of its school (Step 48). */
 export async function publishStoredTap(
   result: RecordTapResult,
   students: Pick<StudentRepository, "getInSchool"> = studentRepository,

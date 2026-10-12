@@ -162,19 +162,29 @@ describe("recordTap", () => {
     expect(writes[0].notification).toBeNull();
   });
 
-  // The stored serial is the card's own when one matched (the retired
+  // Not stored (owner review, 2026-10-13): it's nobody's attendance. The
+  // answer carries the card's own serial when one matched (the retired
   // card), and what the reader sent otherwise.
   it.each([
     ["no card at all", [], "53:2E:98:0C"],
     ["a retired card", [card("53:2E:98:0C:14:00:01", "retired")], "53:2E:98:0C:14:00:01"],
     ["another school's card", [card("53:2E:98:0C:14:00:01", "active", "school-b")], "53:2E:98:0C"],
-  ])("stores %s as an unknown card, with nobody", async (_label, cards, storedSerial) => {
+  ])("answers %s as an unknown card, with nobody, and stores nothing", async (_label, cards, serial) => {
     const { deps, writes } = setup({ cards });
     const result = await recordTap(input(), deps);
-    expect(result).toMatchObject({ outcome: "unknown_card", replayed: false });
-    expect(writes[0].tap).toMatchObject({ studentId: null, cardSerial: storedSerial });
-    expect(writes[0].alert).toBeNull();
-    expect(writes[0].notification).toBeNull();
+    expect(result).toMatchObject({
+      outcome: "unknown_card",
+      replayed: false,
+      tap: { studentId: null, cardSerial: serial },
+    });
+    expect(writes).toHaveLength(0);
+  });
+
+  it("says unknown card every time the same unknown card is tapped, never already tapped", async () => {
+    const { deps, writes } = setup({ cards: [] });
+    expect(await recordTap(input(), deps)).toMatchObject({ outcome: "unknown_card" });
+    expect(await recordTap(input(10_000), deps)).toMatchObject({ outcome: "unknown_card" });
+    expect(writes).toHaveLength(0);
   });
 
   it("answers a resent tap the same way, with replayed set, and writes it only once", async () => {

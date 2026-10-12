@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StudentAvatar } from "@/features/students/student-display";
 import { formatSchoolDate, formatSchoolTime } from "@/lib/school-time";
-import { cn } from "@/lib/utils";
 import {
   checkIn,
   forgetGate,
@@ -20,10 +19,10 @@ import {
   syncPhotos,
   type StoredRoster,
 } from "./gate-client";
-import { describeScan, type GateScan } from "./gate-display";
+import { describeScan, type GateScan, type TapKind } from "./gate-display";
 import { findRosterStudent } from "./roster-match";
 import { createScanBuffer } from "./scan-buffer";
-import { TAP_CARD_PORTRAIT, TapCard, TapListItem } from "./tap-card";
+import { NoPhotoPortrait, TAP_CARD_PORTRAIT, TapCard, TapListItem } from "./tap-card";
 
 /** After this long with no new tap, the big panel tidies back to "Tap your card". It never holds up a tap. */
 const IDLE_AFTER_MS = 5_000;
@@ -385,7 +384,14 @@ export function GateKiosk() {
               grade={display.grade}
               stampAt={display.stampAt}
               detail={display.detail}
-              portrait={<ScanAvatar name={display.name} photoSrc={photoFor(current)} className={TAP_CARD_PORTRAIT} />}
+              portrait={
+                <ScanAvatar
+                  kind={display.kind}
+                  name={display.name}
+                  photoSrc={photoFor(current)}
+                  className={TAP_CARD_PORTRAIT}
+                />
+              }
             />
           ) : (
             <div className="flex flex-col items-center gap-4">
@@ -421,7 +427,9 @@ export function GateKiosk() {
                     name={item.name}
                     label={item.short}
                     at={item.at}
-                    portrait={<ScanAvatar name={item.name} photoSrc={photoFor(scan)} className="w-10" />}
+                    portrait={
+                      <ScanAvatar kind={item.kind} name={item.name} photoSrc={photoFor(scan)} className="w-10" />
+                    }
                   />
                 );
               })}
@@ -435,27 +443,17 @@ export function GateKiosk() {
 
 /** The student's photo or initials, or a card symbol when nobody is known for this card. */
 function ScanAvatar({
+  kind,
   name,
   photoSrc,
   className,
 }: {
+  kind: TapKind;
   name: string | null;
   photoSrc: string | null;
   className?: string;
 }) {
-  if (!name) {
-    return (
-      <span
-        aria-hidden="true"
-        className={cn(
-          "flex aspect-[4/5] w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground",
-          className,
-        )}
-      >
-        <Nfc className="size-1/2" />
-      </span>
-    );
-  }
+  if (!name) return <NoPhotoPortrait kind={kind} className={className} />;
   const parts = name.split(" ");
   return (
     <StudentAvatar

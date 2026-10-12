@@ -114,7 +114,7 @@ if (previousTap) return { outcome: "duplicate", previousTap, student };
 1. **Not a serial:** stop, store nothing.
 2. **The same tap id again:** this is a resend, for example after a dropped connection. The answer is the same as the first time, worked out from the stored tap, with `replayed: true`. Nothing new is written. The tap id is made by the gate, which is what makes a resend safe.
 3. **The time:** the gate's own clock, so an offline tap keeps when it happened. If that clock is more than 5 minutes ahead or more than 7 days behind the server, the server's time is used instead (`chooseTapTime`).
-4. **The card:** `matchCard`. The tap stores the **card's own serial** when one matched, so a 4-byte read of a 7-byte card is stored under one serial every time.
+4. **The card:** `matchCard`. The tap stores the **card's own serial**, so a 4-byte read of a 7-byte card is stored under one serial every time. **No active or lost card of this school** (retired, none at all, or another school's) is an **unknown card**: answered `unknown_card` and **never stored** (changed 2026-10-13). It's nobody's attendance, and because nothing is stored, the same card tapped again is unknown again, never "already tapped". The guard's monitor still sees it every time.
 5. **Debounce:** the same card within 2 minutes, **before or after**, is one pass through the gate. It's answered as `duplicate` with the earlier tap, and nothing is stored. "Before or after" matters once offline taps can arrive out of order.
 6. **What to write:**
 
@@ -122,7 +122,7 @@ if (previousTap) return { outcome: "duplicate", previousTap, student };
 |---|---|---|---|
 | active | the student | a notification, if `shouldNotifyParents(setting, direction)` | `recorded`, with `direction` (time in/out) and `notified` |
 | lost | the owner, so the alert can name them | a `lost_card_tapped` alert | `lost_card` |
-| retired, none, or another school's | `null` | nothing | `unknown_card` |
+| retired, none, or another school's | — | **no tap stored** (step 4) | `unknown_card` |
 
 7. **One transaction** (`TapWriter.record`): the tap, then the alert or notification, then the gate's `lastSeenAt`. If any part fails, none is kept. If the tap id turns out to be taken (two copies of one tap racing), the writer answers `"exists"` and `recordTap` gives the replay answer.
 

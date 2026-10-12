@@ -5,11 +5,10 @@ import { useRouter } from "next/navigation";
 import { Nfc } from "lucide-react";
 import { StudentAvatar } from "@/features/students/student-display";
 import { formatSchoolTime } from "@/lib/school-time";
-import { cn } from "@/lib/utils";
 import type { GateTapEvent } from "@/services/taps/tap-events";
-import type { TapKind } from "./gate-display";
+import { UNKNOWN_CARD_MONITOR_DETAIL, type TapKind } from "./gate-display";
 import { mergeMonitorEvents } from "./monitor-events";
-import { TAP_CARD_PORTRAIT, TapCard, TapListItem } from "./tap-card";
+import { NoPhotoPortrait, TAP_CARD_PORTRAIT, TapCard, TapListItem } from "./tap-card";
 
 /** A monitor event as a tap card kind (`tap-card.tsx`), so the monitor and the gate look alike. */
 function kindOf(event: GateTapEvent): TapKind {
@@ -19,8 +18,15 @@ function kindOf(event: GateTapEvent): TapKind {
 
 function outcomeLabel(event: GateTapEvent): string {
   if (event.outcome === "lost_card") return "Lost card: see the office";
-  if (event.outcome === "unknown_card") return "Card not recognised";
+  if (event.outcome === "unknown_card") return "Check this person";
   return event.direction === "time_out" ? "Time out" : "Time in";
+}
+
+/** What the guard should do, under the badge, when there's no time stamp. */
+function detailOf(event: GateTapEvent): string | null {
+  if (event.outcome === "unknown_card") return UNKNOWN_CARD_MONITOR_DETAIL;
+  if (event.outcome === "lost_card") return "Please see the office.";
+  return null;
 }
 
 function nameOf(event: GateTapEvent): string | null {
@@ -28,19 +34,7 @@ function nameOf(event: GateTapEvent): string | null {
 }
 
 function MonitorAvatar({ event, className }: { event: GateTapEvent; className: string }) {
-  if (!event.student) {
-    return (
-      <span
-        aria-hidden="true"
-        className={cn(
-          "flex aspect-4/5 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground",
-          className,
-        )}
-      >
-        <Nfc className="size-1/2" />
-      </span>
-    );
-  }
+  if (!event.student) return <NoPhotoPortrait kind={kindOf(event)} className={className} />;
   return <StudentAvatar student={event.student} photoSrc={event.student.photo} className={className} />;
 }
 
@@ -106,8 +100,8 @@ export function GateMonitor({ schoolName, loaded }: { schoolName: string; loaded
               kind={kindOf(newest)}
               name={nameOf(newest)}
               grade={newest.student ? `Grade ${newest.student.gradeLevel} – ${newest.student.section}` : null}
-              stampAt={newest.outcome === "recorded" ? newest.tappedAt : null}
-              detail={newest.outcome === "recorded" ? null : "Please see the office."}
+              stampAt={newest.outcome === "lost_card" ? null : newest.tappedAt}
+              detail={detailOf(newest)}
               portrait={<MonitorAvatar event={newest} className={TAP_CARD_PORTRAIT} />}
             />
           </section>

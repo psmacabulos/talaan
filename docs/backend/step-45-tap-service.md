@@ -226,6 +226,7 @@ The script uses the real clock, or `DEMO_NOW` if it's set. It's a development to
 - **A replay tells a lost-card tap from a normal one by the card.** There's no "alert for this tap" lookup in the repositories, so `replay()` checks whether the stored serial's card is lost and belongs to the stored student. That's right as long as nobody marks the card lost in the seconds between a tap and its resend, which is the only time a replay happens.
 - **A retired card that matches is stored under its own serial**, the same as any matched card. The first version of the unknown-card test expected the reader's 4 bytes for it, and failed. The test now expects the card's serial when one matched and the reader's serial otherwise.
 - **`TapWriter` sits in `src/data/repositories/`** (`tap-writer.ts` and `prisma-tap-writer.ts`), exported from the repositories index like the others. It only has a Prisma version. The unit tests write their own five-line stand-in.
+- **Unknown cards aren't stored** (owner review, 2026-10-13). `recordTap` answers `unknown_card` straight after matching, before the debounce and without writing, so a second tap of the same unknown card is never `duplicate`. An active card whose student was removed is still stored, and still answers `unknown_card`.
 - **The terminal script refuses a monitor token**, and says how to make a gate device when the token isn't active.
 - **The time-out direction for a replay** is worked out again from the student's taps, so it's the same answer as the first time. The tap's own id is excluded from "earlier taps".
 

@@ -607,6 +607,13 @@ The gate doesn't ask about photos on their own. It asks for the **roster** (who 
 
 So a photo added in the drawer shows at the gate within 5 minutes, or straight away if the gate page is reloaded. Until then, that student's tap still works; it shows the initials, or the old photo. To change the wait, change `ROSTER_EVERY_MS`. Shorter means more checks: every 5 minutes is 12 small requests an hour.
 
+### How big is a student photo, and what will storing them cost? (owner question, 2026-10-13)
+The drawer shrinks every photo **in the browser, before it's uploaded**, to a 256 × 320 WebP (`src/features/students/resize-photo.ts`, quality 0.8). The original from the phone or camera never leaves the computer. Measured on this Mac: real photos are **7.5–10 KB** each.
+- **Where they go:** a folder on your Mac in development (`.data/photos`). On Heroku they go to **Cloudflare R2**, which speaks the S3 protocol. The database stores only the photo's name (its "key"), about 50 characters, never the image.
+- **Cost:** 500 students × 10 KB is about **5 MB**. R2's free plan includes 10 GB, so one school uses about 0.05% of it. Downloads from R2 are free. Reads are limited too, though the gate keeps its own copy of every photo, and browsers keep one for a year (each upload gets a new name, so a changed photo is never stale).
+- **Old photos:** replacing a photo deletes the old file.
+- **Extra files on your Mac:** `.data/photos` also holds small `.type` notes beside each photo (local storage only) and the test runs' plain coloured squares. The browser tests reset their database, but not that folder. None of this reaches R2.
+
 ### Does a tap station need a native app, or a login, to use an NFC reader?
 Discussed while reviewing Step 8's ER diagram (`Tap.stationId`) — full write-up in [`docs/DATA-MODEL.md`](DATA-MODEL.md) and the [[project-tap-api-hardware-agnostic]] / parent-notifications planning notes, kept short here.
 

@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ███████████████████░ 95%**  (214 of 226 tasks, 60 of 64 steps approved)
+**Overall progress: ███████████████████░ 96%**  (216 of 226 tasks, 62 of 64 steps approved)
 
-**Next up:** Step 50.5, Set-password links (ready for your review)
+**Next up:** Step 52, Deploy the demo to Heroku (not started)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -67,8 +67,8 @@
 | 49 | Time in and time out on the attendance page | ██████████ 100% | Approved |
 | 50 | Signed staff sessions | ██████████ 100% | Approved |
 | 50.1 | The real sign-in form | ██████████ 100% | Approved |
-| 50.5 | Set-password links | ████████░░  80% | Ready for your review |
-| 51 | One school can never see another's data | ████████░░  75% | Ready for your review |
+| 50.5 | Set-password links | ██████████ 100% | Approved |
+| 51 | One school can never see another's data | ██████████ 100% | Approved |
 | 52 | Deploy the demo to Heroku | ░░░░░░░░░░   0% | Not started |
 | 53 | The parent API | ░░░░░░░░░░   0% | Not started |
 
@@ -364,7 +364,7 @@ Unlike Phase 1, the owner writes every line of backend code personally, to learn
 
 Steps 41–52 are ordered demo-first (decided 2026-10-09): everything a live gate demo needs comes before what can wait. Phase 3 (the Expo parent app) follows Phase 2.
 
-### Where we are (hand-over note, updated 2026-10-12)
+### Where we are (hand-over note, updated 2026-10-13)
 Read this first in a new conversation, together with `CLAUDE.md`.
 
 - **Built and committed:** Steps 30–49, plus the review changes listed under Steps 44.7, 46.5, 47 and 48:
@@ -376,8 +376,9 @@ Read this first in a new conversation, together with `CLAUDE.md`.
 
   Each is explained in `docs/BUILD-LOG.md` ("Review change/fix: …", and "Notes from the home test with the real reader").
 - **Approved on 2026-10-12:** Steps 46, 46.5, 47, 48 and 49, tested by the owner with the real USB reader.
-- **Built and committed overnight, 2026-10-12 (owner away, authorized to build, test and commit without pushing):** Step 50.5 (`dafb62e`) and Step 51. Both passed every check before committing. Their "Owner review" boxes are unticked until the owner reviews them; each recipe's "What changed while building" lists every decision made without the owner. Step 51 also fixed a real hole: the tap station's save trusted the school in the browser's tap.
-- **Next:** the owner reviews 50.5 and 51, then Step 52 (deploy to Heroku), then Step 53 (the parent API).
+- **Built and committed overnight, 2026-10-12 (owner away, authorized to build, test and commit without pushing):** Step 50.5 (`dafb62e`) and Step 51 (`fb721a7`). Step 51 also fixed a real hole: the tap station's save trusted the school in the browser's tap. **Approved on 2026-10-13**, with one review fix: "Forgot your password?" now says who to ask for a reset link (`046b072`).
+- **Email, later:** the owner plans an email service (forgot password and invitations by email) once a domain is bought. It's not a step yet; see `docs/LEARNING-LOG.md`, "What would an email service cost?".
+- **Next:** Step 52 (deploy to Heroku), then Step 53 (the parent API).
 - **The owner's goal:** finish the web app (Steps 50–53, including 50.1), so the Expo parent app (Phase 3) can start against the parent API (Step 53).
 - **Owner accounts needed for Step 52:** Heroku (with the GitHub Student credit) and Cloudflare R2. See that recipe's "Your part".
 - **Working rules (2026-10-12), on top of CLAUDE.md:**
@@ -646,7 +647,7 @@ Recipe: `docs/backend/step-50.5-set-password-links.md`
 - [x] Unit tests, and a browser test of add, copy, set, and a used link refused.
 Done when: a teacher added on the Staff page signs in through their link, the same link then says it was used, and every check passes.
 Commit: `feat(auth): set-password links for new staff and password resets`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 51: One school can never see another's data
 Recipe: `docs/backend/step-51-school-isolation.md`
@@ -655,7 +656,7 @@ Recipe: `docs/backend/step-51-school-isolation.md`
 - [x] Isolation tests: every action called as Oceanview with Balanga's ids, the Prisma `where` clauses against the test database, and `e2e/isolation.spec.ts` for pages, photos, the gate and link-a-child (the monitor's stream is covered by unit tests only; see the recipe).
 Done when: every isolation test passes and every check passes.
 Commit: `feat(security): scope every lookup to the school, with isolation tests`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 52: Deploy the demo to Heroku
 Recipe: `docs/backend/step-52-deploy-heroku.md`

@@ -1948,6 +1948,20 @@ Built from `docs/backend/step-47-gate-page.md`. Its "What changed while building
 - **Dependency check (from the Step 46.5 install):** a fresh `next dev` on port 3200 against the test database served `/gate`, `/students` and `/dashboard` with 200 and no errors in its log.
 - **Results:** `e2e/gate.spec.ts` 5 passed, 1 skipped (the back-to-back test runs at tablet width only).
 
+**Owner review fix (2026-10-13): unknown cards.** The owner tapped one unknown sticker twice. The first tap said "Card not recognised", and the second said "Already tapped". The cause was `recordTap`: it stored an unknown card's tap like any other, so the 2-minute debounce found it the second time.
+- **The fix:** an unknown card isn't anyone's attendance, so it's no longer stored. `recordTap` answers `unknown_card` right after matching, before the debounce, and writes nothing. Not stored also means no `lastSeenAt` update from that tap, but the heartbeat keeps that current anyway. The monitor still receives the event live, with the gate's own tap id. After a reload, the monitor's list shows only stored taps, so earlier unknown cards drop off it.
+- **The look, in two rounds.** The owner asked for "somebody is going in unauthorized", but not too much red. Amber is already the status colour for "check this" (late, already tapped), and red means a card reported lost, so an unknown card is amber.
+  - **First round:** an amber frame around the whole card, a portrait-sized amber block with a shield in it, and the badge "Not allowed in yet".
+  - **Second round:** the owner sent a written design brief. The first round looked like an alarm, and made the student look like a threat. It's now the same white card as every other state, with one amber accent:
+    - a small card-with-warning icon (`UnknownCardIcon`: Lucide's `CreditCard` with an `AlertTriangle` badge, on a 56 px amber tile) instead of a portrait;
+    - the headline "Unknown card" and "This card isn't linked to a registered student.";
+    - an amber panel with a clock, "Awaiting staff assistance", and the tap's time;
+    - under the panel, "Please ask the gate attendant for assistance." on the gate, and "Check this person before letting them in." on the monitor.
+
+  The brief's hex colours became the existing tokens: `status-late`, a lighter `status-late-bg/60` panel with a `status-late/30` border, `muted-foreground`, `border` and `--shadow-card`. Components never use raw colours (`check:tokens`). Its SVG icon also had hex colours and a different stroke style, so the icon was rebuilt from Lucide. Recent shows the same small icon with "Awaiting staff assistance".
+- **Tests:** `record-tap.test.ts` checks that nothing is written and that a second tap of the same card is still `unknown_card`. The gate's browser test taps one unknown card twice and checks both answers.
+- **Checked by eye, after each round:** a throwaway Playwright script with the gate's three API calls stubbed, at 360 px light and at 1280 px light and dark. **Not checked by eye:** the monitor's version. It's the same `TapCard`, with different detail text.
+
 ## Step 48: the guardhouse monitor (2026-10-11)
 
 Built from `docs/backend/step-48-gate-monitor.md`. The recipe's "What changed while building" has the details.

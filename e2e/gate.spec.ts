@@ -36,19 +36,24 @@ test.describe("Gate (Step 47)", () => {
     await expect(panel.getByText("First tapped at", { exact: true })).toBeVisible();
   });
 
-  test("an unknown card is sent to the office, and a bad token goes back to setup", async ({ page }, testInfo) => {
+  test("an unknown card says so every time, and a bad token goes back to setup", async ({ page }) => {
     await page.goto(`/gate?token=${TEST_GATE_TOKEN}`);
     await expect(page.getByText("Tap your card")).toBeVisible();
-    // Linked to nobody; a different number per project, or the second run's
-    // tap would land within 2 minutes of the first and be a duplicate.
-    await page.keyboard.type(testInfo.project.name === "mobile" ? "0000000123" : "0000000456");
-    await page.keyboard.press("Enter");
-    const message = "Card not recognised. Please see the office.";
-    // Shown on the panel, and announced to screen readers in the live region.
-    await expect(
-      page.getByRole("main").locator("section").getByText("Card not recognised", { exact: true }),
-    ).toBeVisible();
-    await expect(page.locator('main section [aria-live="polite"]')).toHaveText(message);
+    const message = "Unknown card. Please ask the gate attendant for assistance.";
+    const live = page.locator('main section [aria-live="polite"]');
+    // Linked to nobody. Tapped twice: an unknown card is never stored, so
+    // it's never "Already tapped" (owner review, 2026-10-13).
+    for (let tap = 0; tap < 2; tap++) {
+      const answer = page.waitForResponse((response) => response.url().endsWith("/api/v1/gate/taps"));
+      await page.keyboard.type("0000000123");
+      await page.keyboard.press("Enter");
+      expect((await (await answer).json()).outcome).toBe("unknown_card");
+      // Shown on the panel, and announced to screen readers in the live region.
+      await expect(
+        page.getByRole("main").locator("section").getByText("Awaiting staff assistance", { exact: true }),
+      ).toBeVisible();
+      await expect(live).toHaveText(message);
+    }
 
     await page.evaluate(() => window.localStorage.clear());
     await page.goto("/gate?token=tal_dev_wrong");
@@ -63,8 +68,9 @@ test.describe("Gate (Step 47)", () => {
     await page.getByRole("button", { name: "Disconnect" }).focus();
     await page.keyboard.type(testInfo.project.name === "mobile" ? "0000000789" : "0000000790");
     await page.keyboard.press("Enter");
-    const message = "Card not recognised. Please see the office.";
-    await expect(page.locator('main section [aria-live="polite"]')).toHaveText(message);
+    await expect(page.locator('main section [aria-live="polite"]')).toHaveText(
+      "Unknown card. Please ask the gate attendant for assistance.",
+    );
     await expect(page.getByText("Disconnect? It will need a new token.")).toBeHidden();
   });
 
@@ -110,6 +116,6 @@ test.describe("Gate (Step 47)", () => {
     }
     const recent = page.getByRole("complementary", { name: "Recent" }).getByRole("listitem");
     await expect(recent).toHaveCount(3);
-    await expect(recent.filter({ hasText: "Not recognised" })).toHaveCount(3);
+    await expect(recent.filter({ hasText: "Unknown card" })).toHaveCount(3);
   });
 });
