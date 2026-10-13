@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ████████████████░░░░ 78%**  (228 of 291 tasks, 64 of 78 steps approved)
+**Overall progress: ████████████████░░░░ 79%**  (230 of 291 tasks, 64 of 78 steps approved)
 
-**Next up:** Step 52, Deploy the demo to Heroku (not started)
+**Next up:** Step 52, Deploy the demo to Heroku (in progress)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -71,7 +71,7 @@
 | 51 | One school can never see another's data | ██████████ 100% | Approved |
 | 51.5 | The new name, Bantay Aral, on every screen | ██████████ 100% | Approved |
 | 51.6 | The Bantay Aral logo, and a new sign-in page | ██████████ 100% | Approved |
-| 52 | Deploy the demo to Heroku | ░░░░░░░░░░   0% | Not started |
+| 52 | Deploy the demo to Heroku | ████░░░░░░  40% | In progress |
 | 53 | The parent API | ░░░░░░░░░░   0% | Not started |
 | 54 | Push notifications reach the phone | ░░░░░░░░░░   0% | Not started |
 | 55 | Safe for real parents | ░░░░░░░░░░   0% | Not started |
@@ -704,8 +704,8 @@ Commit: `feat(brand): the Bantay Aral logo and a new sign-in page`
 ### Step 52: Deploy the demo to Heroku
 Recipe: `docs/backend/step-52-deploy-heroku.md`
 - [ ] Owner: Heroku account with the GitHub Student credit, the app, Postgres Essential-0 (version 18), config vars, and automatic deploys after CI. Cloudflare R2 bucket and token. Name the Heroku app after the product, for example `bantayaral` (added 2026-10-13); pointing `bantayaral.com` at it can come later.
-- [ ] `Procfile` (release: `prisma migrate deploy`), `engines`, and `prisma`, `tsx` and `dotenv` moved to `dependencies`.
-- [ ] `checkProductionEnv` in `src/instrumentation.ts`, and `GET /api/v1/health`.
+- [x] `Procfile` (release: `prisma migrate deploy`), `engines`, and `prisma`, `tsx` and `dotenv` moved to `dependencies`.
+- [x] `checkProductionEnv` in `src/instrumentation.ts`, and `GET /api/v1/health`.
 - [ ] `docs/DEPLOY.md`. First deploy: seed, the owner's super admin, a gate token and a monitor key.
 Done when: the health check is ok, a photo lands in R2, a sticker tapped at the live `/gate` appears on the live monitor, and a push to `main` deploys by itself after CI.
 Commit: `chore(deploy): run on Heroku with Postgres and R2 photos`

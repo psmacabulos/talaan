@@ -53,7 +53,10 @@ export default defineConfig({
     // and runs on the demo morning's clock (src/lib/clock.ts), so every run
     // sees the same day as the seed data whatever today's date is. Its own
     // session secret lets the tests make signed cookies (e2e/sessions.ts).
+    // E2E=1 lets this production server start with those test settings,
+    // which a live server refuses (src/instrumentation.ts).
     env: {
+      E2E: "1",
       DATABASE_URL: e2eDatabaseUrl(),
       DEMO_NOW: "2026-06-19T09:15:00+08:00",
       SESSION_SECRET: TEST_SESSION_SECRET,

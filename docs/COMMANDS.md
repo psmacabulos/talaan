@@ -13,6 +13,7 @@ Every command this project needs, grouped by what you're doing, with what each o
 6. [Database changes (Prisma migrations)](#6-database-changes-prisma-migrations)
 7. [The gate, the monitor and the USB reader](#7-the-gate-the-monitor-and-the-usb-reader)
    - [Staff accounts and set-password links](#7b-staff-accounts-and-set-password-links-step-505)
+   - [The live server (Heroku)](#7c-the-live-server-heroku-step-52)
 8. [Git: saving your work](#8-git-saving-your-work)
 9. [When something is stuck](#9-when-something-is-stuck)
 
@@ -226,6 +227,29 @@ It prints a path like `/set-password?token=…`. Put the site's address in front
 In the app, a principal gets the same links without the terminal: the dialog after **Invite staff**, or Staff → ⋮ → **Copy sign-in link** / **Copy password reset link**. A super admin gets a new school's principal's link right after **Add school**.
 
 **Files:** `scripts/staff-link.ts`, `src/services/auth/set-password-link.ts`, `src/app/set-password/page.tsx`. Needs `SESSION_SECRET` in `.env`, the same one the app uses, or the app won't accept the link.
+
+---
+
+## 7c. The live server (Heroku, Step 52)
+
+**What "deploy" means now:** you push to `main`, CI runs, and only when CI passes does Heroku build and release the new version by itself. There's no separate `git push heroku`. Every command here ends in `--app bantayaral` (the app's Heroku name).
+
+| Command | What it does |
+|---|---|
+| `heroku logs --tail --app bantayaral` | The live server's log as it happens: builds, the release phase, start-up, errors. `Ctrl+C` stops watching. |
+| `heroku ps --app bantayaral` | The running dynos. There should be exactly one `web`, `up`. |
+| `heroku releases --app bantayaral` | Every deploy, numbered (`v12`, `v13`, …). |
+| `heroku rollback v<N> --app bantayaral` | Puts an older version's code back. Doesn't touch the database. |
+| `heroku config --app bantayaral` | The server's settings. Shows values, so don't run it while sharing your screen. |
+| `heroku config:set NAME=value --app bantayaral` | Changes a setting; the server restarts by itself. |
+| `heroku run npx prisma db seed --app bantayaral` | Loads the demo data. First deploy only. |
+| `heroku run npm run staff:link -- --email <email> --app bantayaral` | A sign-in or reset link, as in 7b. Add `--create-super-admin --first-name … --last-name …` for the first account. |
+| `heroku run npm run device:create -- --school school-balanga --kind gate --label "Main gate tablet" --app bantayaral` | A gate (or `--kind monitor`) token, as in section 7. |
+| `heroku pg:psql --app bantayaral` | A `psql` prompt on the live database. `\q` quits. |
+| `heroku pg:backups:capture --app bantayaral` | A backup right now. `heroku pg:backups --app bantayaral` lists them. |
+| `curl https://bantayaral.herokuapp.com/api/v1/health` | `{"ok":true,"database":"ok"}` when the site and its database are fine. |
+
+**Files:** `Procfile`, `package.json` (`engines`), `src/instrumentation.ts`, `src/lib/env.ts`, `src/app/api/v1/health/route.ts`. Full guide: `docs/DEPLOY.md`.
 
 ---
 

@@ -1,3 +1,4 @@
+import { S3_SETTINGS } from "@/lib/env";
 import { createLocalPhotoStorage } from "./local-photo-storage";
 import { createS3PhotoStorage } from "./s3-photo-storage";
 
@@ -14,8 +15,6 @@ export interface PhotoStorage {
   /** No error when the key is already gone. */
   delete(key: string): Promise<void>;
 }
-
-const S3_SETTINGS = ["S3_ENDPOINT", "S3_BUCKET", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"] as const;
 
 /** The storage PHOTO_STORAGE chooses: "local" (default, a folder) or "s3" (any S3-compatible service). */
 export function getPhotoStorage(env: NodeJS.ProcessEnv = process.env): PhotoStorage {

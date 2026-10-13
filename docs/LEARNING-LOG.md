@@ -28,6 +28,7 @@ Short, plain-language notes explaining things along the way — for whenever I w
 - [Database and migrations (Phase 2)](#database-and-migrations-phase-2)
 - [Growing to many schools](#growing-to-many-schools)
 - [Naming the product](#naming-the-product)
+- [Putting it on the internet (Step 52)](#putting-it-on-the-internet-step-52)
 
 ---
 
@@ -1278,3 +1279,30 @@ Two things to know about images from an image generator:
 - **A logo should be a vector (SVG), not a picture (PNG).** The PNGs had black backgrounds and blurry edges. Redrawn as SVG, the mark is sharp at any size, switches to its dark version on its own, and makes the browser and phone icons from the same shapes.
 - **Text baked into a photo is a problem.** The photo had "Arrived at School" painted in. It can't be translated or changed, and it said something different from what parents actually receive. The page draws that card as real text instead, so the photo should have no text in it. Full details: `docs/STYLING-SYSTEM.md` ("Step 51.6") and `docs/backend/step-51.6-logo-and-sign-in.md`.
 
+---
+
+## Putting it on the internet (Step 52)
+
+### What actually happens when "deploying to Heroku" starts (2026-10-13)
+Three things happen in order, and each can fail on its own:
+1. **Build:** Heroku installs the packages and runs `npm run build`, the same as CI. Then it deletes the development-only packages to save space. That's why `prisma`, `tsx` and `dotenv` moved to the regular list: the next two parts still need them.
+2. **Release:** one command from the `Procfile`, `prisma migrate deploy`, updates the database's tables before the new version goes live. If it fails, the old version keeps running.
+3. **Start:** `next start`. Before it answers anyone, it checks its settings (`checkProductionEnv`). A missing secret stops it with the setting's name in `heroku logs`. A site that refuses to start is easier to fix than one that half-works, for example losing every photo on the next restart because they were saved to the server's own disk.
+
+The browser tests also start a production server, but on purpose with test settings, so they set `E2E=1` to skip that check. That setting must never go on Heroku. Full guide: `docs/DEPLOY.md`; every command: `docs/COMMANDS.md` §7c.
+
+### Reading `heroku config:set SESSION_SECRET="$(openssl rand -base64 32)" --app <name>` (2026-10-13)
+It makes a fresh random secret and hands it straight to Heroku in one go. Read it inside out:
+- **`openssl rand -base64 32`** makes 32 random bytes and writes them as 44 readable characters (base64), for example `q3Zt…8w=`. Run it alone and you get a different answer every time.
+- **`$( … )`** runs the command inside first and drops its output in its place. So the line becomes `SESSION_SECRET="q3Zt…8w="` before anything else happens. The quotes keep it in one piece in case it contains `+` or `/`.
+- **`heroku config:set NAME=value`** saves a setting (an environment variable) on Heroku's side; it's the server's version of a line in `.env`. Heroku restarts the app so it picks the new value up.
+- **`--app <name>`** says which Heroku app. Replace `<name>` (brackets too) with the app's real name, `bantayaral`.
+
+Why this way: the secret never appears on screen, in a file, or in this repository; it goes from your machine straight to Heroku. It's the same kind of secret as the one in your local `.env` (`docs/COMMANDS.md` §1), but make a separate one for production. Run it once: running it again makes a new secret, which signs everyone out and voids any open set-password links. `heroku config --app bantayaral` shows what's set.
+
+### The two plain settings: `PGSSLMODE=no-verify` and `PHOTO_STORAGE=s3` (2026-10-13)
+Both are `heroku config:set` with a fixed value: no `$( … )`, nothing secret, and the same `--app bantayaral` at the end.
+- **`PGSSLMODE=no-verify`** is about the database connection. Heroku's database only accepts encrypted connections. Normally the app would also check the database's certificate (its proof of identity), but Heroku's certificate isn't one Node can check, so the connection would fail. `no-verify` means "encrypt, but skip that check". None of our code reads it: `pg`, the database driver underneath Prisma, looks for it by itself. It's Heroku's own advice for Node apps. Leave it out of your local `.env`; the Docker database on your laptop doesn't use encryption.
+- **`PHOTO_STORAGE=s3`** is about where student photos go. Locally it defaults to `local`, a folder on your laptop. On Heroku that would lose every photo, because the server's disk is wiped on every restart and deploy (at least once a day). `s3` sends them to Cloudflare R2 instead. "S3" here names the common way of talking to file storage, not Amazon specifically. It needs the four `S3_…` settings too, and the server refuses to start if any is missing (`checkProductionEnv` in `src/lib/env.ts`).
+
+The full table of settings is in `docs/DEPLOY.md` under "Settings (config vars)".

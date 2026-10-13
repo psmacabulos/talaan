@@ -1,6 +1,6 @@
 # Step 52: Deploy the demo to Heroku
 
-> **Fast-track recipe.** Written before the code on 2026-10-11, for the owner to approve before it's built. Half of this step is yours: creating the accounts, which needs your name and card details, so it can't be done for you. The code changes are small. When it's built, a "What changed while building" section (just before "Verify it worked") will record what the real deploy needed.
+> **Fast-track recipe.** Written before the code on 2026-10-11 and approved by the owner on 2026-10-13. Half of this step is yours: creating the accounts, which needs your name and card details, so it can't be done for you. The code changes are small. When it's built, a "What changed while building" section (just before "Verify it worked") will record what the real deploy needed.
 
 ## Why
 
@@ -34,7 +34,7 @@ Heroku's credit applies only after you verify your GitHub Student status through
 1. **The live server gets the demo data** (the three made-up schools and their fake students), loaded once with the seed. Real students' names, birth dates and photos wait until the privacy work (consent, export and delete) is done. For the demo, link your real stickers to demo students in the drawer.
 2. **Heroku deploys automatically from GitHub's `main`, only after CI passes.** You keep committing and pushing exactly as now. There's no extra `git push heroku` to remember, and a red CI never reaches the school.
 3. **Region: United States.** Heroku's regular plans have no Asian region; the US and Europe are about the same distance from the Philippines (around 0.2 s per request). That's fine for a demo and a pilot. A tap still shows the student instantly from the tablet's own copy (Step 47).
-4. **The server refuses to start with a missing or dangerous setting**, rather than half-working. That covers no `SESSION_SECRET`, photos set to the local folder (Heroku's disk is wiped on every restart), or `DEMO_NOW` set.
+4. **The server refuses to start with a missing or dangerous setting**, rather than half-working. That covers no `SESSION_SECRET`, photos set to the local folder (Heroku's disk is wiped on every restart), or `DEMO_NOW` set. The browser tests' own production server skips this check with `E2E=1` (approved 2026-10-13; see "What changed while building").
 
 ## Your part: accounts (about 30 minutes)
 
@@ -45,7 +45,7 @@ Heroku's credit applies only after you verify your GitHub Student status through
    brew install heroku/brew/heroku
    heroku login
    ```
-3. Create the app, its database and its settings. Pick your own app name; it becomes `https://<name>.herokuapp.com`.
+3. Create the app, its database and its settings. Name it after the product, `bantayaral`, if that's free (added 2026-10-13); it becomes `https://bantayaral.herokuapp.com`. The commands below say `<name>` for whichever name you get.
    ```bash
    heroku create <name> --region us
    heroku addons:create heroku-postgresql:essential-0 --version 18 --app <name>
@@ -141,11 +141,22 @@ Once the accounts are ready and this step's code is committed and pushed:
 4. Seed staff on the live server are demo accounts with the well-known `Talaan123!` password. Before showing it to anyone, give Balanga's principal a new password with a reset link (Step 50.5), or leave the demo principal unused and sign in as yourself.
 5. A gate token and a monitor key (`device:create`, above).
 
+## What changed while building
+
+Built on 2026-10-13. The code side is done; the first deploy will add its findings here.
+
+- **The browser tests run a production server too.** Playwright starts `next start` (`playwright.config.ts`) on purpose with a pinned clock (`DEMO_NOW`) and photos in the local folder, so the check as first written would have stopped every CI run. Owner's choice: the check stays on in production by default, and Playwright's server alone gets `E2E=1`, which skips it. `src/instrumentation.ts` checks `NEXT_RUNTIME === "nodejs"`, `NODE_ENV === "production"` and `E2E !== "1"` before running `checkProductionEnv`. A local `npm run build && npm start` needs `E2E=1` in front too.
+- **The S3 setting names live in one place.** `S3_SETTINGS` moved from `src/lib/storage/photo-storage.ts` to `src/lib/env.ts`, and both the photo storage and `checkProductionEnv` use it. `env.ts` stays free of imports, since sign-in code all over the app imports it.
+- **The health route has no `dynamic` setting.** In this Next.js version, route handlers aren't cached unless they ask to be (`node_modules/next/dist/docs/01-app/01-getting-started/15-route-handlers.md`), so `GET /api/v1/health` runs on every request without one.
+- **`package-lock.json` had to change too.** Moving three packages between dependency lists changes the lockfile's root entry and drops their `dev` flags; without that, `npm ci` on Heroku and in CI fails with "package.json and package-lock.json are not in sync". `npm install --package-lock-only` rewrote it. No versions changed. The newer npm also wrote out a few bundled entries for an optional Tailwind package (`@tailwindcss/oxide-wasm32-wasi`), which only installs on WebAssembly and is harmless.
+- **The gate takes its token on a setup screen,** not in the address (Step 47). "Verify it worked" step 3 was corrected.
+- **Checked against the libraries:** `pg` (the database driver under `@prisma/adapter-pg`) reads `PGSSLMODE=no-verify` itself (`node_modules/pg/lib/connection-parameters.js`). Not yet known: whether `prisma migrate deploy` in the release phase connects to Heroku Postgres without an extra setting. The first deploy's release log will show it.
+
 ## Verify it worked
 
 1. `https://<name>.herokuapp.com/api/v1/health` shows `{"ok":true,"database":"ok"}`.
 2. Sign in, open Students, and add a photo to a demo student. It shows in the list. In the Cloudflare dashboard, `talaan-photos` now holds one small `.webp` file.
-3. On your laptop, open `https://<name>.herokuapp.com/gate?token=<the gate token>`. Plug in the USB reader and tap a sticker you linked: the photo, the name, Time in.
+3. On your laptop, open `https://<name>.herokuapp.com/gate` and enter the gate token on its setup screen. Plug in the USB reader and tap a sticker you linked: the photo, the name, Time in.
 4. In another window, open `/gate/display/connect?key=<the monitor key>`. The tap appears there live. Leave it open for 2 minutes and tap again; it's still connected.
 5. `heroku ps --app <name>` shows one `web` dyno, `up`.
 6. Change something small, push it, and watch Heroku wait for CI, then deploy by itself.
