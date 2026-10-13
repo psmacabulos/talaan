@@ -721,7 +721,7 @@ Recipe: `docs/backend/step-53-parent-api.md`. It's updated for the 2026-10-13 de
 - [ ] The app registers an Expo push token (owner decision, 2026-10-13), since Step 54 sends through Expo's push service. `docs/PARENT-API.md` says so.
 - [ ] Added 2026-10-13 (`docs/SCALING.md` 2.2): parent data loads one day or one page at a time (a child's taps, notifications, the unread count), never the whole history, for the web portal and the API alike.
 Done when: the `curl` checks in the recipe work, the web parent portal works as before except that the school is asked when linking a child, and every check passes.
-Commit: `feat(api): the parent API for the mobile app`
+Commit: `feat(api): add the parent API for the mobile app`
 - [ ] Owner review: I checked it and said "approved"
 
 - PostgreSQL with Prisma, replacing the mock repositories.
@@ -758,7 +758,7 @@ Plan: `docs/SCALING.md` 1.1 and 1.2. Due before real parents sign up.
 - [ ] Link-a-child allows only a few wrong tries, per parent and per student.
 - [ ] When a parent links a child, the school can see it and the child's other linked guardians are told. Whether a principal approves each link first is decided in the recipe.
 Done when: a teacher can't make a tap that didn't happen at a real school, guessing a birth date stops after a few tries, and every check passes.
-Commit: `feat(security): demo tools off for real schools, and limits on linking a child`
+Commit: `feat(security): turn off demo tools for real schools and limit child linking`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 55.5: Forgot password by email
@@ -777,7 +777,7 @@ Plan: `docs/SCALING.md` 1.3. Due before real use at the gate.
 - [ ] The gate ignores the same card read again within a few seconds, before sending it.
 - [ ] Tests: two reads of one card sent at the same moment give one tap and one "Already tapped".
 Done when: a card held on the reader can never make a time in and a time out together, and every check passes.
-Commit: `fix(gate): one read of a card makes one tap, even when two arrive together`
+Commit: `fix(gate): record one tap per card read, even when two arrive together`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 57: Lost cards and alerts
@@ -786,7 +786,7 @@ Plan: `docs/SCALING.md` 1.4 and 1.5. Due before real use at the gate.
 - [ ] A principal can mark a "Needs attention" alert handled.
 - [ ] The dashboard loads open alerts with their taps in one query.
 Done when: a lost card tapped by someone else leaves its owner's day untouched, a handled alert disappears, and every check passes.
-Commit: `feat(alerts): lost-card alerts can be handled, and never shift a student's time in`
+Commit: `feat(alerts): let staff resolve lost-card alerts without shifting time in`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 58: The gate keeps taps while offline
@@ -804,7 +804,7 @@ Plan: `docs/SCALING.md` 1.7, from the plan's after-demo list. Due before real us
 - [ ] An uptime check on `GET /api/v1/health` that messages the owner.
 - [ ] One practice restore of a database backup, written up in `docs/DEPLOY.md`.
 Done when: a deliberate error reaches the owner within minutes, a stopped app sets off the uptime check, and the restore steps have been followed once for real.
-Commit: `chore(ops): error tracking, an uptime check, and a tested backup restore`
+Commit: `chore(ops): add error tracking, an uptime check and a tested backup restore`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 60: Privacy for real student data
@@ -814,7 +814,7 @@ Plan: `docs/SCALING.md` 1.8, from the plan's after-demo list. Due before real us
 - [ ] A parent can delete their own account from the app. Google Play and Apple's App Store both require this before an app that makes accounts can be published (`docs/PARENT-APP-BRIEF.md`).
 - [ ] An audit log: who added, changed or removed students, cards and staff, and when.
 Done when: a school can answer "what do you keep about my child, and can you delete it?", and every check passes.
-Commit: `feat(privacy): consent, export and delete, and an audit log`
+Commit: `feat(privacy): add consent, data export and deletion, and an audit log`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 61: Queries that don't grow
@@ -824,7 +824,7 @@ Plan: `docs/SCALING.md` 3.1–3.4. Due before a second school.
 - [ ] The database pool's size is set on purpose, within the plan's connection limit, and the connection budget is written in `docs/DEPLOY.md`.
 - [ ] The gate roster answers "nothing changed" without rebuilding the whole list.
 Done when: each of these reads the same number of rows in a school's fifth year as in its first, shown with `EXPLAIN`, and every check passes.
-Commit: `perf(taps): tap queries stay the same size as schools and years grow`
+Commit: `perf(taps): keep tap queries fast as schools and years grow`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 62: Pages ask the database once
@@ -834,7 +834,7 @@ Plan: `docs/SCALING.md` 3.5. Due before a second school.
 - [ ] Schools: student and staff counts come from counting, not from loading every row.
 - [ ] A test that fails if the Students page makes more than a few queries.
 Done when: no page makes one query per student, and every check passes.
-Commit: `perf(pages): one query per list, not one per student`
+Commit: `perf(pages): load each list with one query, not one per student`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 63: School calendar
@@ -842,7 +842,7 @@ Plan: `docs/SCALING.md` 4.1. Due before the next rainy season (around June 2027)
 - [ ] A school can mark holidays and class suspensions. Those days show "No class", never absent.
 - [ ] Decided in the recipe: schools with Saturday classes.
 Done when: a suspended day shows nobody absent, and every check passes.
-Commit: `feat(attendance): holidays and class suspensions`
+Commit: `feat(attendance): add holidays and class suspensions`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 64: School years
@@ -850,7 +850,7 @@ Plan: `docs/SCALING.md` 4.2. Due before the next school year starts (around June
 - [ ] A student can be marked graduated, transferred or dropped. They leave rosters and counts, and keep their history.
 - [ ] Starting a new school year (new grades and sections) keeps last year's attendance under last year's class. The recipe weighs an enrollment per year against keeping the grade and section on each tap.
 Done when: after a test promotion, last year's class attendance still lists last year's class, and every check passes.
-Commit: `feat(students): school years, promotions and inactive students`
+Commit: `feat(students): add school years, promotions and inactive students`
 - [ ] Owner review: I checked it and said "approved"
 
 ### When needed (no step number until it's due)

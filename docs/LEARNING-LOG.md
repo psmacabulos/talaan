@@ -209,6 +209,8 @@ Two slips are already in this repo's history. Check `git log --oneline` after co
 
 Each step in `docs/PLAN.md` ends with a suggested `Commit:` line. Use that, or write your own with these rules.
 
+**Commands, not descriptions (owner question, 2026-10-13).** Some suggested `Commit:` lines drifted into describing the result (`feat(brand): the product is called Bantay Aral on every screen`) instead of giving a command (`feat(brand): show Bantay Aral on every screen`). The command form is the standard one, and it matches how git writes its own messages (`Merge branch …`, `Revert …`). The plan's remaining `Commit:` lines were rewritten as commands. The ones already in the history stay as they are: changing a pushed commit's message rewrites history, which isn't worth it for wording.
+
 ---
 
 ### Getting to a file or folder fast in VS Code (owner question, Step 35)
