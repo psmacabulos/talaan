@@ -1,6 +1,6 @@
-# Talaan
+# Talaan (Bantay Aral)
 
-A school attendance portal for Philippine high schools. Students tap an NFC ID card at a gate; attendance is recorded and shown to principals and teachers.
+The code behind **Bantay Aral** (`bantayaral.com`), a school attendance portal for Philippine high schools. "Talaan" is the code name; everything users see says Bantay Aral (`src/lib/product.ts`). Students tap an NFC ID card at a gate; attendance is recorded and shown to principals and teachers.
 
 Phase 1 (the complete front end, against a typed mock data layer) is done. **Phase 2 (the real back end) is now in progress**, built recipe by recipe with the owner typing every line to learn backend development — see [`docs/backend/README.md`](docs/backend/README.md). See [`docs/PLAN.md`](docs/PLAN.md) for the full build plan and progress, and [`design/school-portal-prototype.html`](design/school-portal-prototype.html) for the approved reference design.
 

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Nfc } from "lucide-react";
 import { getParentSession } from "@/lib/parent-session";
+import { PRODUCT_NAME } from "@/lib/product";
 import { MAIN_CONTENT_ID, SkipLink } from "@/components/skip-link";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationsBell } from "@/features/parents/notifications-bell";
@@ -36,7 +37,7 @@ export default async function ParentProtectedLayout({ children }: { children: Re
           <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
             <Nfc className="size-4" aria-hidden="true" />
           </span>
-          <span className="font-heading text-base font-semibold text-foreground">Talaan</span>
+          <span className="font-heading text-base font-semibold text-foreground">{PRODUCT_NAME}</span>
         </Link>
         <div className="flex items-center gap-1">
           <ThemeToggle />

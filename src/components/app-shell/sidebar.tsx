@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { School as SchoolIcon } from "lucide-react";
+import { PRODUCT_NAME } from "@/lib/product";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/features/staff/types";
 import type { School } from "@/features/schools/types";
@@ -33,7 +34,9 @@ export function SidebarBrand({ school }: { school: School | null }) {
         </span>
       )}
       <div className="flex min-w-0 flex-col">
-        <span className="truncate font-heading text-sm font-semibold text-foreground">{school?.name ?? "Talaan"}</span>
+        <span className="truncate font-heading text-sm font-semibold text-foreground">
+          {school?.name ?? PRODUCT_NAME}
+        </span>
         <span className="text-xs text-muted-foreground">{school ? "Attendance portal" : "All schools"}</span>
       </div>
     </div>

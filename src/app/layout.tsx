@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ThemePresetStyle } from "@/lib/theme/theme-preset-style";
 import { DEFAULT_THEME_PRESET_ID, getThemePreset } from "@/lib/theme/presets";
 import { Toaster } from "@/components/ui/sonner";
+import { PRODUCT_NAME } from "@/lib/product";
 import "./globals.css";
 
 const lexend = Lexend({
@@ -19,7 +20,9 @@ const atkinsonHyperlegible = Atkinson_Hyperlegible({
 });
 
 export const metadata: Metadata = {
-  title: "Talaan",
+  // Each page gives just its own part ("Gate"); this adds the product's name.
+  title: { default: PRODUCT_NAME, template: `%s · ${PRODUCT_NAME}` },
+  applicationName: PRODUCT_NAME,
   description: "School attendance portal",
 };
 

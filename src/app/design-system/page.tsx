@@ -7,7 +7,7 @@ import { getThemePreset, themePresets } from "@/lib/theme/presets";
 import { StyleGuideContent } from "./_components/style-guide-content";
 
 export const metadata: Metadata = {
-  title: "Design system — Talaan",
+  title: "Design system",
 };
 
 const PREVIEW_SELECTOR = "[data-design-system]";

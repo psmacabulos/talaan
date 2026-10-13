@@ -1,6 +1,7 @@
 "use client";
 
 import { useSelectedLayoutSegment } from "next/navigation";
+import { PRODUCT_NAME } from "@/lib/product";
 import { NAV_ITEMS } from "./nav-items";
 
 /**
@@ -11,7 +12,7 @@ import { NAV_ITEMS } from "./nav-items";
  */
 export function TopbarTitle() {
   const segment = useSelectedLayoutSegment();
-  const label = NAV_ITEMS.find((item) => item.segment === segment)?.label ?? "Talaan";
+  const label = NAV_ITEMS.find((item) => item.segment === segment)?.label ?? PRODUCT_NAME;
 
   return (
     <h1 className="min-w-0 flex-1 truncate font-heading text-lg font-semibold text-foreground sm:text-xl">{label}</h1>

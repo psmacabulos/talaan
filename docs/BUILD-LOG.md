@@ -2239,3 +2239,14 @@ The new browser tests: a principal invites a teacher, a fresh browser sets a pas
 - `npx playwright test`, every spec: 219 passed, 13 skipped (the existing phone-only and desktop-only tests).
 
 The server log printed "The destination stream closed early" once during the students tests. That's a page still streaming when the test closed it. It isn't related to this step, and every test passed.
+
+## Step 51.5: the new name, Bantay Aral (2026-10-13)
+
+talaan.com was taken, so the owner chose `bantayaral.com`, written "Bantay Aral", and asked to change only what people see.
+
+- **Finding every visible use:** `grep -rn "Talaan" src e2e --include='*.ts' --include='*.tsx'`, excluding generated code. That found 15 hits: 9 visible strings (page titles, the sign-in footer, the parent header, two fallbacks, the forgot-password message), 2 code comments, and the demo password in 2 seed files. The password stays, as the owner decided.
+- **Titles:** rather than five copies of "· Bantay Aral", the root layout's `metadata.title` became `{ default, template: "%s · Bantay Aral" }`. Next.js applies the template to every child page's own title. `applicationName` was added too. The design-system page used "—" instead of "·", and now matches the others.
+- **The forgot-password message** is a template string with `PRODUCT_NAME`. `messages.ts` is imported by a client component (the sign-in form), and `src/lib/product.ts` is a plain constant with no server imports, so that's safe.
+- **No test checked a title or the old footer**, so no test changed. The forgot-password test compares against the constant itself.
+- **Checked by eye:** the sign-in page at 360 px, with the forgot-password note open. The tab titles on the sign-in page, `/gate` and `/set-password` were read through Playwright: "Bantay Aral", "Gate · Bantay Aral", "Set your password · Bantay Aral".
+- **Checks run:** typecheck clean, lint clean on the changed folders, and 24 unit tests in `src/app`, `src/features/auth` and `src/components`. The full set is for the owner to run.

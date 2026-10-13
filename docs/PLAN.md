@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ███████████████░░░░░ 76%**  (216 of 284 tasks, 62 of 77 steps approved)
+**Overall progress: ███████████████░░░░░ 76%**  (221 of 289 tasks, 63 of 78 steps approved)
 
-**Next up:** Step 51.5, The new name, Bantay Aral, on every screen (not started)
+**Next up:** Step 52, Deploy the demo to Heroku (not started)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -69,10 +69,11 @@
 | 50.1 | The real sign-in form | ██████████ 100% | Approved |
 | 50.5 | Set-password links | ██████████ 100% | Approved |
 | 51 | One school can never see another's data | ██████████ 100% | Approved |
-| 51.5 | The new name, Bantay Aral, on every screen | ░░░░░░░░░░   0% | Not started |
+| 51.5 | The new name, Bantay Aral, on every screen | ██████████ 100% | Approved |
 | 52 | Deploy the demo to Heroku | ░░░░░░░░░░   0% | Not started |
 | 53 | The parent API | ░░░░░░░░░░   0% | Not started |
 | 54 | Push notifications reach the phone | ░░░░░░░░░░   0% | Not started |
+| 54.5 | The Bantay Aral logo | ░░░░░░░░░░   0% | Not started |
 | 55 | Safe for real parents | ░░░░░░░░░░   0% | Not started |
 | 55.5 | Forgot password by email | ░░░░░░░░░░   0% | Not started |
 | 56 | One read, one tap | ░░░░░░░░░░   0% | Not started |
@@ -393,7 +394,8 @@ Read this first in a new conversation, together with `CLAUDE.md`.
 - **Approved on 2026-10-12:** Steps 46, 46.5, 47, 48 and 49, tested by the owner with the real USB reader.
 - **Built and committed overnight, 2026-10-12 (owner away, authorized to build, test and commit without pushing):** Step 50.5 (`dafb62e`) and Step 51 (`fb721a7`). Step 51 also fixed a real hole: the tap station's save trusted the school in the browser's tap. **Approved on 2026-10-13**, with one review fix: "Forgot your password?" now says who to ask for a reset link (`046b072`).
 - **Email:** Step 55.5 (forgot password by email: parents from the app, staff on the web), sending from `bantayaral.com`. Owner decision, 2026-10-13: parents recover their own password, never by asking the school.
-- **Next:** Step 51.5 (the new name on screens), then Step 52 (deploy to Heroku), then Step 53 (the parent API), then Step 54 (push to parents' phones).
+- **Next:** Step 52 (deploy to Heroku), then Step 53 (the parent API), then Step 54 (push to parents' phones).
+- **Logo (owner request, 2026-10-13):** a proper Bantay Aral logo for the headers, favicon and the parent app's icon is Step 54.5. The owner supplies or approves the design first.
 - **The name (2026-10-13):** the product is **Bantay Aral** (`bantayaral.com`; talaan.com wasn't available). "Talaan" stays the code name: the repository, package, database, cookies, token prefixes and code. Step 51.5 changes only what people see.
 - **The demo (owner's goal, 2026-10-13):** the web app and the parent app both working: a parent registers in the app, links a child, and gets a push when the child taps at the gate. The parent app lives in its own repository, from `docs/PARENT-APP-BRIEF.md`. Its first step (M1, the setup) can start any time. The steps after it need Step 53 live. Step 54 is finished alongside the app, since its last check needs the app's push token. Steps 55–64 come after the demo. The owner wants this as fast as possible.
 - **The 2026-10-13 review:** `docs/SCALING.md`, owner-requested, of the whole app. Nothing in it blocks the demo deploy. Its fixes are Steps 55–64. Step 53 gained three tasks. Two were decided on 2026-10-13: one parent account covers any number of schools, and the app registers Expo push tokens. The third: load parent data one day or one page at a time.
@@ -677,14 +679,14 @@ Commit: `feat(security): scope every lookup to the school, with isolation tests`
 - [x] Owner review: I checked it and said "approved"
 
 ### Step 51.5: The new name, Bantay Aral, on every screen
-Recipe: written from the real diff once it's built (a small step). Decided 2026-10-13: talaan.com wasn't available, so the owner chose **bantayaral.com**, written **Bantay Aral** on screens (two words, so it reads naturally and screen readers say it right). Only what people see changes.
-- [ ] Every place a person sees the product's name says "Bantay Aral": the page titles, the sign-in screen, the parent portal, the set-password page, the gate and monitor pages, and "ask your Talaan administrator". The name lives in one constant, so a later rename is one line.
-- [ ] The code name stays `talaan` (owner decision, 2026-10-13): the repository, the npm package, the database and Docker container, cookie names, token prefixes (`tal_dev_`, `tal_par_`), environment variables and the code itself. The demo password `Talaan123!` stays too.
-- [ ] `CLAUDE.md` and `README.md` say both: the product name Bantay Aral, and the code name Talaan.
-- [ ] Tests that check a page title or the sign-in screen's words updated.
+Recipe: `docs/backend/step-51.5-product-name.md` (written from the real diff). Decided 2026-10-13: talaan.com wasn't available, so the owner chose **bantayaral.com**, written **Bantay Aral** on screens (two words, so it reads naturally and screen readers say it right). Only what people see changes.
+- [x] Every place a person sees the product's name says "Bantay Aral": the page titles, the sign-in screen, the parent portal, the set-password page, the gate and monitor pages, and "ask your Talaan administrator". The name lives in one constant, so a later rename is one line.
+- [x] The code name stays `talaan` (owner decision, 2026-10-13): the repository, the npm package, the database and Docker container, cookie names, token prefixes (`tal_dev_`, `tal_par_`), environment variables and the code itself. The demo password `Talaan123!` stays too.
+- [x] `CLAUDE.md` and `README.md` say both: the product name Bantay Aral, and the code name Talaan.
+- [x] Tests that check a page title or the sign-in screen's words updated.
 Done when: no screen shows "Talaan", and every check passes.
 Commit: `feat(brand): the product is called Bantay Aral on every screen`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 52: Deploy the demo to Heroku
 Recipe: `docs/backend/step-52-deploy-heroku.md`
@@ -735,6 +737,16 @@ Plan: `docs/SCALING.md` 2.3, from the plan's after-demo list (the notification o
 - [ ] Tests: a failed send is retried, and a phone that's gone is dropped.
 Done when: a tap at the gate arrives on a test phone as a push, and every check passes.
 Commit: `feat(push): send tap notifications to parents' phones`
+- [ ] Owner review: I checked it and said "approved"
+
+### Step 54.5: The Bantay Aral logo
+Plan: owner request, 2026-10-13 ("we will need a proper logo for the header and other parts of the app"). The owner supplies the logo, or approves one, before this step starts.
+- [ ] The logo's files in the repository: a full logo (SVG) for headers, and a square mark for small places. Light and dark versions if one doesn't read well on both.
+- [ ] Shown wherever the name stands alone today: the sign-in screen's art panel and phone header, the parent portal's header, and the staff sidebar when no school is open. A school's own logo still wins inside that school's pages.
+- [ ] The favicon and the home-screen icons, made from the square mark.
+- [ ] `docs/PARENT-APP-BRIEF.md` points the parent app's icon and splash screen at the same files.
+Done when: the logo shows in every place above at 360 px and 1280 px, in light and dark, and every check passes.
+Commit: `feat(brand): the Bantay Aral logo`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 55: Safe for real parents

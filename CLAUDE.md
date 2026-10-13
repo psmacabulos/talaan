@@ -1,4 +1,6 @@
-# Talaan: school attendance portal (placeholder name)
+# Bantay Aral (code name Talaan): school attendance portal
+
+**Names (decided 2026-10-13):** the product is **Bantay Aral** (`bantayaral.com`), and every screen a person sees says so, through one constant, `PRODUCT_NAME` in `src/lib/product.ts`. "Talaan" is only the code name: the repository, npm package, database, Docker container, cookies, token prefixes, environment variables and code keep it. Never show "Talaan" to a user.
 
 @AGENTS.md
 

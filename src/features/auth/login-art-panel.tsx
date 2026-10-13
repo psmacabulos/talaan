@@ -29,7 +29,7 @@ const ANIMATION_CLASSES = ["animate-value-prop-1", "animate-value-prop-2", "anim
 /**
  * The desktop-and-up decorative left panel (`hidden lg:flex` — collapses
  * entirely below `lg`; login-mobile-header.tsx renders instead). Generic
- * on purpose: Talaan is multi-tenant and this screen renders before any
+ * on purpose: the app is multi-tenant and this screen renders before any
  * school is known, so it carries no specific school's name or logo — see
  * that file and docs/BUILD-LOG.md's Step 12 "review round 3." `Nfc` stands
  * in for a product mark (there isn't a real one yet) since it's the

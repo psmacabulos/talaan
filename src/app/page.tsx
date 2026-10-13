@@ -6,12 +6,13 @@ import { LoginMobileHeader } from "@/features/auth/login-mobile-header";
 import { LoginForm } from "@/features/auth/login-form";
 import { DemoShortcuts } from "@/features/auth/demo-shortcuts";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { PRODUCT_NAME } from "@/lib/product";
 
 /**
  * The login screen (docs/PLAN.md Step 12) — now the site's entry point,
  * replacing the Step 4-6 design-tokens demo that this route held
  * temporarily (that demo's job is now done by the real style guide at
- * /design-system, Step 7). No school lookup here on purpose: Talaan is
+ * /design-system, Step 7). No school lookup here on purpose: the app is
  * multi-tenant and this screen renders before any school is known, so
  * both the desktop art panel (login-art-panel.tsx) and the compact heading
  * below (mobile only) carry generic product branding, never one school's.
@@ -56,7 +57,7 @@ export default async function LoginPage() {
             </Link>
           </p>
 
-          <p className="text-center text-sm text-muted-foreground">Talaan (placeholder product name)</p>
+          <p className="text-center text-sm text-muted-foreground">{PRODUCT_NAME}</p>
         </div>
       </section>
     </main>

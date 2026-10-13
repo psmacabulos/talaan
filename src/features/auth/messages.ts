@@ -1,3 +1,5 @@
+import { PRODUCT_NAME } from "@/lib/product";
+
 /** What a Server Action answers when the browser is signed out, or the session has expired. */
 export const SIGNED_OUT_MESSAGE = "Your session has expired. Sign in again.";
 
@@ -11,5 +13,4 @@ export const TOO_MANY_TRIES_MESSAGE = "Too many tries. Wait 15 minutes and try a
 export const LINK_USED_MESSAGE = "This link has expired or was already used. Ask your principal for a new one.";
 
 /** "Forgot your password?" on the sign-in screen. There's no email service yet, so a reset link comes from a person (Step 50.5). */
-export const FORGOT_PASSWORD_MESSAGE =
-  "Ask your principal for a password reset link. If you're the principal, ask your Talaan administrator.";
+export const FORGOT_PASSWORD_MESSAGE = `Ask your principal for a password reset link. If you're the principal, ask your ${PRODUCT_NAME} administrator.`;

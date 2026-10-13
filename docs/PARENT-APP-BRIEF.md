@@ -260,7 +260,7 @@ A status is shown as a pill: its text colour on its background colour, with the 
 - **Light and dark** follow the phone's setting.
 - **Motion:** short (100–300 ms) and purposeful, and none when the phone asks for reduced motion.
 - **The look:** calm and clear, like the web app. White cards on a pale background, the child's photo large, one clear status. The gate's tap card is the reference: photo, name, "Grade 7 – Rizal", a status pill, and the time in large digits.
-- **The name and logo:** "Bantay Aral" on the sign-in screen, the app icon and the splash screen. The owner supplies or approves the logo. Until then, use the name in Lexend on `primary`.
+- **The name and logo:** "Bantay Aral" on the sign-in screen, the app icon and the splash screen. The logo comes from Talaan's Step 54.5 (the owner supplies or approves it), and the app uses the same files. Until then, use the name in Lexend on `primary`.
 
 ## UX quality bar
 

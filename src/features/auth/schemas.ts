@@ -6,7 +6,7 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Enter your password"),
 });
 
-/** Every password Talaan stores, staff or parent: at least 8 characters. */
+/** Every password the app stores, staff or parent: at least 8 characters. */
 export const passwordSchema = z.string().min(8, "Use at least 8 characters");
 
 /** Step 50.5's set-password page: a new password, typed twice. */

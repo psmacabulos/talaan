@@ -9,7 +9,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { sessionSecret } from "@/lib/env";
 import { readSetPasswordToken } from "@/services/auth/set-password-link";
 
-export const metadata: Metadata = { title: "Set your password · Talaan" };
+export const metadata: Metadata = { title: "Set your password" };
 
 /**
  * Where a set-password link lands (Step 50.5): a new staff member's first
@@ -47,7 +47,9 @@ export default async function SetPasswordPage({ searchParams }: PageProps<"/set-
             </>
           ) : (
             <div className="flex flex-col gap-4">
-              <h2 className="font-heading text-2xl font-semibold text-foreground">This link doesn&apos;t work any more</h2>
+              <h2 className="font-heading text-2xl font-semibold text-foreground">
+                This link doesn&apos;t work any more
+              </h2>
               <p className="text-sm text-muted-foreground">{LINK_USED_MESSAGE}</p>
               <Link href="/" className="w-fit text-sm text-link underline underline-offset-2">
                 Go to sign in

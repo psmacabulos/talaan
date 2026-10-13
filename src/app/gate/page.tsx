@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { GateKiosk } from "@/features/gate/gate-kiosk";
 
-export const metadata: Metadata = { title: "Gate · Talaan" };
+export const metadata: Metadata = { title: "Gate" };
 
 /**
  * The gate tablet's page (Step 47). Outside the staff app shell, with no

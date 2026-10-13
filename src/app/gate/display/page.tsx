@@ -6,7 +6,7 @@ import { resolveMonitorViewer } from "@/features/gate/monitor-viewer";
 import { getNow } from "@/lib/clock";
 import { schoolDateOf } from "@/lib/school-time";
 
-export const metadata: Metadata = { title: "Gate monitor · Talaan" };
+export const metadata: Metadata = { title: "Gate monitor" };
 
 /**
  * The guardhouse monitor (Step 48), for a TV connected by its link or a
