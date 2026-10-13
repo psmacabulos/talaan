@@ -1333,3 +1333,26 @@ Changes usually show up within minutes, sometimes up to a few hours. `dig www.ba
 CI never talks to Heroku. It makes its own throwaway database and runs the same checks you run locally. Heroku only *waits* for CI: a red CI blocks the deploy, but deploy settings can't turn CI red. The real cause was a **Typecheck** error in `src/lib/env.test.ts`. Next.js says every `process.env` has a `NODE_ENV`, and the test's sample settings didn't include one.
 
 Why the tests still passed: Vitest runs TypeScript without checking its types. Only `npm run typecheck` does that. So "tests pass" and "types are fine" are separate results, which is why the routine runs both. To find a red CI run's cause: GitHub → **Actions** → the red run → the red step, and read its last lines.
+
+### Where in CI is the "deploy to Heroku" part? (owner question, 2026-10-13)
+Nowhere, on purpose. `.github/workflows/ci.yml` only checks the code, and it has no Heroku step, key or password. The deploy is set up on **Heroku's** side, under Deploy tab → Automatic deploys, with **Wait for CI to pass before deploy** ticked. Heroku watches `main` on GitHub. When a push lands, it waits for that commit's CI result, and only on a green check does it build and release. A red CI means Heroku just skips that commit.
+
+Why this way: no Heroku secret has to live in GitHub, and CI stays the same however the app is hosted ("easy to move"). Setup: `docs/backend/step-52-deploy-heroku.md`, Stages F and G.
+
+### Reading "The server can't start with these settings" in `heroku logs` (owner question, 2026-10-13)
+The check from Step 52 found a setting missing on Heroku and named it: `PHOTO_STORAGE="s3" needs S3_SECRET_ACCESS_KEY`. The fix is always a `heroku config:set` for the named setting. Heroku restarts the app by itself. `heroku config --app bantayaral | cut -d: -f1` lists the settings' **names only**, which is safe to look at while someone's watching. A typo in a name counts as missing.
+
+Two more things the same log lines tell you:
+- `host=bantayaral.com … tls=true` means the domain and its HTTPS certificate already work. Requests reach the app; the app just refuses them.
+- Visitors from addresses you don't know (`fwd=…`) are normal. Bots scan every new site within minutes.
+
+### Where is the R2 secret access key? (owner question, 2026-10-13)
+Cloudflare shows it **once**, on the page that appears right after you create an R2 API token, next to the Access Key ID. After you leave that page it can't be shown again, not even to you. That's normal for secret keys: Cloudflare keeps only a fingerprint of it, not the key itself. If it wasn't saved, make a new token (Cloudflare → **R2 Object Storage** → **Manage API tokens** → **Create API token**, Object Read & Write, `talaan-photos` only), set **both** new values on Heroku, then delete the old token. Next time, put it in a password manager straight away.
+
+### Does the bucket have to be called `talaan-photos`? (owner question, 2026-10-13)
+No. The code never names a bucket. It reads whatever is in the `S3_BUCKET` setting (`src/lib/storage/photo-storage.ts`). `talaan-photos` only appears in the docs' examples and in the unit tests' sample settings, which never reach a real bucket. Whatever the bucket is called, three things must use the exact same name:
+- the `S3_BUCKET` setting on Heroku
+- the bucket the R2 API token is limited to
+- the bucket itself
+
+R2 names allow only lowercase letters, numbers and hyphens, so the real name is something like `bantayaral-photos`. Copy it from the R2 list rather than retyping it. A wrong name doesn't stop the server from starting; it only fails later, the first time someone uploads a photo.
