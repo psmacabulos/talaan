@@ -4,6 +4,10 @@ How Bantay Aral runs on the internet (Step 52): what happens between a push to G
 
 ## How a deploy works
 
+**Setting it up the first time** (accounts, the app, the database, R2, the settings, connecting GitHub, the first deploy by hand): `docs/backend/step-52-deploy-heroku.md`, "Your part", Stages A–H.
+
+Heroku gets the code from **GitHub**, not from your laptop. It's connected to the `talaan` repository with automatic deploys from `main`, waiting for CI. Nobody runs `git push heroku`.
+
 ```mermaid
 flowchart LR
     GH["GitHub main<br/>(you push)"] -->|CI passes| H["Heroku build<br/>npm ci, prisma generate, next build"]

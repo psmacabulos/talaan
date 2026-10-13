@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { checkProductionEnv } from "./env";
 
-const GOOD = {
+const GOOD: NodeJS.ProcessEnv = {
+  NODE_ENV: "production",
   SESSION_SECRET: "x".repeat(32),
   DATABASE_URL: "postgresql://user:pass@db.example:5432/talaan",
   PHOTO_STORAGE: "s3",
@@ -9,7 +10,7 @@ const GOOD = {
   S3_BUCKET: "talaan-photos",
   S3_ACCESS_KEY_ID: "key-id",
   S3_SECRET_ACCESS_KEY: "key-secret",
-} as NodeJS.ProcessEnv;
+};
 
 describe("checkProductionEnv", () => {
   it("finds nothing wrong with a complete live setup", () => {

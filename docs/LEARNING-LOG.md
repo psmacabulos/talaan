@@ -1306,3 +1306,30 @@ Both are `heroku config:set` with a fixed value: no `$( … )`, nothing secret, 
 - **`PHOTO_STORAGE=s3`** is about where student photos go. Locally it defaults to `local`, a folder on your laptop. On Heroku that would lose every photo, because the server's disk is wiped on every restart and deploy (at least once a day). `s3` sends them to Cloudflare R2 instead. "S3" here names the common way of talking to file storage, not Amazon specifically. It needs the four `S3_…` settings too, and the server refuses to start if any is missing (`checkProductionEnv` in `src/lib/env.ts`).
 
 The full table of settings is in `docs/DEPLOY.md` under "Settings (config vars)".
+
+### Connect GitHub, or Heroku Git? (owner question, 2026-10-13)
+Heroku can get your code two ways. **Heroku Git** means a second push, `git push heroku main`, straight from your laptop: it deploys whatever you have, even if CI failed. **Connect GitHub** means Heroku watches the repository and deploys `main` by itself, after CI passes. We use GitHub, so your routine doesn't change: commit, `git push`, done.
+
+One catch: automatic deploys react only to pushes made *after* they're turned on. If your code is already on GitHub, the first deploy is started by hand from the dashboard (Deploy tab → Manual deploy → **Deploy Branch**). Every one after that is automatic. Step by step: `docs/backend/step-52-deploy-heroku.md`, Stages A–H.
+
+
+### Pointing a Hostinger domain at a "DNS target" (owner question, 2026-10-13)
+The domain was bought at Hostinger, so Hostinger's **DNS zone** is the address book that tells the internet where `bantayaral.com` lives. A "DNS target" (a name like `something.herokudns.com`, or one from Cloudflare) is where a name should send visitors. You connect the two with a **CNAME record**: "this name is really that name".
+
+In Hostinger: **Domains → bantayaral.com → DNS / Nameservers → DNS records**, then add:
+- Type **CNAME**, Name **`www`** (or `app`, any subdomain), Target the DNS target exactly as given, TTL left as it is.
+
+Two catches:
+- **One record per name.** Hostinger ships a default `CNAME www` (and an `A @`) pointing at its own parking page. Delete the old one first, or the new one is refused.
+- **The bare domain (`bantayaral.com`, shown as `@`) can't be a CNAME.** That's a rule of DNS itself, not Hostinger. Use an **ALIAS** record there if the editor offers it. If not, point `www` at the target and have Hostinger forward `bantayaral.com` → `https://www.bantayaral.com`. Don't use an **A** or **AAAA** record for Heroku (AAAA is just A for the newer, longer IPv6 addresses): its addresses change, and it gives no IP to point at. Heroku also gives **each name its own target**, so the bare domain needs its own `heroku domains:add bantayaral.com`, not a copy of the `www` target.
+
+What happened for Bantay Aral: Hostinger has no ALIAS record. Its redirect tool refused too, because it saw `bantayaral.com` → `www.bantayaral.com` as "a domain to itself". The domain has no Hostinger hosting, so there's no site of its own to do the redirect either. That left two choices: use only `www.bantayaral.com`, or move the DNS to Cloudflare, which can CNAME the bare domain. **Chosen (2026-10-13): Cloudflare**, so both names work. The whole flow, step by step with a checklist: [Bantay Aral Domain Setup](https://claude.ai/artifact/CM9JHW2WGCbuYUpbqqMbLA). With Cloudflare, set both records to **DNS only** (grey cloud): Cloudflare's proxy gets in the way of Heroku issuing its certificate. The "SSL active" Hostinger shows doesn't matter here. A certificate only works on the server that answers for the name, and for both names that's Heroku.
+
+The other way is to hand the whole zone to Cloudflare: add the site in Cloudflare, then change the **nameservers** in Hostinger to the two Cloudflare gives you. From then on every record is edited in Cloudflare, not Hostinger. Cloudflare can CNAME the bare domain ("flattening"). Its own targets (Pages, Tunnels, an R2 custom domain) usually *require* this, because they only work for domains Cloudflare manages. It's free, but it moves where you manage DNS, so pick one place and stick to it.
+
+Changes usually show up within minutes, sometimes up to a few hours. `dig www.bantayaral.com CNAME +short` prints the target once it's live.
+
+### "CI failed because the deploy isn't set up", and why that wasn't it (owner question, 2026-10-13)
+CI never talks to Heroku. It makes its own throwaway database and runs the same checks you run locally. Heroku only *waits* for CI: a red CI blocks the deploy, but deploy settings can't turn CI red. The real cause was a **Typecheck** error in `src/lib/env.test.ts`. Next.js says every `process.env` has a `NODE_ENV`, and the test's sample settings didn't include one.
+
+Why the tests still passed: Vitest runs TypeScript without checking its types. Only `npm run typecheck` does that. So "tests pass" and "types are fine" are separate results, which is why the routine runs both. To find a red CI run's cause: GitHub → **Actions** → the red run → the red step, and read its last lines.

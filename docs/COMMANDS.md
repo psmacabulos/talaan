@@ -248,6 +248,7 @@ In the app, a principal gets the same links without the terminal: the dialog aft
 | `heroku pg:psql --app bantayaral` | A `psql` prompt on the live database. `\q` quits. |
 | `heroku pg:backups:capture --app bantayaral` | A backup right now. `heroku pg:backups --app bantayaral` lists them. |
 | `curl https://bantayaral.herokuapp.com/api/v1/health` | `{"ok":true,"database":"ok"}` when the site and its database are fine. |
+| `dig www.bantayaral.com CNAME +short` | Where a domain name points. Prints the DNS target once a new record is live; prints nothing while it's still spreading. |
 
 **Files:** `Procfile`, `package.json` (`engines`), `src/instrumentation.ts`, `src/lib/env.ts`, `src/app/api/v1/health/route.ts`. Full guide: `docs/DEPLOY.md`.
 
