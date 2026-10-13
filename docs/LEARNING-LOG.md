@@ -26,6 +26,8 @@ Short, plain-language notes explaining things along the way — for whenever I w
 - [The word "client" (Phase 2)](#the-word-client-phase-2)
 - [TypeScript syntax in the backend code (Phase 2)](#typescript-syntax-in-the-backend-code-phase-2)
 - [Database and migrations (Phase 2)](#database-and-migrations-phase-2)
+- [Growing to many schools](#growing-to-many-schools)
+- [Naming the product](#naming-the-product)
 
 ---
 
@@ -55,6 +57,8 @@ Two separate features would let staff do more themselves:
 - **"Change password" while signed in.** Type the old password, then the new one. It's free and small to build.
 - **"Forgot password?" on the sign-in page.** This needs an email service. Its link would be the same kind of signed, one-time link the principal makes today.
 
+**Planned since 2026-10-13:** Step 55.5 adds both by email. Parents reset their own password from the app (the owner's rule: never "ask the school"), and staff get "Forgot your password?" on the web. The principal's copy-link stays as a backup.
+
 ### What would an email service cost? (owner question, 2026-10-13)
 Probably nothing per month for the pilot, plus a domain: roughly $10–15 a year for a `.com` (a `.ph` usually costs more). Email here only covers staff invitations and password resets, which is a few dozen a month for one school. Parents get push notifications, not email. Free plans, as listed in October 2026 (check the provider's page before signing up):
 - **Resend:** 3,000 a month, at most 100 a day.
@@ -63,6 +67,8 @@ Probably nothing per month for the pilot, plus a domain: roughly $10–15 a year
 - **Cloudflare Email Service:** needs the $5-a-month Workers plan.
 
 Every provider needs a **domain you own** to send from, with a few DNS records that prove the email is really yours, so it doesn't land in spam. To keep the provider easy to change (CLAUDE.md, "easy to move"), the app would send through **SMTP**, the standard email protocol all of them speak, configured only by environment variables.
+
+**Decided 2026-10-13:** the domain is `bantayaral.com` (talaan.com was taken). Email comes with Step 55.5, forgot password by email: parents from the app, staff on the web.
 
 **A domain name only, no "hosting" package.** The domain is just the name. Heroku (Step 52) runs the app, and the email provider sends the mail. Pointing the name at them is a few DNS records. To *receive* mail at that domain (for example `support@…`), free forwarding to an existing Gmail is enough (Cloudflare Email Routing does this). A registrar's "hosting" or "email hosting" add-ons aren't needed.
 
@@ -820,6 +826,13 @@ The cost is a second (small) UI to build and maintain, which is fine because it 
 
 ---
 
+### When can Talaan's build pause for the parent app, and how does the new repository learn everything? (owner question, 2026-10-13)
+**Pause after Step 53** (the parent API), once it's approved and live on Heroku. The app's own first step (M1, the setup) doesn't need the API, so it can start any time, in parallel. The app needs Steps 52 (a server a phone can reach) and 53 (the addresses it calls), nothing more, to sign parents up, link children and show their day. **Step 54** (push to the phone) was moved up to come straight after, because the demo needs a tap at the gate to buzz the phone. It's finished alongside the app, since its last check needs a real push token from the app. Steps 55–64 wait until after the demo.
+
+**The new repository starts from `docs/PARENT-APP-BRIEF.md`.** Its top section says what to copy where: the brief becomes the new repository's `CLAUDE.md`, and Talaan's `docs/PARENT-API.md` becomes its `docs/TALAAN-API.md`. Then it holds everything the work there needs: what Talaan is, the API, the design colours converted to hex (phones don't read the web's OKLCH colours), its own steps M1–M8, and the same working rules as here. When the app needs something the API doesn't have, it writes it down in `docs/API-REQUESTS.md` and you bring it back here as a step. The two repositories never drift apart quietly.
+
+**What it costs:** an Android demo is free (Expo's free plan, Firebase's free push, installing the app directly). Publishing on Google Play is about US$25, once. iOS push needs Apple's Developer Program, about US$99 a year, which is why the brief says Android first.
+
 ## Two separate logins in one app, and a mock password (Step 22)
 
 ### Why parents get their own cookie instead of reusing staff's session
@@ -1231,3 +1244,28 @@ The second run is the real test. The first run only proves the code works on wha
 - **Browser tests twice:** the tests add students, link cards and tap in, and from Step 37 on those changes stay in Postgres. The first run starts clean either way. Only the second run shows whether the reset in `e2e/global-setup.ts` really puts everything back. Without it, the second run starts from the first run's leftovers (for example, no untapped students left for the tap-station tests) and fails even though the app is fine.
 
 Once Step 36 is approved, one run per check is enough. The double run is just how you check the reset works.
+
+## Growing to many schools
+
+### Is the app ready to grow from one school to many? (owner question, 2026-10-13)
+Asked before the first deploy, as a senior engineer's final check. The short answer: yes for the demo, and the decisions that are hard to change later are right (one database scoped by school, one copy of the tap rules, gate-made tap ids, swappable storage). What's left are patterns that cost nothing at one school but grow with every school and every year, plus a few safety gaps to close before real parents sign up. The full review, with the code behind each item, is `docs/SCALING.md`. Its items became Steps 53–64 in `docs/PLAN.md`, in the order they're due.
+
+### What's an "N+1" query, and why does it matter even at one school?
+A page loads a list (1 query), then asks the database something about each item in it (N more). The Students page does this: one query for the students, then one per student for their cards, so 500 students means 501 queries. Each is quick, but there are many, and they all share the server's 10 database connections with the gate. So while a principal's Students page runs, the morning's taps wait in line. The fix is to ask once for the whole list: `where: { id: { in: ids } }`, or `include` to bring the cards along with the students. `docs/SCALING.md` has a search command that finds them.
+
+### What's a database index, and why should `schoolId` come first?
+An index is a sorted list the database keeps beside a table, like the index at the back of a book. With an index on `(studentId, tappedAt)`, "this student's taps today" jumps straight to the right few rows instead of reading the whole table. Every school's rows share each table, so a query that always asks "for this school…" needs an index that starts with `schoolId`. Otherwise it reads every school's rows to find one school's. To check whether a query uses an index, run `EXPLAIN` in front of it (recipe in `docs/SCALING.md`).
+
+## Naming the product
+
+### The product became "Bantay Aral". Does everything called "talaan" have to change? (owner question, 2026-10-13)
+No. Only what people see. talaan.com was taken, so the owner chose `bantayaral.com`, written **Bantay Aral** on screens (two words, so it reads naturally and a screen reader says it right). From then on, the project has two names:
+- **The product name**, Bantay Aral: everything a principal, teacher, guard or parent sees. That's page titles, the sign-in screen, the parent portal, the parent app's name on the phone, and later the emails. Step 51.5 changes these, with the name kept in one constant so a future rename is one line.
+- **The code name**, Talaan: everything nobody outside sees. That's the repository, the npm package, the database and its Docker container, cookie names, token prefixes like `tal_par_`, environment variables, and the code.
+
+Renaming the inside would cost time and risk for no visible gain. Renamed cookies sign everyone out. A renamed database means editing every `.env`, including yours, which only you can do. The demo password `Talaan123!` keeps the code name too. Big products work the same way: a code name inside, a brand outside.
+
+**Two names to get right now, because they're hard to change later:**
+- **The Heroku app's name.** It's in the web address until `bantayaral.com` is connected, so it should be `bantayaral` (Step 52).
+- **The parent app's package name,** `com.bantayaral.parent`. Once an app is on Google Play its package name can never change, and the Firebase setup for push is registered with it (`docs/PARENT-APP-BRIEF.md`).
+

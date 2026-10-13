@@ -1,5 +1,12 @@
 # Step 53: The parent API
 
+> **Added 2026-10-13, before this recipe is built.** Three changes from the review in `docs/SCALING.md` (section 2) and the owner's decisions the same day. This recipe gets updated to match before any code, and may be split in two (parent accounts across schools first, then the API):
+> 1. **One parent account covers any number of schools (decided).** The school moves from `Parent` to each `ParentStudentLink`. Sign-up asks for no school, and linking a child asks for it (`POST /children` gains `schoolId`). `/me` gives each child its own school, and the parent session carries only the parent.
+> 2. **The app registers an Expo push token (decided).** Step 54, moved up for the demo, sends through Expo's push service.
+> 3. **Every parent query loads one day or one page at a time,** never the whole history.
+>
+> The product's name on screens is now Bantay Aral (Step 51.5). The code name, and the `tal_par_` token prefix, stay. The parent app's own repository starts from `docs/PARENT-APP-BRIEF.md`, which summarises this contract. Keep the two in step.
+
 > **Fast-track recipe.** Written before the code on 2026-10-11, for the owner to approve before it's built. It was added to the plan the same day: the Expo parent app starts on 2026-10-12, and it needs these addresses to call. When it's built, a "What changed while building" section (just before "Verify it worked") will list where the real code differs from this plan.
 
 ## Why
