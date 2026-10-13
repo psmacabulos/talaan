@@ -59,6 +59,22 @@ Phase 1 has no file storage, so a logo travels as a **data URL** (a text string 
 
 **One Sheet behavior worth knowing** (it silently shapes every drawer in the app): the sheet base in `src/components/ui/sheet.tsx` sizes itself with `data-[side=right]:w-3/4` and `data-[side=right]:sm:max-w-sm`. Those attribute-variant utilities outrank any plain `w-full`/`sm:max-w-lg` a caller passes — tailwind-merge treats them as different modifier groups, and the attribute selector wins on specificity. So every drawer (staff included) renders ¾ of the screen on a phone and 384px on desktop. If a full-width mobile drawer or a wider drawer is ever wanted, change it once in `sheet.tsx` — not per drawer.
 
+## The Bantay Aral logo (Step 51.6)
+
+`src/components/brand/`:
+- **`mark-shapes.ts`:** the mark's shapes as plain data (a parent, a child, an open book, the sun's rays), redrawn as clean vectors from the owner's brand sheet. It also has `markSvgMarkup(colors)`, the same mark as an SVG document, for the generated icons.
+- **`bantay-aral-logo.tsx`:**
+  - `BantayAralMark` draws the mark from the `--brand-*` tokens, so it follows dark mode.
+  - `BantayAralLogo` adds the word "BantayAral" in Lexend, with "Aral" in the brand's green, and an optional line, "Every school day, connected with care." Sizes are `sm`, `md` and `lg`. It's one `role="img"` labelled "Bantay Aral", so a screen reader says the name once, as two words, even though the wordmark joins them.
+
+Used by:
+- the sign-in panel and the phone header (`src/features/auth/`);
+- the parent portal's header;
+- the staff sidebar when no school is open;
+- the generated icons (`src/app/icon.tsx`, `src/app/apple-icon.tsx`).
+
+A school's own logo (Step 25) still shows inside that school's pages.
+
 ## Where to see all of this today
 
 `src/app/page.tsx`'s "Components (Step 6)" section shows one example of every new primitive and shared component, so it can be checked in a browser under every preset (`?preset=ocean`, etc.) and both color modes. This is explicitly **not** the real style guide — Step 7 builds a dedicated, dev-only `/design-system` page showing every token, component, and state properly, with a `check:tokens` script enforcing the no-raw-colors rule. Today's section on the demo page is scaffolding, the same way Step 5's `?preset=` links are.

@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Nfc } from "lucide-react";
 import { getParentSession } from "@/lib/parent-session";
-import { PRODUCT_NAME } from "@/lib/product";
+import { BantayAralLogo } from "@/components/brand/bantay-aral-logo";
 import { MAIN_CONTENT_ID, SkipLink } from "@/components/skip-link";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationsBell } from "@/features/parents/notifications-bell";
@@ -33,11 +32,11 @@ export default async function ParentProtectedLayout({ children }: { children: Re
     <div className="flex min-h-screen flex-col bg-background">
       <SkipLink />
       <header className="flex items-center justify-between border-b border-border px-4 py-3 sm:px-6">
-        <Link href="/parent" className="flex items-center gap-2">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            <Nfc className="size-4" aria-hidden="true" />
-          </span>
-          <span className="font-heading text-base font-semibold text-foreground">{PRODUCT_NAME}</span>
+        <Link
+          href="/parent"
+          className="rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        >
+          <BantayAralLogo size="sm" />
         </Link>
         <div className="flex items-center gap-1">
           <ThemeToggle />

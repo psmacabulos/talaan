@@ -25,11 +25,16 @@ describe("Login page", () => {
     getSession.mockResolvedValue(null);
     render(await LoginPage());
 
-    // Two "Attendance portal" headings exist in the DOM on purpose — the
-    // desktop art panel and the mobile-only compact heading are mutually
-    // exclusive via `hidden lg:flex` / `lg:hidden`, never both visible at
-    // once. Neither names a specific school (see login-art-panel.tsx).
-    expect(screen.getAllByRole("heading", { name: /attendance portal/i }).length).toBeGreaterThan(0);
+    // Two headings on purpose (Step 51.6): the desktop panel's headline and
+    // the phone header's logo are mutually exclusive via `hidden lg:flex` /
+    // `lg:hidden`, never both visible at once. Both carry the product's
+    // branding, never a specific school's (see login-art-panel.tsx).
+    expect(screen.getByRole("heading", { name: /every school day, connected with care/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Bantay Aral" })).toBeInTheDocument();
+    // Both logos go back to the main page.
+    const logoLinks = screen.getAllByRole("link", { name: "Bantay Aral" });
+    expect(logoLinks).toHaveLength(2);
+    for (const link of logoLinks) expect(link).toHaveAttribute("href", "/");
     expect(screen.queryByText(/national science high school/i)).not.toBeInTheDocument();
 
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();

@@ -562,3 +562,27 @@ Saving on Settings > Appearance **also clears the preview cookie**. Otherwise a 
 **I want to know whether a custom brand color will be changed before it is used:** `checkCustomBrandColor(hex).adjusted`, with `.buttonColor` for what buttons will actually use.
 
 **I want to change a school's saved theme from code (a seed, a test):** `schoolRepository.update({ ...school, theme: { kind: "custom", brandColor: "#…" } })`. Nothing else needs to change; the layout resolves it on the next request.
+
+## Step 51.6: the Bantay Aral brand colors
+
+The product got its logo on 2026-10-13. Its colors are a **third kind of token**, next to the theme tokens (which a school's preset changes) and the status tokens (which nothing changes):
+
+| Kind | Example | Who changes it |
+|---|---|---|
+| Theme | `--primary`, `--background` | the school's preset, and dark mode |
+| Status | `--status-present` | dark mode only. Present is always green |
+| **Brand** | `--brand-parent`, `--brand-green-text` | dark mode only. Bantay Aral looks the same at every school |
+
+```mermaid
+flowchart LR
+    T["src/styles/tokens.css<br/>--brand-* (light and dark)"] --> G["globals.css @theme inline<br/>bg-brand-*, text-brand-*, fill-brand-*"]
+    G --> L["BantayAralMark / BantayAralLogo<br/>login-art-panel.tsx"]
+    B["src/lib/theme/brand.ts<br/>the same light values, in hex"] --> I["src/app/icon.tsx, apple-icon.tsx<br/>(PNG at build time, no CSS)"]
+    T -. "brand.test.ts keeps them equal" .- B
+```
+
+- **Where the brand shows:** the logo everywhere, and the sign-in panel, which renders before any school is known. Inside a school's pages, the school's theme still decides every color.
+- **The logo's green isn't the "present" green.** A status color only ever means its status, so the brand has its own green. For text it uses `--brand-green-text`, a darker shade measured at 4.7:1 on the page background (the logo's own green is 3.4:1, below the 4.5:1 rule). In dark mode it's a lighter shade, at 8.7:1.
+- **Dark mode** follows the brand sheet's dark logo: the parent figure turns white, `--brand-edge` (the book's page lines) turns navy, and the word "Bantay" turns light.
+- **Why the icons need hex values:** `icon.tsx` and `apple-icon.tsx` draw a PNG at build time, where no CSS variables exist. `src/lib/theme/brand.ts` holds the same light colors in hex. It's inside `src/lib/theme`, so `check:tokens` allows it. `brand.test.ts` converts each `--brand-*` token back to hex and fails if the two drift apart.
+

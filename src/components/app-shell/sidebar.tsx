@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { School as SchoolIcon } from "lucide-react";
+import { BantayAralMark } from "@/components/brand/bantay-aral-logo";
 import { PRODUCT_NAME } from "@/lib/product";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/features/staff/types";
@@ -28,10 +29,13 @@ export function SidebarBrand({ school }: { school: School | null }) {
           height={40}
           className="size-10 shrink-0 rounded-lg border border-border bg-card object-contain"
         />
-      ) : (
+      ) : school ? (
         <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
           <SchoolIcon className="size-5" aria-hidden="true" />
         </span>
+      ) : (
+        // No school open (a super admin on the Schools page): the product's own mark (Step 51.6).
+        <BantayAralMark className="h-10 w-auto" />
       )}
       <div className="flex min-w-0 flex-col">
         <span className="truncate font-heading text-sm font-semibold text-foreground">

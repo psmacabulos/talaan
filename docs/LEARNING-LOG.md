@@ -1269,3 +1269,10 @@ Renaming the inside would cost time and risk for no visible gain. Renamed cookie
 - **The Heroku app's name.** It's in the web address until `bantayaral.com` is connected, so it should be `bantayaral` (Step 52).
 - **The parent app's package name,** `com.bantayaral.parent`. Once an app is on Google Play its package name can never change, and the Firebase setup for push is registered with it (`docs/PARENT-APP-BRIEF.md`).
 
+### How does a new logo and sign-in design fit our colors and themes? Does it need a design tool turned on? (owner question, 2026-10-13)
+No tool needed: the design system is already in the code, and the brand sheet was enough to work from. The logo's colors became a **third kind of color token**. Theme colors change with each school's preset. Status colors never change (green is always "present"). **Brand colors** never change either, so Bantay Aral looks the same at every school. They only appear where no school is known yet (the sign-in pages) and in the logo itself. Inside a school's pages, the school's theme still rules.
+
+Two things to know about images from an image generator:
+- **A logo should be a vector (SVG), not a picture (PNG).** The PNGs had black backgrounds and blurry edges. Redrawn as SVG, the mark is sharp at any size, switches to its dark version on its own, and makes the browser and phone icons from the same shapes.
+- **Text baked into a photo is a problem.** The photo had "Arrived at School" painted in. It can't be translated or changed, and it said something different from what parents actually receive. The page draws that card as real text instead, so the photo should have no text in it. Full details: `docs/STYLING-SYSTEM.md` ("Step 51.6") and `docs/backend/step-51.6-logo-and-sign-in.md`.
+

@@ -6,7 +6,6 @@ import { LoginMobileHeader } from "@/features/auth/login-mobile-header";
 import { LoginForm } from "@/features/auth/login-form";
 import { DemoShortcuts } from "@/features/auth/demo-shortcuts";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { PRODUCT_NAME } from "@/lib/product";
 
 /**
  * The login screen (docs/PLAN.md Step 12) — now the site's entry point,
@@ -27,7 +26,7 @@ export default async function LoginPage() {
   const showDemoShortcuts = process.env.NODE_ENV !== "production";
 
   return (
-    <main className="relative grid min-h-screen flex-1 lg:grid-cols-[1.05fr_1fr]">
+    <main className="relative grid min-h-screen flex-1 lg:grid-cols-[1.25fr_1fr] xl:grid-cols-[1.6fr_1fr]">
       {/* Light/dark before sign-in too (Step 27.5), in the form column's
           top corner, clear of both the art panel and the form. */}
       <div className="absolute top-4 right-4 z-10">
@@ -56,8 +55,6 @@ export default async function LoginPage() {
               Sign in here
             </Link>
           </p>
-
-          <p className="text-center text-sm text-muted-foreground">{PRODUCT_NAME}</p>
         </div>
       </section>
     </main>

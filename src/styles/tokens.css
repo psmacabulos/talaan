@@ -47,6 +47,21 @@
   --status-out: oklch(50.5% 0.2 263);
   --status-out-bg: oklch(95.6% 0.022 255);
 
+  /* The Bantay Aral brand (Step 51.6): the logo's own colors, fixed like the
+     status colors, never swapped by a school's preset. Used only by the logo
+     and the sign-in panel, where no school is known yet. The same light
+     values are in src/lib/theme/brand.ts for the generated app icons. */
+  --brand-parent-top: oklch(59.1% 0.145 251.5);
+  --brand-parent: oklch(43.1% 0.161 260.5);
+  --brand-child: oklch(65% 0.144 154.6);
+  --brand-page-light: oklch(76.2% 0.115 158.3);
+  --brand-page-deep: oklch(47.2% 0.081 178.8);
+  --brand-edge: oklch(100% 0 0);
+  --brand-sun: oklch(80.49% 0.1644 78.39);
+  --brand-ink: oklch(27.4% 0.089 260.1);
+  /* The logo's green, darkened for text: 4.7:1 on the page background. */
+  --brand-green-text: oklch(52.7% 0.124 153.7);
+
   /* Destructive actions (Step 6) — fixed like the status colors above.
      The color itself is --status-absent (aliased in globals.css); this is
      just its solid-fill text color, which needs its own literal since
@@ -104,6 +119,14 @@
   --status-idle-bg: oklch(29.1% 0.051 263.3);
   --status-out: oklch(78.5% 0.11 255);
   --status-out-bg: oklch(29.5% 0.07 262);
+
+  /* The dark logo (Step 51.6): a light parent figure on navy, as in the brand sheet. */
+  --brand-parent-top: oklch(100% 0 0);
+  --brand-parent: oklch(87.2% 0.031 258.9);
+  --brand-page-deep: oklch(65.1% 0.115 162.3);
+  --brand-edge: oklch(19.8% 0.037 264.2);
+  --brand-ink: oklch(95.1% 0.016 262.8);
+  --brand-green-text: oklch(75% 0.144 157.9);
 
   /* Dark-mode status-absent is bright (76.5% lightness), so its solid-fill
      foreground has to be dark, not light — see the light block above. */

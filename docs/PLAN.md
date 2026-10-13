@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ███████████████░░░░░ 76%**  (221 of 289 tasks, 63 of 78 steps approved)
+**Overall progress: ████████████████░░░░ 78%**  (226 of 291 tasks, 63 of 78 steps approved)
 
-**Next up:** Step 52, Deploy the demo to Heroku (not started)
+**Next up:** Step 51.6, The Bantay Aral logo, and a new sign-in page (in progress)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -70,10 +70,10 @@
 | 50.5 | Set-password links | ██████████ 100% | Approved |
 | 51 | One school can never see another's data | ██████████ 100% | Approved |
 | 51.5 | The new name, Bantay Aral, on every screen | ██████████ 100% | Approved |
+| 51.6 | The Bantay Aral logo, and a new sign-in page | ███████░░░  71% | In progress |
 | 52 | Deploy the demo to Heroku | ░░░░░░░░░░   0% | Not started |
 | 53 | The parent API | ░░░░░░░░░░   0% | Not started |
 | 54 | Push notifications reach the phone | ░░░░░░░░░░   0% | Not started |
-| 54.5 | The Bantay Aral logo | ░░░░░░░░░░   0% | Not started |
 | 55 | Safe for real parents | ░░░░░░░░░░   0% | Not started |
 | 55.5 | Forgot password by email | ░░░░░░░░░░   0% | Not started |
 | 56 | One read, one tap | ░░░░░░░░░░   0% | Not started |
@@ -373,6 +373,7 @@ Unlike Phase 1, the owner writes every line of backend code personally, to learn
 - Step 50.5: Set-password links: the app makes a one-time link the principal sends however they like (no email service), which also creates the first super admin from the terminal
 - Step 51: Every query scoped to the signed-in school, with tests proving one school can't see another's
 - Step 51.5: The product's name, Bantay Aral, on every screen (decided 2026-10-13: the domain is bantayaral.com, since talaan.com wasn't available). "Talaan" stays the code name inside the code
+- Step 51.6: The Bantay Aral logo, redrawn as SVG, and a new sign-in page from the owner's brand sheet (2026-10-13)
 - Step 52: Deploy the demo to Heroku, with photos on Cloudflare R2 (decided 2026-10-11)
 - Step 53: The parent API, `/api/v1/parents/*`, for the Expo parent app (added 2026-10-11, so the app can start the next day)
 - Step 53 is followed by Steps 54–64 ("Phase 2b" below): Step 54 sends pushes to parents' phones for the demo, and Steps 55–64 are the fixes from the 2026-10-13 review of the whole app (`docs/SCALING.md`).
@@ -394,8 +395,8 @@ Read this first in a new conversation, together with `CLAUDE.md`.
 - **Approved on 2026-10-12:** Steps 46, 46.5, 47, 48 and 49, tested by the owner with the real USB reader.
 - **Built and committed overnight, 2026-10-12 (owner away, authorized to build, test and commit without pushing):** Step 50.5 (`dafb62e`) and Step 51 (`fb721a7`). Step 51 also fixed a real hole: the tap station's save trusted the school in the browser's tap. **Approved on 2026-10-13**, with one review fix: "Forgot your password?" now says who to ask for a reset link (`046b072`).
 - **Email:** Step 55.5 (forgot password by email: parents from the app, staff on the web), sending from `bantayaral.com`. Owner decision, 2026-10-13: parents recover their own password, never by asking the school.
-- **Next:** Step 52 (deploy to Heroku), then Step 53 (the parent API), then Step 54 (push to parents' phones).
-- **Logo (owner request, 2026-10-13):** a proper Bantay Aral logo for the headers, favicon and the parent app's icon is Step 54.5. The owner supplies or approves the design first.
+- **Next:** Step 51.6's review (the logo and sign-in page), then Step 52 (deploy to Heroku), then Step 53 (the parent API), then Step 54 (push to parents' phones).
+- **Logo (owner request, 2026-10-13):** built in Step 51.6, before the deploy, with a new sign-in page from the owner's brand sheet. The parent app reuses the same mark (`docs/PARENT-APP-BRIEF.md`).
 - **The name (2026-10-13):** the product is **Bantay Aral** (`bantayaral.com`; talaan.com wasn't available). "Talaan" stays the code name: the repository, package, database, cookies, token prefixes and code. Step 51.5 changes only what people see.
 - **The demo (owner's goal, 2026-10-13):** the web app and the parent app both working: a parent registers in the app, links a child, and gets a push when the child taps at the gate. The parent app lives in its own repository, from `docs/PARENT-APP-BRIEF.md`. Its first step (M1, the setup) can start any time. The steps after it need Step 53 live. Step 54 is finished alongside the app, since its last check needs the app's push token. Steps 55–64 come after the demo. The owner wants this as fast as possible.
 - **The 2026-10-13 review:** `docs/SCALING.md`, owner-requested, of the whole app. Nothing in it blocks the demo deploy. Its fixes are Steps 55–64. Step 53 gained three tasks. Two were decided on 2026-10-13: one parent account covers any number of schools, and the app registers Expo push tokens. The third: load parent data one day or one page at a time.
@@ -688,6 +689,18 @@ Done when: no screen shows "Talaan", and every check passes.
 Commit: `feat(brand): the product is called Bantay Aral on every screen`
 - [x] Owner review: I checked it and said "approved"
 
+### Step 51.6: The Bantay Aral logo, and a new sign-in page
+Recipe: `docs/backend/step-51.6-logo-and-sign-in.md` (written from the real diff). Owner request, 2026-10-13: the owner brought a logo, a brand sheet with a sample sign-in page, and a photo, and chose to build it before the deploy (it was planned as Step 54.5). The logo is redrawn as SVG. The owner is making a clean photo; until then a crop of the first one stands in.
+- [x] Brand colors as fixed tokens (`--brand-*`, light and dark), separate from the school's theme and from the status colors. A darker green for text that passes 4.5:1.
+- [x] The mark redrawn as SVG (`src/components/brand/`), the word in Lexend, and `BantayAralLogo` in three sizes, labelled "Bantay Aral" for screen readers.
+- [x] The browser tab icon and the phone home-screen icon, generated from the same mark. Next's default `favicon.ico` is gone.
+- [x] The sign-in panel from the brand sheet: logo, pill, two-tone headline, three points, and the photo in a 4:3 rounded frame (review change: it was an oval) showing the student, card and reader, with a live "Juan tapped in" card under the reader. The logo on phones. On every sign-in screen the logo links back to the main page (review change). The same on parent sign-in, sign-up and set-password.
+- [x] The logo in the parent portal's header, and in the staff sidebar when no school is open.
+- [ ] The owner's clean photo (no text, bubble or circles) replaces the stand-in at `public/brand/sign-in-photo.jpg`.
+Done when: the logo and the new sign-in page look right at 360, 1024, 1280 and 1536 px in light and dark, and every check passes.
+Commit: `feat(brand): the Bantay Aral logo and a new sign-in page`
+- [ ] Owner review: I checked it and said "approved"
+
 ### Step 52: Deploy the demo to Heroku
 Recipe: `docs/backend/step-52-deploy-heroku.md`
 - [ ] Owner: Heroku account with the GitHub Student credit, the app, Postgres Essential-0 (version 18), config vars, and automatic deploys after CI. Cloudflare R2 bucket and token. Name the Heroku app after the product, for example `bantayaral` (added 2026-10-13); pointing `bantayaral.com` at it can come later.
@@ -737,16 +750,6 @@ Plan: `docs/SCALING.md` 2.3, from the plan's after-demo list (the notification o
 - [ ] Tests: a failed send is retried, and a phone that's gone is dropped.
 Done when: a tap at the gate arrives on a test phone as a push, and every check passes.
 Commit: `feat(push): send tap notifications to parents' phones`
-- [ ] Owner review: I checked it and said "approved"
-
-### Step 54.5: The Bantay Aral logo
-Plan: owner request, 2026-10-13 ("we will need a proper logo for the header and other parts of the app"). The owner supplies the logo, or approves one, before this step starts.
-- [ ] The logo's files in the repository: a full logo (SVG) for headers, and a square mark for small places. Light and dark versions if one doesn't read well on both.
-- [ ] Shown wherever the name stands alone today: the sign-in screen's art panel and phone header, the parent portal's header, and the staff sidebar when no school is open. A school's own logo still wins inside that school's pages.
-- [ ] The favicon and the home-screen icons, made from the square mark.
-- [ ] `docs/PARENT-APP-BRIEF.md` points the parent app's icon and splash screen at the same files.
-Done when: the logo shows in every place above at 360 px and 1280 px, in light and dark, and every check passes.
-Commit: `feat(brand): the Bantay Aral logo`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 55: Safe for real parents

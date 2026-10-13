@@ -23,7 +23,7 @@ export default async function SetPasswordPage({ searchParams }: PageProps<"/set-
   const staff = await readSetPasswordToken(raw, { staff: staffRepository, secret: sessionSecret(), now: new Date() });
 
   return (
-    <main className="relative grid min-h-screen flex-1 lg:grid-cols-[1.05fr_1fr]">
+    <main className="relative grid min-h-screen flex-1 lg:grid-cols-[1.25fr_1fr] xl:grid-cols-[1.6fr_1fr]">
       <div className="absolute top-4 right-4 z-10">
         <ThemeToggle />
       </div>

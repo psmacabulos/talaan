@@ -241,6 +241,22 @@ Every dependency is approved by the owner first. Say what anything costs before 
 | `border` | `#DFE6F0` | `#243250` | dividers, card edges |
 | `destructive` | `#B92A32` | `#FF8B91` | sign out, delete |
 
+**Brand colours are fixed too** (the logo, the sign-in screen). They're the same in every theme, so Bantay Aral looks the same at every school:
+
+| Token | Light | Dark | Used for |
+|---|---|---|---|
+| `brandParentTop` | `#2F80D0` | `#FFFFFF` | the parent's head, the top of the figure |
+| `brandParent` | `#1149A6` | `#C9D6EA` | the bottom of the parent figure |
+| `brandChild` | `#2FA866` | `#2FA866` | the child, and the right page |
+| `brandPageLight` | `#6CC896` | `#6CC896` | the left page |
+| `brandPageDeep` | `#126A5C` | `#3FA57A` | the book's lower edge |
+| `brandEdge` | `#FFFFFF` | `#0D1526` | the page lines (the background behind the logo) |
+| `brandSun` | `#F8B014` | `#F8B014` | the sun's rays |
+| `brandInk` | `#0A2552` | `#E9EFFA` | "Bantay" in the wordmark |
+| `brandGreenText` | `#1A7F48` | `#4CC98A` | "Aral", and any green text (4.7:1 and 8.7:1, both above 4.5:1) |
+
+The logo's own green (`brandChild`) is too light for text, so text uses `brandGreenText`. Brand green never means "present": that's the status green below.
+
 **Status colours are fixed.** They mean the same in every theme, and are never themed or reused for anything else:
 
 | Status | Text, light | Background, light | Text, dark | Background, dark |
@@ -260,7 +276,7 @@ A status is shown as a pill: its text colour on its background colour, with the 
 - **Light and dark** follow the phone's setting.
 - **Motion:** short (100–300 ms) and purposeful, and none when the phone asks for reduced motion.
 - **The look:** calm and clear, like the web app. White cards on a pale background, the child's photo large, one clear status. The gate's tap card is the reference: photo, name, "Grade 7 – Rizal", a status pill, and the time in large digits.
-- **The name and logo:** "Bantay Aral" on the sign-in screen, the app icon and the splash screen. The logo comes from Talaan's Step 54.5 (the owner supplies or approves it), and the app uses the same files. Until then, use the name in Lexend on `primary`.
+- **The name and logo:** "Bantay Aral" on the sign-in screen, the app icon and the splash screen. The mark exists as clean vector shapes in the Talaan repository's `src/components/brand/mark-shapes.ts` (Step 51.6). Copy that file and draw it with `react-native-svg`, with the brand colors below. The word is "Bantay" plus "Aral" in Lexend Bold, "Aral" in the brand's green, and screen readers hear "Bantay Aral". Generate the app icon and splash screen from the same mark, on white.
 
 ## UX quality bar
 
