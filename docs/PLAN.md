@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ████████████████░░░░ 78%**  (226 of 291 tasks, 63 of 78 steps approved)
+**Overall progress: ████████████████░░░░ 78%**  (228 of 291 tasks, 64 of 78 steps approved)
 
-**Next up:** Step 51.6, The Bantay Aral logo, and a new sign-in page (in progress)
+**Next up:** Step 52, Deploy the demo to Heroku (not started)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -70,7 +70,7 @@
 | 50.5 | Set-password links | ██████████ 100% | Approved |
 | 51 | One school can never see another's data | ██████████ 100% | Approved |
 | 51.5 | The new name, Bantay Aral, on every screen | ██████████ 100% | Approved |
-| 51.6 | The Bantay Aral logo, and a new sign-in page | ███████░░░  71% | In progress |
+| 51.6 | The Bantay Aral logo, and a new sign-in page | ██████████ 100% | Approved |
 | 52 | Deploy the demo to Heroku | ░░░░░░░░░░   0% | Not started |
 | 53 | The parent API | ░░░░░░░░░░   0% | Not started |
 | 54 | Push notifications reach the phone | ░░░░░░░░░░   0% | Not started |
@@ -690,16 +690,16 @@ Commit: `feat(brand): the product is called Bantay Aral on every screen`
 - [x] Owner review: I checked it and said "approved"
 
 ### Step 51.6: The Bantay Aral logo, and a new sign-in page
-Recipe: `docs/backend/step-51.6-logo-and-sign-in.md` (written from the real diff). Owner request, 2026-10-13: the owner brought a logo, a brand sheet with a sample sign-in page, and a photo, and chose to build it before the deploy (it was planned as Step 54.5). The logo is redrawn as SVG. The owner is making a clean photo; until then a crop of the first one stands in.
+Recipe: `docs/backend/step-51.6-logo-and-sign-in.md` (written from the real diff). Owner request, 2026-10-13: the owner brought a logo, a brand sheet with a sample sign-in page, and a photo, and chose to build it before the deploy (it was planned as Step 54.5). The logo is redrawn as SVG. The owner's clean photo replaced the first stand-in crop.
 - [x] Brand colors as fixed tokens (`--brand-*`, light and dark), separate from the school's theme and from the status colors. A darker green for text that passes 4.5:1.
 - [x] The mark redrawn as SVG (`src/components/brand/`), the word in Lexend, and `BantayAralLogo` in three sizes, labelled "Bantay Aral" for screen readers.
 - [x] The browser tab icon and the phone home-screen icon, generated from the same mark. Next's default `favicon.ico` is gone.
 - [x] The sign-in panel from the brand sheet: logo, pill, two-tone headline, three points, and the photo in a 4:3 rounded frame (review change: it was an oval) showing the student, card and reader, with a live "Juan tapped in" card under the reader. The logo on phones. On every sign-in screen the logo links back to the main page (review change). The same on parent sign-in, sign-up and set-password.
 - [x] The logo in the parent portal's header, and in the staff sidebar when no school is open.
-- [ ] The owner's clean photo (no text, bubble or circles) replaces the stand-in at `public/brand/sign-in-photo.jpg`.
+- [x] The owner's clean photo (no text, bubble or circles) replaces the stand-in at `public/brand/sign-in-photo.jpg`.
 Done when: the logo and the new sign-in page look right at 360, 1024, 1280 and 1536 px in light and dark, and every check passes.
 Commit: `feat(brand): the Bantay Aral logo and a new sign-in page`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 52: Deploy the demo to Heroku
 Recipe: `docs/backend/step-52-deploy-heroku.md`

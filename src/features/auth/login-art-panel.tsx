@@ -77,11 +77,11 @@ export function LoginArtPanel() {
 }
 
 /**
- * The photo (Step 51.6, review): a landscape 4:3 frame with rounded corners,
- * anchored left so the student, the hand, the card and the reader are all in
- * view, with the reader near the right edge but not touching it. The
- * notification a parent would get sits on the frame's bottom edge, under the
- * reader, so it never covers the tap itself. Decorative.
+ * The photo (Step 51.6, review): a landscape 4:3 frame with rounded corners.
+ * The photo is 4:3 too, so the whole of it shows: the student, the hand, the
+ * card and the reader, with the gate to the reader's right. The notification
+ * a parent would get sits on the frame's bottom edge, under the reader, so it
+ * never covers the tap itself. Decorative.
  */
 function SignInPhoto() {
   return (
@@ -96,7 +96,7 @@ function SignInPhoto() {
           alt=""
           fill
           sizes="(min-width: 1280px) 40vw, 0px"
-          className="object-cover object-left"
+          className="object-cover"
         />
       </div>
 

@@ -58,7 +58,7 @@ The old cycling value-prop animation, and its keyframes in `globals.css`, were r
 
 ### 6. The photo
 
-`public/brand/sign-in-photo.jpg` is a stand-in, cropped below the original's baked-in notification bubble with `sips -c 735 1074 --cropOffset 410 300`, then saved as JPEG at quality 82 (155 KB). It's only shown from 1280 px, and `next/image` loads it lazily, so phones never download it. The owner is making a clean version, with no text, bubble or circles, which simply replaces this file.
+`public/brand/sign-in-photo.jpg` started as a stand-in, cropped below the original's baked-in notification bubble. The owner then made a clean version (no text, bubble or circles), and it replaced the stand-in (see "Review change: the clean photo" below). It's only shown from 1280 px, and `next/image` loads it lazily, so phones never download it.
 
 ### Review change: the photo's frame (owner's brief, 2026-10-13)
 
@@ -74,6 +74,15 @@ The first version put the photo in a tall oval. The owner's brief said it felt d
 ### Review change: the logo goes to the main page (owner, 2026-10-13)
 
 On every sign-in screen (`/`, `/parent/login`, `/parent/signup`, `/set-password`), the logo is now a link to `/`. That is the sign-in page, or the dashboard for staff who are already signed in, because `src/app/page.tsx` redirects them. Both places changed: the desktop panel (`login-art-panel.tsx`, with `w-fit` so the link is only as wide as the logo) and the phone header (`login-mobile-header.tsx`, where the link sits inside the `h1`). Each link has the same focus ring as the parent portal's header, and its name is the logo's, "Bantay Aral". `src/app/page.test.tsx` checks that both links point to `/`. Unchanged: the parent portal's header logo still goes to `/parent`, the parent's own home. The staff sidebar shows the school's logo, not this one.
+
+### Review change: the clean photo (owner, 2026-10-13)
+
+The owner generated a clean version from a written prompt: the same scene, 4:3, the reader fully in frame on the right, and room above the student's head. It came as a 1448 × 1086 PNG.
+
+- **Made smaller:** `sips -s format jpeg -s formatOptions 78 -Z 1200 <photo>.png --out public/brand/sign-in-photo.jpg`, giving 1200 × 900 and 221 KB. On screen the photo is at most 514 px wide, so 1200 px still covers a 2× display, and `next/image` serves a smaller WebP of it anyway.
+- **No crop needed:** the photo is 4:3, the same as the frame, so it all shows. `object-left` came off.
+- **Measured again:** a grid over the new photo put the reader at x 820–970 and y 297–625, the hand and card at x 805–912 and y 425–580, and the head at y 228–490. At 1280, 1366, 1440, 1536 and 1920 px, in light and dark, the notification covers none of them and stays 73 px from the form, and nothing scrolls sideways. The reader is 42–64 px wide on screen, a little smaller than before because the whole scene shows, with the gate beside it.
+- **A trap:** after the file changed, the dev server kept serving the old photo, because the image optimizer caches by URL. Deleting `.next/dev/cache/images` fixed it, and is always safe because it rebuilds itself. In your own browser, a hard refresh (Cmd+Shift+R) does the same.
 
 ## Verify it worked
 
