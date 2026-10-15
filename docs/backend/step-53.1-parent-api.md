@@ -1,11 +1,11 @@
-# Step 53: The parent API
+# Step 53.1: The parent API
 
-> **Added 2026-10-13, before this recipe is built.** Three changes from the review in `docs/SCALING.md` (section 2) and the owner's decisions the same day. This recipe gets updated to match before any code, and may be split in two (parent accounts across schools first, then the API):
-> 1. **One parent account covers any number of schools (decided).** The school moves from `Parent` to each `ParentStudentLink`. Sign-up asks for no school, and linking a child asks for it (`POST /children` gains `schoolId`). `/me` gives each child its own school, and the parent session carries only the parent.
-> 2. **The app registers an Expo push token (decided).** Step 54, moved up for the demo, sends through Expo's push service.
-> 3. **Every parent query loads one day or one page at a time,** never the whole history.
+> **Split from Step 53 on 2026-10-15** (owner approval). Step 53 (`docs/backend/step-53-parent-accounts-across-schools.md`) comes first and moves a parent's school onto each linked child. This recipe builds on that, and is updated for the 2026-10-13 decisions (`docs/SCALING.md` section 2):
+> 1. **One parent account covers any number of schools.** Sign-up asks for no school, linking a child asks for it (`POST /children` takes `schoolId`), and each child in an answer carries its own school.
+> 2. **The app registers an Expo push token.** Step 54 sends through Expo's push service.
+> 3. **Every parent query loads one day or one page at a time,** never the whole history, for the web portal and the API alike.
 >
-> The product's name on screens is now Bantay Aral (Step 51.5). The code name, and the `tal_par_` token prefix, stay. The parent app's own repository starts from `docs/PARENT-APP-BRIEF.md`, which summarises this contract. Keep the two in step.
+> The product's name on screens is Bantay Aral (Step 51.5). The code name, and the `tal_par_` token prefix, stay. The parent app's own repository works from `docs/PARENT-APP-BRIEF.md`, which summarises this contract. Keep the two in step.
 
 > **Fast-track recipe.** Written before the code on 2026-10-11, for the owner to approve before it's built. It was added to the plan the same day: the Expo parent app starts on 2026-10-12, and it needs these addresses to call. When it's built, a "What changed while building" section (just before "Verify it worked") will list where the real code differs from this plan.
 
@@ -33,9 +33,10 @@ flowchart LR
 
    It's built exactly like the gate's device token (Step 43): a `tal_par_` prefix plus 32 random bytes, kept as a sha256 hash. The token lasts **90 days from its last use**, so a parent who opens the app weekly never signs in again. `ARCHITECTURE.md` is updated to match.
 2. **The app stores the token in the phone's secure storage** (Expo's `expo-secure-store`). That's an app decision, noted in `docs/PARENT-API.md` for tomorrow.
-3. **Push tokens are stored now and sent later.** `POST /api/v1/parents/push-tokens` saves the phone's push address, so the app can register from its first version. Actually sending a push needs the notification outbox and its worker, the next step. Until then the app shows the feed when opened (pull to refresh), the same as the web portal's bell.
+3. **Push tokens are stored now and sent later.** `POST /api/v1/parents/push-tokens` saves the phone's **Expo push token** (`ExponentPushToken[…]`), so the app can register from its first version. Actually sending a push is Step 54. Until then the app shows the feed when opened (pull to refresh), the same as the web portal's bell.
 4. **The read mark stays shared by the child's guardians**, as today (`docs/NOTIFICATIONS.md`). Two parents of one child see the same read state. Per-parent read marks can come with the outbox.
 5. **Photos:** a parent's token can load **their own linked children's** photos from `/api/v1/photos/…`, and no one else's.
+6. **Paging on the web too.** The bell shows the newest 30 and the unread count (counted in the database, not by loading everything). The notifications page shows 30, with a "Show older" link that keeps `?before=<id>` in the address. The home page loads only today's taps for each child, not their whole history.
 
 ## Steps
 
@@ -91,12 +92,12 @@ The rules move here from `src/features/parents/auth-actions.ts`, `notification-a
 
 | File | Function | What it does |
 |---|---|---|
-| `parent-token.ts` | `issueParentToken(parentId, label)` / `authenticateParent(header)` | Makes a token, or turns `Bearer …` into `{ parentId, schoolId }`. It's null when missing, unknown, revoked or unused for 90 days, and updates `lastUsedAt` at most once an hour. |
-| `sign-up.ts` | `signUpParent(input)` | Validates, checks the school exists and the email is free, then hashes and creates. Returns the parent or field errors. |
+| `parent-token.ts` | `issueParentToken(parentId, label)` / `authenticateParent(header)` | Makes a token, or turns `Bearer …` into `{ parentId }`. It's null when missing, unknown, revoked or unused for 90 days, and updates `lastUsedAt` at most once an hour. |
+| `sign-up.ts` | `signUpParent(input)` | Validates, checks the email is free, then hashes and creates. Returns the parent or field errors. |
 | `sign-in.ts` | `signInParent(email, password)` | The throttle (Step 50.1), then `verifyPassword`. Returns the parent or one vague error. Like `checkStaffSignIn`, it runs scrypt against a decoy hash when the email is unknown, so an unknown email doesn't answer faster (left over from Step 50.1). |
-| `link-child.ts` | `linkChild(parent, details)` | LRN, last name and birth date at the parent's own school. Returns the student, "no match" or "already linked". |
-| `children-today.ts` | `childrenToday(parent, now)` | Each linked child, with `studentStatus` and `dayTapSummary` for today on their school's clock. |
-| `notifications.ts` | `listNotifications(parent, { before, limit })`, `markRead(parent, id)`, `markAllRead(parent)` | The feed, newest first, 30 at a time, and the read marks, with the ownership checks that exist today. |
+| `link-child.ts` | `linkChild(parentId, details)` | The school, LRN, last name and birth date (Step 53). The link saves that school. Returns the student, "no match" or "already linked". |
+| `children-today.ts` | `childrenToday(parentId, now)` | Each linked child with their school, and `studentStatus` and `dayTapSummary` for today, from only today's taps, on their own school's times. |
+| `notifications.ts` | `listNotifications(parentId, { before, limit })`, `countUnread(parentId)`, `markRead(parentId, id)`, `markAllRead(parentId)` | The feed, newest first, 30 at a time across all the parent's linked children (one query, by their links), the unread count, and the read marks, with the ownership checks Step 53 leaves. |
 
 The web Server Actions then call these and keep their current results, so the web portal works exactly as before. Its existing tests and `e2e/parent.spec.ts` prove that.
 
@@ -106,17 +107,17 @@ Every route is thin: authenticate, validate with Zod, call a service, and answer
 
 | Method and address | Sign-in | Body / query | Answer |
 |---|---|---|---|
-| `GET /api/v1/parents/schools` | none | | `{ schools: [{ id, name }] }`, for the sign-up picker |
-| `POST /api/v1/parents/signup` | none | `{ schoolId, firstName, lastName, mobile, email, password, deviceLabel? }` | `201 { token, parent }` |
+| `GET /api/v1/parents/schools` | none | | `{ schools: [{ id, name }] }`, for the school picker when linking a child |
+| `POST /api/v1/parents/signup` | none | `{ firstName, lastName, mobile, email, password, deviceLabel? }` | `201 { token, parent }` |
 | `POST /api/v1/parents/login` | none | `{ email, password, deviceLabel? }` | `200 { token, parent }` |
 | `POST /api/v1/parents/logout` | token | | `204`; the token is revoked and its push token removed |
-| `GET /api/v1/parents/me` | token | | `{ parent, school: { id, name, notificationPreference }, children: [ChildToday] }` |
-| `POST /api/v1/parents/children` | token | `{ lrn, lastName, birthDate }` | `201 { child: ChildToday }` |
+| `GET /api/v1/parents/me` | token | | `{ parent, children: [ChildToday] }` |
+| `POST /api/v1/parents/children` | token | `{ schoolId, lrn, lastName, birthDate }` | `201 { child: ChildToday }` |
 | `GET /api/v1/parents/children/:id/taps?date=YYYY-MM-DD` | token | | `{ date, status, flexible, taps: [{ at, kind }] }`; `404` for a child who isn't theirs |
 | `GET /api/v1/parents/notifications?before=<id>&limit=30` | token | | `{ notifications: [Item], unreadCount, nextBefore }` |
 | `POST /api/v1/parents/notifications/:id/read` | token | | `204` |
 | `POST /api/v1/parents/notifications/read-all` | token | | `204` |
-| `POST /api/v1/parents/push-tokens` | token | `{ token, platform }` | `204`; it saves the token, or moves it to this parent |
+| `POST /api/v1/parents/push-tokens` | token | `{ token, platform }` (`ios` or `android`) | `204`; it saves the Expo push token, or moves it to this parent |
 
 The shapes:
 
@@ -125,6 +126,7 @@ type ParentJson = { id: string; firstName: string; lastName: string; email: stri
 type ChildToday = {
   id: string; firstName: string; lastName: string; gradeLevel: number; section: string;
   photo: string | null;            // "/api/v1/photos/…", loaded with the same Bearer token
+  school: { id: string; name: string; notificationPreference: "off" | "time_in_only" | "time_in_and_time_out" };
   today: { date: string; status: "present" | "late" | "absent" | "idle";
            flexible: boolean; timeIn: string | null; timeOut: string | null; tapCount: number };
 };
@@ -174,10 +176,10 @@ This is the app's contract, written for tomorrow:
   - Notification paging: `before` and `limit`.
   - `api-responses.test.ts`: exact keys, and no LRN or birth date anywhere.
 - **Browser, API only** (`e2e/parent-api.spec.ts`, Playwright's `request`, no page):
-  1. List schools, sign up a new parent and get a token.
-  2. `GET /me` shows no children. Link a seed student by LRN, last name and birth date; `/me` now shows them.
+  1. Sign up a new parent (no school) and get a token. List the schools.
+  2. `GET /me` shows no children. Link a seed student by school, LRN, last name and birth date; `/me` now shows them, with their school.
   3. Tap that student's card through the gate API (the test gate token).
-  4. `GET /notifications` has the new time in. Mark it read; `unreadCount` drops.
+  4. `GET /notifications` has the new time in. Mark it read; `unreadCount` drops. With `limit=1`, `nextBefore` leads to the next page.
   5. The child's photo loads with the token. Another student's photo gives `404`.
   6. Log out; `GET /me` gives `401`.
   7. Six wrong passwords give `429`.
@@ -190,7 +192,7 @@ This is the app's contract, written for tomorrow:
 
 ## Verify it worked
 
-1. Your checks (or ask me to run them).
+1. Your checks: the routine in `docs/LEARNING-LOG.md` ("The routine to run before every commit and push"), including `npx playwright test`.
 2. With `npm run dev` running, sign in from a terminal:
    ```bash
    curl -s -X POST http://localhost:3000/api/v1/parents/login -H 'Content-Type: application/json' \

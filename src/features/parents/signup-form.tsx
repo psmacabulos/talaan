@@ -2,14 +2,13 @@
 
 import { useTransition } from "react";
 import Link from "next/link";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { signUpParent } from "./auth-actions";
 import { parentSignupSchema } from "./auth-schemas";
 import type { ParentSignupInput } from "./types";
@@ -20,7 +19,6 @@ function emptyValues(): ParentSignupInput {
     lastName: "",
     mobile: "",
     email: "",
-    schoolId: "",
     password: "",
     confirmPassword: "",
   };
@@ -31,12 +29,11 @@ function emptyValues(): ParentSignupInput {
  * (`signUpParent` calls `redirect`), so `onSubmit` has nothing to do on
  * `result.ok` — only the error paths need handling here.
  */
-export function ParentSignupForm({ schools }: { schools: { id: string; name: string }[] }) {
+export function ParentSignupForm() {
   const [isPending, startTransition] = useTransition();
   const {
     register,
     handleSubmit,
-    control,
     setError,
     formState: { errors, isSubmitting },
   } = useForm<ParentSignupInput>({
@@ -125,38 +122,6 @@ export function ParentSignupForm({ schools }: { schools: { id: string; name: str
         {errors.mobile && (
           <p id="signup-mobile-error" className="text-sm text-destructive">
             {errors.mobile.message}
-          </p>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="signup-school">Your child&apos;s school</Label>
-        <Controller
-          control={control}
-          name="schoolId"
-          render={({ field }) => (
-            <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger
-                id="signup-school"
-                className="w-full"
-                aria-invalid={errors.schoolId ? true : undefined}
-                aria-describedby={errors.schoolId ? "signup-school-error" : undefined}
-              >
-                <SelectValue placeholder="Select a school" />
-              </SelectTrigger>
-              <SelectContent>
-                {schools.map((school) => (
-                  <SelectItem key={school.id} value={school.id}>
-                    {school.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        />
-        {errors.schoolId && (
-          <p id="signup-school-error" className="text-sm text-destructive">
-            {errors.schoolId.message}
           </p>
         )}
       </div>

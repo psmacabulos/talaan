@@ -159,14 +159,7 @@ describe("seed data shape", () => {
     expect(matchingAlert?.type).toBe("lost_card_tapped");
   });
 
-  it("gives every parent a schoolId matching a real seed school", () => {
-    const schoolIds = new Set(seedSchools.map((s) => s.id));
-    for (const parent of seedParents) {
-      expect(schoolIds.has(parent.schoolId), `parent ${parent.id}`).toBe(true);
-    }
-  });
-
-  it("links every parent and student to a real record at the same school", () => {
+  it("links every parent to a real student, at that student's school", () => {
     const parentById = new Map(seedParents.map((p) => [p.id, p]));
     const studentById = new Map(seedStudents.map((s) => [s.id, s]));
     for (const link of seedParentStudentLinks) {
@@ -174,7 +167,6 @@ describe("seed data shape", () => {
       const student = studentById.get(link.studentId);
       expect(parent, `link ${link.id} parent`).toBeDefined();
       expect(student, `link ${link.id} student`).toBeDefined();
-      expect(link.schoolId, `link ${link.id} school`).toBe(parent?.schoolId);
       expect(link.schoolId, `link ${link.id} school`).toBe(student?.schoolId);
     }
   });

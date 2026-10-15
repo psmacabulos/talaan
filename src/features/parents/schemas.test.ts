@@ -3,7 +3,6 @@ import { notificationKindSchema, notificationSchema, parentSchema, parentStudent
 
 const validParent = {
   id: "parent-0001",
-  schoolId: "school-balanga",
   firstName: "Maria",
   lastName: "Dela Cruz",
   mobile: "09171234567",
@@ -15,8 +14,9 @@ describe("parentSchema", () => {
     expect(parentSchema.safeParse(validParent).success).toBe(true);
   });
 
-  it("rejects an empty schoolId", () => {
-    expect(parentSchema.safeParse({ ...validParent, schoolId: "" }).success).toBe(false);
+  it("has no school: each linked child carries its own (Step 53)", () => {
+    const parsed = parentSchema.parse({ ...validParent, schoolId: "school-balanga" });
+    expect(parsed).not.toHaveProperty("schoolId");
   });
 
   it("rejects a mobile number that isn't a PH mobile", () => {

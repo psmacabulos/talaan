@@ -119,7 +119,8 @@ describe("Oceanview can't reach Balanga's data (Step 51)", () => {
   });
 
   it("a parent can't mark another school's notification read", async () => {
-    state.parentSession = { parentId: "parent-oceanview-1", schoolId: OCEANVIEW };
+    // Every child of this parent is at Oceanview, so a Balanga notification isn't theirs (Step 53).
+    state.parentSession = { parentId: "parent-oceanview-1" };
     await expect(markNotificationRead(balangaUnread.id)).resolves.toEqual({
       ok: false,
       formError: "That notification no longer exists.",

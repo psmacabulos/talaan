@@ -15,29 +15,41 @@ import { DEFAULT_ATTENDANCE_TIMES, schoolToday } from "@/features/attendance/sta
 import { getNow } from "@/lib/clock";
 import { getParentSession } from "@/lib/parent-session";
 import { ChildSummaryCard } from "@/features/parents/child-summary-card";
-import type { Student } from "@/features/students/types";
+import type { School } from "@/features/schools/types";
 
 export default async function ParentHomePage() {
   const session = await getParentSession();
   if (!session) redirect("/parent/login");
 
-  const [parent, links, school] = await Promise.all([
+  const [parent, links] = await Promise.all([
     parentRepository.getById(session.parentId),
     parentStudentLinkRepository.listByParent(session.parentId),
-    schoolRepository.getById(session.schoolId),
   ]);
 
-  // Only the parent's own school, from the signed session (Step 51).
-  const students = await Promise.all(
-    links.map((link) => studentRepository.getInSchool(session.schoolId, link.studentId)),
+  // Each child is read from their own link's school (Step 53), the school
+  // the server checked when they were linked, and judged by its own times.
+  const schoolIds = [...new Set(links.map((link) => link.schoolId))];
+  const schools = (await Promise.all(schoolIds.map((id) => schoolRepository.getById(id)))).filter(
+    (school): school is School => school !== null,
   );
-  const linkedStudents = students.filter((student): student is Student => student !== null);
-  const tapsByStudent = await Promise.all(
-    linkedStudents.map((student) => tapRepository.listByStudent(session.schoolId, student.id)),
-  );
-  // A parent belongs to one school, and so does every child they link, so
-  // that school's attendance times judge every child here.
-  const day = schoolToday(getNow(), school ?? DEFAULT_ATTENDANCE_TIMES);
+  const schoolById = new Map(schools.map((school) => [school.id, school]));
+  const now = getNow();
+
+  const children = (
+    await Promise.all(
+      links.map(async (link) => {
+        const [student, taps] = await Promise.all([
+          studentRepository.getInSchool(link.schoolId, link.studentId),
+          tapRepository.listByStudent(link.schoolId, link.studentId),
+        ]);
+        if (!student) return null;
+        const school = schoolById.get(link.schoolId);
+        return { student, taps, school, day: schoolToday(now, school ?? DEFAULT_ATTENDANCE_TIMES) };
+      }),
+    )
+  ).filter((child) => child !== null);
+  // The school's name is only worth showing when the children are at more than one.
+  const showSchoolNames = schoolIds.length > 1;
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-10 sm:px-6">
@@ -51,7 +63,7 @@ export default async function ParentHomePage() {
         }
       />
 
-      {linkedStudents.length === 0 ? (
+      {children.length === 0 ? (
         <EmptyState
           icon={Users}
           title="No linked children yet"
@@ -59,9 +71,14 @@ export default async function ParentHomePage() {
         />
       ) : (
         <ul className="flex flex-col gap-3">
-          {linkedStudents.map((student, index) => (
+          {children.map(({ student, taps, school, day }) => (
             <li key={student.id}>
-              <ChildSummaryCard student={student} taps={tapsByStudent[index]} day={day} />
+              <ChildSummaryCard
+                student={student}
+                taps={taps}
+                day={day}
+                schoolName={showSchoolNames ? school?.name : undefined}
+              />
             </li>
           ))}
         </ul>

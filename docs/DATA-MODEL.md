@@ -79,7 +79,6 @@ erDiagram
     }
     PARENT {
         string id PK
-        string schoolId FK "one school only — no cross-school parents"
         string firstName
         string lastName
         string mobile "PH mobile, 09... or +639..."
@@ -87,7 +86,7 @@ erDiagram
     }
     PARENT_STUDENT_LINK {
         string id PK
-        string schoolId FK
+        string schoolId FK "the child's school; a parent has none (Step 53)"
         string parentId FK
         string studentId FK
         datetime linkedAt

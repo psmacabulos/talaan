@@ -108,7 +108,7 @@ Both call sites keep their existing `refresh()` — the fan-out helper itself ne
 - The **bell** (`NotificationsBell`, rendered in `src/app/parent/(protected)/layout.tsx`'s header) shows the five newest items in a dropdown plus the unread count on its badge; the layout fetches once and passes items down, and the actions' `refresh()` re-renders the layout too — which is how the badge clears in place after "Mark all as read".
 - The **page** (`/parent/notifications`) shows everything, grouped by day.
 
-The read path joins links → students → notifications in parallel and sorts newest first; it never filters by school *itself*, because a `Parent` belongs to exactly one school (`docs/AUTH.md`) and their links are school-scoped by construction.
+The read path joins links → students → notifications in parallel and sorts newest first; each child is read within their own link's `schoolId`, the school the server checked when the child was linked. Since Step 53 a `Parent` has no school of its own, so one account can follow children at several schools.
 
 Marking read goes through two server actions in `src/features/parents/notification-actions.ts`, both gated on `getParentSession()` **plus** link membership (`parentStudentLinkRepository.listByParent`) and a `schoolId` match — a parent can only mark their own children's notifications read:
 

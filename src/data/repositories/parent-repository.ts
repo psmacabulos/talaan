@@ -13,8 +13,6 @@ import { DEFAULT_LATENCY_MS, simulateLatency } from "./latency";
 export const SEED_PARENT_PASSWORD = "Talaan123!";
 
 export interface ParentRepository {
-  /** A school's parent accounts. */
-  listBySchool(schoolId: string): Promise<Parent[]>;
   getById(id: string): Promise<Parent | null>;
   /** Case-insensitive — both signup's "email already used" check and sign-in go through this. */
   findByEmail(email: string): Promise<Parent | null>;
@@ -41,10 +39,6 @@ export function createMockParentRepository(
   }
 
   return {
-    async listBySchool(schoolId) {
-      await simulateLatency(latencyMs);
-      return data.filter((parent) => parent.schoolId === schoolId);
-    },
     async getById(id) {
       await simulateLatency(latencyMs);
       return data.find((parent) => parent.id === id) ?? null;

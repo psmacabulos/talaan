@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ████████████████░░░░ 80%**  (233 of 293 tasks, 65 of 78 steps approved)
+**Overall progress: ████████████████░░░░ 80%**  (237 of 297 tasks, 65 of 79 steps approved)
 
-**Next up:** Step 53, The parent API (not started)
+**Next up:** Step 53, One parent account for any number of schools (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -72,7 +72,8 @@
 | 51.5 | The new name, Bantay Aral, on every screen | ██████████ 100% | Approved |
 | 51.6 | The Bantay Aral logo, and a new sign-in page | ██████████ 100% | Approved |
 | 52 | Deploy the demo to Heroku | ██████████ 100% | Approved |
-| 53 | The parent API | ░░░░░░░░░░   0% | Not started |
+| 53 | One parent account for any number of schools | ████████░░  80% | Ready for your review |
+| 53.1 | The parent API | ░░░░░░░░░░   0% | Not started |
 | 54 | Push notifications reach the phone | ░░░░░░░░░░   0% | Not started |
 | 55 | Safe for real parents | ░░░░░░░░░░   0% | Not started |
 | 55.5 | Forgot password by email | ░░░░░░░░░░   0% | Not started |
@@ -375,7 +376,7 @@ Unlike Phase 1, the owner writes every line of backend code personally, to learn
 - Step 51.5: The product's name, Bantay Aral, on every screen (decided 2026-10-13: the domain is bantayaral.com, since talaan.com wasn't available). "Talaan" stays the code name inside the code
 - Step 51.6: The Bantay Aral logo, redrawn as SVG, and a new sign-in page from the owner's brand sheet (2026-10-13)
 - Step 52: Deploy the demo to Heroku, with photos on Cloudflare R2 (decided 2026-10-11)
-- Step 53: The parent API, `/api/v1/parents/*`, for the Expo parent app (added 2026-10-11, so the app can start the next day)
+- Step 53: The parent API, `/api/v1/parents/*`, for the Expo parent app (added 2026-10-11, so the app can start the next day). Split on 2026-10-15: Step 53 moves a parent's school onto each linked child, Step 53.1 is the API
 - Step 53 is followed by Steps 54–64 ("Phase 2b" below): Step 54 sends pushes to parents' phones for the demo, and Steps 55–64 are the fixes from the 2026-10-13 review of the whole app (`docs/SCALING.md`).
 - After the demo: most of this list became Steps 54–64 on 2026-10-13: the notification outbox and its worker (54), the gate's offline queue (58), backups and monitoring (59), and privacy (consent, export and delete, audit log) (60). Still unnumbered: Web Push; device online/offline on the dashboard ("last seen", maybe a 5-minute idle check-in); an admin screen for devices.
 
@@ -711,34 +712,27 @@ Done when: the health check is ok, a photo lands in R2, a sticker tapped at the 
 Commit: `chore(deploy): run on Heroku with Postgres and R2 photos`
 - [x] Owner review: I checked it and said "approved"
 
-### Step 53: The parent API
-Recipe: `docs/backend/step-53-parent-api.md`. It's updated for the 2026-10-13 decisions below before any code, and may be split in two to stay reviewable: parent accounts across schools first, then the API.
+### Step 53: One parent account for any number of schools
+Recipe: `docs/backend/step-53-parent-accounts-across-schools.md`. Split from the parent API on 2026-10-15 (owner approval), so each half fits one review. Owner decision 2026-10-13, `docs/SCALING.md` 2.1.
+- [x] `Parent.schoolId` removed (migration `parent_any_school`), and the parent session carries only the parent.
+- [x] Sign-up asks for no school. "Link a child" asks for the school as well as the LRN, last name and birth date.
+- [x] Every parent page reads each link's own school, and each child's day uses that school's times. A child's card shows the school's name when the parent's children are at more than one school.
+- [x] `docs/SCHOOL-ISOLATION.md`'s parent row, `e2e/parent.spec.ts` and `e2e/isolation.spec.ts` updated, plus a test of one parent with children at two schools.
+Done when: one parent links children at two schools and sees both, the demo parents work as before, and every check passes.
+Commit: `feat(parents): let one parent account link children at any school`
+- [ ] Owner review: I checked it and said "approved"
+
+### Step 53.1: The parent API
+Recipe: `docs/backend/step-53.1-parent-api.md`, updated on 2026-10-15 for Step 53 and the 2026-10-13 decisions.
 - [ ] `ParentToken` and `PushToken` (migration `parent_tokens`), and `issueParentToken`/`authenticateParent` (hashed, revocable, 90 days from last use).
 - [ ] `src/services/parents/`: sign up, sign in, link a child, children today, and notifications, now shared by the web portal's actions.
 - [ ] `/api/v1/parents/*` (schools, signup, login, logout, me, children, a child's taps, notifications, read, read-all, push-tokens), with one error shape. Parent tokens can load their own children's photos.
 - [ ] `docs/PARENT-API.md`, unit tests, and `e2e/parent-api.spec.ts` (sign up, link, tap, notification, read, logout).
-- [ ] One parent account covers children at any number of schools (owner decision, 2026-10-13, `docs/SCALING.md` 2.1). The school moves from the parent to each linked child: sign-up asks for no school, and linking a child asks for the school as well as the LRN, last name and birth date. The web portal, the parent session and `docs/SCHOOL-ISOLATION.md`'s parent row change to match.
 - [ ] The app registers an Expo push token (owner decision, 2026-10-13), since Step 54 sends through Expo's push service. `docs/PARENT-API.md` says so.
 - [ ] Added 2026-10-13 (`docs/SCALING.md` 2.2): parent data loads one day or one page at a time (a child's taps, notifications, the unread count), never the whole history, for the web portal and the API alike.
-Done when: the `curl` checks in the recipe work, the web parent portal works as before except that the school is asked when linking a child, and every check passes.
+Done when: the `curl` checks in the recipe work, the web parent portal works as before, `docs/PARENT-API.md` is ready to copy into the app's repository, and every check passes.
 Commit: `feat(api): add the parent API for the mobile app`
 - [ ] Owner review: I checked it and said "approved"
-
-- PostgreSQL with Prisma, replacing the mock repositories.
-- Auth.js sign-in with hashed passwords and roles for staff; the school always comes from the session. Gate/monitor devices and parents use their own token-based auth instead, not Auth.js — see `docs/ARCHITECTURE.md`'s auth section.
-- Tenant-scoped data access, Postgres row-level security, and tests proving one school cannot read another's data.
-- A service layer (`src/services/`) holding the real logic, so `/api/v1` route handlers (and any future client) call the same functions instead of duplicating business rules inside a route handler.
-- Versioned API under `/api/v1`, documented in `docs/ARCHITECTURE.md`.
-- Tap API with per-device tokens (not browser sessions), idempotent uploads (client-generated tap id) and lost-card alerts. The `/gate` kiosk page posts here. Keep the contract hardware-agnostic (a plain authenticated HTTP call, not tied to a browser session) so a station can be this tablet-with-USB-reader design now, a browser/Web NFC tablet or phone, or a dedicated fixed NFC reader (turnstile-style) later, without changing the API. Early stations may instead identify themselves by a logged-in staff session rather than a real device token — compatible with the same contract, just a different way of answering "which station/school."
-- A `/gate/display` guardhouse monitor: a live, read-only feed of recent taps (photo, name, grade) over server-sent events.
-- A device heartbeat, so the admin dashboard can show a gate station as online/offline.
-- A notification outbox: recording a tap and queuing its notification happen in one database transaction, so an alert is never silently lost even if the send fails or is delayed. A separate worker process reads the outbox and sends the push.
-- **Time-in/time-out derivation (decided 2026-09-23; debounce window and the derive-vs-explicit-direction question both re-confirmed on 2026-10-03):** a second tap from the same student within a 1-2 minute debounce window is a duplicate read and is ignored (Phase 1's tap station already does a simpler version of this — "already tapped" — with no time window, since there's no time-out concept yet to distinguish from). Past that window, taps alternate: 1st = time in, 2nd = time out, 3rd = time in, and so on — worked out fresh from the raw tap list each time, never stored as a label, the same "derive, don't store" approach `docs/ATTENDANCE-MODEL.md` already uses for present/late/absent. Re-confirmed rather than storing an explicit direction per tap, since one reader at one gate has no way to know direction on its own. Every physical tap already becomes its own `Tap` record today with no per-day limit, so the full history this needs already exists in Phase 1's data model — only the derivation function and the UI are missing.
-- **Attendance page display for multiple taps a day (decided 2026-09-23):** summary by default. The class table shows Time in (first tap) and Time out (last tap), which covers the normal case; a student with more than two taps that day (left and came back) gets a small "N taps today" indicator that opens the full sequence, rather than every row showing a full log. Doesn't change Step 17's already-built single "Time in" column until this is actually built.
-- Offline-first sync for tap stations: a tap made while offline is generated and queued on the device (its id already assigned client-side), then sent once connectivity returns. Parent notifications are sent only once a tap has actually reached the server, per each school's own preference (off / time-in only / time-in and time-out) — the "time-out" preference depends on the derivation above existing first.
-- Real push notifications to replace Phase 1's simulated in-app feed: Web Push (VAPID) for the browser, plus Firebase Cloud Messaging for Phase 3's Expo app. No SMS provider — see "Plan history" at the top of this file.
-- Privacy: consent records, export and delete per school, audit log.
-- Deployment on Heroku (Basic dyno, funded by the GitHub Student credit) with a Heroku Postgres add-on in production — confirmed 2026-10-03, already a long-running server, which the SSE monitor feed and the outbox worker both need; the local Docker Postgres from Step 30 stays for development only. Move to Vercel later if it justifies the cost. Backups, monitoring.
 
 ## Phase 2b: ready for real schools (added 2026-10-13)
 On 2026-10-13, before the first deploy, the owner asked for a review of the whole app, looking for anything that works for one school but gets worse with more schools, bigger schools or more years. It's written up in `docs/SCALING.md`. Each step below fixes one or more of its items, in the order they're due. Step 54 (push) comes first because the demo needs it. Steps 55–64 follow the demo, one at a time. None of these steps has a recipe yet: each gets one, approved by the owner, before its code. Any step can be split if it grows too big for one sitting.

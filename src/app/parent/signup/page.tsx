@@ -1,24 +1,15 @@
-import { connection } from "next/server";
 import { LoginArtPanel } from "@/features/auth/login-art-panel";
 import { LoginMobileHeader } from "@/features/auth/login-mobile-header";
 import { ParentSignupForm } from "@/features/parents/signup-form";
-import { schoolRepository } from "@/data/repositories";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 /**
  * Step 22's parent signup — a separate flow from the staff login at `/`
  * (src/app/page.tsx), sharing only its generic, no-school-branding art
- * panel and mobile header (this screen also renders before any one
- * school is chosen — the school picker inside the form is the parent's
- * own active choice, not the app assuming one, see auth-schemas.ts).
+ * panel and mobile header. It asks for no school (Step 53): each child's
+ * school is asked for when linking them.
  */
-export default async function ParentSignupPage() {
-  // Render on every request, not once at build time: the school list now
-  // comes from the database, and a school added later must show up here
-
-  await connection();
-  const schools = await schoolRepository.list();
-
+export default function ParentSignupPage() {
   return (
     <main className="relative grid min-h-screen flex-1 lg:grid-cols-[1.25fr_1fr] xl:grid-cols-[1.6fr_1fr]">
       {/* Light/dark before sign-in too (Step 27.5), in the form column's
@@ -39,12 +30,7 @@ export default async function ParentSignupPage() {
             </p>
           </div>
 
-          <ParentSignupForm
-            schools={schools.map((school) => ({
-              id: school.id,
-              name: school.name,
-            }))}
-          />
+          <ParentSignupForm />
         </div>
       </section>
     </main>

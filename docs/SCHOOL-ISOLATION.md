@@ -9,7 +9,7 @@ flowchart LR
     subgraph who["Who is asking (never the address or the form)"]
         S["staff session<br/>signed cookie (Step 50)"]
         D["gate / monitor<br/>device token (Step 43)"]
-        P["parent session<br/>signed cookie (Step 50.1)"]
+        P["parent's own links<br/>each saves its child's school (Step 53)"]
     end
     who --> SID["schoolId"]
     SID --> Repo["repository call<br/>getInSchool(schoolId, id)<br/>where: { id, schoolId }"]
@@ -17,7 +17,7 @@ flowchart LR
     X["Balanga's student id,<br/>asked by Oceanview"] -.->|"null: not found"| Repo
 ```
 
-1. **The school comes from who is asking.** A staff member's signed session, a device's token, or a parent's signed session. Never from the address, a hidden form field, or an object the browser sends back.
+1. **The school comes from who is asking.** A staff member's signed session, a device's token, or, for a parent, the school saved on each of their own links (the server checked it when the child was linked). Never from the address, a hidden form field, or an object the browser sends back.
 2. **Every lookup by id asks for the school too.** `studentRepository.getInSchool(schoolId, id)` runs `findFirst({ where: { id, schoolId } })`, so the database itself refuses another school's row. A forgotten check *after* the lookup can't leak anything, because there's nothing to forget.
 3. **Writes are scoped the same way.** `update(schoolId, student)`, `remove(schoolId, id)`, `markLost(schoolId, cardId)` and `markRead(schoolId, id)` put the school in the `where`, so another school's id changes no row.
 4. **"Not found", never "forbidden".** Another school's id gets exactly the answer a made-up id gets, so nobody can probe which ids exist.
@@ -32,7 +32,7 @@ flowchart LR
 | Taps | `listBySchoolOnDate`, `listByStudent`, `getInSchool`, `findByCardBetween` | `getById`: only `recordTap`'s replay check, which compares the stored tap's school with the gate's own. |
 | Notifications | `listBySchool`, `listByStudent`, `getInSchool`, `markRead` | — |
 | Alerts, parent–child links | by school or by parent | — |
-| Schools | — | `getById`, `update`: always called with the session's own school. `list`: the super admin's Schools page and parent sign-up's school dropdown. |
+| Schools | — | `getById`, `update`: always called with the session's own school. `list`: the super admin's Schools page and the school picker on the parent's "Link a child" (names only). |
 | Devices | — | `findByTokenHash`: the token *is* the identity. |
 
 ## Every way in
@@ -50,7 +50,8 @@ flowchart LR
 | `/api/v1/devices/heartbeat`, `/api/v1/gate/taps`, `/api/v1/gate/roster` | gate | `Device.schoolId`, from the token |
 | `/api/v1/gate/stream`, `/gate/display` | monitor, or a principal or super admin | the monitor cookie's device, or the session (`resolveMonitorViewer`) |
 | `/api/v1/photos/<school>/…` | staff, gate, monitor | the viewer's school must equal the key's first part (`canViewPhoto`); otherwise 404 |
-| `/parent/*` pages, `linkChild`, `markNotificationRead`, `markAllNotificationsRead` | parent | `getParentSession().schoolId`, plus the parent's own links |
+| `/parent/*` pages, `markNotificationRead`, `markAllNotificationsRead` | parent | each of the parent's own links carries its child's `schoolId` (Step 53); the parent session holds only the parent |
+| `linkChild` | parent | the school the parent picks, accepted only when a student there matches the LRN, last name and birth date; the new link saves it |
 | `/set-password` | whoever holds the link | the staff member in the signed token; the page shows only their own name and email |
 | `/design-system` | nobody in production | `notFound()` |
 
@@ -58,7 +59,7 @@ flowchart LR
 
 - **Every action, crossing over** (`src/features/isolation.test.ts`): signed in as Oceanview, with in-memory repositories filled with the demo data, each action is called with Balanga's ids. Every answer is "not found" or a refusal, and Balanga's record is unchanged afterwards. This test found the tap station hole above.
 - **The real `where` clauses** (`src/data/repositories/prisma-isolation.test.ts`): the Prisma repositories run against the browser tests' database. Asked for Balanga's rows as Oceanview, every lookup is null and every write changes nothing. Skipped when `E2E_DATABASE_URL` isn't set.
-- **The pages and addresses** (`e2e/isolation.spec.ts`): Oceanview's student search finds no Balanga student, a Balanga photo is a 404, an Oceanview gate treats a Balanga card as unknown and its roster has no Balanga students, and a Balanga parent can't link an Oceanview child.
+- **The pages and addresses** (`e2e/isolation.spec.ts`): Oceanview's student search finds no Balanga student, a Balanga photo is a 404, an Oceanview gate treats a Balanga card as unknown and its roster has no Balanga students, and picking Balanga with an Oceanview child's details finds no match.
 - **Each mock repository** has a "never reaches another school's …" test.
 
 ## Why not Postgres row-level security yet
@@ -67,7 +68,7 @@ Row-level security (RLS) makes the database itself filter every query by a "curr
 
 ## Quick recipes
 
-**I'm adding a page or an action. Where does my school come from?** From `requireSession()` (a page), `getSession()` (a staff action), the device (`authenticateGate`), or `getParentSession()` (a parent page or action). Never from `params`, `searchParams`, a form field or an object the browser sends. If the browser sends an object that carries a `schoolId` (like the tap station's taps), compare it with the session's and drop it when it differs.
+**I'm adding a page or an action. Where does my school come from?** From `requireSession()` (a page), `getSession()` (a staff action), the device (`authenticateGate`), or, for a parent, the `schoolId` on each of their own links (`parentStudentLinkRepository.listByParent`). Never from `params`, `searchParams`, a form field or an object the browser sends. If the browser sends an object that carries a `schoolId` (like the tap station's taps), compare it with the session's and drop it when it differs.
 
 **I'm adding a repository method that finds one row by id.** Make it take `schoolId` first and put both in the `where` (`findFirst({ where: { id, schoolId } })`, `updateMany`/`deleteMany` with both). Do the same in the mock. If it really must be unscoped, say why in its comment and add it to the table above. Add a line for it to `prisma-isolation.test.ts`.
 

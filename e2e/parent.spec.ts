@@ -1,6 +1,34 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+import { seedStudents } from "../src/data/seed/students";
+import type { Student } from "../src/features/students/types";
 import { signInAs } from "./sessions";
 import { findBalangaStudentByFullName, testEmail } from "./test-data";
+
+const BALANGA = "Balanga City National Science High School";
+const OCEANVIEW = "Oceanview National High School";
+
+/** Fills "Link a child": the school first (a Radix/shadcn Select, a button, not a native <select>), then the three details. */
+async function linkChild(page: Page, schoolName: string, student: Student) {
+  await page.getByLabel("Your child's school").click();
+  await page.getByRole("option", { name: schoolName }).click();
+  await page.getByLabel("LRN").fill(student.lrn!);
+  await page.getByLabel("Last name").fill(student.lastName);
+  await page.getByLabel("Birth date").fill(student.birthDate);
+  await page.getByRole("button", { name: "Link this child" }).click();
+}
+
+/** Signs up a brand-new parent; the app then opens "Link a child". */
+async function signUpNewParent(page: Page, email: string) {
+  await page.goto("/parent/signup");
+  await page.getByLabel("First name").fill("Test");
+  await page.getByLabel("Last name").fill("Parent");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Mobile number").fill("09171234567");
+  await page.getByLabel("Password", { exact: true }).fill("testpass123");
+  await page.getByLabel("Confirm password").fill("testpass123");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page).toHaveURL("/parent/link-child");
+}
 
 /**
  * The parent flow test only runs on mobile (360px) to avoid collisions
@@ -44,10 +72,7 @@ test.describe("Parent flow (mobile only)", () => {
     await page.getByLabel("Last name").fill("Parent");
     await page.getByLabel("Email").fill(newParentEmail);
     await page.getByLabel("Mobile number").fill("09171234567");
-    // Must pick Balanga since the tapped student is at that school. A
-    // Radix/shadcn Select (a button, not a native <select>).
-    await page.getByLabel("Your child's school").click();
-    await page.getByRole("option", { name: "Balanga City National Science High School" }).click();
+    // No school at sign-up (Step 53): it's asked for when linking a child.
     await page.getByLabel("Password", { exact: true }).fill("testpass123");
     await page.getByLabel("Confirm password").fill("testpass123");
 
@@ -55,11 +80,8 @@ test.describe("Parent flow (mobile only)", () => {
     // Redirected to link-child.
     await expect(page).toHaveURL("/parent/link-child");
 
-    // Step 3: Link the tapped student.
-    await page.getByLabel("LRN").fill(student!.lrn!);
-    await page.getByLabel("Last name").fill(student!.lastName);
-    await page.getByLabel("Birth date").fill(student!.birthDate);
-    await page.getByRole("button", { name: "Link this child" }).click();
+    // Step 3: Link the tapped student, at Balanga, where they tapped.
+    await linkChild(page, BALANGA, student!);
 
     // Redirected to parent dashboard.
     await expect(page).toHaveURL("/parent");
@@ -124,5 +146,25 @@ test.describe("Parent flow (mobile only)", () => {
     await expect(page).toHaveURL("/parent");
     const notificationStillThere = page.getByText(new RegExp(student!.lastName));
     await expect(notificationStillThere).toBeVisible();
+  });
+
+  test("one parent links children at two schools and sees both (Step 53)", async ({ page }) => {
+    const balangaChild = seedStudents.find((s) => s.schoolId === "school-balanga" && s.lrn)!;
+    const oceanviewChild = seedStudents.find((s) => s.schoolId === "school-oceanview" && s.lrn)!;
+
+    await signUpNewParent(page, testEmail("parent-two-schools"));
+    await linkChild(page, BALANGA, balangaChild);
+    await expect(page).toHaveURL("/parent");
+    await page.goto("/parent/link-child");
+    await linkChild(page, OCEANVIEW, oceanviewChild);
+    await expect(page).toHaveURL("/parent");
+
+    // Both children, each with their own school's name, since they're at two schools.
+    const main = page.locator("main");
+    for (const child of [balangaChild, oceanviewChild]) {
+      await expect(main.getByRole("heading", { name: `${child.firstName} ${child.lastName}` })).toBeVisible();
+    }
+    await expect(main.getByText(BALANGA)).toBeVisible();
+    await expect(main.getByText(OCEANVIEW)).toBeVisible();
   });
 });

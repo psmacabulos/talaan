@@ -49,11 +49,6 @@ export async function signUpParent(input: ParentSignupInput): Promise<ParentSign
     return { ok: false, fieldErrors: fieldErrorsFrom(parsed.error) };
   }
 
-  const school = await schoolRepository.getById(parsed.data.schoolId);
-  if (!school) {
-    return { ok: false, formError: "That school could not be found." };
-  }
-
   const existing = await parentRepository.findByEmail(parsed.data.email);
   if (existing) {
     return { ok: false, fieldErrors: { email: "An account with this email already exists." } };
@@ -62,7 +57,6 @@ export async function signUpParent(input: ParentSignupInput): Promise<ParentSign
   const parent = await parentRepository.create(
     {
       id: crypto.randomUUID(),
-      schoolId: parsed.data.schoolId,
       firstName: parsed.data.firstName,
       lastName: parsed.data.lastName,
       mobile: parsed.data.mobile,
@@ -113,7 +107,10 @@ export async function signOutParent(): Promise<void> {
 
 /**
  * Step 22's "link a child" — verified by LRN, last name and birth date
- * (CLAUDE.md's domain rules), no link code to distribute. Both the "no
+ * (CLAUDE.md's domain rules), no link code to distribute. Since Step 53 the
+ * parent picks the school too: it's accepted only when a student there
+ * matches all three details, and the link saves it, so every later read
+ * uses the school the server checked, never one the browser sends. Both the "no
  * match" and "already linked" errors CLAUDE.md asks for come back as a
  * `formError` here, following the same convention `card-actions.ts` uses.
  */
@@ -128,11 +125,16 @@ export async function linkChild(input: LinkChildInput): Promise<LinkChildActionR
     return { ok: false, fieldErrors: fieldErrorsFrom(parsed.error) };
   }
 
-  const student = await studentRepository.findForLink(session.schoolId, parsed.data);
+  const school = await schoolRepository.getById(parsed.data.schoolId);
+  if (!school) {
+    return { ok: false, fieldErrors: { schoolId: "Select your child's school" } };
+  }
+
+  const student = await studentRepository.findForLink(school.id, parsed.data);
   if (!student) {
     return {
       ok: false,
-      formError: "We couldn't find a student with that LRN, last name and birth date at your school.",
+      formError: "We couldn't find a student with that LRN, last name and birth date at that school.",
     };
   }
 
@@ -143,7 +145,7 @@ export async function linkChild(input: LinkChildInput): Promise<LinkChildActionR
 
   await parentStudentLinkRepository.create({
     id: crypto.randomUUID(),
-    schoolId: session.schoolId,
+    schoolId: school.id,
     parentId: session.parentId,
     studentId: student.id,
     linkedAt: new Date().toISOString(),

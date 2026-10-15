@@ -59,9 +59,13 @@ test.describe("One school can't see another's data (Step 51)", () => {
     expect(body.students.some((student) => student.id === balangaStudent.id)).toBe(false);
   });
 
-  test("a Balanga parent can't link an Oceanview student", async ({ context, page, baseURL }) => {
+  // Since Step 53 a parent picks the school when linking. Picking the wrong
+  // one still finds nobody: the details only match at the child's own school.
+  test("picking Balanga with an Oceanview student's details finds no match", async ({ context, page, baseURL }) => {
     await signInAs(context, "parent", baseURL!);
     await page.goto("/parent/link-child");
+    await page.getByLabel("Your child's school").click();
+    await page.getByRole("option", { name: "Balanga City National Science High School" }).click();
     await page.getByLabel("LRN").fill(oceanviewStudent.lrn!);
     await page.getByLabel("Last name").fill(oceanviewStudent.lastName);
     await page.getByLabel("Birth date").fill(oceanviewStudent.birthDate);

@@ -34,7 +34,6 @@ model School {
   cards              Card[]
   taps               Tap[]
   alerts             Alert[]
-  parents            Parent[]
   parentStudentLinks ParentStudentLink[]
   notifications      Notification[]
   devices            Device[]
@@ -161,10 +160,10 @@ model Alert {
   @@index([schoolId])
 }
 
+// A parent belongs to no school (Step 53): each linked child carries its own,
+// on ParentStudentLink, so one account covers children at any school.
 model Parent {
   id           String              @id @default(uuid())
-  schoolId     String
-  school       School              @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   firstName    String
   lastName     String
   mobile       String
@@ -176,12 +175,12 @@ model Parent {
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
   links        ParentStudentLink[]
-
-  @@index([schoolId])
 }
 
 model ParentStudentLink {
   id        String   @id @default(uuid())
+  // The child's school, saved when the parent's details matched a student
+  // there (Step 53). Every parent read uses it, never a school from the browser.
   schoolId  String
   school    School   @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   parentId  String

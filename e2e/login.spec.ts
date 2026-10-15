@@ -80,9 +80,7 @@ test.describe("Login", () => {
     await page.getByLabel("Last name").fill("Parent");
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Mobile number").fill("09171234567");
-    // A Radix/shadcn Select (a button, not a native <select>).
-    await page.getByLabel("Your child's school").click();
-    await page.getByRole("option", { name: "Balanga City National Science High School" }).click();
+    // No school at sign-up (Step 53): it's asked for when linking a child.
     await page.getByLabel("Password", { exact: true }).fill("testpass123");
     await page.getByLabel("Confirm password").fill("testpass123");
     await page.getByRole("button", { name: "Create account" }).click();

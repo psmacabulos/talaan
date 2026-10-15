@@ -6,12 +6,12 @@ import { phMobileSchema } from "@/features/students/schemas";
  * signup/login is Step 22) — this is just the domain record a parent's
  * future account is built on. Separate from `Student.guardianName` /
  * `guardianMobile`, which stay as a plain contact fallback for a guardian
- * who never creates an account (CLAUDE.md's domain rules). One parent
- * belongs to exactly one school; there is no cross-school parent.
+ * who never creates an account (CLAUDE.md's domain rules). A parent belongs
+ * to no school (Step 53): each linked child carries its own, so one account
+ * covers children at any number of schools.
  */
 export const parentSchema = z.object({
   id: z.string().min(1),
-  schoolId: z.string().min(1),
   firstName: z.string().min(1, "Enter a first name"),
   lastName: z.string().min(1, "Enter a last name"),
   mobile: phMobileSchema,
@@ -21,8 +21,9 @@ export const parentSchema = z.object({
 /**
  * The many-to-many join between a parent and a student — a parent can have
  * several children at the school, and a child can have several linked
- * guardians (a mother and father both notified). Because a parent is scoped
- * to one school, both sides of any link always share the same `schoolId`.
+ * guardians (a mother and father both notified). `schoolId` is the child's
+ * school, saved when the parent's details matched a student there; every
+ * parent read uses it (Step 53).
  */
 export const parentStudentLinkSchema = z.object({
   id: z.string().min(1),

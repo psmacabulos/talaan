@@ -9,7 +9,6 @@ const NOW = new Date("2026-10-12T08:00:00Z");
 
 const parent: Parent = {
   id: "parent-1",
-  schoolId: "school-a",
   firstName: "Liza",
   lastName: "Ramos",
   mobile: "09171234567",
@@ -21,9 +20,9 @@ function deps(): ParentSessionDeps {
 }
 
 describe("resolveParentSession", () => {
-  it("gives the parent and their school for a signed cookie", async () => {
+  it("gives the parent, and no school, for a signed cookie", async () => {
     const raw = makeParentSessionCookie(parent.id, SECRET, NOW);
-    await expect(resolveParentSession(raw, deps())).resolves.toEqual({ parentId: parent.id, schoolId: "school-a" });
+    await expect(resolveParentSession(raw, deps())).resolves.toEqual({ parentId: parent.id });
   });
 
   it("is signed out with no cookie", async () => {

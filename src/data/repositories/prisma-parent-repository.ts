@@ -9,7 +9,6 @@ import type { ParentRepository } from "./parent-repository";
 export function toParent(row: ParentRow): Parent {
   return parentSchema.parse({
     id: row.id,
-    schoolId: row.schoolId,
     firstName: row.firstName,
     lastName: row.lastName,
     mobile: row.mobile,
@@ -20,15 +19,12 @@ export function toParent(row: ParentRow): Parent {
 /** The app's `Parent` → the columns Prisma writes (the hash is added by `create`). */
 export function toParentData(parent: Parent) {
   return {
-    schoolId: parent.schoolId,
     firstName: parent.firstName,
     lastName: parent.lastName,
     mobile: parent.mobile,
     email: parent.email,
   };
 }
-
-const OLDEST_FIRST = [{ createdAt: "asc" as const }, { id: "asc" as const }];
 
 export function createPrismaParentRepository(db: PrismaClient = prisma): ParentRepository {
   /** Case-insensitive, like the mock: "Ana@Example.com" finds "ana@example.com". */
@@ -37,10 +33,6 @@ export function createPrismaParentRepository(db: PrismaClient = prisma): ParentR
   }
 
   return {
-    async listBySchool(schoolId) {
-      const rows = await db.parent.findMany({ where: { schoolId }, orderBy: OLDEST_FIRST });
-      return rows.map(toParent);
-    },
     async getById(id) {
       const row = await db.parent.findUnique({ where: { id } });
       return row ? toParent(row) : null;

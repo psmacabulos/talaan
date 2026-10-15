@@ -8,9 +8,13 @@ import {
   SESSION_MAX_AGE_SECONDS,
 } from "./session-cookie";
 
+/**
+ * Only the parent (Step 53). A parent has no school of their own: each
+ * linked child's school is on its `ParentStudentLink`, and every parent page
+ * reads from there.
+ */
 export type ParentSession = {
   parentId: string;
-  schoolId: string;
 };
 
 export type ParentSessionDeps = { parents: ParentRepository; secret: string; now: Date };
@@ -29,7 +33,7 @@ export async function resolveParentSession(
   if (!parentId) return null;
 
   const parent = await deps.parents.getById(parentId);
-  return parent ? { parentId: parent.id, schoolId: parent.schoolId } : null;
+  return parent ? { parentId: parent.id } : null;
 }
 
 /** The signed-in parent, or null. Signed out is a normal state here, not an error. Uses the real clock, never DEMO_NOW. */

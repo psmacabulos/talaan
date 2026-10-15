@@ -2,35 +2,39 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { linkChild } from "./auth-actions";
 import { linkChildSchema } from "./auth-schemas";
 import type { LinkChildInput } from "./types";
 
 /**
- * Step 22's "link a child" — the same three details CLAUDE.md's domain
- * rules describe (LRN, last name, birth date). On success this routes to
+ * Step 22's "link a child" — the child's school (Step 53), then the same
+ * three details CLAUDE.md's domain rules describe (LRN, last name, birth
+ * date). The school list is names only, no logos: this is the parent's own
+ * choice, not the app assuming a school. On success this routes to
  * the parent home page itself rather than the server action doing a
  * `redirect`, so the success toast (naming the linked child) has a chance
  * to actually show before navigating away.
  */
-export function LinkChildForm() {
+export function LinkChildForm({ schools }: { schools: { id: string; name: string }[] }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const {
     register,
     handleSubmit,
+    control,
     setError,
     formState: { errors, isSubmitting },
   } = useForm<LinkChildInput>({
     resolver: zodResolver(linkChildSchema),
-    defaultValues: { lrn: "", lastName: "", birthDate: "" },
+    defaultValues: { schoolId: "", lrn: "", lastName: "", birthDate: "" },
   });
 
   const busy = isPending || isSubmitting;
@@ -58,6 +62,38 @@ export function LinkChildForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-5">
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="link-child-school">Your child&apos;s school</Label>
+        <Controller
+          control={control}
+          name="schoolId"
+          render={({ field }) => (
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger
+                id="link-child-school"
+                className="w-full"
+                aria-invalid={errors.schoolId ? true : undefined}
+                aria-describedby={errors.schoolId ? "link-child-school-error" : undefined}
+              >
+                <SelectValue placeholder="Select a school" />
+              </SelectTrigger>
+              <SelectContent>
+                {schools.map((school) => (
+                  <SelectItem key={school.id} value={school.id}>
+                    {school.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        />
+        {errors.schoolId && (
+          <p id="link-child-school-error" className="text-sm text-destructive">
+            {errors.schoolId.message}
+          </p>
+        )}
+      </div>
+
       <div className="flex flex-col gap-2">
         <Label htmlFor="link-child-lrn">LRN</Label>
         <Input

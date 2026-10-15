@@ -21,6 +21,8 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-009](#p-009--2026-10-13--the-bucket-wasnt-named-talaan-photos) | 2026-10-13 | The bucket wasn't named `talaan-photos` | Cloudflare R2 | Resolved |
 | [P-010](#p-010--2026-10-13--a-missing-setting-gives-500s-instead-of-a-crashed-dyno) | 2026-10-13 | A missing setting gives 500s instead of a crashed dyno | Heroku, Next.js | Open: owner decides |
 | [P-011](#p-011--2026-10-14--heroku-run-answered-run-command-not-found) | 2026-10-14 | `heroku run` answered `run: command not found` | Heroku CLI, docs | Resolved |
+| [P-012](#p-012--2026-10-15--prisma-migrate-dev-refused-to-drop-a-column-here) | 2026-10-15 | `prisma migrate dev` refused to drop a column here | Prisma, building | Resolved |
+| [P-013](#p-013--2026-10-15--a-sign-in-test-still-picked-a-school-at-sign-up) | 2026-10-15 | A sign-in test still picked a school at sign-up | Playwright | Fixed, waiting for the owner's rerun |
 
 ---
 
@@ -257,3 +259,36 @@ Answered in `docs/LEARNING-LOG.md`, section "Putting it on the internet (Step 52
 | 2026-10-15 | Where does a school's ID come from, and how do I find a new school's? |
 | 2026-10-15 | Do I have to make every gate and monitor with a Heroku command? |
 | 2026-10-15 | P-010: what "bad setting" means, and what's being decided |
+
+---
+
+## The parent API, part 1 (Step 53, 2026-10-15)
+
+### P-012 · 2026-10-15 · `prisma migrate dev` refused to drop a column here
+- **Where:** building Step 53 on the laptop, in the tool's terminal (one that can't answer questions).
+- **Symptom:**
+  ```
+  • You are about to drop the column `schoolId` on the `Parent` table, which still contains 6 non-null values.
+  Error: Prisma Migrate has detected that the environment is non-interactive, which is not supported.
+  ```
+- **Cause:** `migrate dev` asks "are you sure?" before a change that deletes data, and stops when nobody can answer. Nothing was wrong with the change: every link already keeps its child's school, so the column held nothing that's needed.
+- **Options weighed:**
+  1. Ask the owner to run `migrate dev` in their own terminal. It works, but stalls the step on a round trip.
+  2. **`prisma migrate diff`**, which writes the same SQL without asking, into a new migration folder, then `prisma migrate deploy` to apply it. Chosen.
+  3. `migrate dev --create-only`. It asks the same question, so it fails the same way.
+- **Solution:** the commands are in the Step 53 recipe's "What changed while building". The generated SQL was read before applying it: drop the foreign key, the index, then the column.
+- **Status:** Resolved. The local database is up to date (`npx prisma migrate status`). Heroku applies the migration by itself at the next deploy.
+
+### P-013 · 2026-10-15 · A sign-in test still picked a school at sign-up
+- **Where:** the owner's `npx playwright test` run for Step 53.
+- **Symptom:**
+  ```
+  2 failed
+    [mobile] › e2e/login.spec.ts:75:7 › Login › parent sign-in redirects to link-child for a new parent
+    [desktop] › e2e/login.spec.ts:75:7 › Login › parent sign-in redirects to link-child for a new parent
+  ```
+- **Cause:** that test signs a parent up, and still clicked "Your child's school", a field Step 53 moved from sign-up to "Link a child". While building, only `e2e/parent.spec.ts` and `e2e/isolation.spec.ts` were checked for it; `e2e/login.spec.ts` signs a parent up too and was missed.
+- **Solution:** the two lines that picked the school are gone from `e2e/login.spec.ts`. A search of every test (`grep -rn "Your child's school" e2e src`) now finds the label only on "Link a child" and in the tests that link a child.
+- **Lesson:** when a form changes, search the tests for its labels, not only the tests named after it.
+- **Status:** Fixed, waiting for the owner's rerun.
+

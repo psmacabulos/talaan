@@ -3,12 +3,8 @@ import { passwordSchema } from "@/features/auth/schemas";
 import { lrnSchema, phMobileSchema } from "@/features/students/schemas";
 
 /**
- * Step 22's signup. A parent picks their child's school here, from a plain
- * dropdown of names (no logos) — the one pre-session screen where asking
- * "which school" is the parent's own active choice, not the app defaulting
- * to a single school's branding (CLAUDE.md's multi-tenant rule is about the
- * app never assuming a school, not about never asking). Fixing the school
- * at signup means "link a child" only ever has to search within it.
+ * Step 22's signup. No school (Step 53): one account covers children at any
+ * number of schools, and "link a child" asks for each child's school.
  */
 export const parentSignupSchema = z
   .object({
@@ -16,7 +12,6 @@ export const parentSignupSchema = z
     lastName: z.string().trim().min(1, "Enter a last name"),
     mobile: phMobileSchema,
     email: z.email("Enter a valid email address"),
-    schoolId: z.string().min(1, "Select your child's school"),
     password: passwordSchema,
     confirmPassword: z.string().min(1, "Confirm your password"),
   })
@@ -31,11 +26,12 @@ export const parentLoginSchema = z.object({
 });
 
 /**
- * "Link a child" (CLAUDE.md's domain rules): the three details a parent
- * already has on hand and that uniquely identify a student at their
- * school — no link code to distribute.
+ * "Link a child" (CLAUDE.md's domain rules): the child's school (Step 53),
+ * then the three details a parent already has on hand and that uniquely
+ * identify a student there — no link code to distribute.
  */
 export const linkChildSchema = z.object({
+  schoolId: z.string().min(1, "Select your child's school"),
   lrn: lrnSchema,
   lastName: z.string().trim().min(1, "Enter your child's last name"),
   birthDate: z.iso.date("Enter your child's birth date"),

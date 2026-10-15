@@ -4,7 +4,6 @@ import { toParent, toParentData } from "./prisma-parent-repository";
 
 const row: ParentRow = {
   id: "parent-a",
-  schoolId: "school-a",
   firstName: "Liza",
   lastName: "Cruz",
   mobile: "09170000001",
@@ -19,7 +18,6 @@ describe("toParent", () => {
     const parent = toParent(row);
     expect(parent).toEqual({
       id: "parent-a",
-      schoolId: "school-a",
       firstName: "Liza",
       lastName: "Cruz",
       mobile: "09170000001",

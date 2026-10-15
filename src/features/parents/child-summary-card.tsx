@@ -9,9 +9,20 @@ export const formatTapDate = formatSchoolDate;
 
 /**
  * One linked child's card on the parent dashboard: today's status plus a
- * plain history of every tap on record for them, newest first.
+ * plain history of every tap on record for them, newest first. `schoolName`
+ * is given only when the parent's children are at more than one school.
  */
-export function ChildSummaryCard({ student, taps, day }: { student: Student; taps: Tap[]; day: SchoolDay }) {
+export function ChildSummaryCard({
+  student,
+  taps,
+  day,
+  schoolName,
+}: {
+  student: Student;
+  taps: Tap[];
+  day: SchoolDay;
+  schoolName?: string;
+}) {
   const status = studentStatus(student.id, taps, day);
   const history = [...taps].sort((a, b) => Date.parse(b.tappedAt) - Date.parse(a.tappedAt));
 
@@ -22,6 +33,7 @@ export function ChildSummaryCard({ student, taps, day }: { student: Student; tap
           <h2 className="font-heading text-base font-semibold text-foreground">
             {student.firstName} {student.lastName}
           </h2>
+          {schoolName ? <p className="text-sm text-muted-foreground">{schoolName}</p> : null}
           <p className="text-sm text-muted-foreground">
             Grade {student.gradeLevel} – {student.section}
           </p>
