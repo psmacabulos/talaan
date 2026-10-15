@@ -1356,3 +1356,16 @@ No. The code never names a bucket. It reads whatever is in the `S3_BUCKET` setti
 - the bucket itself
 
 R2 names allow only lowercase letters, numbers and hyphens, so the real name is something like `bantayaral-photos`. Copy it from the R2 list rather than retyping it. A wrong name doesn't stop the server from starting; it only fails later, the first time someone uploads a photo.
+
+### Where does a school's ID come from, like `school-balanga`? (owner question, 2026-10-15)
+Every school has an ID: the key that every student, staff member, tap and device row points to. It's not the name, and nobody types it in the app.
+
+- **The three demo schools** have readable IDs written by hand in `src/data/seed/schools.ts`: `school-balanga` (Balanga City NSHS), `school-oceanview` (Oceanview NHS) and `school-crimsonridge` (Crimson Ridge NHS). They're readable on purpose, so the demo logins, tests and docs can name them. `heroku run npx prisma db seed` copied them to the live database unchanged.
+- **A school made with "Add school"** gets a random ID made by the server (`crypto.randomUUID()` in `createSchool`, `src/features/schools/actions.ts`), something like `7c9e6679-7425-40de-944b-e07fc1f099c3`. It's random so two schools can never clash, and it never changes if the school is renamed.
+- **Where you need it:** only in `npm run device:create -- --school <id>`. The app doesn't show IDs anywhere, so for a new school you look it up in the database: `select id, name from "School" order by name;`.
+
+### Do I have to make every gate and monitor with a Heroku command? (owner question, 2026-10-15)
+For now, yes, and only someone with your Heroku login can do it. That's normal while an app is being built, but not for a task done at each school. A real product does it in its own admin screen. A **Devices page in Settings** would let a principal add a gate or monitor for their own school, see which ones are online, and switch off a lost one. They'd never need your Heroku login or a school ID, because the page already knows which school they're signed in to. The options (a token shown once, or a pairing code typed in from the device) are in `docs/GATE-HARDWARE.md`, "Assigning a device to a school: pairing codes".
+
+### P-010: what "a bad setting" means, and what's being decided (owner question, 2026-10-15)
+"Settings" here are the server's config vars on Heroku (`heroku config`): `DATABASE_URL`, `SESSION_SECRET`, the `S3_…` photo keys and the rest. When the server starts, `src/instrumentation.ts` checks them. If one is missing or unsafe, every page answers with an error (500) and `heroku logs` names the setting, which is what happened in P-007. Nothing half-works either way. The only question is how it **looks**: today `heroku ps` still says the server is `up`, so you only notice from the logs or the health check. The alternative makes the server stop on purpose, so Heroku shows it as `crashed`. That's a few lines of code. Details in `docs/PROBLEMS-LOG.md`, P-010.

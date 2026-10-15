@@ -90,17 +90,19 @@ The credit shows on Heroku's Account → Billing page. Until it does, the card o
 
 **Your own super admin.**
 ```bash
-heroku run npm run staff:link -- --create-super-admin --email <you> --first-name <first> --last-name <last> --app bantayaral
+heroku run --app bantayaral "npm run staff:link -- --create-super-admin --email <you> --first-name <first> --last-name <last>"
 ```
 Open `https://bantayaral.herokuapp.com` followed by the printed path and set your password.
 
-**A sign-in or reset link for someone.** `heroku run npm run staff:link -- --email <email> --app bantayaral`.
+**A sign-in or reset link for someone.** `heroku run --app bantayaral "npm run staff:link -- --email <email>"`.
 
 **A gate tablet or a monitor.**
 ```bash
-heroku run npm run device:create -- --school school-balanga --kind gate --label "Main gate tablet" --app bantayaral
-heroku run npm run device:create -- --school school-balanga --kind monitor --label "Guardhouse TV" --app bantayaral
+heroku run --app bantayaral "npm run device:create -- --school school-balanga --kind gate --label 'Main gate tablet'"
+heroku run --app bantayaral "npm run device:create -- --school school-balanga --kind monitor --label 'Guardhouse TV'"
 ```
+Keep the double quotes around the whole `npm run …` part, with `--app` before it. Typed without them, the Heroku CLI sends a broken command to the server (`run: command not found`, see P-011 in `docs/PROBLEMS-LOG.md`).
+
 Each prints its token once. On the tablet, open `/gate` and enter the token on its setup screen. On the monitor, open `/gate/display/connect?key=<token>`.
 
 **Look inside the database.** `heroku pg:psql --app bantayaral`. `\q` quits.

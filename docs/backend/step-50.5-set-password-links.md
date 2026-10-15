@@ -95,7 +95,7 @@ npm run staff:link -- --email principal@school-balanga.talaan.example
 npm run staff:link -- --create-super-admin --email you@example.com --first-name Pat --last-name Santos
 ```
 
-It prints the path (`/set-password?token=…`). You put your site's address in front of it: `http://localhost:3000` locally, or the Heroku address after Step 52, where it runs as `heroku run npm run staff:link -- …`. It reads `SESSION_SECRET` from the environment, the same as the app, so the link it prints is one the app accepts.
+It prints the path (`/set-password?token=…`). You put your site's address in front of it: `http://localhost:3000` locally, or the Heroku address after Step 52, where it runs as `heroku run --app bantayaral "npm run staff:link -- …"` (quotes included; see P-011 in `docs/PROBLEMS-LOG.md`). It reads `SESSION_SECRET` from the environment, the same as the app, so the link it prints is one the app accepts.
 
 ### 5. Tests
 

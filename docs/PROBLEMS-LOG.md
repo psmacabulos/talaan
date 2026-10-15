@@ -14,12 +14,13 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-002](#p-002--2026-10-13--npm-ci-would-refuse-to-install-after-moving-three-packages) | 2026-10-13 | `npm ci` would refuse to install after moving three packages | Build | Resolved |
 | [P-003](#p-003--2026-10-13--the-recipe-opened-the-gate-with-a-token-in-the-address) | 2026-10-13 | The recipe opened the gate with a token in the address | Docs | Resolved |
 | [P-004](#p-004--2026-10-13--unclear-how-code-gets-to-heroku-and-why-the-first-deploy-didnt-start) | 2026-10-13 | Unclear how code gets to Heroku, and why the first deploy didn't start | Deploy | Resolved |
-| [P-005](#p-005--2026-10-13--ci-failed-at-typecheck-after-the-push) | 2026-10-13 | CI failed at Typecheck after the push | CI | Fixed, waiting for a green CI |
+| [P-005](#p-005--2026-10-13--ci-failed-at-typecheck-after-the-push) | 2026-10-13 | CI failed at Typecheck after the push | CI | Resolved |
 | [P-006](#p-006--2026-10-13--the-bare-domain-couldnt-point-at-heroku-from-hostinger) | 2026-10-13 | The bare domain couldn't point at Heroku from Hostinger | Domain | Resolved |
-| [P-007](#p-007--2026-10-13--the-live-site-answered-every-request-with-500) | 2026-10-13 | The live site answered every request with 500 | Heroku, settings | Fix in progress (owner) |
-| [P-008](#p-008--2026-10-13--the-r2-secret-access-key-couldnt-be-found-again) | 2026-10-13 | The R2 secret access key couldn't be found again | Cloudflare R2 | Fix in progress (owner) |
-| [P-009](#p-009--2026-10-13--the-bucket-wasnt-named-talaan-photos) | 2026-10-13 | The bucket wasn't named `talaan-photos` | Cloudflare R2 | Resolved, if `S3_BUCKET` matches |
+| [P-007](#p-007--2026-10-13--the-live-site-answered-every-request-with-500) | 2026-10-13 | The live site answered every request with 500 | Heroku, settings | Resolved |
+| [P-008](#p-008--2026-10-13--the-r2-secret-access-key-couldnt-be-found-again) | 2026-10-13 | The R2 secret access key couldn't be found again | Cloudflare R2 | Resolved |
+| [P-009](#p-009--2026-10-13--the-bucket-wasnt-named-talaan-photos) | 2026-10-13 | The bucket wasn't named `talaan-photos` | Cloudflare R2 | Resolved |
 | [P-010](#p-010--2026-10-13--a-missing-setting-gives-500s-instead-of-a-crashed-dyno) | 2026-10-13 | A missing setting gives 500s instead of a crashed dyno | Heroku, Next.js | Open: owner decides |
+| [P-011](#p-011--2026-10-14--heroku-run-answered-run-command-not-found) | 2026-10-14 | `heroku run` answered `run: command not found` | Heroku CLI, docs | Resolved |
 
 ---
 
@@ -109,7 +110,7 @@ sequenceDiagram
   };
   ```
 - **Lesson:** "tests pass" and "types are fine" are separate results. The routine before every commit runs both.
-- **Status:** Fixed. Waiting for the owner's checks and a green CI run.
+- **Status:** Resolved (2026-10-15). CI went green, and Heroku deployed after it by itself.
 
 ### P-006 · 2026-10-13 · The bare domain couldn't point at Heroku from Hostinger
 - **Where:** Hostinger DNS, for `bantayaral.com`.
@@ -161,7 +162,7 @@ flowchart LR
   ```
   To see which settings exist without showing their values: `heroku config --app bantayaral | cut -d: -f1`. A typo in a name counts as missing.
 - **Check:** `curl https://bantayaral.com/api/v1/health` returns `{"ok":true,"database":"ok"}`.
-- **Status:** Fix in progress (owner).
+- **Status:** Resolved (2026-10-15). The live site loads, and the gate and monitor work.
 
 ### P-008 · 2026-10-13 · The R2 secret access key couldn't be found again
 - **Where:** Cloudflare, R2 API tokens.
@@ -172,7 +173,7 @@ flowchart LR
   heroku config:set S3_ACCESS_KEY_ID="…" S3_SECRET_ACCESS_KEY="…" --app bantayaral
   ```
 - **Lesson:** save a secret in a password manager the moment it's shown.
-- **Status:** Fix in progress (owner).
+- **Status:** Resolved (2026-10-15). A new token's values are set on Heroku, and the site starts.
 
 ### P-009 · 2026-10-13 · The bucket wasn't named `talaan-photos`
 - **Where:** Cloudflare R2.
@@ -188,7 +189,7 @@ flowchart LR
   heroku config:set S3_BUCKET="<exact name>" --app bantayaral
   ```
 - **Watch out:** a wrong bucket name doesn't stop the server from starting. It only fails at the first photo upload. Step 52's "Verify it worked" (add a photo to a demo student) is what proves it.
-- **Status:** Resolved, if `S3_BUCKET` matches.
+- **Status:** Resolved (2026-10-15). The owner added a photo to a student on the live site, and it shows.
 
 ### P-010 · 2026-10-13 · A missing setting gives 500s instead of a crashed dyno
 - **Where:** Heroku with Next.js, found from P-007's logs.
@@ -196,7 +197,48 @@ flowchart LR
 - **Cause:** when `register()` in `src/instrumentation.ts` throws, Next.js logs it and keeps the process running. It doesn't exit.
 - **Effect:** still safe, because nothing half-works. But it's less visible: `heroku ps` shows the dyno as `up`, not crashed, so you only find out from the logs or the health check.
 - **Possible fix:** make the check end the process, so Heroku reports "crashed" and retries. This is a small code change.
-- **Status:** Open. The owner decides whether to do it.
+- **Related (2026-10-15):** the owner asked for friendly error pages with a way to report a problem, instead of a bare "server error". Added to Step 59 in `docs/PLAN.md`. Heroku's own "down for a moment" page (`ERROR_PAGE_URL`) only shows when the server isn't running, so it works together with this fix.
+- **Status:** Open. The owner decides whether to do it; recommended as a task in Step 59.
+
+### P-011 · 2026-10-14 · `heroku run` answered "run: command not found"
+- **Where:** the Heroku CLI on your laptop (version 11), running a script on the live server, typed exactly as `docs/DEPLOY.md` said at the time.
+- **Symptom:**
+  ```
+  ❯ heroku run npm run device:create -- --school school-balanga --kind gate --label "Main gate tablet" --app bantayaral
+  Running run npm run device:create --school school-balanga --kind gate --label "Main gate tablet" --app bantayaral on ⬢ bantayaral... up, run.3007
+  /bin/bash: line 1: run: command not found
+  ```
+  The clue is the `Running` line: an extra `run` in front of `npm`, and the `--` is gone. Nothing reached the database, so no half-made device needs cleaning up.
+- **Cause:** a bug in how the Heroku CLI rebuilds the command before sending it (`revertSortedArgs` in its `lib/run/helpers.js`). It walks through every word typed after `heroku` and keeps each one that also appears in the command. Its own sub-command, `run`, matches the `run` of `npm run`, so it's kept as well, and the server is asked to run `run npm run …`. The same line had two more faults:
+  - the CLI swallows the `--`, which npm needs to pass the options on to the script;
+  - `--app bantayaral` came after the `--`, so the CLI sent it to the server as part of the script instead of reading it. (It still found the app, from the `heroku` git remote.) Even without the extra `run`, the script would have stopped on an option it doesn't know, `--app`.
+
+  `heroku run npx prisma db seed --app bantayaral` worked because no word repeats `run` and there's no `--`. Our docs had the broken form for `device:create` and `staff:link` since Step 52, but this was its first real use.
+
+  ```mermaid
+  flowchart LR
+      subgraph Before["Before: no quotes"]
+          A1["heroku run npm run device:create<br/>-- … --app bantayaral"] --> B1["Heroku CLI keeps every word<br/>that matches, its own run too"]
+          B1 -->|"run npm run device:create …"| C1["Dyno: bash"]
+          C1 --> D1["run: command not found"]
+      end
+      subgraph After["After: one quoted argument"]
+          A2["heroku run --app bantayaral<br/>#quot;npm run device:create -- …#quot;"] --> B2["Heroku CLI reads --app,<br/>passes the quoted text unchanged"]
+          B2 -->|"npm run device:create -- …"| C2["Dyno: bash, then npm"]
+          C2 --> D2["scripts/create-device.ts<br/>prints the token"]
+      end
+  ```
+- **Options weighed:**
+  1. **Quote the whole script as one argument, with `--app` first.** The CLI then sees a single argument that isn't an option and sends it as it is. Same npm script names as on the laptop. Chosen.
+  2. Skip npm: `heroku run --app bantayaral -- npx tsx scripts/create-device.ts --school …`. Also works, but it's a different command from the laptop one, and it still relies on the CLI's word matching.
+  3. Wait for a Heroku CLI fix. Nothing to wait on, and option 1 works on every version.
+- **Solution:** double quotes around the whole script, single quotes inside for a label with spaces:
+  ```
+  heroku run --app bantayaral "npm run device:create -- --school school-balanga --kind gate --label 'Main gate tablet'"
+  ```
+  The same shape for `staff:link`. Updated in `docs/DEPLOY.md`, `docs/COMMANDS.md` (7b and 7c), and the Step 52 and Step 50.5 recipes.
+- **Check:** the `Running` line starts with `Running npm run device:create -- --school …` (no `run` before `npm`), and the output ends with `Created gate "Main gate tablet" for …`, a device id and a `tal_dev_…` token.
+- **Status:** Resolved (2026-10-15). With the quoted form, the owner made the gate and monitor devices on the live server, and both work.
 
 ### Questions along the way (no problem, just confusion)
 Answered in `docs/LEARNING-LOG.md`, section "Putting it on the internet (Step 52)":
@@ -212,3 +254,6 @@ Answered in `docs/LEARNING-LOG.md`, section "Putting it on the internet (Step 52
 | 2026-10-13 | What does "The server can't start with these settings" mean? |
 | 2026-10-13 | Where is the R2 secret access key? |
 | 2026-10-13 | Does the bucket have to be called `talaan-photos`? |
+| 2026-10-15 | Where does a school's ID come from, and how do I find a new school's? |
+| 2026-10-15 | Do I have to make every gate and monitor with a Heroku command? |
+| 2026-10-15 | P-010: what "bad setting" means, and what's being decided |

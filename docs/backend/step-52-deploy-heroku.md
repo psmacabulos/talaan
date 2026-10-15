@@ -120,15 +120,17 @@ From now on, every push to `main` deploys by itself after CI passes.
    `npm run db:reset` refuses to run anywhere but your laptop, by design (it empties every table).
 2. Your own super admin account:
    ```bash
-   heroku run npm run staff:link -- --create-super-admin --email <you> --first-name <first> --last-name <last> --app bantayaral
+   heroku run --app bantayaral "npm run staff:link -- --create-super-admin --email <you> --first-name <first> --last-name <last>"
    ```
    Open `https://bantayaral.herokuapp.com` followed by the printed path, and set your password.
 3. The seed's staff are demo accounts with the well-known `Talaan123!` password. Before showing the site to anyone, sign in as yourself, and give any demo account you'll use a new password with a reset link (Step 50.5).
 4. A gate token and a monitor key. Each is printed once:
    ```bash
-   heroku run npm run device:create -- --school school-balanga --kind gate --label "Main gate tablet" --app bantayaral
-   heroku run npm run device:create -- --school school-balanga --kind monitor --label "Guardhouse TV" --app bantayaral
+   heroku run --app bantayaral "npm run device:create -- --school school-balanga --kind gate --label 'Main gate tablet'"
+   heroku run --app bantayaral "npm run device:create -- --school school-balanga --kind monitor --label 'Guardhouse TV'"
    ```
+   Keep the double quotes, with `--app` before them. The first version of this recipe put `--app` at the end with no quotes, which the Heroku CLI turns into `run npm run …` on the server (`run: command not found`). See P-011 in `docs/PROBLEMS-LOG.md`.
+
 Then go through "Verify it worked" below.
 
 ## My part: code changes
@@ -146,7 +148,7 @@ web: npm start
 ### 2. `package.json`
 
 - `"engines": { "node": "24.x" }`, so Heroku runs the same Node as CI and your laptop.
-- **`prisma`, `tsx` and `dotenv` move from `devDependencies` to `dependencies`.** No new package; they just move. Heroku deletes development packages after the build, but the release phase needs `prisma`, and `heroku run npm run device:create` / `staff:link` need `tsx`. `prisma.config.ts` imports `dotenv`.
+- **`prisma`, `tsx` and `dotenv` move from `devDependencies` to `dependencies`.** No new package; they just move. Heroku deletes development packages after the build, but the release phase needs `prisma`, and the `device:create` and `staff:link` scripts (run on the server through `heroku run`) need `tsx`. `prisma.config.ts` imports `dotenv`.
 - `"heroku-postbuild"` isn't needed: Heroku runs `npm run build` by default, and `postinstall` already runs `prisma generate`.
 
 ### 3. Fail fast on bad settings
@@ -174,8 +176,8 @@ web: npm start
 How the deploy works (the diagram above), every config var with what it's for (names only, never values), and quick recipes:
 - **Deploy:** push to `main`; watch with `heroku logs --tail --app bantayaral`.
 - **Roll back:** `heroku releases --app bantayaral`, then `heroku rollback v<N>`. A migration isn't rolled back; see `docs/DATABASE-MIGRATIONS.md`.
-- **Make a gate or monitor:** `heroku run npm run device:create -- --school school-balanga --kind gate --label "Main gate tablet" --app bantayaral`.
-- **Make a sign-in link:** `heroku run npm run staff:link -- --email … --app bantayaral` (Step 50.5).
+- **Make a gate or monitor:** `heroku run --app bantayaral "npm run device:create -- --school school-balanga --kind gate --label 'Main gate tablet'"`.
+- **Make a sign-in link:** `heroku run --app bantayaral "npm run staff:link -- --email …"` (Step 50.5).
 - **Open the database:** `heroku pg:psql --app bantayaral`.
 - **Back up now:** `heroku pg:backups:capture --app bantayaral`. Essential plans keep automatic backups too; check `heroku pg:backups`.
 - **What it costs, and where to check the credit.**

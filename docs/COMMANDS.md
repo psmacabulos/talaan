@@ -222,7 +222,7 @@ More in `docs/GATE.md`.
 | `npm run staff:link -- --email teacher@school-balanga.talaan.example` | Prints a link's path for that account: their first password if they're invited, a password reset if they're active. Works once, for 7 days. |
 | `npm run staff:link -- --create-super-admin --email you@example.com --first-name Pat --last-name Santos` | Creates a super admin, then prints their link. How the very first account on a new server gets in. |
 
-It prints a path like `/set-password?token=…`. Put the site's address in front of it: `http://localhost:3000/set-password?token=…` locally. On Heroku (Step 52) the same command runs as `heroku run npm run staff:link -- …`, and the address is the Heroku one.
+It prints a path like `/set-password?token=…`. Put the site's address in front of it: `http://localhost:3000/set-password?token=…` locally. On Heroku (Step 52) the same command runs as `heroku run --app bantayaral "npm run staff:link -- …"` (quotes included, see 7c), and the address is the Heroku one.
 
 In the app, a principal gets the same links without the terminal: the dialog after **Invite staff**, or Staff → ⋮ → **Copy sign-in link** / **Copy password reset link**. A super admin gets a new school's principal's link right after **Add school**.
 
@@ -232,7 +232,7 @@ In the app, a principal gets the same links without the terminal: the dialog aft
 
 ## 7c. The live server (Heroku, Step 52)
 
-**What "deploy" means now:** you push to `main`, CI runs, and only when CI passes does Heroku build and release the new version by itself. There's no separate `git push heroku`. Every command here ends in `--app bantayaral` (the app's Heroku name).
+**What "deploy" means now:** you push to `main`, CI runs, and only when CI passes does Heroku build and release the new version by itself. There's no separate `git push heroku`. Every command here names the app with `--app bantayaral` (the app's Heroku name).
 
 | Command | What it does |
 |---|---|
@@ -243,12 +243,14 @@ In the app, a principal gets the same links without the terminal: the dialog aft
 | `heroku config --app bantayaral` | The server's settings. Shows values, so don't run it while sharing your screen. |
 | `heroku config:set NAME=value --app bantayaral` | Changes a setting; the server restarts by itself. |
 | `heroku run npx prisma db seed --app bantayaral` | Loads the demo data. First deploy only. |
-| `heroku run npm run staff:link -- --email <email> --app bantayaral` | A sign-in or reset link, as in 7b. Add `--create-super-admin --first-name … --last-name …` for the first account. |
-| `heroku run npm run device:create -- --school school-balanga --kind gate --label "Main gate tablet" --app bantayaral` | A gate (or `--kind monitor`) token, as in section 7. |
+| `heroku run --app bantayaral "npm run staff:link -- --email <email>"` | A sign-in or reset link, as in 7b. Add `--create-super-admin --first-name … --last-name …` inside the quotes for the first account. |
+| `heroku run --app bantayaral "npm run device:create -- --school school-balanga --kind gate --label 'Main gate tablet'"` | A gate (or `--kind monitor`) token, as in section 7. |
 | `heroku pg:psql --app bantayaral` | A `psql` prompt on the live database. `\q` quits. |
 | `heroku pg:backups:capture --app bantayaral` | A backup right now. `heroku pg:backups --app bantayaral` lists them. |
 | `curl https://bantayaral.herokuapp.com/api/v1/health` | `{"ok":true,"database":"ok"}` when the site and its database are fine. |
 | `dig www.bantayaral.com CNAME +short` | Where a domain name points. Prints the DNS target once a new record is live; prints nothing while it's still spreading. |
+
+**`heroku run` with an `npm run … -- …` script:** put `--app bantayaral` right after `heroku run`, then the whole script in double quotes, with single quotes inside for a label that has spaces. Without the quotes, the Heroku CLI mangles the command and the server answers `/bin/bash: line 1: run: command not found` (P-011 in `docs/PROBLEMS-LOG.md`).
 
 **Files:** `Procfile`, `package.json` (`engines`), `src/instrumentation.ts`, `src/lib/env.ts`, `src/app/api/v1/health/route.ts`. Full guide: `docs/DEPLOY.md`.
 
