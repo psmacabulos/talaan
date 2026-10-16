@@ -62,4 +62,9 @@ describe("createMockParentStudentLinkRepository", () => {
     await repo.create({ ...link1, studentId: "student-different" });
     await expect(repo.listByParent("parent-a")).resolves.toEqual([link1]);
   });
+  it("returns null for a second link between the same parent and student", async () => {
+    const repo = createMockParentStudentLinkRepository([link1], { latencyMs: 0 });
+    await expect(repo.create({ ...link1, id: "link-twin" })).resolves.toBeNull();
+    await expect(repo.listByParent(link1.parentId)).resolves.toEqual([link1]);
+  });
 });

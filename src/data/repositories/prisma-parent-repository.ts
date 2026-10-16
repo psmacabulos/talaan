@@ -1,9 +1,11 @@
 import type { Parent as ParentRow, PrismaClient } from "@/generated/prisma/client";
+import { normalizeEmail } from "@/features/auth/schemas";
 import { parentSchema } from "@/features/parents/schemas";
 import type { Parent } from "@/features/parents/types";
 import { prisma } from "@/lib/db";
-import { hashPassword, passwordMatches } from "@/lib/password";
+import { decoyPasswordHash, hashPassword, passwordMatches } from "@/lib/password";
 import type { ParentRepository } from "./parent-repository";
+import { isUniqueViolation } from "./prisma-errors";
 
 /** A database row → the app's own `Parent`. The password hash never leaves this file. */
 export function toParent(row: ParentRow): Parent {
@@ -16,20 +18,24 @@ export function toParent(row: ParentRow): Parent {
   });
 }
 
-/** The app's `Parent` → the columns Prisma writes (the hash is added by `create`). */
+/** The app's `Parent` → the columns Prisma writes (the hash is added by `create`). The email is stored trimmed and in lower case. */
 export function toParentData(parent: Parent) {
   return {
     firstName: parent.firstName,
     lastName: parent.lastName,
     mobile: parent.mobile,
-    email: parent.email,
+    email: normalizeEmail(parent.email),
   };
 }
 
 export function createPrismaParentRepository(db: PrismaClient = prisma): ParentRepository {
-  /** Case-insensitive, like the mock: "Ana@Example.com" finds "ana@example.com". */
+  /**
+   * Emails are stored in lower case (Step 53.1), so " Ana@Example.com "
+   * finds "ana@example.com" with an exact match, which the unique email
+   * index answers. A case-insensitive search couldn't use it.
+   */
   function findRowByEmail(email: string) {
-    return db.parent.findFirst({ where: { email: { equals: email.trim(), mode: "insensitive" } } });
+    return db.parent.findUnique({ where: { email: normalizeEmail(email) } });
   }
 
   return {
@@ -42,17 +48,25 @@ export function createPrismaParentRepository(db: PrismaClient = prisma): ParentR
       return row ? toParent(row) : null;
     },
     async create(parent, password) {
-      const row = await db.parent.upsert({
-        where: { id: parent.id },
-        update: {},
-        create: { id: parent.id, ...toParentData(parent), passwordHash: await hashPassword(password) },
-      });
-      return toParent(row);
+      try {
+        const row = await db.parent.upsert({
+          where: { id: parent.id },
+          update: {},
+          create: { id: parent.id, ...toParentData(parent), passwordHash: await hashPassword(password) },
+        });
+        return toParent(row);
+      } catch (error) {
+        // Another sign-up saved this email first.
+        if (isUniqueViolation(error)) return null;
+        throw error;
+      }
     },
     async verifyPassword(email, password) {
       const row = await findRowByEmail(email);
-      if (!row) return null;
-      return (await passwordMatches(password, row.passwordHash)) ? toParent(row) : null;
+      // scrypt runs either way, against a decoy for an unknown email, so the
+      // answer takes as long and doesn't give away who has an account.
+      const matches = await passwordMatches(password, row?.passwordHash ?? (await decoyPasswordHash()));
+      return row && matches ? toParent(row) : null;
     },
   };
 }

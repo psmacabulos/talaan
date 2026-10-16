@@ -3,6 +3,7 @@ import { parentStudentLinkSchema } from "@/features/parents/schemas";
 import type { ParentStudentLink } from "@/features/parents/types";
 import { prisma } from "@/lib/db";
 import type { ParentStudentLinkRepository } from "./parent-student-link-repository";
+import { isUniqueViolation } from "./prisma-errors";
 
 /** A database row → the app's own `ParentStudentLink`. */
 export function toParentStudentLink(row: LinkRow): ParentStudentLink {
@@ -43,12 +44,18 @@ export function createPrismaParentStudentLinkRepository(db: PrismaClient = prism
       return rows.map(toParentStudentLink);
     },
     async create(link) {
-      const row = await db.parentStudentLink.upsert({
-        where: { id: link.id },
-        update: {},
-        create: { id: link.id, ...toParentStudentLinkData(link) },
-      });
-      return toParentStudentLink(row);
+      try {
+        const row = await db.parentStudentLink.upsert({
+          where: { id: link.id },
+          update: {},
+          create: { id: link.id, ...toParentStudentLinkData(link) },
+        });
+        return toParentStudentLink(row);
+      } catch (error) {
+        // The same parent and student, linked a moment ago by another request.
+        if (isUniqueViolation(error)) return null;
+        throw error;
+      }
     },
   };
 }

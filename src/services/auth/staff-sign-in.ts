@@ -1,20 +1,11 @@
-import { randomBytes } from "node:crypto";
 import type { StaffRepository } from "@/data/repositories";
-import { hashPassword, passwordMatches } from "@/lib/password";
+import { decoyPasswordHash, passwordMatches } from "@/lib/password";
 import { TOO_MANY_TRIES_MESSAGE, WRONG_SIGN_IN_MESSAGE } from "@/features/auth/messages";
 import { staffThrottleKey, type LoginThrottle } from "./login-throttle";
 
 export type StaffSignInResult = { ok: true; staffId: string } | { ok: false; formError: string };
 
 export type StaffSignInDeps = { staff: StaffRepository; throttle: LoginThrottle; now: number };
-
-let decoyHash: Promise<string> | null = null;
-
-/** A hash of a random password nobody knows, checked when there's no real one, so every answer takes as long. */
-function decoy(): Promise<string> {
-  decoyHash ??= hashPassword(randomBytes(32).toString("base64"));
-  return decoyHash;
-}
 
 /**
  * Checks an email and password (Step 50.1). Refuses a locked email before
@@ -33,7 +24,7 @@ export async function checkStaffSignIn(
   if (deps.throttle.isLocked(key, deps.now)) return { ok: false, formError: TOO_MANY_TRIES_MESSAGE };
 
   const found = await deps.staff.findForSignIn(input.email);
-  const matches = await passwordMatches(input.password, found?.passwordHash ?? (await decoy()));
+  const matches = await passwordMatches(input.password, found?.passwordHash ?? (await decoyPasswordHash()));
 
   if (!found?.passwordHash || !matches) {
     const locked = deps.throttle.recordFailure(key, deps.now);

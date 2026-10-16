@@ -7,7 +7,7 @@ Talaan has four kinds of sign-in, one per kind of visitor:
 | Staff (super admin, principal, teacher) | Email and password, first set through a link | A **signed** `talaan_session` cookie | Steps 50, 50.1 and 50.5 |
 | Parents, web portal | Email and password | A **signed** `talaan_parent_session` cookie | Step 22; hashed passwords Step 41; signed Step 50.1 |
 | Gate tablet, guardhouse TV | A device token typed once | A random `tal_dev_…` token, kept hashed | Steps 43 and 48 (`docs/GATE.md`) |
-| Parents, Expo app | Email and password | A random `tal_par_…` token, kept hashed | Step 53 |
+| Parents, Expo app | Email and password | A random `tal_par_…` token, kept hashed | Step 53.3 |
 
 This page covers the two cookie sessions. For a step-by-step walkthrough of every journey (getting an account, signing in, every page load, signing out, and the planned phone app), see [Talaan Accounts and Sign-in](https://claude.ai/artifact/2cQbiVqHAhz3cYs1Tjtqhz). For what cookies, sessions and JWTs are, and why Talaan signs its own cookie instead of using an auth library, see the interactive page [Talaan Sign-in Options](https://claude.ai/artifact/3AsAcMHFBbZbzjJya1tZAK) and `docs/LEARNING-LOG.md`'s "Cookies, sessions and JWTs" entry.
 
@@ -159,11 +159,12 @@ The parent web portal works the same way, with its own cookie and code:
 - **`talaan_parent_session`** holds `makeParentSessionCookie(parentId, …)` (`src/lib/session-cookie.ts`): a signed `{ parentId, exp }` with the purpose `parent-session`, 30 days, httpOnly, `secure` in production. A hand-typed parent id, or a staff cookie pasted in its place, is signed out.
 - **`resolveParentSession(raw, deps)`** (`src/lib/parent-session.ts`) checks the stamp and that the parent still exists. `getParentSession()` wraps it, and `src/app/parent/(protected)/layout.tsx` redirects to `/parent/login` when it's null.
 - **`setParentSession` and `clearParentSession`** live in `parent-session.ts`, which has no `"use server"`. Until Step 50.1 `setParentSession` was in its own `"use server"` file, which made it a public endpoint: anyone could have asked it to sign them in as any parent.
-- **`signInParent`** uses the same limit (key `parent:<email>`) and the same messages as staff.
+- **`signInParent`** calls `checkParentSignIn` (`src/services/parents/check-parent-sign-in.ts`, Step 53.1): the same limit (key `parent:<email>`) and the same messages as staff. The parent repository's `verifyPassword` checks a decoy hash for an unknown email, so the answer takes as long either way (`docs/PROBLEMS-LOG.md`, P-015).
+- **Parent emails are stored trimmed and in lower case** (Step 53.1, migration `parent_email_lowercase`), the same as staff, so sign-in looks them up exactly on the unique email index. `emailSchema` (`src/features/auth/schemas.ts`) trims and lowercases before it checks.
 
 The two sessions never share a cookie: a browser can be signed in as staff and as a parent at the same time.
 
-**The phone app is different.** Parents will mostly use the Expo app (Phase 3), which can't hold this cookie. Step 53 gives it a bearer token (`tal_par_…`, kept hashed) through `/api/v1/parents/login`, and moves the parent sign-in check into a service both the web portal and the API call. So the limit and the single "isn't right" answer apply to the app too.
+**The phone app is different.** Parents will mostly use the Expo app (Phase 3), which can't hold this cookie. Step 53.3 gives it a bearer token (`tal_par_…`, kept hashed) through `/api/v1/parents/login`. Step 53.1 already moved the parent sign-in check into a service both the web portal and the API call. So the limit and the single "isn't right" answer apply to the app too.
 
 ## Quick recipes
 

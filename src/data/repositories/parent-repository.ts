@@ -1,5 +1,6 @@
 import type { Parent } from "@/features/parents/types";
 import { seedParents } from "@/data/seed";
+import { normalizeEmail } from "@/features/auth/schemas";
 import { DEFAULT_LATENCY_MS, simulateLatency } from "./latency";
 
 /**
@@ -14,11 +15,20 @@ export const SEED_PARENT_PASSWORD = "Talaan123!";
 
 export interface ParentRepository {
   getById(id: string): Promise<Parent | null>;
-  /** Case-insensitive — both signup's "email already used" check and sign-in go through this. */
+  /** Any case and surrounding spaces: emails are stored trimmed and in lower case (Step 53.1), and so is what's looked up. */
   findByEmail(email: string): Promise<Parent | null>;
-  /** Step 22's signup. Idempotent by `id`, same as the other mock repositories' `create`. */
-  create(parent: Parent, password: string): Promise<Parent>;
-  /** Step 22's sign-in check. Returns the parent when the email exists and the password matches, `null` otherwise — never which of the two was wrong. */
+  /**
+   * Step 22's signup, with the email stored trimmed and in lower case.
+   * Idempotent by `id`, same as the other repositories' `create`. Returns
+   * `null` when another account already has the email: two sign-ups at
+   * once both pass signup's own check, and only one can be kept.
+   */
+  create(parent: Parent, password: string): Promise<Parent | null>;
+  /**
+   * Step 22's sign-in check. Returns the parent when the email exists and
+   * the password matches, `null` otherwise — never which of the two was
+   * wrong. The real repository spends the same time on an unknown email.
+   */
   verifyPassword(email: string, password: string): Promise<Parent | null>;
 }
 
@@ -34,8 +44,8 @@ export function createMockParentRepository(
   );
 
   function findByEmailSync(email: string): Parent | undefined {
-    const normalized = email.trim().toLowerCase();
-    return data.find((parent) => parent.email.toLowerCase() === normalized);
+    const normalized = normalizeEmail(email);
+    return data.find((parent) => parent.email === normalized);
   }
 
   return {
@@ -49,11 +59,14 @@ export function createMockParentRepository(
     },
     async create(parent, password) {
       await simulateLatency(latencyMs);
-      if (!data.some((existing) => existing.id === parent.id)) {
-        data.push(parent);
+      const stored = { ...parent, email: normalizeEmail(parent.email) };
+      const owner = findByEmailSync(stored.email);
+      if (owner && owner.id !== stored.id) return null;
+      if (!data.some((existing) => existing.id === stored.id)) {
+        data.push(stored);
       }
-      passwordsByParentId.set(parent.id, password);
-      return parent;
+      passwordsByParentId.set(stored.id, password);
+      return stored;
     },
     async verifyPassword(email, password) {
       await simulateLatency(latencyMs);

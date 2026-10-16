@@ -29,6 +29,7 @@ Short, plain-language notes explaining things along the way — for whenever I w
 - [Growing to many schools](#growing-to-many-schools)
 - [Naming the product](#naming-the-product)
 - [Putting it on the internet (Step 52)](#putting-it-on-the-internet-step-52)
+- [Planning and review](#planning-and-review)
 
 ---
 
@@ -1259,6 +1260,9 @@ A page loads a list (1 query), then asks the database something about each item 
 ### What's a database index, and why should `schoolId` come first?
 An index is a sorted list the database keeps beside a table, like the index at the back of a book. With an index on `(studentId, tappedAt)`, "this student's taps today" jumps straight to the right few rows instead of reading the whole table. Every school's rows share each table, so a query that always asks "for this school…" needs an index that starts with `schoolId`. Otherwise it reads every school's rows to find one school's. To check whether a query uses an index, run `EXPLAIN` in front of it (recipe in `docs/SCALING.md`).
 
+### What does Step 61 actually do? Is it the scaling work? (owner question, 2026-10-16)
+Yes. Every step from 53 to 64 comes from the same review (`docs/SCALING.md`), and Step 61 is the part about queries that grow. Today a few database reads get bigger every year or with every new school, even when the answer stays the same size. Step 61 makes them read only what they need: a tap reads that student's taps for **today**, not every tap since they enrolled; matching a card reads only **this school's** cards, not every school's; and the server's share of database connections is set on purpose (8 of the 20 the plan allows), with a 5-second limit on waiting for one. Step 61.1 lets the gate's "anything new?" check answer "no" without rebuilding the whole student list. It's due before a second school joins, so it's done in order after Steps 53.1–60, which make the app safe for real parents and real taps first.
+
 ## Naming the product
 
 ### The product became "Bantay Aral". Does everything called "talaan" have to change? (owner question, 2026-10-13)
@@ -1369,3 +1373,11 @@ For now, yes, and only someone with your Heroku login can do it. That's normal w
 
 ### P-010: what "a bad setting" means, and what's being decided (owner question, 2026-10-15)
 "Settings" here are the server's config vars on Heroku (`heroku config`): `DATABASE_URL`, `SESSION_SECRET`, the `S3_…` photo keys and the rest. When the server starts, `src/instrumentation.ts` checks them. If one is missing or unsafe, every page answers with an error (500) and `heroku logs` names the setting, which is what happened in P-007. Nothing half-works either way. The only question is how it **looks**: today `heroku ps` still says the server is `up`, so you only notice from the logs or the health check. The alternative makes the server stop on purpose, so Heroku shows it as `crashed`. That's a few lines of code. Details in `docs/PROBLEMS-LOG.md`, P-010.
+
+## Planning and review
+
+### Why did the architect find things the plan missed? (owner question, 2026-10-16)
+The architect reviewed the plans for Steps 61 and 53.1 (three rounds each) and found real gaps. About half would have been caught anyway by a test or a local run, for example a migration that fails on a table with rows. The other half would have reached the live app: a gate keeping an old roster after two edits overlap, no recovery command for a failed migration, a sign-in limit that counts per email only. It happens for the same reason human teams review each other's work. Whoever writes a plan looks for reasons it works, and a reviewer looks for ways it fails. Most of the gaps were off the normal path: two requests at once, the old server still running during a deploy, a migration failing halfway, demo data shaped differently from the examples. So the plan is now checked against those cases before the first review round, and the architect's rounds keep going.
+
+### What did adding the architect actually give the code? (owner question, 2026-10-16)
+Problems caught while they were still plans, so none reached the code. Across Steps 61 and 53.1 that was about a dozen. Most were the kind tests miss: changes that overlap, the old server still running during a deploy, a failed migration with no recovery. Two were security gaps: sign-in timing showed which emails exist, and the limit counted per email only. It also made queries use their indexes (parent emails, Step 61's card index), split the parent API into steps small enough to review, and left its notes for later steps in `docs/PLAN.md`. The cost is a few minutes per round. It reads code and doesn't run it, so every point is checked against the real code before it's accepted, and your own checks still matter.

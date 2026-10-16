@@ -26,6 +26,18 @@ export async function passwordMatches(password: string, stored: string): Promise
   return timingSafeEqual(actual, expected);
 }
 
+let decoyHash: Promise<string> | null = null;
+
+/**
+ * A hash of a random password nobody knows, checked when an email has no
+ * account, so every sign-in answer takes as long and the timing never gives
+ * away which emails are registered. Made once, on first use.
+ */
+export function decoyPasswordHash(): Promise<string> {
+  decoyHash ??= hashPassword(randomBytes(32).toString("base64"));
+  return decoyHash;
+}
+
 /**
  * A short fingerprint of a stored password hash, carried in the session
  * cookie as `pv`. A new password means a new hash, so every cookie made

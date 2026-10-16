@@ -177,6 +177,8 @@ The tables are described in `prisma/schema.prisma`. Each change to it becomes a 
 | `npx prisma migrate deploy` | **Every day, and after pulling new code.** Applies migrations that are already written. Never deletes anything, never asks. |
 | `npx prisma migrate status` | Shows whether your database has every migration. |
 | `npx prisma migrate dev --name <what_changed>` | **Only when `schema.prisma` was changed** and a new migration needs writing. Usually done while a step is built. **If it ever asks to reset the database, answer N**: a reset deletes every row. |
+| `npx prisma migrate dev --create-only --name <what_changed>` | Writes an empty or generated migration **without applying it**, so its SQL can be written or read first. Used when the data changes but `schema.prisma` doesn't (Step 53.1's `parent_email_lowercase`). Then `npx prisma migrate dev` applies it. **Never edit a migration once it has run anywhere**, not even a comment: Prisma notices and offers a reset. |
+| `heroku run --app <name> "npx prisma migrate resolve --rolled-back <migration_name>"` | Only after a migration **failed** on Heroku and its cause was fixed by hand. It tells Prisma the failed migration didn't happen, so the next deploy tries it again. Until then every deploy stops with `P3009`. Example: `docs/PROBLEMS-LOG.md`, P-014. |
 | `npx prisma generate` | Rebuilds the Prisma Client (the code the app uses to talk to the database). It runs on its own after `npm install`. Run it by hand if TypeScript says a database field doesn't exist. |
 | `npx prisma db seed` | Adds the demo data **without** emptying first. On a real server this is used once; on your laptop use `npm run db:reset`. |
 

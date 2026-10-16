@@ -48,7 +48,8 @@ The one thing to take from the diagram: **every request shares the same 10 datab
 
 | Step | What | Due |
 |---|---|---|
-| 53 | The parent API, plus 2.1 and 2.2 below | next, after the deploy |
+| 53 | One parent account for any number of schools (2.1) | done |
+| 53.1–53.4 | Parent sign-in services, paged parent data (2.2), then the parent API, split on 2026-10-16 | next |
 | 54 | Push notifications reach the phone (2.3) | for the demo, alongside the parent app |
 | 55 | Safe for real parents (1.1, 1.2) | before real parents sign up |
 | 55.5 | Forgot password by email (not from this review; owner decision, 2026-10-13: parents recover it from the app) | before real parents sign up |
@@ -57,7 +58,8 @@ The one thing to take from the diagram: **every request shares the same 10 datab
 | 58 | The gate keeps taps while offline (1.6) | before real use at the gate |
 | 59 | Know when something breaks (1.7) | before real use |
 | 60 | Privacy for real student data (1.8) | before real use, and before the app is published |
-| 61 | Queries that don't grow (3.1–3.4) | before a second school |
+| 61 | Queries that don't grow (3.1–3.3) | before a second school |
+| 61.1 | The roster answers "nothing changed" cheaply (3.4) | before a second school |
 | 62 | Pages ask the database once (3.5) | before a second school |
 | 63 | School calendar (4.1) | before the next rainy season (around June 2027) |
 | 64 | School years (4.2) | before the next school year starts (around June 2027) |

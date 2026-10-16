@@ -68,6 +68,19 @@ describe("createMockParentRepository", () => {
     await expect(repo.verifyPassword("ana@example.com", "wrong")).resolves.toBeNull();
   });
 
+  it("stores a new parent's email trimmed and in lower case, and finds it with spaces around", async () => {
+    const repo = createMockParentRepository([], { latencyMs: 0 });
+    const created = await repo.create({ ...parentA, id: "parent-c", email: " Ana@Example.com " }, "hunter2ok");
+    expect(created?.email).toBe("ana@example.com");
+    await expect(repo.findByEmail(" ANA@example.com ")).resolves.toEqual(created);
+  });
+
+  it("returns null instead of a second account with the same email", async () => {
+    const repo = createMockParentRepository([{ ...parentA }], { latencyMs: 0 });
+    await expect(repo.create({ ...parentB, email: "Maria@Example.com" }, "hunter2ok")).resolves.toBeNull();
+    await expect(repo.findByEmail("jose@example.com")).resolves.toBeNull();
+  });
+
   it("rejects a password check for an unknown email", async () => {
     const repo = createMockParentRepository(allParents, { latencyMs: 0 });
     await expect(repo.verifyPassword("nope@example.com", "anything")).resolves.toBeNull();

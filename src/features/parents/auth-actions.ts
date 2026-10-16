@@ -8,95 +8,53 @@ import {
   schoolRepository,
   studentRepository,
 } from "@/data/repositories";
-import { SIGNED_OUT_MESSAGE, TOO_MANY_TRIES_MESSAGE, WRONG_SIGN_IN_MESSAGE } from "@/features/auth/messages";
+import { SIGNED_OUT_MESSAGE } from "@/features/auth/messages";
 import { clearParentSession, getParentSession, setParentSession } from "@/lib/parent-session";
-import { loginThrottle, parentThrottleKey } from "@/services/auth/login-throttle";
-import { linkChildSchema, parentLoginSchema, parentSignupSchema } from "./auth-schemas";
+import { loginThrottle } from "@/services/auth/login-throttle";
+import { checkParentSignIn } from "@/services/parents/check-parent-sign-in";
+import { linkChildToParent, type LinkChildFieldErrors } from "@/services/parents/link-child-to-parent";
+import { registerParent, type ParentSignupFieldErrors } from "@/services/parents/register-parent";
 import type { LinkChildInput, ParentLoginInput, ParentSignupInput } from "./types";
 
-export type ParentSignupFieldErrors = Partial<Record<keyof ParentSignupInput, string>>;
 export type ParentSignupActionResult =
   { ok: true } | { ok: false; formError?: string; fieldErrors?: ParentSignupFieldErrors };
 
 export type ParentLoginActionResult = { ok: true } | { ok: false; formError: string };
 
-export type LinkChildFieldErrors = Partial<Record<keyof LinkChildInput, string>>;
 export type LinkChildActionResult =
   { ok: true; studentName: string } | { ok: false; formError?: string; fieldErrors?: LinkChildFieldErrors };
 
-function fieldErrorsFrom<Shape extends Record<string, unknown>>(
-  error: import("zod").ZodError<Shape>,
-): Partial<Record<keyof Shape, string>> {
-  const flattened = error.flatten().fieldErrors;
-  const fieldErrors: Partial<Record<keyof Shape, string>> = {};
-  for (const key of Object.keys(flattened) as (keyof Shape)[]) {
-    const [firstMessage] = flattened[key] ?? [];
-    if (firstMessage) fieldErrors[key] = firstMessage;
-  }
-  return fieldErrors;
-}
-
 /**
- * Step 22's signup. Re-validates with the same `parentSignupSchema` the
- * client already checked (CLAUDE.md: "validated on both sides"), then sends
- * a fresh account straight into "link a child" — a parent account is only
- * useful once at least one child is linked, though nothing forces them to
- * finish that today (see the (protected) home page's empty state).
+ * Step 22's signup. The rules live in `registerParent`
+ * (src/services/parents/), shared with the parent app's API from Step 53.3;
+ * this only signs the new account in and sends it to "link a child". A
+ * parent account is only useful once a child is linked, though nothing
+ * forces them to finish that today (see the (protected) home page's empty
+ * state).
  */
 export async function signUpParent(input: ParentSignupInput): Promise<ParentSignupActionResult> {
-  const parsed = parentSignupSchema.safeParse(input);
-  if (!parsed.success) {
-    return { ok: false, fieldErrors: fieldErrorsFrom(parsed.error) };
-  }
+  const result = await registerParent(input, { parents: parentRepository });
+  if (!result.ok) return { ok: false, fieldErrors: result.fieldErrors };
 
-  const existing = await parentRepository.findByEmail(parsed.data.email);
-  if (existing) {
-    return { ok: false, fieldErrors: { email: "An account with this email already exists." } };
-  }
-
-  const parent = await parentRepository.create(
-    {
-      id: crypto.randomUUID(),
-      firstName: parsed.data.firstName,
-      lastName: parsed.data.lastName,
-      mobile: parsed.data.mobile,
-      email: parsed.data.email,
-    },
-    parsed.data.password,
-  );
-
-  await setParentSession(parent.id);
+  await setParentSession(result.parent.id);
   refresh();
   redirect("/parent/link-child");
 }
 
 /**
- * Step 22's sign-in. Deliberately vague about which of email or password
- * was wrong, the same reasoning any real login screen would use. Since
- * Step 50.1, 5 wrong passwords for one email in 15 minutes lock it for 15
- * minutes, counted apart from staff sign-in (real clock, never DEMO_NOW).
- * Step 53 moves this check into a service the Expo app's API shares.
+ * Step 22's sign-in, deliberately vague about which of email or password
+ * was wrong. `checkParentSignIn` holds the rules: the 5-tries limit (real
+ * clock, never DEMO_NOW) and the same answer time for an unknown email.
  */
 export async function signInParent(input: ParentLoginInput): Promise<ParentLoginActionResult> {
-  const parsed = parentLoginSchema.safeParse(input);
-  if (!parsed.success) {
-    return { ok: false, formError: "Enter a valid email and password." };
-  }
+  const result = await checkParentSignIn(input, {
+    parents: parentRepository,
+    throttle: loginThrottle,
+    now: Date.now(),
+  });
+  if (!result.ok) return { ok: false, formError: result.formError };
 
-  const key = parentThrottleKey(parsed.data.email);
-  const now = Date.now();
-  if (loginThrottle.isLocked(key, now)) {
-    return { ok: false, formError: TOO_MANY_TRIES_MESSAGE };
-  }
-
-  const parent = await parentRepository.verifyPassword(parsed.data.email, parsed.data.password);
-  if (!parent) {
-    const locked = loginThrottle.recordFailure(key, now);
-    return { ok: false, formError: locked ? TOO_MANY_TRIES_MESSAGE : WRONG_SIGN_IN_MESSAGE };
-  }
-
-  loginThrottle.recordSuccess(key);
-  await setParentSession(parent.id);
+  await setParentSession(result.parent.id);
   redirect("/parent");
 }
 
@@ -106,13 +64,10 @@ export async function signOutParent(): Promise<void> {
 }
 
 /**
- * Step 22's "link a child" — verified by LRN, last name and birth date
- * (CLAUDE.md's domain rules), no link code to distribute. Since Step 53 the
- * parent picks the school too: it's accepted only when a student there
- * matches all three details, and the link saves it, so every later read
- * uses the school the server checked, never one the browser sends. Both the "no
- * match" and "already linked" errors CLAUDE.md asks for come back as a
- * `formError` here, following the same convention `card-actions.ts` uses.
+ * Step 22's "link a child", by the school, LRN, last name and birth date.
+ * `linkChildToParent` holds the rules. Both the "no match" and "already
+ * linked" errors come back as a `formError` here, following the same
+ * convention `card-actions.ts` uses.
  */
 export async function linkChild(input: LinkChildInput): Promise<LinkChildActionResult> {
   const session = await getParentSession();
@@ -120,37 +75,17 @@ export async function linkChild(input: LinkChildInput): Promise<LinkChildActionR
     return { ok: false, formError: SIGNED_OUT_MESSAGE };
   }
 
-  const parsed = linkChildSchema.safeParse(input);
-  if (!parsed.success) {
-    return { ok: false, fieldErrors: fieldErrorsFrom(parsed.error) };
-  }
-
-  const school = await schoolRepository.getById(parsed.data.schoolId);
-  if (!school) {
-    return { ok: false, fieldErrors: { schoolId: "Select your child's school" } };
-  }
-
-  const student = await studentRepository.findForLink(school.id, parsed.data);
-  if (!student) {
-    return {
-      ok: false,
-      formError: "We couldn't find a student with that LRN, last name and birth date at that school.",
-    };
-  }
-
-  const existingLinks = await parentStudentLinkRepository.listByParent(session.parentId);
-  if (existingLinks.some((link) => link.studentId === student.id)) {
-    return { ok: false, formError: `${student.firstName} ${student.lastName} is already linked to your account.` };
-  }
-
-  await parentStudentLinkRepository.create({
-    id: crypto.randomUUID(),
-    schoolId: school.id,
-    parentId: session.parentId,
-    studentId: student.id,
-    linkedAt: new Date().toISOString(),
+  const result = await linkChildToParent(session.parentId, input, {
+    schools: schoolRepository,
+    students: studentRepository,
+    links: parentStudentLinkRepository,
   });
+  if (!result.ok) {
+    return "fieldErrors" in result
+      ? { ok: false, fieldErrors: result.fieldErrors }
+      : { ok: false, formError: result.formError };
+  }
 
   refresh();
-  return { ok: true, studentName: `${student.firstName} ${student.lastName}` };
+  return { ok: true, studentName: `${result.student.firstName} ${result.student.lastName}` };
 }

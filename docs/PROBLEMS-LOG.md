@@ -22,7 +22,9 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-010](#p-010--2026-10-13--a-missing-setting-gives-500s-instead-of-a-crashed-dyno) | 2026-10-13 | A missing setting gives 500s instead of a crashed dyno | Heroku, Next.js | Open: owner decides |
 | [P-011](#p-011--2026-10-14--heroku-run-answered-run-command-not-found) | 2026-10-14 | `heroku run` answered `run: command not found` | Heroku CLI, docs | Resolved |
 | [P-012](#p-012--2026-10-15--prisma-migrate-dev-refused-to-drop-a-column-here) | 2026-10-15 | `prisma migrate dev` refused to drop a column here | Prisma, building | Resolved |
-| [P-013](#p-013--2026-10-15--a-sign-in-test-still-picked-a-school-at-sign-up) | 2026-10-15 | A sign-in test still picked a school at sign-up | Playwright | Fixed, waiting for the owner's rerun |
+| [P-013](#p-013--2026-10-15--a-sign-in-test-still-picked-a-school-at-sign-up) | 2026-10-15 | A sign-in test still picked a school at sign-up | Playwright | Resolved |
+| [P-014](#p-014--2026-10-16--parent-emails-were-stored-as-typed-and-every-sign-in-read-the-whole-table) | 2026-10-16 | Parent emails were stored as typed, and every sign-in read the whole table | Database, sign-in | Fixed, waiting for the owner's checks |
+| [P-015](#p-015--2026-10-16--parent-sign-in-answered-faster-for-an-email-with-no-account) | 2026-10-16 | Parent sign-in answered faster for an email with no account | Security, sign-in | Fixed, waiting for the owner's checks |
 
 ---
 
@@ -290,5 +292,48 @@ Answered in `docs/LEARNING-LOG.md`, section "Putting it on the internet (Step 52
 - **Cause:** that test signs a parent up, and still clicked "Your child's school", a field Step 53 moved from sign-up to "Link a child". While building, only `e2e/parent.spec.ts` and `e2e/isolation.spec.ts` were checked for it; `e2e/login.spec.ts` signs a parent up too and was missed.
 - **Solution:** the two lines that picked the school are gone from `e2e/login.spec.ts`. A search of every test (`grep -rn "Your child's school" e2e src`) now finds the label only on "Link a child" and in the tests that link a child.
 - **Lesson:** when a form changes, search the tests for its labels, not only the tests named after it.
-- **Status:** Fixed, waiting for the owner's rerun.
+- **Status:** Resolved. The rerun passed, and Step 53 was approved on 2026-10-16.
 
+---
+
+## The parent API, part 2 (Step 53.1, 2026-10-16)
+
+Both problems below were found while planning Step 53.1, in a review of the code with the systems-architect (two plan rounds, before anything was built). Nobody had hit them yet.
+
+### P-014 · 2026-10-16 · Parent emails were stored as typed, and every sign-in read the whole table
+- **Where:** `src/data/repositories/prisma-parent-repository.ts` (sign-up, sign-in, "email taken"), on the live database and the laptop alike.
+- **Symptom:** nothing visible yet. The code searched like this:
+  ```ts
+  db.parent.findFirst({ where: { email: { equals: email.trim(), mode: "insensitive" } } });
+  ```
+  and the sign-up form kept the email exactly as typed (`z.email(...)`, no lowercasing).
+- **Cause:** a case-insensitive search can't use `Parent.email`'s unique index, which compares exactly, so Postgres reads every parent row for every sign-in and sign-up. The index is also case-sensitive, so `Ana@x.com` and `ana@x.com` could both be saved by two sign-ups at once. Staff emails didn't have this problem: they're lowercased before they're stored (Step 50).
+- **Options weighed:**
+  1. An index on `lower(email)`. Prisma can't describe it in `schema.prisma`, so it would live only in hand-written SQL.
+  2. **Store every parent email trimmed and in lower case, and look it up exactly.** The existing unique index then does both jobs. Chosen.
+- **Solution:** `emailSchema` (trim, lowercase, then check), `normalizeEmail` in the parent repository, and migration `parent_email_lowercase`, which lowercases existing rows (Step 53.1's recipe). Before changing anything, the migration counts emails that would collide once lowercased, and stops with a message naming this entry if there are any.
+- **If the migration stops on Heroku** with "email address(es) belong to more than one parent account once lowercased":
+  ```mermaid
+  flowchart LR
+      R["Release phase:<br/>prisma migrate deploy"] -->|DO block raises| F["Release fails.<br/>The old code keeps running."]
+      F --> M["Merge the accounts<br/>by hand"]
+      M --> X["prisma migrate resolve<br/>--rolled-back"]
+      X --> D["Deploy again"]
+  ```
+  1. Find them: `heroku pg:psql --app <name> -c 'SELECT lower(trim(email)), count(*) FROM "Parent" GROUP BY 1 HAVING count(*) > 1;'`
+  2. For each pair, move the spare account's links to the account the parent uses (`UPDATE "ParentStudentLink" SET "parentId" = '<kept>' WHERE "parentId" = '<spare>';`, skipping a child both already link), then delete the spare account.
+  3. `heroku run --app <name> "npx prisma migrate resolve --rolled-back parent_email_lowercase"` (quoted, as P-011 explains). It's `--rolled-back`, not `--applied`, because nothing in the file ran. Until this is done, every deploy stops with Prisma's `P3009` error.
+  4. Deploy again.
+- **After the deploy**, check that nobody signed up on the old code while the new release was starting: `heroku pg:psql --app <name> -c 'SELECT count(*) FROM "Parent" WHERE email <> lower(trim(email));'` should be 0. If it isn't, run the migration's `UPDATE` line the same way.
+- **Status:** Fixed, waiting for the owner's checks and the deploy.
+
+### P-015 · 2026-10-16 · Parent sign-in answered faster for an email with no account
+- **Where:** `verifyPassword` in `src/data/repositories/prisma-parent-repository.ts`.
+- **Symptom:** nothing visible. For an unknown email the function returned before checking any password, so the answer came back tens of milliseconds sooner than for a registered email with a wrong password.
+- **Cause:** checking a password (scrypt) is slow on purpose. Skipping it for unknown emails let anyone measure which emails have an account, without ever signing in. Staff sign-in already avoided this (Step 50.1) by checking a decoy hash, but the parent repository was written before that and never got it.
+- **Options weighed:**
+  1. A decoy check in a service. It can't work, because the parent repository never hands its password hash out.
+  2. **The decoy check inside the repository's `verifyPassword`.** Chosen.
+- **Solution:** `verifyPassword` always runs scrypt, against `decoyPasswordHash()` (`src/lib/password.ts`, now shared with staff sign-in) when the email has no account. A unit test checks the decoy is used.
+- **Still open, on purpose:** sign-up's "An account with this email already exists" also tells a stranger the email is registered. Closing that means confirming an email by sending to it, which waits for the email service (Step 55.5). The sign-in limit also counts per email only, so trying many emails isn't limited yet. Step 53.3 adds a limit per address.
+- **Status:** Fixed, waiting for the owner's checks.

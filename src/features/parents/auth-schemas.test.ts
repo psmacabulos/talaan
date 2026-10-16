@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { linkChildSchema, parentSignupSchema } from "./auth-schemas";
+import { linkChildSchema, parentLoginSchema, parentSignupSchema } from "./auth-schemas";
 
 describe("parentSignupSchema", () => {
   const validSignup = {
@@ -15,9 +15,24 @@ describe("parentSignupSchema", () => {
     expect(parentSignupSchema.safeParse(validSignup).success).toBe(true);
   });
 
+  it("trims and lowercases the email before checking it (Step 53.1)", () => {
+    expect(parentSignupSchema.parse({ ...validSignup, email: " Ana@X.com " }).email).toBe("ana@x.com");
+  });
+
+  it("still rejects an email that isn't one", () => {
+    const result = parentSignupSchema.safeParse({ ...validSignup, email: " not an email " });
+    expect(result.error?.flatten().fieldErrors.email).toEqual(["Enter a valid email address"]);
+  });
+
   it("drops a school sent anyway", () => {
     const parsed = parentSignupSchema.parse({ ...validSignup, schoolId: "school-balanga" });
     expect(parsed).not.toHaveProperty("schoolId");
+  });
+});
+
+describe("parentLoginSchema", () => {
+  it("trims and lowercases the email, like sign-up", () => {
+    expect(parentLoginSchema.parse({ email: " MARIA@Example.com ", password: "x" }).email).toBe("maria@example.com");
   });
 });
 

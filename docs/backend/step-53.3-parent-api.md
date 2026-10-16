@@ -1,4 +1,13 @@
-# Step 53.1: The parent API
+# Steps 53.3 and 53.4: The parent API
+
+> **Split again on 2026-10-16** (owner approval), after three plan reviews with the systems-architect. This recipe was too big for one review, so it became four steps (`docs/PLAN.md`):
+> - **53.1** (built): the sign-up, sign-in and link-a-child rules moved to `src/services/parents/` (section 2's first three rows), with a decoy password check and emails stored in lower case. Recipe: `docs/backend/step-53.1-parent-sign-in-services.md`. The services are named `registerParent`, `checkParentSignIn` and `linkChildToParent`, and every failure carries a `code` (`invalid_input`, `email_taken`, `too_many_tries`, `wrong_credentials`, `no_match`, `already_linked`), which the API maps to the error table below.
+> - **53.2**: section 2's `childrenToday` and notifications rows, and decision 6 (paging). Changed by the review: the cursor is opaque (base64url of `<tappedAt>|<id>`), not a notification id, and the unread count stops at 10.
+> - **53.3**: section 1 (the tables), `parent-token.ts`, the addresses down to `children/:id/taps`, and a per-address sign-in limit. Don't wrap `registerParent` and the new token in one transaction: a caught unique-email error aborts a Postgres transaction.
+> - **53.4**: the notification and push-token addresses, section 4 (photos), section 5 (`docs/PARENT-API.md`) and the API browser tests.
+>
+> The original text follows, unchanged except for this note.
+
 
 > **Split from Step 53 on 2026-10-15** (owner approval). Step 53 (`docs/backend/step-53-parent-accounts-across-schools.md`) comes first and moves a parent's school onto each linked child. This recipe builds on that, and is updated for the 2026-10-13 decisions (`docs/SCALING.md` section 2):
 > 1. **One parent account covers any number of schools.** Sign-up asks for no school, linking a child asks for it (`POST /children` takes `schoolId`), and each child in an answer carries its own school.

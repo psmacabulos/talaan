@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { passwordSchema } from "@/features/auth/schemas";
+import { emailSchema, passwordSchema } from "@/features/auth/schemas";
 import { lrnSchema, phMobileSchema } from "@/features/students/schemas";
 
 /**
@@ -11,7 +11,7 @@ export const parentSignupSchema = z
     firstName: z.string().trim().min(1, "Enter a first name"),
     lastName: z.string().trim().min(1, "Enter a last name"),
     mobile: phMobileSchema,
-    email: z.email("Enter a valid email address"),
+    email: emailSchema,
     password: passwordSchema,
     confirmPassword: z.string().min(1, "Confirm your password"),
   })
@@ -21,7 +21,7 @@ export const parentSignupSchema = z
   });
 
 export const parentLoginSchema = z.object({
-  email: z.email("Enter a valid email address"),
+  email: emailSchema,
   password: z.string().min(1, "Enter your password"),
 });
 

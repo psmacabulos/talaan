@@ -11,11 +11,12 @@ export interface ParentStudentLinkRepository {
   listBySchool(schoolId: string): Promise<ParentStudentLink[]>;
   /**
    * Step 22's "link a child". Idempotent by `id`, same as the other mock
-   * repositories' `create`. The caller is responsible for the "already
-   * linked" duplicate check (via `listByParent`) — the same division of
-   * labor `card-actions.ts` uses for its duplicate-serial check.
+   * repositories' `create`. The caller checks "already linked" first (via
+   * `listByParent`), for a friendly message; this returns `null` when the
+   * parent already has a link to this student anyway (the same form sent
+   * twice at once), since only one can be kept.
    */
-  create(link: ParentStudentLink): Promise<ParentStudentLink>;
+  create(link: ParentStudentLink): Promise<ParentStudentLink | null>;
 }
 
 export function createMockParentStudentLinkRepository(
@@ -39,6 +40,10 @@ export function createMockParentStudentLinkRepository(
     },
     async create(link) {
       await simulateLatency(latencyMs);
+      const twin = data.find(
+        (existing) => existing.parentId === link.parentId && existing.studentId === link.studentId,
+      );
+      if (twin && twin.id !== link.id) return null;
       if (!data.some((existing) => existing.id === link.id)) {
         data.push(link);
       }
