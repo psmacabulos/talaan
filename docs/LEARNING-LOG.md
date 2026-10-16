@@ -1143,6 +1143,13 @@ Not a bug in the code. A dev server that was already running kept using an **old
 
 **Fix:** stop `npm run dev` (Ctrl+C) and start it again after any step that adds or changes a model. Production never hits this, because a deploy always starts a fresh process with the new client.
 
+### What's a database transaction, and why is the push-token write a "batch"? (Step 53.4)
+A **transaction** is a group of writes that happen all together or not at all. If the second fails, the first is undone, so nobody ever sees half a change. Prisma has two kinds:
+- **Batch:** `prisma.$transaction([write1, write2])`. Every write is known in advance, so they go to Postgres in one trip. Saving a phone's push address is one: delete its old row, create the new one.
+- **Interactive:** `prisma.$transaction(async (tx) => { … })`. The code can read, decide, then write. But it holds one of the few database connections the whole time, including the trips back and forth. In a morning rush, other requests wait for a free connection (`docs/SCALING.md`).
+
+Rule of thumb: use a batch when you can, and an interactive one only when a write depends on something read inside it. The tap writer (`src/data/repositories/prisma-tap-writer.ts`) uses an interactive one today, though all its writes are known in advance, so it could be a batch too. Worth weighing the next time the tap path changes.
+
 ### Is a student's `id` only for the seed? And what happens when their card changes? (owner question, Step 38)
 **Every** student has an `id`, not just the demo ones. For a real student, "Add student" makes one with `crypto.randomUUID()` (`src/features/students/actions.ts`) and passes it in, the same way the seed passes `student-0001`. The only difference is the look: seed ids are readable, real ones are random.
 

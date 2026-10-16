@@ -3,7 +3,7 @@ import { seedStudents } from "../src/data/seed/students";
 import { activeCardSerialFor, readerDigitsFor, TEST_GATE_TOKEN, testEmail } from "./test-data";
 
 /**
- * The parent app's API (Step 53.3), called the way the Expo app will:
+ * The parent app's API (Steps 53.3 and 53.4), called the way the Expo app will:
  * JSON, a Bearer token, no browser. Desktop project only, since nothing
  * here depends on the screen. Each test sends its own documentation-range
  * address (203.0.113.x) in X-Forwarded-For, so the per-address limits are
@@ -38,12 +38,14 @@ async function signUp(request: APIRequestContext, email: string, headers: Record
   });
 }
 
-test.describe("Parent API (Step 53.3)", () => {
+type FeedItem = { id: string; kind: string };
+
+test.describe("Parent API (Steps 53.3 and 53.4)", () => {
   test.beforeEach(({}, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "The API doesn't depend on the screen; once is enough.");
   });
 
-  test("sign up, link a child, see a tap, then sign out", async ({ request }) => {
+  test("sign up, link a child, see a tap, read the feed, register for push, then sign out", async ({ request }) => {
     const address = freshAddress();
     const signup = await signUp(request, testEmail("api-parent"), address);
     expect(signup.status()).toBe(201);
@@ -74,16 +76,18 @@ test.describe("Parent API (Step 53.3)", () => {
     expect(again.status()).toBe(409);
     expect((await again.json()).error.code).toBe("conflict");
 
-    // The child taps in at the gate.
-    const tap = await request.post("/api/v1/gate/taps", {
-      headers: { Authorization: `Bearer ${TEST_GATE_TOKEN}` },
-      data: {
-        clientTapId: crypto.randomUUID(),
-        cardSerial: readerDigitsFor(activeCardSerialFor(CHILD_NAME)),
-        clientTappedAt: new Date().toISOString(),
-      },
-    });
-    expect((await tap.json()).outcome).toBe("recorded");
+    // The child taps at the gate.
+    const tapAt = (clientTappedAt: string) =>
+      request.post("/api/v1/gate/taps", {
+        headers: { Authorization: `Bearer ${TEST_GATE_TOKEN}` },
+        data: {
+          clientTapId: crypto.randomUUID(),
+          cardSerial: readerDigitsFor(activeCardSerialFor(CHILD_NAME)),
+          clientTappedAt,
+        },
+      });
+    const tap = await (await tapAt(new Date().toISOString())).json();
+    expect(tap.outcome).toBe("recorded");
 
     const me = await (await request.get("/api/v1/parents/me", { headers: auth })).json();
     expect(me.children[0].today.tapCount).toBeGreaterThan(0);
@@ -97,6 +101,72 @@ test.describe("Parent API (Step 53.3)", () => {
     const notMine = seedStudents.find((student) => student.id !== child.id && student.schoolId === "school-balanga")!;
     const forbidden = await request.get(`/api/v1/parents/children/${notMine.id}/taps`, { headers: auth });
     expect(forbidden.status()).toBe(404);
+
+    // The feed (Step 53.4): her time out, unread. Balanga sends time in and time out.
+    const feed = async (query = "") =>
+      (await request.get(`/api/v1/parents/notifications${query}`, { headers: auth })).json();
+    const first = await feed();
+    expect(first.notifications).toEqual([
+      {
+        id: expect.any(String),
+        childId: child.id,
+        childName: CHILD_NAME,
+        kind: "time_out",
+        at: expect.stringMatching(/\+08:00$/),
+        read: false,
+      },
+    ]);
+    expect(first.unreadCount).toBe(1);
+    expect(first.nextBefore).toBeNull();
+
+    // Back in 3 minutes later: past the 2-minute repeat window, and within
+    // the 5 minutes a gate's clock may run ahead, so it's her next time in.
+    const back = await (await tapAt(new Date(Date.parse(tap.tappedAt) + 3 * 60_000).toISOString())).json();
+    expect(back).toMatchObject({ outcome: "recorded", direction: "time_in", notified: true });
+
+    // One at a time: the newest, then the one before it, then nothing older.
+    const page1 = await feed("?limit=1");
+    expect(page1.notifications.map((item: FeedItem) => item.kind)).toEqual(["time_in"]);
+    expect(page1.unreadCount).toBe(2);
+    const page2 = await feed(`?limit=1&before=${encodeURIComponent(page1.nextBefore)}`);
+    expect(page2.notifications.map((item: FeedItem) => item.kind)).toEqual(["time_out"]);
+    expect(page2.nextBefore).toBeNull();
+
+    // Read marks: one, then all. Another child's notification is 404.
+    const newest = page1.notifications[0].id;
+    expect((await request.post(`/api/v1/parents/notifications/${newest}/read`, { headers: auth })).status()).toBe(204);
+    expect((await feed()).unreadCount).toBe(1);
+    const othersRead = await request.post("/api/v1/parents/notifications/notification-0001/read", { headers: auth });
+    expect(othersRead.status()).toBe(404);
+    expect((await request.post("/api/v1/parents/notifications/read-all", { headers: auth })).status()).toBe(204);
+    expect(await feed()).toMatchObject({ unreadCount: 0 });
+
+    // A cursor or limit the server didn't make is a 400, not the first page.
+    for (const query of ["?before=not-a-cursor", "?limit=ten"]) {
+      const bad = await request.get(`/api/v1/parents/notifications${query}`, { headers: auth });
+      expect(bad.status()).toBe(400);
+      expect((await bad.json()).error.code).toBe("invalid_input");
+    }
+
+    // Another child's photo is 404 with a parent's token, like one that doesn't exist.
+    const otherPhoto = await request.get(`/api/v1/photos/school-balanga/${notMine.id}/k3x9q2ab.webp`, {
+      headers: auth,
+    });
+    expect(otherPhoto.status()).toBe(404);
+
+    // Push: the phone's Expo push token is saved; anything else is refused.
+    const pushToken = `ExponentPushToken[playwright-${Date.now()}]`;
+    const registered = await request.post("/api/v1/parents/push-tokens", {
+      headers: auth,
+      data: { token: pushToken, platform: "android" },
+    });
+    expect(registered.status()).toBe(204);
+    const notPush = await request.post("/api/v1/parents/push-tokens", {
+      headers: auth,
+      data: { token: "not-a-push-token", platform: "web" },
+    });
+    expect(notPush.status()).toBe(400);
+    expect(Object.keys((await notPush.json()).error.fields).sort()).toEqual(["platform", "token"]);
 
     expect((await request.post("/api/v1/parents/logout", { headers: auth })).status()).toBe(204);
     const afterLogout = await request.get("/api/v1/parents/me", { headers: auth });

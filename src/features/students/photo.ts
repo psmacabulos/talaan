@@ -30,6 +30,11 @@ export function schoolOfPhotoKey(key: string): string {
   return key.split("/")[0];
 }
 
+/** The student a photo key belongs to: its second part. */
+export function studentOfPhotoKey(key: string): string {
+  return key.split("/")[1];
+}
+
 /** Where a screen loads a photo from. */
 export function photoPath(key: string): string {
   return `/api/v1/photos/${key}`;

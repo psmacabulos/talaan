@@ -28,15 +28,16 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-011](#p-011--2026-10-14--heroku-run-answered-run-command-not-found) | 2026-10-14 | `heroku run` answered `run: command not found` | Other: docs | Heroku CLI, docs | Resolved |
 | [P-012](#p-012--2026-10-15--prisma-migrate-dev-refused-to-drop-a-column-here) | 2026-10-15 | `prisma migrate dev` refused to drop a column here | Other: build | Prisma, building | Resolved |
 | [P-013](#p-013--2026-10-15--a-sign-in-test-still-picked-a-school-at-sign-up) | 2026-10-15 | A sign-in test still picked a school at sign-up | Other: tests | Playwright | Resolved |
-| [P-014](#p-014--2026-10-16--parent-emails-were-stored-as-typed-and-every-sign-in-read-the-whole-table) | 2026-10-16 | Parent emails were stored as typed, and every sign-in read the whole table | Performance | Database, sign-in | Fixed, waiting for the owner's checks |
-| [P-015](#p-015--2026-10-16--parent-sign-in-answered-faster-for-an-email-with-no-account) | 2026-10-16 | Parent sign-in answered faster for an email with no account | Security | Security, sign-in | Fixed, waiting for the owner's checks |
-| [P-016](#p-016--2026-10-16--a-capped-count-still-sorted-every-unread-row) | 2026-10-16 | A capped count still sorted every unread row | Performance | Prisma, database | Fixed, waiting for the owner's checks |
-| [P-017](#p-017--2026-10-16--postgres-and-javascript-order-some-ids-differently) | 2026-10-16 | Postgres and JavaScript order some ids differently | Other: correctness | Database, paging | Fixed, waiting for the owner's checks |
-| [P-018](#p-018--2026-10-16--the-bell-sent-each-childs-full-record-to-the-browser) | 2026-10-16 | The bell sent each child's full record to the browser | Security (privacy) | Privacy, parent portal | Fixed, waiting for the owner's checks |
-| [P-019](#p-019--2026-10-16--parent-pages-loaded-every-tap-and-notification-ever) | 2026-10-16 | Parent pages loaded every tap and notification ever | Performance | Parent portal, database | Fixed, waiting for the owner's checks |
-| [P-020](#p-020--2026-10-16--the-sign-in-limit-could-be-flooded-or-walked-around) | 2026-10-16 | The sign-in limit could be flooded, or walked around with many emails | Security | Sign-in | Fixed, waiting for the owner's checks |
+| [P-014](#p-014--2026-10-16--parent-emails-were-stored-as-typed-and-every-sign-in-read-the-whole-table) | 2026-10-16 | Parent emails were stored as typed, and every sign-in read the whole table | Performance | Database, sign-in | Fixed: the live database is lowercased at the next deploy |
+| [P-015](#p-015--2026-10-16--parent-sign-in-answered-faster-for-an-email-with-no-account) | 2026-10-16 | Parent sign-in answered faster for an email with no account | Security | Security, sign-in | Resolved |
+| [P-016](#p-016--2026-10-16--a-capped-count-still-sorted-every-unread-row) | 2026-10-16 | A capped count still sorted every unread row | Performance | Prisma, database | Resolved |
+| [P-017](#p-017--2026-10-16--postgres-and-javascript-order-some-ids-differently) | 2026-10-16 | Postgres and JavaScript order some ids differently | Other: correctness | Database, paging | Resolved |
+| [P-018](#p-018--2026-10-16--the-bell-sent-each-childs-full-record-to-the-browser) | 2026-10-16 | The bell sent each child's full record to the browser | Security (privacy) | Privacy, parent portal | Resolved |
+| [P-019](#p-019--2026-10-16--parent-pages-loaded-every-tap-and-notification-ever) | 2026-10-16 | Parent pages loaded every tap and notification ever | Performance | Parent portal, database | Resolved |
+| [P-020](#p-020--2026-10-16--the-sign-in-limit-could-be-flooded-or-walked-around) | 2026-10-16 | The sign-in limit could be flooded, or walked around with many emails | Security | Sign-in | Resolved |
 | [P-021](#p-021--2026-10-16--a-schools-launch-night-could-trip-the-address-limit) | 2026-10-16 | A school's launch night could trip the address limit | Other: known risk | Sign-in | Open: watch the logs |
 | [P-022](#p-022--2026-10-16--the-parent-api-test-tapped-a-child-the-station-tests-had-already-tapped) | 2026-10-16 | The parent API test tapped a child the station tests had already tapped | Other: tests | Playwright | Resolved |
+| [P-023](#p-023--2026-10-16--saving-a-push-address-as-the-phone-signed-out-answered-500) | 2026-10-16 | Saving a push address as the phone signed out answered 500 | Other: correctness | Parent API, database | Fixed, waiting for the owner's checks |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -369,7 +370,7 @@ Both problems below were found while planning Step 53.1, in a review of the code
   4. Deploy again.
 - **After the deploy**, check that nobody signed up on the old code while the new release was starting: `heroku pg:psql --app <name> -c 'SELECT count(*) FROM "Parent" WHERE email <> lower(trim(email));'` should be 0. If it isn't, run the migration's `UPDATE` line the same way.
 - **Impact (performance):** at 7,500 parents, finding a parent by email went from 2.45 ms to 0.23 ms (the benchmark above). The old search reads every parent, so it grows with every school that joins. It also stops two accounts that differ only by case.
-- **Status:** Fixed, waiting for the owner's checks and the deploy.
+- **Status:** Fixed, and the owner's checks passed. Waiting for the deploy, which lowercases the live emails.
 
 ### P-015 · 2026-10-16 · Parent sign-in answered faster for an email with no account
 - **Where:** `verifyPassword` in `src/data/repositories/prisma-parent-repository.ts`.
@@ -381,7 +382,7 @@ Both problems below were found while planning Step 53.1, in a review of the code
 - **Solution:** `verifyPassword` always runs scrypt, against `decoyPasswordHash()` (`src/lib/password.ts`, now shared with staff sign-in) when the email has no account. A unit test checks the decoy is used.
 - **Still open, on purpose:** sign-up's "An account with this email already exists" also tells a stranger the email is registered. Closing that means confirming an email by sending to it, which waits for the email service (Step 55.5). The sign-in limit also counts per email only, so trying many emails isn't limited yet. Step 53.3 adds a limit per address.
 - **Impact (security):** someone with a list of emails could have learned which ones have a parent account here, a first step for phishing a parent or guessing passwords, without ever signing in.
-- **Status:** Fixed, waiting for the owner's checks.
+- **Status:** Resolved: the owner's checks passed.
 
 ---
 
@@ -408,7 +409,7 @@ flowchart LR
 - **Solution:** `orderBy: [{ tappedAt: "desc" }]` on the count; the logged SQL then reads `ORDER BY "tappedAt" DESC LIMIT`. The service counts each child in turn and stops at 10.
 - **Still open, on purpose:** for a child whose parent reads everything, Postgres still checks every one of that child's rows (about 400 a year) before it knows there are fewer than 10 unread. Measure it with `EXPLAIN (ANALYZE, BUFFERS)`, and add a partial index only if it shows up.
 - **Impact (performance):** for a child with 2,400 unread notifications, counting them for the bell went from 4.4 ms (loading them all) to 0.20 ms; the first capped try, ordered by id, took 0.49 ms (the benchmark above).
-- **Status:** Fixed, waiting for the owner's checks.
+- **Status:** Resolved: the owner's checks passed.
 
 ### P-017 · 2026-10-16 · Postgres and JavaScript order some ids differently
 - **Where:** Step 53.2's paging. Each child's page comes from Postgres (`ORDER BY "tappedAt" DESC, "id" DESC`), then the pages are merged in JavaScript, and both must agree on the order of two notifications in the same millisecond.
@@ -422,7 +423,7 @@ flowchart LR
   1. Sort with the "C" collation in SQL. Prisma can't set a collation on `orderBy`.
   2. **Accept only the two id shapes that exist:** a lowercase UUID (every id the server makes) or the seed's `notification-0001`. Hyphens fall in the same places within each shape, and the two shapes differ at the first character, so both orders agree. Chosen.
 - **Solution:** `NOTIFICATION_ID` in `src/features/parents/notification-cursor.ts`. Encoding a cursor for any other id throws, so a mistake shows up instead of quietly looping "Show older" back to page one. `src/data/repositories/prisma-notification-paging.test.ts` pages tied rows of both shapes across two children on the real database.
-- **Status:** Fixed, waiting for the owner's checks.
+- **Status:** Resolved: the owner's checks passed.
 
 ### P-018 · 2026-10-16 · The bell sent each child's full record to the browser
 - **Where:** `NotificationsBell` and `NotificationList`, both client components, since Step 24. Found by the architect's review of Step 53.2's code.
@@ -430,7 +431,7 @@ flowchart LR
 - **Cause:** `ParentNotificationItem.student` was typed as the full `Student`, and the screens only ever showed the name.
 - **Solution:** the type is now `Pick<Student, "id" | "firstName" | "lastName">`, and `listParentNotifications` copies only those. CLAUDE.md: students are minors, collect and send the minimum.
 - **Impact (security, privacy):** every parent page carried each linked child's birth date, LRN and guardian's mobile into the browser, where anyone with the device could read them. The parent has the right to see that data, but CLAUDE.md asks for the minimum, since the students are minors. The same fix cut each page's bell data from up to 1.3 MB to under 3 KB (P-019).
-- **Status:** Fixed, waiting for the owner's checks.
+- **Status:** Resolved: the owner's checks passed.
 
 ### P-019 · 2026-10-16 · Parent pages loaded every tap and notification ever
 - **Where:** the parent home page (`src/app/parent/(protected)/page.tsx`) and the bell in the parent layout, on every parent page. Found in the 2026-10-13 review (`docs/SCALING.md` 2.2) and fixed in Step 53.2.
@@ -438,7 +439,7 @@ flowchart LR
 - **Cause:** the home page loaded each child's whole tap history to show today's status and a history list. The bell loaded every notification ever to show 5 and a count, and passed them all to a client component, which sends them to the browser.
 - **Options weighed:** see `docs/backend/step-53.2-paged-parent-data.md`. Chosen: today's taps plus the last 10, the newest 5 notifications, a count that stops at 10, and the feed 30 at a time with a cursor.
 - **Impact (performance):** a parent page now reads 19 rows and sends 2.7 KB in any year, against 4,800 rows and 1.3 MB in a child's sixth year. At 5,000 students that's 20 MB instead of up to 9.7 GB sent each morning, which keeps these pages on the Basic dyno ($12 a month in all) instead of about $55 (the benchmark above).
-- **Status:** Fixed, waiting for the owner's checks.
+- **Status:** Resolved: the owner's checks passed.
 
 ---
 
@@ -462,7 +463,7 @@ Both found in Step 53.3's plan review with the systems-architect, before the par
   - Addresses come from the last `X-Forwarded-For` entry (`src/lib/client-address.ts`), with IPv6 counted by its /64.
   - Both limits are checked before any password is hashed.
 - **Impact (security):** guessing passwords across many parent accounts from one network now stops after 30 tries in 15 minutes, a flood of fake addresses can't exhaust memory or slow sign-in, and collecting "email taken" answers is capped at 100 an hour per network.
-- **Status:** Fixed, waiting for the owner's checks.
+- **Status:** Resolved: the owner's checks passed.
 
 ### P-021 · 2026-10-16 · A school's launch night could trip the address limit
 - **Where:** the per-address limits from P-020, on a night when a school signs its parents up together.
@@ -485,3 +486,29 @@ Both found in Step 53.3's plan review with the systems-architect, before the par
 - **Solution:** the test uses Divine Garcia, a Balanga student with an LRN, an active card and a seed tap at 07:35, whom no other test uses. Because she's already tapped, the station tests skip her, and the test clock (09:15) is far past the repeat window, so the test's tap is recorded. It now checks it counted too: her day reads time in (the seed tap), then time out (the test's tap). The test's comment points here.
 - **Lesson:** a browser test that needs a student in a particular state should take one no other test changes, and say why in a comment.
 - **Status:** Resolved: the owner's full run passed.
+
+---
+
+## The parent API, part 5 (Step 53.4, 2026-10-16)
+
+### P-023 · 2026-10-16 · Saving a push address as the phone signed out answered 500
+- **Where:** `POST /api/v1/parents/push-tokens`, `replace` in `src/data/repositories/prisma-push-token-repository.ts`. Found by the systems-architect's review of Step 53.4's code, before anyone ran it.
+- **Symptom (expected, not seen):** a `500` with Prisma's `P2003` ("Foreign key constraint failed") in the server log, instead of the API's own error shape.
+- **Cause:** the route checks the token, then writes a `PushToken` pointing at it. If the same phone signs out, or the parent signs in elsewhere and clears this sign-in as stale (`deleteStale`), between those two moments, the `ParentToken` row is gone and the `create` has nothing to point to. Only `P2002` (a clash) was caught.
+
+```mermaid
+sequenceDiagram
+    participant A as POST /push-tokens
+    participant B as POST /logout or a new sign-in
+    participant DB as Postgres
+    A->>DB: token ok
+    B->>DB: delete or clear this ParentToken
+    A->>DB: create PushToken(parentTokenId)
+    DB-->>A: P2003: no such ParentToken
+```
+
+- **Options weighed:**
+  1. Leave it: rare, and the app retries. But a `500` looks like a server fault in the logs, and the app's one error handler expects the API's shape.
+  2. **Catch `P2003` and answer `401`**, which is what the phone would get on its next request anyway. Chosen.
+- **Solution:** `isForeignKeyViolation` in `src/data/repositories/prisma-errors.ts`. `replace` answers `"signed_out"`, and `registerPushToken` turns that into `401 unauthorized`. A unit test in `push-tokens.test.ts` covers it.
+- **Status:** Fixed, waiting for the owner's checks.

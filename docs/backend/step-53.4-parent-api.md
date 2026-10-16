@@ -1,5 +1,7 @@
 # Step 53.4: The parent notifications API
 
+> **Built on 2026-10-16.** "What Step 53.4 built" just below is the real diff, in order. Where it differs from the original plan further down, "What changed while building" (just before "Verify it worked") says how and why.
+
 > **Now Step 53.4 only** (2026-10-16). Step 53.3 built the sign-in half from this recipe, with its own recipe: `docs/backend/step-53.3-parent-sign-in-api.md`. What's left for 53.4: the notification and push-token addresses, section 4 (photos for parent tokens), section 5 (`docs/PARENT-API.md`) and the rest of the API browser tests. Two changes from Step 53.3's reviews:
 > - `PushToken` gets a `parentTokenId` with `onDelete: Cascade`. Without the cascade, `deleteStale` (`prisma-parent-token-repository.ts`) would hit a foreign-key error once a revoked token still had a push token, and every sign-in would fail. Logout deletes that phone's `PushToken` explicitly, since revoking isn't deleting.
 > - Step 54 sends nothing to a push token whose `ParentToken` is revoked or unused for 90 days.
@@ -12,6 +14,45 @@
 > - **53.4**: the notification and push-token addresses, section 4 (photos), section 5 (`docs/PARENT-API.md`) and the API browser tests.
 >
 > The original text follows, unchanged except for this note.
+
+## What Step 53.4 built
+
+The plan was reviewed with the systems-architect on 2026-10-16 (one round, nothing blocking; `docs/BUILD-LOG.md`, Step 53.4).
+
+```mermaid
+flowchart LR
+    PT["ParentToken<br/>(one per signed-in phone)"] -- "parentTokenId @unique<br/>onDelete: Cascade" --> Push["PushToken<br/>token @unique, platform"]
+    Parent -- "onDelete: Cascade" --> PT
+    Stale["issueParentToken → deleteStale<br/>(revoked, or 90 days unused)"] -. deletes .-> PT
+    Logout["POST /logout"] -- "1. delete" --> Push
+    Logout -- "2. revoke" --> PT
+```
+
+1. **The table** (migration `push_tokens`): `PushToken { id, token @unique, platform (ios | android), parentTokenId @unique → ParentToken, onDelete: Cascade, createdAt, updatedAt }`.
+   ```bash
+   npx prisma migrate dev --name push_tokens   # a new table: no data to move
+   npx prisma generate
+   ```
+   There's no `parentId`: the parent is the sign-in's, so the two can't disagree. Step 54 reaches a parent's push addresses through `ParentToken`'s `parentId` index. `parentTokenId @unique` means one push address per signed-in phone. Clearing stale sign-ins then clears their push addresses by the cascade.
+2. **The repository** (`push-token-repository.ts`, `prisma-push-token-repository.ts`): `findByToken`, `replace` and `deleteForParentToken`. `replace` is a *batch* `$transaction([deleteMany(this token or this sign-in), create])`: one trip to the database, so no pool connection is held between the two statements. It answers `"saved"`, `"clash"` (a unique clash: two registrations at once), or `"signed_out"` (a foreign-key error: the sign-in was deleted between the token check and the write, added by the code review).
+3. **The service** (`src/services/parents/push-tokens.ts`):
+   - `registerPushToken(caller, body)`: Zod checks `ExponentPushToken[…]` or `ExpoPushToken[…]`, at most 200 characters, and `ios` or `android`. The same address already saved for this sign-in returns after one read and no write, since the app registers on every start. Otherwise `replace` runs, and once more after a clash. A second clash means yet another registration from the phone just saved, and the app registers again at its next start anyway. `"signed_out"` becomes `401`.
+   - `signOutParentPhone(tokenId)`: deletes the push address, then revokes the token. Revoking keeps the token's row, so the cascade doesn't run. `revokeParentToken` is gone: logout was its only caller.
+4. **The feed** (`notifications/route.ts`):
+   - A `before` that doesn't decode is `400` (`fields.before`), and an empty one is the first page. A `limit` that isn't a whole number is `400`.
+   - `listParentNotifications` itself keeps `limit` between 1 and 50, so the web can't pass a bad one either: a negative `take` would reverse Prisma's order.
+   - The links are read once for the page and the count (`linksReadOnce` in `api-request.ts`): React's `cache` is for renders, and a route handler isn't one.
+   - `toNotificationJson` copies `id, childId, childName, kind, at, read`, and is tested for exact keys.
+5. **Read marks:** `notifications/[id]/read` is `204`, or `404` when the id isn't about one of the parent's children. `notifications/read-all` is `204`.
+6. **Push addresses:** `push-tokens/route.ts` is `204`, or `400` with `fields`.
+7. **Photos** (`photo-viewer.ts`): a `tal_par_` token is checked first and becomes `{ children: [{ schoolId, studentId }] }` from the parent's links (`parentPhotoViewer`). `canViewPhoto` lets that viewer see a key only when its school and student (`studentOfPhotoKey`, the key's second part) are one of those links: any photo of their own child, current or old. Device tokens are `tal_dev_`, so they never reach the parent check.
+8. **Docs:** `docs/PARENT-API.md` (new, linked from the README), with real answers from the local server. `ARCHITECTURE.md`'s parent rows and parent auth now point to it, and `PARENT-APP-BRIEF.md`, `AUTH.md`, `SCHOOL-ISOLATION.md` and `COMMANDS.md` 7d are updated.
+9. **Tests:**
+   - `push-tokens.test.ts`: save, no write when unchanged, replace on one phone, move between parents, retry after a clash, signed out on the way, bad token or platform, sign-out.
+   - `notifications.test.ts`: the 1–50 clamp.
+   - `api-responses.test.ts`: a feed entry's exact keys.
+   - `photo-viewer.test.ts`: own child (also an older photo), a classmate, the same id at another school, and `parentPhotoViewer`.
+   - `e2e/parent-api.spec.ts`: after the gate tap, the feed shows her time out. A second tap 3 minutes later (past the 2-minute repeat window, within the 5 minutes a gate's clock may run ahead) is her time in. Then `limit=1` paging, mark one read and then all, another child's notification `404`, a bad cursor and limit `400`, another child's photo `404`, push token `204`/`400`, and logout then `401`. The own-child photo `200` is unit-tested only: seed students have no stored photo.
 
 
 > **Split from Step 53 on 2026-10-15** (owner approval). Step 53 (`docs/backend/step-53-parent-accounts-across-schools.md`) comes first and moves a parent's school onto each linked child. This recipe builds on that, and is updated for the 2026-10-13 decisions (`docs/SCALING.md` section 2):
@@ -204,18 +245,30 @@ This is the app's contract, written for tomorrow:
 - **`docs/COMMANDS.md`:** a "Parent API" section with the `curl` sign-in, `/me` and notifications examples below, and how to get a token.
 - **`docs/PARENT-API.md`:** new, the contract for the Expo app.
 
+## What changed while building
+
+- **`PushToken` has no `parentId`,** and is tied to the sign-in (`parentTokenId @unique`, cascade), not only to the parent (section 1's original table). This came from Step 53.3's review: logout must remove that phone's address, and clearing stale sign-ins mustn't hit a foreign-key error.
+- **No `web` platform.** Expo's push service sends to iOS and Android only.
+- **No `lastUsedAt` on `PushToken`.** The sign-in's `lastUsedAt` is the one that counts.
+- **Registering is a delete and a create in one batch,** not an upsert (systems-architect review). An upsert by `token` alone would clash with `parentTokenId @unique` when a sign-in gets a new address.
+- **Two additions from the code review** (systems-architect, same agent): a sign-in deleted while its push address was being saved now answers `401`, not a `500` from the foreign-key error, and the retry's comment no longer claims an address is "never dropped".
+- **A bad `before` is `400`,** not the first page (Step 53.2's review). The service still treats it as the first page, for the web.
+- **For Step 54 to decide** (systems-architect review): "skip a sign-in unused for 90 days" would quietly stop pushes for a parent who reads the banners but never opens the app. Either registering keeps the sign-in alive, or push addresses are dropped only when Expo reports the phone gone (`DeviceNotRegistered`). Also turn on Expo's enhanced push security, so a stolen push address can't be used to send.
+
 ## Verify it worked
 
-1. Your checks: the routine in `docs/LEARNING-LOG.md` ("The routine to run before every commit and push"), including `npx playwright test`.
-2. With `npm run dev` running, sign in from a terminal:
+1. `npx prisma migrate deploy` (the local database already has `push_tokens` if you didn't reset it), then restart `npm run dev`, so it loads the new Prisma Client.
+2. Your checks: the routine in `docs/LEARNING-LOG.md` ("The routine to run before every commit and push"), including `npx playwright test`.
+3. With `npm run dev` running, sign in from a terminal:
    ```bash
    curl -s -X POST http://localhost:3000/api/v1/parents/login -H 'Content-Type: application/json' \
      -d '{"email":"parent-one@balanga.example","password":"Talaan123!","deviceLabel":"curl"}'
    ```
    You get a `token` starting with `tal_par_`.
-3. `curl -s http://localhost:3000/api/v1/parents/me -H "Authorization: Bearer <token>"` lists that parent's linked children, each with today's status.
-4. Tap one of those children's cards with the gate (or Simulate a tap on the dashboard), then fetch `/api/v1/parents/notifications`: the new entry is first.
-5. The web portal at `/parent` works exactly as before.
+4. `curl -s http://localhost:3000/api/v1/parents/me -H "Authorization: Bearer <token>"` lists that parent's linked children, each with today's status.
+5. Tap one of those children's cards with the gate (or Simulate a tap on the dashboard), then fetch `/api/v1/parents/notifications`: the new entry is first.
+6. The push-token and logout commands in `docs/COMMANDS.md` 7d answer `204`.
+7. The web portal at `/parent` works exactly as before.
 
 ## What's next
 

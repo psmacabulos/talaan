@@ -67,8 +67,3 @@ export async function authenticateParent(
   if (Date.parse(stored.lastUsedAt) < Date.parse(touchBefore)) await deps.tokens.touch(stored.id, now, touchBefore);
   return { parentId: stored.parentId, tokenId: stored.id };
 }
-
-/** Signs one phone out. Its next request gets 401. */
-export async function revokeParentToken(tokenId: string, now: string, deps: ParentTokenDeps): Promise<void> {
-  await deps.tokens.revoke(tokenId, now);
-}

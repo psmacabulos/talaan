@@ -5,6 +5,7 @@ import type { NotificationPreference, School } from "@/features/schools/types";
 import { photoPath } from "@/features/students/photo";
 import { toSchoolOffsetIso } from "@/lib/school-time";
 import type { ChildToday } from "@/services/parents/children-today";
+import type { ParentNotificationItem } from "./notification-format";
 import type { NotificationKind, Parent } from "./types";
 
 /**
@@ -115,5 +116,26 @@ export function toDayTapsJson(studentId: string, taps: Tap[], day: SchoolDay): D
       at: toSchoolOffsetIso(tap.tappedAt),
       kind,
     })),
+  };
+}
+
+export type NotificationJson = {
+  id: string;
+  childId: string;
+  childName: string;
+  kind: NotificationKind;
+  at: string;
+  read: boolean;
+};
+
+/** One feed entry for `notifications` (Step 53.4): the child's id and name, never more of them. */
+export function toNotificationJson({ notification, student }: ParentNotificationItem): NotificationJson {
+  return {
+    id: notification.id,
+    childId: student.id,
+    childName: `${student.firstName} ${student.lastName}`,
+    kind: notification.kind,
+    at: toSchoolOffsetIso(notification.tappedAt),
+    read: notification.read,
   };
 }

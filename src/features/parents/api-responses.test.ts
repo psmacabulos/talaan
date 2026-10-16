@@ -4,7 +4,14 @@ import type { Tap } from "@/features/attendance/types";
 import type { School } from "@/features/schools/types";
 import type { Student } from "@/features/students/types";
 import { schoolTimeToIso } from "@/lib/school-time";
-import { apiError, toChildTodayJson, toDayTapsJson, toParentJson, toSchoolJson } from "./api-responses";
+import {
+  apiError,
+  toChildTodayJson,
+  toDayTapsJson,
+  toNotificationJson,
+  toParentJson,
+  toSchoolJson,
+} from "./api-responses";
 
 const FRIDAY = "2026-06-19";
 
@@ -94,6 +101,30 @@ describe("parent API answers", () => {
       "mobile",
     ]);
     expect(toSchoolJson(school)).toEqual({ id: "school-a", name: "School A" });
+  });
+
+  it("gives a feed entry with exactly the agreed keys, and only the child's name", () => {
+    const json = toNotificationJson({
+      notification: {
+        id: "00000000-0000-4000-8000-000000000001",
+        schoolId: "school-a",
+        studentId: student.id,
+        kind: "time_in",
+        tappedAt: schoolTimeToIso(FRIDAY, "07:56"),
+        read: false,
+      },
+      // Spread on purpose: a whole student must still come out as just the name.
+      student: { ...student },
+    });
+    expect(json).toEqual({
+      id: "00000000-0000-4000-8000-000000000001",
+      childId: "student-juan",
+      childName: "Juan Dela Cruz",
+      kind: "time_in",
+      at: `${FRIDAY}T07:56:00.000+08:00`,
+      read: false,
+    });
+    for (const secret of PRIVATE) expect(JSON.stringify(json)).not.toContain(secret);
   });
 
   it("answers every error in one shape, with its status", async () => {

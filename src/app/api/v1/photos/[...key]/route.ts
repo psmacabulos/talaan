@@ -6,7 +6,8 @@ const photoKeySchema = studentSchema.shape.photoKey.unwrap();
 
 /**
  * One student's photo thumbnail (Step 46.5), for that school's staff, gate
- * or monitor only. Anyone else gets 404, not 403, so the address never
+ * or monitor, or the student's own parent in the app (Step 53.4), only.
+ * Anyone else gets 404, not 403, so the address never
  * reveals whether a photo exists. A new photo always has a new key, so the
  * browser may keep this one for a year.
  */

@@ -193,8 +193,31 @@ model ParentToken {
   lastUsedAt DateTime  @default(now())
   revokedAt  DateTime?
   createdAt  DateTime  @default(now())
+  pushToken  PushToken?
 
   @@index([parentId])
+}
+
+enum PushPlatform {
+  ios
+  android
+}
+
+// Where a signed-in phone receives pushes (Step 53.4): its Expo push token.
+// Step 54 sends to these. No parentId: the parent is the sign-in's, so the
+// two can never disagree.
+model PushToken {
+  id            String       @id @default(uuid())
+  // The phone's address, as Expo gave it. One row per phone: a phone that
+  // signs in as another parent moves its row to that sign-in.
+  token         String       @unique
+  platform      PushPlatform
+  // One push address per signed-in phone. Deleted with its sign-in, so
+  // clearing stale sign-ins (issueParentToken) clears their push tokens too.
+  parentTokenId String       @unique
+  parentToken   ParentToken  @relation(fields: [parentTokenId], references: [id], onDelete: Cascade)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 }
 
 model ParentStudentLink {

@@ -14,7 +14,7 @@ Every command this project needs, grouped by what you're doing, with what each o
 7. [The gate, the monitor and the USB reader](#7-the-gate-the-monitor-and-the-usb-reader)
    - [Staff accounts and set-password links](#7b-staff-accounts-and-set-password-links-step-505)
    - [The live server (Heroku)](#7c-the-live-server-heroku-step-52)
-   - [The parent API](#7d-the-parent-api-step-533)
+   - [The parent API](#7d-the-parent-api-steps-533-and-534)
 8. [Git: saving your work](#8-git-saving-your-work)
 9. [When something is stuck](#9-when-something-is-stuck)
 
@@ -259,9 +259,9 @@ In the app, a principal gets the same links without the terminal: the dialog aft
 
 ---
 
-## 7d. The parent API (Step 53.3)
+## 7d. The parent API (Steps 53.3 and 53.4)
 
-What the Expo app calls. With `npm run dev` running, sign in as a demo parent:
+What the Expo app calls. The full contract, with every answer, is `docs/PARENT-API.md`. With `npm run dev` running, sign in as a demo parent:
 
 ```bash
 curl -s -X POST http://localhost:3000/api/v1/parents/login -H 'Content-Type: application/json' \
@@ -275,7 +275,11 @@ The answer has a `token` starting with `tal_par_`. Put it in a variable, then:
 | `curl -s http://localhost:3000/api/v1/parents/me -H "Authorization: Bearer $TOKEN"` | the parent and each child's day so far |
 | `curl -s "http://localhost:3000/api/v1/parents/children/student-0001/taps?date=2026-06-19" -H "Authorization: Bearer $TOKEN"` | one child's taps that day, labelled in and out |
 | `curl -s http://localhost:3000/api/v1/parents/schools` | the schools to pick from when linking a child (no token needed) |
-| `curl -s -X POST http://localhost:3000/api/v1/parents/logout -H "Authorization: Bearer $TOKEN" -o /dev/null -w "%{http_code}\n"` | `204`; the token stops working |
+| `curl -s "http://localhost:3000/api/v1/parents/notifications?limit=2" -H "Authorization: Bearer $TOKEN"` | the newest 2 notifications, the unread count (stops at 10), and `nextBefore` |
+| `curl -s "http://localhost:3000/api/v1/parents/notifications?limit=2&before=$NEXT" -H "Authorization: Bearer $TOKEN"` | the next, older 2: put the last answer's `nextBefore` in `NEXT` |
+| `curl -s -X POST http://localhost:3000/api/v1/parents/notifications/read-all -H "Authorization: Bearer $TOKEN" -o /dev/null -w "%{http_code}\n"` | `204`; every one of the parent's notifications is read (one: `…/notifications/<id>/read`) |
+| `curl -s -X POST http://localhost:3000/api/v1/parents/push-tokens -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"token":"ExponentPushToken[test]","platform":"android"}' -o /dev/null -w "%{http_code}\n"` | `204`; the phone's push address is saved |
+| `curl -s -X POST http://localhost:3000/api/v1/parents/logout -H "Authorization: Bearer $TOKEN" -o /dev/null -w "%{http_code}\n"` | `204`; the phone's push address is removed and the token stops working |
 
 Five wrong passwords for one email answer `429` for 15 minutes. Locally, requests come from this computer's own address, which the per-network limits never count. The tests send `X-Forwarded-For: 203.0.113.x` to try them.
 

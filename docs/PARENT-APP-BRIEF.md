@@ -4,9 +4,9 @@ The parent app is a separate Expo (React Native) project in its own repository. 
 
 ## For the owner: how to use this file
 
-1. **Create the repository** on GitHub, for example `bantayaral-parent-app`, and clone it. Its first step (M1, the setup) can start any time. The steps after it need Talaan's Step 53 (the parent API) live on Heroku.
+1. **Create the repository** on GitHub, for example `bantayaral-parent-app`, and clone it. Its first step (M1, the setup) can start any time. The steps after it need Talaan's parent API (Steps 53.3 and 53.4) live on Heroku.
 2. **Copy everything from "Start of the brief" to the end of this file** into the new repository as `CLAUDE.md`.
-3. **Copy Talaan's `docs/PARENT-API.md`** (written in Step 53) into the new repository as `docs/TALAAN-API.md`, as soon as it exists. Copy it again whenever the API changes. It's the contract, and it wins over the summary below.
+3. **Copy Talaan's `docs/PARENT-API.md`** (written in Step 53.4) into the new repository as `docs/TALAAN-API.md`. Copy it again whenever the API changes. It's the contract, and it wins over the summary below.
 4. **Paste this as the first message** in the new repository:
 
    ```text
@@ -55,7 +55,7 @@ Steps M1–M8 below get there. Everything else waits until after the demo, and i
 
 ### Where the contract lives
 
-`docs/TALAAN-API.md` is a copy of Talaan's `docs/PARENT-API.md`, and it's the source of truth. The summary below is the plan as of 2026-10-13: Talaan's Step 53 recipe, plus that day's decisions. It's here so this project can start before that file exists. **When the two differ, `docs/TALAAN-API.md` wins.** If it's missing, or looks older than the server, ask the owner for a fresh copy. Never guess an endpoint.
+`docs/TALAAN-API.md` is a copy of Talaan's `docs/PARENT-API.md`, and it's the source of truth. The summary below matches it as of 2026-10-16 (Talaan Step 53.4), in brief. **When the two differ, `docs/TALAAN-API.md` wins.** If it's missing, or looks older than the server, ask the owner for a fresh copy. Never guess an endpoint.
 
 **When the app needs something the API doesn't have,** don't work around it in the app, and never call anything outside `/api/v1/parents/*` and `/api/v1/photos/*`. Write the request in `docs/API-REQUESTS.md`: what's needed, the shape you'd like, and why. The owner takes it to the Talaan repository, where it becomes a step there.
 
@@ -87,7 +87,7 @@ Steps M1–M8 below get there. Everything else waits until after the demo, and i
 | `GET /api/v1/parents/notifications?before=<cursor>&limit=30` | yes | | `{ notifications: [Item], unreadCount, nextBefore }` |
 | `POST /api/v1/parents/notifications/:id/read` | yes | | `204` |
 | `POST /api/v1/parents/notifications/read-all` | yes | | `204` |
-| `POST /api/v1/parents/push-tokens` | yes | `{ token, platform }` (`ios`, `android`) | `204`. It saves the Expo push token, or moves it to this parent. |
+| `POST /api/v1/parents/push-tokens` | yes | `{ token, platform }` (`ios`, `android`) | `204`. It saves the Expo push token for this signed-in phone (one per phone), or moves it to this parent. |
 
 `deviceLabel` is a name the parent could recognise later, such as the phone's model.
 
@@ -126,7 +126,7 @@ type Item = {
 };
 ```
 
-**Paging:** the feed comes 30 at a time, newest first. Pass the last answer's `nextBefore` as `before` for the next page. `nextBefore` is null at the end. It's an opaque string (decided 2026-10-16, Talaan Step 53.2): send it back exactly as received, and never build or read one. `unreadCount` stops at 10, so show "9+" from 10.
+**Paging:** the feed comes 30 at a time, newest first. Pass the last answer's `nextBefore` as `before` for the next page. `nextBefore` is null at the end. It's an opaque string (decided 2026-10-16, Talaan Step 53.2): send it back exactly as received, URL-encoded, and never build or read one. A `before` the server didn't make answers `400`. `limit` is kept between 1 and 50. `unreadCount` counts across all the children and stops at 10, so show "9+" from 10.
 
 ### Errors
 

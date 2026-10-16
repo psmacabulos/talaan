@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createMockParentTokenRepository } from "@/data/repositories/parent-token-repository";
-import { authenticateParent, issueParentToken, PARENT_TOKEN_PREFIX, revokeParentToken } from "./parent-token";
+import { authenticateParent, issueParentToken, PARENT_TOKEN_PREFIX } from "./parent-token";
 
 const NOW = "2026-10-16T00:00:00.000Z";
 const DAY = 24 * 60 * 60_000;
@@ -30,7 +30,7 @@ describe("parent tokens", () => {
     await expect(authenticateParent("Bearer tal_dev_abc", NOW, { tokens })).resolves.toBeNull();
     await expect(authenticateParent(`Bearer ${PARENT_TOKEN_PREFIX}made-up`, NOW, { tokens })).resolves.toBeNull();
 
-    await revokeParentToken(tokens.rows[0].id, NOW, { tokens });
+    await tokens.revoke(tokens.rows[0].id, NOW);
     await expect(authenticateParent(`Bearer ${token}`, NOW, { tokens })).resolves.toBeNull();
   });
 
@@ -59,7 +59,7 @@ describe("parent tokens", () => {
     await issueParentToken("parent-1", "old phone", NOW, { tokens });
     await issueParentToken("parent-1", "revoked", NOW, { tokens });
     await issueParentToken("parent-2", "someone else's", NOW, { tokens });
-    await revokeParentToken(tokens.rows[1].id, NOW, { tokens });
+    await tokens.revoke(tokens.rows[1].id, NOW);
 
     await issueParentToken("parent-1", "new phone", later(91 * DAY), { tokens });
 

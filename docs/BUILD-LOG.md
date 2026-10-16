@@ -2364,3 +2364,37 @@ Plan reviewed with the systems-architect in two rounds (no blocking concerns), k
   - `npm run build`, then Playwright parent-api, parent, login, isolation and a11y: 185 passed, 17 skipped by design.
 - **The owner's full run found one clash** (`docs/PROBLEMS-LOG.md`, P-022). The API test's child had no seed tap, so the tap-station tests, which tap the next student with no tap, could tap him first, and the test's own tap became a repeat that stored nothing. My run above hadn't included the station tests. The test now uses Divine Garcia, who already has a morning tap, and checks her day reads time in then time out. After the fix, `npm run test:e2e` passed (93), and so did the owner's full run.
 - **A slip of mine:** running Prettier on all of `src` reformatted ten files outside this step (the dashboard and station pages, `demo-shortcuts.tsx`, `login-mobile-header.tsx`, `isolation.test.ts`, `sign-in-link-dialog.tsx`, `staff-form.tsx`, `request-origin.ts`, `session.ts`, `staff-sign-in.test.ts`). The diffs are line breaks and spacing only, with no change in behaviour; they're kept in this commit. Next time, Prettier runs only on the files a step changes.
+
+## Step 53.4: the parent notifications API (2026-10-16)
+
+Plan reviewed with the systems-architect in one round: nothing blocking, nothing to dispute, so no second round. The same architect then reviewed the finished files, continued with `SendMessage`. The recipe, `docs/backend/step-53.4-parent-api.md`, was written before the code (2026-10-11) and now has "What Step 53.4 built" from the real diff, plus "What changed while building".
+
+- **What the plan review changed:**
+  - Registering a push address is a *batch* transaction (delete this token's or this sign-in's row, then create), tried once more after a clash, with no write at all when nothing changed. My plan had an upsert inside an interactive transaction. That would hold a pool connection between statements, and every app start registers.
+  - `docs/PARENT-API.md` spells out three things the plan had left implicit: read marks are shared by a child's guardians, `unreadCount` is the total across children and stops at 10, and an empty `before=` is the first page.
+  - An open question moved into Step 54's plan: the 90-day rule could quietly stop pushes for a parent who never opens the app.
+- **Decisions of my own, in the plan:**
+  - `PushToken` has no `parentId`. The sign-in's parent is the one, so the two can't disagree. Step 54 joins through `ParentToken`'s `parentId` index.
+  - `parentTokenId` is unique: one push address per signed-in phone.
+  - No `web` platform, since Expo sends to iOS and Android only.
+- **Checked before relying on it:**
+  - Gate tokens are `tal_dev_` (`device-token.ts:9`), so checking `tal_par_` first in the photo viewer can't take a gate's request.
+  - `authenticateParent` already refuses a token unused for 90 days (`parent-token.ts:64`).
+  - In the browser tests, a gate tap's time falls back to the demo clock, because the test's real `new Date()` is months ahead of `DEMO_NOW`. A second tap sent 3 minutes after the first one's stored time is therefore past the 2-minute repeat window and within the 5 minutes a gate's clock may run ahead, so it's recorded as her next time in. That gives the paging test two notifications without touching any other test's student.
+- **Small surprises:**
+  - React's `cache` (used by `parentLinks` on pages) is for renders, not route handlers, so the feed route reads the links once with a small `linksReadOnce` instead.
+  - `revokeParentToken` had only one caller, logout, which now uses `signOutParentPhone`. It was removed rather than left unused.
+  - Zod 4 takes `{ error }` for a custom message; `{ message }` still works but is deprecated.
+- **Commands run:**
+  - `npx prisma migrate dev --name push_tokens`: a new table and enum, applied locally. Then `npx prisma generate`.
+  - `npx prettier --write`, on the four changed files it flagged only (the lesson from Step 53.3).
+  - `npx vitest run` on the five touched test files: 32 passed. The full suite, build and Playwright are the owner's.
+  - Against the owner's running dev server: a demo parent's sign-in, `GET /notifications?limit=2` (the real answer in `docs/PARENT-API.md`), `before=nope` (400), `/me` and `/schools`. One wrong-password login was sent on purpose to capture that answer. It counts once against `parent-one@balanga.example`'s 5 tries, in the dev server's memory, for 15 minutes.
+- **The code review:** nothing blocking. Two small changes taken:
+  - The architect spotted a race. If a phone signs out, or its sign-in is cleared as stale, between the token check and the write, the `create` hits a foreign-key error (P2003). That reached the app as a `500`; it's now a `401`, through `isForeignKeyViolation` (`prisma-errors.ts`) and a `"signed_out"` outcome, with a unit test.
+  - The retry's comment claimed an address is "never dropped", but a second clash still answers `204`. It now says why that's fine: the app registers at every start.
+
+  Not taken:
+  - A length cap on notification ids before the query. It's cosmetic: ids are TEXT, and the query is scoped to the parent's children.
+  - A browser test that logout removes the push row. No address shows it, so the unit test `signOutParentPhone` covers it.
+- **For the owner to measure** (architect's suggestion): P2002 retries and any P2003 on `POST /push-tokens` in the dev log, and queries per feed request (expected 1 + 3 per child) with Prisma's `log: ["query"]`, for a parent with two children.

@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ████████████████░░░░ 81%**  (252 of 313 tasks, 68 of 83 steps approved)
+**Overall progress: ████████████████░░░░ 82%**  (257 of 314 tasks, 69 of 83 steps approved)
 
-**Next up:** Step 53.3, Parent tokens and the sign-in API (ready for your review)
+**Next up:** Step 53.4, The parent notifications API (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -75,8 +75,8 @@
 | 53 | One parent account for any number of schools | ██████████ 100% | Approved |
 | 53.1 | Parent sign-in services | ██████████ 100% | Approved |
 | 53.2 | Paged parent data | ██████████ 100% | Approved |
-| 53.3 | Parent tokens and the sign-in API | ████████░░  80% | Ready for your review |
-| 53.4 | The parent notifications API | ░░░░░░░░░░   0% | Not started |
+| 53.3 | Parent tokens and the sign-in API | ██████████ 100% | Approved |
+| 53.4 | The parent notifications API | ████████░░  80% | Ready for your review |
 | 54 | Push notifications reach the phone | ░░░░░░░░░░   0% | Not started |
 | 55 | Safe for real parents | ░░░░░░░░░░   0% | Not started |
 | 55.5 | Forgot password by email | ░░░░░░░░░░   0% | Not started |
@@ -754,14 +754,14 @@ Recipe: `docs/backend/step-53.3-parent-sign-in-api.md`, written from the real di
 - [x] Sign-up and the token are not wrapped in one database transaction around `registerParent` (a caught unique-email error would abort it). A retried sign-up answers "email taken", so the app treats that as "sign in instead".
 Done when: the sign-up, login and `/me` `curl` checks work, and every check passes. The parent app can start calling these.
 Commit: `feat(api): add parent tokens and the parent sign-in API`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 53.4: The parent notifications API
-Recipe: `docs/backend/step-53.4-parent-api.md`, the part after the sign-in addresses, with Step 53.3's review notes at its top.
-- [ ] `/api/v1/parents/notifications` (with `before` and `limit`), `…/:id/read`, `…/read-all` and `push-tokens`. From Step 53.2's review: clamp `limit` (1–50; a negative `take` reverses Prisma's order), and answer a cursor that doesn't decode with `400`, not the first page. The app registers an Expo push token (owner decision, 2026-10-13), since Step 54 sends through Expo's push service.
-- [ ] Parent tokens can load their own children's photos, and no one else's.
-- [ ] From Step 53.3's review: `PushToken.parentTokenId` with `onDelete: Cascade`, and logout deletes that phone's push token.
-- [ ] `docs/PARENT-API.md`, unit tests, and `e2e/parent-api.spec.ts` (sign up, link, tap, notification, read, logout).
+Recipe: `docs/backend/step-53.4-parent-api.md`, the part after the sign-in addresses, with Step 53.3's review notes at its top, and "What Step 53.4 built" from the real diff. Plan reviewed with the systems-architect on 2026-10-16 (one round, nothing blocking).
+- [x] `/api/v1/parents/notifications` (with `before` and `limit`), `…/:id/read`, `…/read-all` and `push-tokens`. From Step 53.2's review: clamp `limit` (1–50; a negative `take` reverses Prisma's order), and answer a cursor that doesn't decode with `400`, not the first page. The app registers an Expo push token (owner decision, 2026-10-13), since Step 54 sends through Expo's push service.
+- [x] Parent tokens can load their own children's photos, and no one else's.
+- [x] From Step 53.3's review: `PushToken.parentTokenId` with `onDelete: Cascade`, and logout deletes that phone's push token. Changed while building: `parentTokenId` is unique (one push address per signed-in phone), there's no `parentId` (the sign-in's parent is the one), and registering is a delete and a create in one batch, tried once more after a clash (architect review).
+- [x] `docs/PARENT-API.md`, unit tests, and `e2e/parent-api.spec.ts` (sign up, link, tap, notification, read, logout).
 Done when: the `curl` checks in the recipe work, `docs/PARENT-API.md` is ready to copy into the app's repository, and every check passes.
 Commit: `feat(api): add the parent notifications API for the mobile app`
 - [ ] Owner review: I checked it and said "approved"
@@ -772,6 +772,7 @@ On 2026-10-13, before the first deploy, the owner asked for a review of the whol
 ### Step 54: Push notifications reach the phone
 Plan: `docs/SCALING.md` 2.3, from the plan's after-demo list (the notification outbox and its worker). Moved up to come right after Step 53 on 2026-10-13: the demo needs a tap at the gate to buzz a parent's phone. Its last check needs the parent app to register a push token (`docs/PARENT-APP-BRIEF.md`, app step M7), so it can be finished while the app is being built.
 - [ ] One delivery record per phone for each notification (waiting, sent, failed, tries), written in the same transaction as the tap. Never to a push token whose sign-in token is revoked or unused for 90 days (Step 53.3 review).
+- [ ] Decided in the recipe (Step 53.4's architect review): the 90-day rule above would quietly stop pushes for a parent who reads the banners but never opens the app, against "never silently lost". Either registering a push token keeps the sign-in alive, or push addresses are dropped only when Expo answers `DeviceNotRegistered`. Also turn on Expo's enhanced push security.
 - [ ] A worker that sends them in batches through Expo's push service (Step 53's plan; free, and it delivers through Firebase Cloud Messaging on Android and Apple's push service on iOS), and retries failures. Its running cost (one more dyno, or inside the web server at first) is stated before it's added.
 - [ ] Tests: a failed send is retried, and a phone that's gone is dropped.
 Done when: a tap at the gate arrives on a test phone as a push, and every check passes.

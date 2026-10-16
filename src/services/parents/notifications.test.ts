@@ -113,6 +113,19 @@ describe("listParentNotifications", () => {
     );
   });
 
+  it("keeps a page between 1 and 50, whatever the limit asked for", async () => {
+    const rows = Array.from({ length: 60 }, (_, n) =>
+      notification(uuid(n), ana, `2026-06-${10 + (n % 10)}T07:56:00.000Z`),
+    );
+    const d = deps(rows);
+    const size = async (limit: number) => (await listParentNotifications("parent-1", { limit }, d)).items.length;
+
+    await expect(size(-5)).resolves.toBe(1);
+    await expect(size(0)).resolves.toBe(1);
+    await expect(size(500)).resolves.toBe(50);
+    await expect(size(1.5)).resolves.toBe(30);
+  });
+
   it("never includes another parent's child", async () => {
     const result = await listParentNotifications("parent-1", {}, deps([notification(uuid(7), other, SAME_TIME)]));
     expect(result.items).toEqual([]);

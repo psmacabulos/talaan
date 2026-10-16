@@ -9,6 +9,9 @@ import type { ParentNotificationItem } from "@/features/parents/notification-for
 /** One page of the feed (Step 53.2). */
 export const NOTIFICATION_PAGE_SIZE = 30;
 
+/** The most one page can ask for (Step 53.4): each child's query takes one more than this. */
+export const MAX_NOTIFICATION_PAGE_SIZE = 50;
+
 /** The unread count stops here: the bell shows "9+" from 10 up, so counting further is wasted work. */
 export const UNREAD_COUNT_CAP = 10;
 
@@ -38,14 +41,20 @@ async function linkedChildren(parentId: string, deps: Pick<ParentNotificationsDe
  * linked children (`docs/SCALING.md` 2.2). Each child gives at most
  * `limit + 1` from below the cursor, one after another; merged in the same
  * order, the first `limit` are exactly the page, and anything past it means
- * there's an older page. A bad or missing `before` means the first page.
+ * there's an older page. A bad or missing `before` means the first page
+ * (the API answers a bad one with 400 before it gets here).
  */
 export async function listParentNotifications(
   parentId: string,
   page: { before?: string | null; limit?: number },
   deps: ParentNotificationsDeps,
 ): Promise<ParentNotificationsPage> {
-  const limit = page.limit ?? NOTIFICATION_PAGE_SIZE;
+  // Kept between 1 and 50 whoever asks: a negative `take` would reverse Prisma's order.
+  const asked = page.limit;
+  const limit =
+    asked !== undefined && Number.isInteger(asked)
+      ? Math.min(Math.max(asked, 1), MAX_NOTIFICATION_PAGE_SIZE)
+      : NOTIFICATION_PAGE_SIZE;
   const before = decodeNotificationCursor(page.before);
   const links = await deps.links.listByParent(parentId);
 

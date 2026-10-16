@@ -28,3 +28,5 @@ export { type DeviceRepository } from "./device-repository";
 export { deviceRepository, createPrismaDeviceRepository } from "./prisma-device-repository";
 export { createMockParentTokenRepository, type ParentTokenRepository } from "./parent-token-repository";
 export { parentTokenRepository, createPrismaParentTokenRepository } from "./prisma-parent-token-repository";
+export { createMockPushTokenRepository, type PushTokenRepository } from "./push-token-repository";
+export { pushTokenRepository, createPrismaPushTokenRepository } from "./prisma-push-token-repository";

@@ -1,4 +1,8 @@
-import { parentTokenRepository } from "@/data/repositories";
+import {
+  parentStudentLinkRepository,
+  parentTokenRepository,
+  type ParentStudentLinkRepository,
+} from "@/data/repositories";
 import { clientAddressKey } from "@/lib/client-address";
 import { authenticateParent, type ParentCaller } from "@/services/parents/parent-token";
 import { API_MESSAGES, apiError } from "./api-responses";
@@ -26,4 +30,20 @@ export async function requireParent(request: Request): Promise<ParentCaller | Re
     tokens: parentTokenRepository,
   });
   return caller ?? apiError("unauthorized", API_MESSAGES.unauthorized);
+}
+
+/**
+ * The parent's links, read once for this request (Step 53.4), shaped like
+ * the repository, so two services in one route share one read. React's
+ * `cache` does this for pages; a route handler isn't a render.
+ */
+export function linksReadOnce(): Pick<ParentStudentLinkRepository, "listByParent"> {
+  const reads = new Map<string, ReturnType<ParentStudentLinkRepository["listByParent"]>>();
+  return {
+    listByParent(parentId) {
+      const read = reads.get(parentId) ?? parentStudentLinkRepository.listByParent(parentId);
+      reads.set(parentId, read);
+      return read;
+    },
+  };
 }
