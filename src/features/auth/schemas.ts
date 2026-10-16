@@ -3,7 +3,8 @@ import { z } from "zod";
 /** The staff sign-in form, checked in the browser and again by `signIn` (src/features/auth/actions.ts). */
 export const loginSchema = z.object({
   email: z.email("Enter a valid email address"),
-  password: z.string().min(1, "Enter your password"),
+  // No stored password is longer, and each try is hashed, so a longer one is refused unhashed.
+  password: z.string().min(1, "Enter your password").max(128, "Enter your password"),
 });
 
 /** How a parent's email is stored and looked up (Step 53.1): no spaces around it, all lower case. */
@@ -17,10 +18,19 @@ export function normalizeEmail(email: string): string {
  * before anything chained after it, so `z.email().trim()` would reject the
  * spaces first.
  */
-export const emailSchema = z.string().trim().toLowerCase().pipe(z.email("Enter a valid email address"));
+export const emailSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .max(254, "Enter a valid email address")
+  .pipe(z.email("Enter a valid email address"));
 
 /** Every password the app stores, staff or parent: at least 8 characters. */
-export const passwordSchema = z.string().min(8, "Use at least 8 characters");
+export const passwordSchema = z
+  .string()
+  .min(8, "Use at least 8 characters")
+  // A cap, since the slow password hash runs on whatever is sent (Step 53.3).
+  .max(128, "Use 128 characters or fewer");
 
 /** Step 50.5's set-password page: a new password, typed twice. */
 export const setPasswordSchema = z

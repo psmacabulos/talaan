@@ -26,7 +26,7 @@ vi.mock("next/cache", () => ({ refresh: vi.fn() }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers({ origin: "http://localhost:3000" }) }));
 vi.mock("@/data/repositories", async () => {
   const seed = await import("@/data/seed");
-  const copy = <T,>(rows: T[]): T[] => structuredClone(rows);
+  const copy = <T>(rows: T[]): T[] => structuredClone(rows);
   const options = { latencyMs: 0 };
   const { createMockStudentRepository } = await import("@/data/repositories/student-repository");
   const { createMockStaffRepository } = await import("@/data/repositories/staff-repository");
@@ -48,9 +48,8 @@ vi.mock("@/data/repositories", async () => {
   };
 });
 
-const { studentRepository, staffRepository, tapRepository, notificationRepository } = await import(
-  "@/data/repositories"
-);
+const { studentRepository, staffRepository, tapRepository, notificationRepository } =
+  await import("@/data/repositories");
 const { updateStudent } = await import("@/features/students/actions");
 const { checkCardSerial } = await import("@/features/students/card-actions");
 const { removeStaff, createSignInLink } = await import("@/features/staff/actions");

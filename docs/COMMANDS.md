@@ -14,6 +14,7 @@ Every command this project needs, grouped by what you're doing, with what each o
 7. [The gate, the monitor and the USB reader](#7-the-gate-the-monitor-and-the-usb-reader)
    - [Staff accounts and set-password links](#7b-staff-accounts-and-set-password-links-step-505)
    - [The live server (Heroku)](#7c-the-live-server-heroku-step-52)
+   - [The parent API](#7d-the-parent-api-step-533)
 8. [Git: saving your work](#8-git-saving-your-work)
 9. [When something is stuck](#9-when-something-is-stuck)
 
@@ -255,6 +256,28 @@ In the app, a principal gets the same links without the terminal: the dialog aft
 **`heroku run` with an `npm run … -- …` script:** put `--app bantayaral` right after `heroku run`, then the whole script in double quotes, with single quotes inside for a label that has spaces. Without the quotes, the Heroku CLI mangles the command and the server answers `/bin/bash: line 1: run: command not found` (P-011 in `docs/PROBLEMS-LOG.md`).
 
 **Files:** `Procfile`, `package.json` (`engines`), `src/instrumentation.ts`, `src/lib/env.ts`, `src/app/api/v1/health/route.ts`. Full guide: `docs/DEPLOY.md`.
+
+---
+
+## 7d. The parent API (Step 53.3)
+
+What the Expo app calls. With `npm run dev` running, sign in as a demo parent:
+
+```bash
+curl -s -X POST http://localhost:3000/api/v1/parents/login -H 'Content-Type: application/json' \
+  -d '{"email":"parent-one@balanga.example","password":"Talaan123!","deviceLabel":"curl"}'
+```
+
+The answer has a `token` starting with `tal_par_`. Put it in a variable, then:
+
+| Command | What it shows |
+|---|---|
+| `curl -s http://localhost:3000/api/v1/parents/me -H "Authorization: Bearer $TOKEN"` | the parent and each child's day so far |
+| `curl -s "http://localhost:3000/api/v1/parents/children/student-0001/taps?date=2026-06-19" -H "Authorization: Bearer $TOKEN"` | one child's taps that day, labelled in and out |
+| `curl -s http://localhost:3000/api/v1/parents/schools` | the schools to pick from when linking a child (no token needed) |
+| `curl -s -X POST http://localhost:3000/api/v1/parents/logout -H "Authorization: Bearer $TOKEN" -o /dev/null -w "%{http_code}\n"` | `204`; the token stops working |
+
+Five wrong passwords for one email answer `429` for 15 minutes. Locally, requests come from this computer's own address, which the per-network limits never count. The tests send `X-Forwarded-For: 203.0.113.x` to try them.
 
 ---
 

@@ -10,10 +10,7 @@ import { BantayAralLogo } from "@/components/brand/bantay-aral-logo";
 export function LoginMobileHeader() {
   return (
     <h1 className="flex justify-center lg:hidden">
-      <Link
-        href="/"
-        className="rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-      >
+      <Link href="/" className="rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
         <BantayAralLogo size="md" tagline />
       </Link>
     </h1>

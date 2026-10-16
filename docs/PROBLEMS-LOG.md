@@ -34,6 +34,9 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-017](#p-017--2026-10-16--postgres-and-javascript-order-some-ids-differently) | 2026-10-16 | Postgres and JavaScript order some ids differently | Other: correctness | Database, paging | Fixed, waiting for the owner's checks |
 | [P-018](#p-018--2026-10-16--the-bell-sent-each-childs-full-record-to-the-browser) | 2026-10-16 | The bell sent each child's full record to the browser | Security (privacy) | Privacy, parent portal | Fixed, waiting for the owner's checks |
 | [P-019](#p-019--2026-10-16--parent-pages-loaded-every-tap-and-notification-ever) | 2026-10-16 | Parent pages loaded every tap and notification ever | Performance | Parent portal, database | Fixed, waiting for the owner's checks |
+| [P-020](#p-020--2026-10-16--the-sign-in-limit-could-be-flooded-or-walked-around) | 2026-10-16 | The sign-in limit could be flooded, or walked around with many emails | Security | Sign-in | Fixed, waiting for the owner's checks |
+| [P-021](#p-021--2026-10-16--a-schools-launch-night-could-trip-the-address-limit) | 2026-10-16 | A school's launch night could trip the address limit | Other: known risk | Sign-in | Open: watch the logs |
+| [P-022](#p-022--2026-10-16--the-parent-api-test-tapped-a-child-the-station-tests-had-already-tapped) | 2026-10-16 | The parent API test tapped a child the station tests had already tapped | Other: tests | Playwright | Resolved |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -436,3 +439,49 @@ flowchart LR
 - **Options weighed:** see `docs/backend/step-53.2-paged-parent-data.md`. Chosen: today's taps plus the last 10, the newest 5 notifications, a count that stops at 10, and the feed 30 at a time with a cursor.
 - **Impact (performance):** a parent page now reads 19 rows and sends 2.7 KB in any year, against 4,800 rows and 1.3 MB in a child's sixth year. At 5,000 students that's 20 MB instead of up to 9.7 GB sent each morning, which keeps these pages on the Basic dyno ($12 a month in all) instead of about $55 (the benchmark above).
 - **Status:** Fixed, waiting for the owner's checks.
+
+---
+
+## The parent API, part 4 (Step 53.3, 2026-10-16)
+
+Both found in Step 53.3's plan review with the systems-architect, before the parent API opened sign-in to phones.
+
+### P-020 · 2026-10-16 · The sign-in limit could be flooded, or walked around
+- **Where:** `src/services/auth/login-throttle.ts`, and parent sign-up (`registerParent`).
+- **Symptom:** nothing visible yet. Three gaps in the code:
+  - The limit counted only per email, so trying one password against many emails was never slowed.
+  - Its memory had no ceiling. Above 1,000 entries, every wrong try walked the whole list, and recent entries were never removed, so an attacker rotating emails or addresses (one IPv6 phone has billions) could grow it and slow every sign-in.
+  - Sign-up had no limit at all, though each one runs the slow password hash and its "email taken" answer shows which emails are registered.
+- **Cause:** the limit was built for the web form (Step 50.1), where one person types one email. A public API for phones makes scripted tries cheap.
+- **Options weighed:**
+  1. A limit table in the database. Right for several servers, but one dyno doesn't need it yet (`docs/SCALING.md` section 5).
+  2. **Bounded in-memory limits, one per kind.** Chosen.
+- **Solution (Step 53.3):**
+  - Separate limiters for staff emails, parent emails, parent addresses (30 wrong passwords in 15 minutes) and sign-ups per address (100 an hour), so one can't push another's lockouts out.
+  - Each remembers at most 10,000 keys, drops the oldest that isn't locked (never a live lockout), and cleans stale entries at most once a minute.
+  - Addresses come from the last `X-Forwarded-For` entry (`src/lib/client-address.ts`), with IPv6 counted by its /64.
+  - Both limits are checked before any password is hashed.
+- **Impact (security):** guessing passwords across many parent accounts from one network now stops after 30 tries in 15 minutes, a flood of fake addresses can't exhaust memory or slow sign-in, and collecting "email taken" answers is capped at 100 an hour per network.
+- **Status:** Fixed, waiting for the owner's checks.
+
+### P-021 · 2026-10-16 · A school's launch night could trip the address limit
+- **Where:** the per-address limits from P-020, on a night when a school signs its parents up together.
+- **Symptom:** none yet; this is a known risk, kept on purpose. A hundred parents on the school's Wi-Fi, or behind one mobile carrier's shared address (carrier-grade NAT is common in the Philippines), all count as **one** address.
+- **Cause:** a per-address limit can't tell many real parents on one network from one stranger trying many emails.
+- **Options weighed:**
+  1. No address limit. Leaves P-020 open.
+  2. **Generous limits:** 100 sign-ups an hour, counting only forms that pass their checks, so typos don't use up the allowance; and 30 wrong passwords in 15 minutes. Chosen. A wrong password is rare once signed in, since a phone stays signed in for 90 days.
+  3. An allow-list for a school's own address on launch night. Possible later, if it happens.
+- **What to watch:** the server logs `Parent sign-in locked for 15 minutes: too many wrong passwords from one address.` or `Parent sign-up locked for an hour: too many sign-ups from one address.` (never the email or the address). On a launch night, check `heroku logs --app bantayaral | grep "locked"`.
+- **Status:** Open: watch the logs at the first school's launch.
+
+### P-022 · 2026-10-16 · The parent API test tapped a child the station tests had already tapped
+- **Where:** `e2e/parent-api.spec.ts`, "sign up, link a child, see a tap, then sign out", in the owner's full `npm run test:e2e`.
+- **Symptom:** `1 failed [desktop] › e2e/parent-api.spec.ts:41:7 › Parent API (Step 53.3) › sign up, link a child, see a tap, then sign out`. It passed when run alone, and in the smaller run made while building the step.
+- **Cause:** the test's child, Bayani Macapagal, had no seed tap. The tap-station tests tap "the next student with no tap yet", so in the full run they could tap him first. The test's own tap then came inside the 1-2 minute repeat window, was treated as the same pass through the gate, and stored nothing, so its expectations failed. The smaller run hadn't included the station tests.
+- **Options weighed:**
+  1. Run the API test before the station tests. Playwright's order isn't something to rely on, and it breaks again with more workers.
+  2. **A child the station never picks.** Chosen.
+- **Solution:** the test uses Divine Garcia, a Balanga student with an LRN, an active card and a seed tap at 07:35, whom no other test uses. Because she's already tapped, the station tests skip her, and the test clock (09:15) is far past the repeat window, so the test's tap is recorded. It now checks it counted too: her day reads time in (the seed tap), then time out (the test's tap). The test's comment points here.
+- **Lesson:** a browser test that needs a student in a particular state should take one no other test changes, and say why in a comment.
+- **Status:** Resolved: the owner's full run passed.

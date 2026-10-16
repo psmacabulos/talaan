@@ -38,9 +38,7 @@ describe("checkStaffSignIn", () => {
     const wrong = { ok: false, formError: WRONG_SIGN_IN_MESSAGE };
     await expect(checkStaffSignIn({ email: principal.email, password: "nope" }, d)).resolves.toEqual(wrong);
     await expect(checkStaffSignIn({ email: "who@school-a.example", password: "nope" }, d)).resolves.toEqual(wrong);
-    await expect(
-      checkStaffSignIn({ email: invited.email, password: SEED_STAFF_PASSWORD }, d),
-    ).resolves.toEqual(wrong);
+    await expect(checkStaffSignIn({ email: invited.email, password: SEED_STAFF_PASSWORD }, d)).resolves.toEqual(wrong);
   });
 
   it("says 'Too many tries' on the 5th wrong password", async () => {
@@ -55,9 +53,10 @@ describe("checkStaffSignIn", () => {
   it("refuses a locked email even with the right password", async () => {
     const d = deps();
     for (let i = 0; i < 5; i++) await checkStaffSignIn({ email: principal.email, password: "nope" }, d);
-    await expect(
-      checkStaffSignIn({ email: principal.email, password: SEED_STAFF_PASSWORD }, d),
-    ).resolves.toEqual({ ok: false, formError: TOO_MANY_TRIES_MESSAGE });
+    await expect(checkStaffSignIn({ email: principal.email, password: SEED_STAFF_PASSWORD }, d)).resolves.toEqual({
+      ok: false,
+      formError: TOO_MANY_TRIES_MESSAGE,
+    });
   });
 
   it("lets the right password in after 15 minutes", async () => {

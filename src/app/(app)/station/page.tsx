@@ -39,7 +39,9 @@ export default async function StationPage() {
   // needed one student's own history) — same per-student fetch-and-flatten
   // already used by search-students.ts and the Step 17 attendance page.
   const schoolId = session.schoolId;
-  const cardsByStudent = await Promise.all(students.map((student) => cardRepository.listByStudent(schoolId, student.id)));
+  const cardsByStudent = await Promise.all(
+    students.map((student) => cardRepository.listByStudent(schoolId, student.id)),
+  );
   const cards = cardsByStudent.flat();
 
   return (

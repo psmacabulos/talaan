@@ -39,7 +39,14 @@ export type ChildrenTodayDeps = {
  * are read one after another: a parent has a few, and the database pool is
  * shared with the gate (`docs/SCALING.md` 3.3).
  */
-export async function childrenToday(parentId: string, now: string, deps: ChildrenTodayDeps): Promise<ChildToday[]> {
+export async function childrenToday(
+  parentId: string,
+  now: string,
+  deps: ChildrenTodayDeps,
+  options: { recentTaps?: number } = {},
+): Promise<ChildToday[]> {
+  // The parent app's `/me` shows today only, so it asks for none (Step 53.3).
+  const recentTapCount = options.recentTaps ?? RECENT_TAP_COUNT;
   const links = await deps.links.listByParent(parentId);
   const schools = new Map<string, School | null>();
   const children: ChildToday[] = [];
@@ -53,7 +60,8 @@ export async function childrenToday(parentId: string, now: string, deps: Childre
     const day = schoolToday(now, school ?? DEFAULT_ATTENDANCE_TIMES);
 
     const todayTaps = await deps.taps.listByStudentOnDate(link.schoolId, student.id, day.date);
-    const recentTaps = await deps.taps.listRecentByStudent(link.schoolId, student.id, RECENT_TAP_COUNT);
+    const recentTaps =
+      recentTapCount > 0 ? await deps.taps.listRecentByStudent(link.schoolId, student.id, recentTapCount) : [];
     children.push({ student, school, day, todayTaps, recentTaps });
   }
 

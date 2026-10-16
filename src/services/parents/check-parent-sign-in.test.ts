@@ -17,6 +17,8 @@ function deps(): ParentSignInDeps {
   return {
     parents: createMockParentRepository([{ ...maria }], { latencyMs: 0 }),
     throttle: createLoginThrottle({ maxFailures: 5, windowMs: 15 * 60_000 }),
+    addressThrottle: createLoginThrottle({ maxFailures: 30, windowMs: 15 * 60_000 }),
+    address: "203.0.113.7",
     now: 0,
   };
 }
@@ -63,5 +65,26 @@ describe("checkParentSignIn", () => {
     const d = deps();
     for (let i = 0; i < 4; i++) await checkParentSignIn({ email: "MARIA@example.com", password: "nope" }, d);
     await expect(checkParentSignIn({ email: maria.email, password: "nope" }, d)).resolves.toEqual(tooMany);
+  });
+
+  it("locks an address after 30 wrong passwords, whatever the emails, even for the right password", async () => {
+    const d = deps();
+    for (let i = 0; i < 29; i++) await checkParentSignIn({ email: `guess${i}@example.com`, password: "nope" }, d);
+    await expect(checkParentSignIn({ email: "guess29@example.com", password: "nope" }, d)).resolves.toEqual(tooMany);
+    await expect(checkParentSignIn({ email: maria.email, password: SEED_PARENT_PASSWORD }, d)).resolves.toEqual(
+      tooMany,
+    );
+    // The same parent from another address is fine.
+    await expect(
+      checkParentSignIn({ email: maria.email, password: SEED_PARENT_PASSWORD }, { ...d, address: "198.51.100.1" }),
+    ).resolves.toMatchObject({ ok: true });
+  });
+
+  it("doesn't limit this computer's own requests by address", async () => {
+    const d = { ...deps(), address: null };
+    for (let i = 0; i < 40; i++) await checkParentSignIn({ email: `guess${i}@example.com`, password: "nope" }, d);
+    await expect(checkParentSignIn({ email: maria.email, password: SEED_PARENT_PASSWORD }, d)).resolves.toMatchObject({
+      ok: true,
+    });
   });
 });

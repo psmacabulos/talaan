@@ -175,6 +175,26 @@ model Parent {
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
   links        ParentStudentLink[]
+  tokens       ParentToken[]
+}
+
+// The parent app's sign-in (Step 53.3): one row per signed-in phone. The
+// token itself is shown once, at sign-in, and only its sha256 is kept.
+model ParentToken {
+  id         String    @id @default(uuid())
+  parentId   String
+  // Unlike every other relation here: a token means nothing without its
+  // parent, so deleting a parent account takes its tokens with it.
+  parent     Parent    @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  // What the app says it is, e.g. "Pixel 7", so a parent can tell sessions apart later.
+  label      String?
+  // Moved forward at most once an hour; a token unused for 90 days stops working.
+  lastUsedAt DateTime  @default(now())
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([parentId])
 }
 
 model ParentStudentLink {

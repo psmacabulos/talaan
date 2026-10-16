@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ████████████████░░░░ 79%**  (246 of 312 tasks, 66 of 83 steps approved)
+**Overall progress: ████████████████░░░░ 81%**  (252 of 313 tasks, 68 of 83 steps approved)
 
-**Next up:** Step 53.1, Parent sign-in services (ready for your review)
+**Next up:** Step 53.3, Parent tokens and the sign-in API (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -73,9 +73,9 @@
 | 51.6 | The Bantay Aral logo, and a new sign-in page | ██████████ 100% | Approved |
 | 52 | Deploy the demo to Heroku | ██████████ 100% | Approved |
 | 53 | One parent account for any number of schools | ██████████ 100% | Approved |
-| 53.1 | Parent sign-in services | ████████░░  80% | Ready for your review |
-| 53.2 | Paged parent data | ████████░░  80% | Ready for your review |
-| 53.3 | Parent tokens and the sign-in API | ░░░░░░░░░░   0% | Not started |
+| 53.1 | Parent sign-in services | ██████████ 100% | Approved |
+| 53.2 | Paged parent data | ██████████ 100% | Approved |
+| 53.3 | Parent tokens and the sign-in API | ████████░░  80% | Ready for your review |
 | 53.4 | The parent notifications API | ░░░░░░░░░░   0% | Not started |
 | 54 | Push notifications reach the phone | ░░░░░░░░░░   0% | Not started |
 | 55 | Safe for real parents | ░░░░░░░░░░   0% | Not started |
@@ -734,7 +734,7 @@ Recipe: `docs/backend/step-53.1-parent-sign-in-services.md`, written from the re
 - [x] Two sign-ups with one email, or one link sent twice at once, get "email taken" or "already linked" instead of an error.
 Done when: the web parent portal works as before, and every check passes.
 Commit: `feat(parents): move parent sign-in into services and store emails in lower case`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 53.2: Paged parent data
 Plan: `docs/SCALING.md` 2.2. Reviewed with the systems-architect on 2026-10-16 (two more rounds, no blocking concerns). Kept as one step (owner decision, 2026-10-16). Its recipe is written from the real diff.
@@ -744,22 +744,23 @@ Plan: `docs/SCALING.md` 2.2. Reviewed with the systems-architect on 2026-10-16 (
 - [x] The bell gets the newest 5 and the count, so the browser never receives the whole history. The feed shows 30 with "Show older" and "Back to newest". The parent's links are read once per page (React `cache`). Added by the code review: a notification reaches the browser with only the child's id and name (P-018).
 Done when: a parent page loads the same number of rows in a child's fifth year as in their first, except the unread count, which is bounded by one child's own notifications (never all children's or the school's). Every check passes.
 Commit: `perf(parents): load parent data one day or one page at a time`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 53.3: Parent tokens and the sign-in API
-Recipe: `docs/backend/step-53.3-parent-api.md` (written 2026-10-11 as the whole parent API; it covers Steps 53.3 and 53.4).
-- [ ] `ParentToken` and `PushToken` (migration `parent_tokens`), and `issueParentToken`/`authenticateParent` (hashed, revocable, 90 days from last use).
-- [ ] A per-address sign-in limit beside the per-email one, so trying many emails is limited too.
-- [ ] `/api/v1/parents/*`: schools, signup, login, logout, me, children (link a child), a child's taps, with one error shape mapped from the services' `code`s.
-- [ ] Sign-up and the token are not wrapped in one database transaction around `registerParent` (a caught unique-email error would abort it). A retried sign-up answers "email taken", so the app treats that as "sign in instead".
+Recipe: `docs/backend/step-53.3-parent-sign-in-api.md`, written from the real diff. Plan reviewed with the systems-architect on 2026-10-16 (two rounds, no blocking concerns), kept as one step.
+- [x] `ParentToken` (migration `parent_tokens`), and `issueParentToken`/`authenticateParent` (hashed, revocable, 90 days from last use). `PushToken` moved to Step 53.4, linked to the sign-in token.
+- [x] A per-address sign-in limit beside the per-email one, so trying many emails is limited too, plus a sign-up limit per address, each in its own bounded memory (`docs/PROBLEMS-LOG.md`, P-020 and P-021).
+- [x] `/api/v1/parents/*`: schools, signup, login, logout, me, children (link a child), a child's taps, with one error shape mapped from the services' `code`s.
+- [x] Sign-up and the token are not wrapped in one database transaction around `registerParent` (a caught unique-email error would abort it). A retried sign-up answers "email taken", so the app treats that as "sign in instead".
 Done when: the sign-up, login and `/me` `curl` checks work, and every check passes. The parent app can start calling these.
 Commit: `feat(api): add parent tokens and the parent sign-in API`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 53.4: The parent notifications API
-Recipe: `docs/backend/step-53.3-parent-api.md`, the part after the sign-in addresses.
+Recipe: `docs/backend/step-53.4-parent-api.md`, the part after the sign-in addresses, with Step 53.3's review notes at its top.
 - [ ] `/api/v1/parents/notifications` (with `before` and `limit`), `…/:id/read`, `…/read-all` and `push-tokens`. From Step 53.2's review: clamp `limit` (1–50; a negative `take` reverses Prisma's order), and answer a cursor that doesn't decode with `400`, not the first page. The app registers an Expo push token (owner decision, 2026-10-13), since Step 54 sends through Expo's push service.
 - [ ] Parent tokens can load their own children's photos, and no one else's.
+- [ ] From Step 53.3's review: `PushToken.parentTokenId` with `onDelete: Cascade`, and logout deletes that phone's push token.
 - [ ] `docs/PARENT-API.md`, unit tests, and `e2e/parent-api.spec.ts` (sign up, link, tap, notification, read, logout).
 Done when: the `curl` checks in the recipe work, `docs/PARENT-API.md` is ready to copy into the app's repository, and every check passes.
 Commit: `feat(api): add the parent notifications API for the mobile app`
@@ -770,7 +771,7 @@ On 2026-10-13, before the first deploy, the owner asked for a review of the whol
 
 ### Step 54: Push notifications reach the phone
 Plan: `docs/SCALING.md` 2.3, from the plan's after-demo list (the notification outbox and its worker). Moved up to come right after Step 53 on 2026-10-13: the demo needs a tap at the gate to buzz a parent's phone. Its last check needs the parent app to register a push token (`docs/PARENT-APP-BRIEF.md`, app step M7), so it can be finished while the app is being built.
-- [ ] One delivery record per phone for each notification (waiting, sent, failed, tries), written in the same transaction as the tap.
+- [ ] One delivery record per phone for each notification (waiting, sent, failed, tries), written in the same transaction as the tap. Never to a push token whose sign-in token is revoked or unused for 90 days (Step 53.3 review).
 - [ ] A worker that sends them in batches through Expo's push service (Step 53's plan; free, and it delivers through Firebase Cloud Messaging on Android and Apple's push service on iOS), and retries failures. Its running cost (one more dyno, or inside the web server at first) is stated before it's added.
 - [ ] Tests: a failed send is retried, and a phone that's gone is dropped.
 Done when: a tap at the gate arrives on a test phone as a push, and every check passes.
@@ -780,7 +781,7 @@ Commit: `feat(push): send tap notifications to parents' phones`
 ### Step 55: Safe for real parents
 Plan: `docs/SCALING.md` 1.1 and 1.2. Due before real parents sign up.
 - [ ] The demo tools ("Simulate a tap" on the dashboard, and the `/station` simulated kiosk) are switched off for real schools. How (a server setting, or a "demo school" flag) is decided in the recipe.
-- [ ] Link-a-child allows only a few wrong tries, per parent and per student.
+- [ ] Link-a-child allows only a few wrong tries, per parent and per student. More urgent since Step 53.3: the API lets a script try birth dates with a token from a free sign-up (architect review, 2026-10-16).
 - [ ] When a parent links a child, the school can see it and the child's other linked guardians are told. Whether a principal approves each link first is decided in the recipe.
 Done when: a teacher can't make a tap that didn't happen at a real school, guessing a birth date stops after a few tries, and every check passes.
 Commit: `feat(security): turn off demo tools for real schools and limit child linking`

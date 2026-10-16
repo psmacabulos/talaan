@@ -54,6 +54,7 @@ Every color a school sees comes from a **theme preset** — never a hardcoded va
 - [`docs/COMMANDS.md`](docs/COMMANDS.md) — **every command in one place**, grouped by task (starting the day, the checks before a commit, unit and browser tests, Docker and the database, migrations, the gate and the reader, git, and what to try when something is stuck), with the files behind each one.
 - [`docs/PLAN.md`](docs/PLAN.md) — the step-by-step build plan and progress tracker (a checklist).
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — the Phase 2 backend design: one Next.js app serving admin web, the gate station and the guardhouse monitor now, and (Phase 3) a separate parent app — database tables, the `/api/v1` endpoints, the auth approach and the folder structure.
+- [`docs/ARCHITECTURE-REVIEW.md`](docs/ARCHITECTURE-REVIEW.md) — a current-state architecture review grounded in the implemented routes, services, repositories, database, authentication and deployment model, including present scaling constraints.
 - [`docs/BUILD-LOG.md`](docs/BUILD-LOG.md) — a detailed account of how each step was actually built: real commands, configuration choices, and how any problems were solved.
 - [`docs/LEARNING-LOG.md`](docs/LEARNING-LOG.md) — short, plain-language notes explaining tools and commands along the way.
 - [`docs/PROBLEMS-LOG.md`](docs/PROBLEMS-LOG.md) — every problem hit while building and running the app, numbered and dated: what was seen, the cause, the fix, and whether it's resolved, with diagrams where several systems are involved.

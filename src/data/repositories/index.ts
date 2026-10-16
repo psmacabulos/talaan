@@ -26,3 +26,5 @@ export { createMockNotificationRepository, type NotificationRepository } from ".
 export { notificationRepository, createPrismaNotificationRepository } from "./prisma-notification-repository";
 export { type DeviceRepository } from "./device-repository";
 export { deviceRepository, createPrismaDeviceRepository } from "./prisma-device-repository";
+export { createMockParentTokenRepository, type ParentTokenRepository } from "./parent-token-repository";
+export { parentTokenRepository, createPrismaParentTokenRepository } from "./prisma-parent-token-repository";

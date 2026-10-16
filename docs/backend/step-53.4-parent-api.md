@@ -1,4 +1,9 @@
-# Steps 53.3 and 53.4: The parent API
+# Step 53.4: The parent notifications API
+
+> **Now Step 53.4 only** (2026-10-16). Step 53.3 built the sign-in half from this recipe, with its own recipe: `docs/backend/step-53.3-parent-sign-in-api.md`. What's left for 53.4: the notification and push-token addresses, section 4 (photos for parent tokens), section 5 (`docs/PARENT-API.md`) and the rest of the API browser tests. Two changes from Step 53.3's reviews:
+> - `PushToken` gets a `parentTokenId` with `onDelete: Cascade`. Without the cascade, `deleteStale` (`prisma-parent-token-repository.ts`) would hit a foreign-key error once a revoked token still had a push token, and every sign-in would fail. Logout deletes that phone's `PushToken` explicitly, since revoking isn't deleting.
+> - Step 54 sends nothing to a push token whose `ParentToken` is revoked or unused for 90 days.
+
 
 > **Split again on 2026-10-16** (owner approval), after three plan reviews with the systems-architect. This recipe was too big for one review, so it became four steps (`docs/PLAN.md`):
 > - **53.1** (built): the sign-up, sign-in and link-a-child rules moved to `src/services/parents/` (section 2's first three rows), with a decoy password check and emails stored in lower case. Recipe: `docs/backend/step-53.1-parent-sign-in-services.md`. The services are named `registerParent`, `checkParentSignIn` and `linkChildToParent`, and every failure carries a `code` (`invalid_input`, `email_taken`, `too_many_tries`, `wrong_credentials`, `no_match`, `already_linked`), which the API maps to the error table below.

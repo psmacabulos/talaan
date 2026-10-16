@@ -51,6 +51,10 @@ The browser tests also run a production server, deliberately with test settings 
 
 **Keep exactly one `web` dyno.** The live monitor's feed (Step 48) and the sign-in throttle (Step 50) both live in the server's memory. With two dynos, a tap recorded by one wouldn't reach a monitor connected to the other, and the throttle would count each dyno separately. `docs/SCALING.md` covers what changes before a second dyno. Check with `heroku ps --app bantayaral`.
 
+**Heroku's router must be the last hop.** The parent sign-in limits (Step 53.3) count wrong passwords and sign-ups per address, taken from the **last** entry of `X-Forwarded-For`, the one Heroku's router adds (`src/lib/client-address.ts`). That's only true while nothing else proxies in front:
+- **Keep `bantayaral.com`'s DNS "DNS only" (grey cloud) at Cloudflare.** With the orange cloud (Cloudflare's proxy), every parent would arrive from Cloudflare's addresses and share one count.
+- **A proxy on the same machine** (nginx, Docker, anything that connects from `127.0.0.1`) would switch the address limits off entirely, since loopback is never limited.
+
 The monitor's stream sends a keep-alive every 25 seconds. Heroku's router closes a connection that's silent for 55 seconds, so the monitor stays connected.
 
 ## Settings (config vars)

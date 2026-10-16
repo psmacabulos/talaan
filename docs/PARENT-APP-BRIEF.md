@@ -141,7 +141,7 @@ Every error has the same shape, so the app has one error handler:
 | `invalid_input` | 400 | a field failed the server's checks | show each message under its field |
 | `unauthorized` | 401 | no token, or not a working one | sign out, go to sign-in |
 | `wrong_credentials` | 401 | wrong email or password | show the message, keep the email |
-| `too_many_tries` | 429 | 5 wrong tries in 15 minutes | show the message; the form stays usable |
+| `too_many_tries` | 429 | too many tries: 5 wrong passwords for one email in 15 minutes, 30 from one network in 15 minutes, or 100 sign-ups from one network in an hour | show the message; the form stays usable |
 | `not_found` | 404 | not theirs, or doesn't exist | "That's no longer available", then refresh |
 | `conflict` | 409 | email taken, child already linked | show the message |
 

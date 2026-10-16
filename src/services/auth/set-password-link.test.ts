@@ -40,7 +40,9 @@ describe("set-password links", () => {
   it("stops working after 7 days", async () => {
     const { deps } = setup();
     const token = makeSetPasswordToken(invited.id, null, SECRET, NOW);
-    await expect(readSetPasswordToken(token, { ...deps, now: new Date(NOW.getTime() + 6 * DAY) })).resolves.not.toBeNull();
+    await expect(
+      readSetPasswordToken(token, { ...deps, now: new Date(NOW.getTime() + 6 * DAY) }),
+    ).resolves.not.toBeNull();
     await expect(readSetPasswordToken(token, { ...deps, now: new Date(NOW.getTime() + 7 * DAY) })).resolves.toBeNull();
   });
 

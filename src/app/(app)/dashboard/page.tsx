@@ -136,9 +136,9 @@ export default async function DashboardPage() {
   const schoolId = session.schoolId;
   const alerts = await alertRepository.listBySchool(schoolId);
   const openAlerts = alerts.filter((alert) => !alert.acknowledged);
-  const alertTaps = (await Promise.all(openAlerts.map((alert) => tapRepository.getInSchool(schoolId, alert.tapId)))).filter(
-    (tap) => tap !== null,
-  );
+  const alertTaps = (
+    await Promise.all(openAlerts.map((alert) => tapRepository.getInSchool(schoolId, alert.tapId)))
+  ).filter((tap) => tap !== null);
 
   return (
     <div className="flex flex-col gap-6">

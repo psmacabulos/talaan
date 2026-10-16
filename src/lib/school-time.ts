@@ -13,6 +13,17 @@ function onSchoolClock(iso: string): Date {
   return new Date(Date.parse(iso) + SCHOOL_UTC_OFFSET_MINUTES * MINUTE_MS);
 }
 
+/**
+ * The same instant written with the school's offset, for the parent app
+ * (docs/PARENT-APP-BRIEF.md, "Times and dates"): "2026-10-13T07:56:00.000Z"
+ * becomes "2026-10-13T15:56:00.000+08:00".
+ */
+export function toSchoolOffsetIso(iso: string): string {
+  const hours = String(Math.floor(SCHOOL_UTC_OFFSET_MINUTES / 60)).padStart(2, "0");
+  const minutes = String(SCHOOL_UTC_OFFSET_MINUTES % 60).padStart(2, "0");
+  return `${onSchoolClock(iso).toISOString().slice(0, 23)}+${hours}:${minutes}`;
+}
+
 /** The school's calendar date at that instant: "2026-06-20". */
 export function schoolDateOf(iso: string): string {
   return onSchoolClock(iso).toISOString().slice(0, 10);

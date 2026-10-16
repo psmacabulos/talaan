@@ -1,6 +1,6 @@
 # Step 53.1: Parent sign-in services
 
-> **Written from the real diff on 2026-10-16**, after the code was built and checked. The plan behind it went through three review rounds with the systems-architect first, and the finished files through a fourth (`docs/BUILD-LOG.md`, Step 53.1). This is the first of four steps cut from the original parent API recipe, now `docs/backend/step-53.3-parent-api.md`.
+> **Written from the real diff on 2026-10-16**, after the code was built and checked. The plan behind it went through three review rounds with the systems-architect first, and the finished files through a fourth (`docs/BUILD-LOG.md`, Step 53.1). This is the first of four steps cut from the original parent API recipe, now `docs/backend/step-53.4-parent-api.md`.
 
 ## Why
 

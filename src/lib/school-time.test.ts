@@ -8,6 +8,7 @@ import {
   schoolDateOf,
   schoolMinutesOf,
   schoolTimeToIso,
+  toSchoolOffsetIso,
 } from "./school-time";
 
 describe("schoolTimeToIso", () => {
@@ -71,5 +72,13 @@ describe("isWeekend", () => {
 describe("formatSchoolDate", () => {
   it("names the school's calendar date", () => {
     expect(formatSchoolDate("2026-06-19T23:56:00.000Z")).toBe("June 20, 2026");
+  });
+});
+
+describe("toSchoolOffsetIso", () => {
+  it("writes the same instant on the school's clock, with its offset", () => {
+    expect(toSchoolOffsetIso("2026-10-13T07:56:00.000Z")).toBe("2026-10-13T15:56:00.000+08:00");
+    expect(toSchoolOffsetIso("2026-10-13T16:30:00.000Z")).toBe("2026-10-14T00:30:00.000+08:00");
+    expect(Date.parse(toSchoolOffsetIso("2026-10-13T07:56:00.123Z"))).toBe(Date.parse("2026-10-13T07:56:00.123Z"));
   });
 });

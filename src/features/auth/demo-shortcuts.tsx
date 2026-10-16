@@ -41,7 +41,9 @@ export function DemoShortcuts() {
           </Button>
         ))}
       </div>
-      <p className="text-sm text-muted-foreground">Development only. Every demo account&apos;s password is Talaan123!</p>
+      <p className="text-sm text-muted-foreground">
+        Development only. Every demo account&apos;s password is Talaan123!
+      </p>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 # Step 53: One parent account for any number of schools
 
-> **Fast-track recipe, written before the code on 2026-10-15** for the owner to approve before it's built. Step 53 was split in two on 2026-10-15 (owner approval) so each half fits one review. This half changes who a parent belongs to. The API itself became Steps 53.1–53.4 on 2026-10-16 (`docs/PLAN.md`); its recipe is now `docs/backend/step-53.3-parent-api.md`. When this is built, a "What changed while building" section (just before "Verify it worked") will list where the real code differs from this plan.
+> **Fast-track recipe, written before the code on 2026-10-15** for the owner to approve before it's built. Step 53 was split in two on 2026-10-15 (owner approval) so each half fits one review. This half changes who a parent belongs to. The API itself became Steps 53.1–53.4 on 2026-10-16 (`docs/PLAN.md`); its recipe is now `docs/backend/step-53.4-parent-api.md`. When this is built, a "What changed while building" section (just before "Verify it worked") will list where the real code differs from this plan.
 
 ## Why
 

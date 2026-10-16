@@ -86,7 +86,11 @@ export function SignInLinkDialog({ link, onClose }: { link: SignInLink | null; o
               className="min-w-0 flex-1 font-mono text-xs"
             />
             <Button type="button" onClick={copy} className="shrink-0">
-              {copied ? <Check className="size-4" aria-hidden="true" /> : <Copy className="size-4" aria-hidden="true" />}
+              {copied ? (
+                <Check className="size-4" aria-hidden="true" />
+              ) : (
+                <Copy className="size-4" aria-hidden="true" />
+              )}
               {copied ? "Copied" : "Copy"}
             </Button>
           </div>

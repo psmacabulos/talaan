@@ -7,7 +7,7 @@ Talaan has four kinds of sign-in, one per kind of visitor:
 | Staff (super admin, principal, teacher) | Email and password, first set through a link | A **signed** `talaan_session` cookie | Steps 50, 50.1 and 50.5 |
 | Parents, web portal | Email and password | A **signed** `talaan_parent_session` cookie | Step 22; hashed passwords Step 41; signed Step 50.1 |
 | Gate tablet, guardhouse TV | A device token typed once | A random `tal_dev_…` token, kept hashed | Steps 43 and 48 (`docs/GATE.md`) |
-| Parents, Expo app | Email and password | A random `tal_par_…` token, kept hashed | Step 53.3 |
+| Parents, Expo app | Email and password | A random `tal_par_…` token, kept hashed, 90 days from its last use | Step 53.3 |
 
 This page covers the two cookie sessions. For a step-by-step walkthrough of every journey (getting an account, signing in, every page load, signing out, and the planned phone app), see [Talaan Accounts and Sign-in](https://claude.ai/artifact/2cQbiVqHAhz3cYs1Tjtqhz). For what cookies, sessions and JWTs are, and why Talaan signs its own cookie instead of using an auth library, see the interactive page [Talaan Sign-in Options](https://claude.ai/artifact/3AsAcMHFBbZbzjJya1tZAK) and `docs/LEARNING-LOG.md`'s "Cookies, sessions and JWTs" entry.
 
@@ -164,7 +164,15 @@ The parent web portal works the same way, with its own cookie and code:
 
 The two sessions never share a cookie: a browser can be signed in as staff and as a parent at the same time.
 
-**The phone app is different.** Parents will mostly use the Expo app (Phase 3), which can't hold this cookie. Step 53.3 gives it a bearer token (`tal_par_…`, kept hashed) through `/api/v1/parents/login`. Step 53.1 already moved the parent sign-in check into a service both the web portal and the API call. So the limit and the single "isn't right" answer apply to the app too.
+**The phone app is different.** Parents will mostly use the Expo app (Phase 3), which can't hold this cookie. Step 53.3 gives it a bearer token through `/api/v1/parents/login`, and Step 53.1 had already moved the parent sign-in check into a service that both the web portal and the API call.
+
+- **The token** is `tal_par_` plus 32 random bytes. Only its sha256 is kept (`ParentToken`), and it lasts 90 days from its last use (`src/services/parents/parent-token.ts`). Sign-out revokes it at once. A gate's `tal_dev_` token is never a parent's.
+- **The limits**, in `src/services/auth/login-throttle.ts`, each its own bounded memory:
+  - 5 wrong passwords per email in 15 minutes;
+  - 30 wrong parent passwords per network in 15 minutes;
+  - 100 parent sign-ups per network in an hour.
+  The network is the last `X-Forwarded-For` entry (`src/lib/client-address.ts`); this computer's own requests are never counted by network. The web portal uses the same limits as the app. `docs/PROBLEMS-LOG.md` P-020 and P-021 say why, and the launch-night risk.
+- **Every parent API answer** is copied field by field in `src/features/parents/api-responses.ts`, so the LRN, birth date and guardian never reach a phone. Recipe: `docs/backend/step-53.3-parent-sign-in-api.md`. So the limit and the single "isn't right" answer apply to the app too.
 
 ## Quick recipes
 

@@ -51,6 +51,28 @@ describe("createLoginThrottle", () => {
   });
 });
 
+describe("createLoginThrottle's memory (Step 53.3)", () => {
+  it("makes room for a new key by dropping the oldest one that isn't locked", () => {
+    const t = createLoginThrottle({ maxFailures: 2, windowMs: 60_000, maxKeys: 2 });
+    t.recordFailure("a", 0);
+    t.recordFailure("b", 0);
+    t.recordFailure("c", 0); // full: "a", the oldest, is dropped
+    // "b" still has its first failure, so its second locks it.
+    expect(t.recordFailure("b", 1)).toBe(true);
+    // "a" starts again from nothing, so its next failure is only its first.
+    expect(t.recordFailure("a", 2)).toBe(false);
+  });
+
+  it("never drops a live lockout to make room", () => {
+    const t = createLoginThrottle({ maxFailures: 1, windowMs: 60_000, maxKeys: 2 });
+    t.recordFailure("locked-1", 0);
+    t.recordFailure("locked-2", 0);
+    expect(t.recordFailure("new", 1)).toBe(false); // not counted: no room
+    expect(t.isLocked("locked-1", 2)).toBe(true);
+    expect(t.isLocked("locked-2", 2)).toBe(true);
+  });
+});
+
 describe("throttle keys", () => {
   it("ignore case and spaces, and keep staff and parents apart", () => {
     expect(staffThrottleKey(" Ana@School.example ")).toBe(staffThrottleKey("ana@school.example"));

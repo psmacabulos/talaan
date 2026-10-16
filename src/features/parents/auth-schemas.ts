@@ -22,7 +22,8 @@ export const parentSignupSchema = z
 
 export const parentLoginSchema = z.object({
   email: emailSchema,
-  password: z.string().min(1, "Enter your password"),
+  // No stored password is longer, and each try is hashed, so a longer one is refused unhashed.
+  password: z.string().min(1, "Enter your password").max(128, "Enter your password"),
 });
 
 /**

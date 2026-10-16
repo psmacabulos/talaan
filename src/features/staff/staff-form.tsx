@@ -42,13 +42,7 @@ function emptyValues(): StaffFormValues {
  * action re-validates the same schema (CLAUDE.md: "validated on both
  * sides").
  */
-export function StaffForm({
-  onSuccess,
-  onCancel,
-}: {
-  onSuccess: (link: SignInLink) => void;
-  onCancel: () => void;
-}) {
+export function StaffForm({ onSuccess, onCancel }: { onSuccess: (link: SignInLink) => void; onCancel: () => void }) {
   const [isPending, startTransition] = useTransition();
   const {
     register,

@@ -14,7 +14,12 @@ export type ParentSignInResult =
 
 export type ParentSignInDeps = {
   parents: Pick<ParentRepository, "verifyPassword">;
+  /** Wrong passwords per email. */
   throttle: LoginThrottle;
+  /** Wrong passwords per address, whatever the email (Step 53.3). */
+  addressThrottle: LoginThrottle;
+  /** `clientAddressKey(...)`: null when the request isn't limited by address. */
+  address: string | null;
   now: number;
 };
 
@@ -24,7 +29,9 @@ export type ParentSignInDeps = {
  * password is looked at, and a wrong password and an unknown email give the
  * same answer in the same time (the repository checks a decoy hash). 5 wrong
  * passwords for one email in 15 minutes lock it for 15 minutes, counted
- * apart from staff.
+ * apart from staff. 30 wrong passwords from one address in 15 minutes lock
+ * that address, whatever the emails (Step 53.3), so trying many emails is
+ * limited too. Both are checked before any password is hashed.
  */
 export async function checkParentSignIn(input: unknown, deps: ParentSignInDeps): Promise<ParentSignInResult> {
   const parsed = parentLoginSchema.safeParse(input);
@@ -32,13 +39,21 @@ export async function checkParentSignIn(input: unknown, deps: ParentSignInDeps):
 
   const { email, password } = parsed.data;
   const key = parentThrottleKey(email);
+  const addressKey = deps.address ? `parent-address:${deps.address}` : null;
   const tooMany: ParentSignInResult = { ok: false, code: "too_many_tries", formError: TOO_MANY_TRIES_MESSAGE };
   if (deps.throttle.isLocked(key, deps.now)) return tooMany;
+  if (addressKey && deps.addressThrottle.isLocked(addressKey, deps.now)) return tooMany;
 
   const parent = await deps.parents.verifyPassword(email, password);
   if (!parent) {
-    const locked = deps.throttle.recordFailure(key, deps.now);
-    return locked ? tooMany : { ok: false, code: "wrong_credentials", formError: WRONG_SIGN_IN_MESSAGE };
+    const emailLocked = deps.throttle.recordFailure(key, deps.now);
+    const addressLocked = addressKey ? deps.addressThrottle.recordFailure(addressKey, deps.now) : false;
+    // A line for the logs, never the email or the address (students' parents' data).
+    if (emailLocked) console.warn("Parent sign-in locked for 15 minutes: too many wrong passwords for one email.");
+    if (addressLocked) console.warn("Parent sign-in locked for 15 minutes: too many wrong passwords from one address.");
+    return emailLocked || addressLocked
+      ? tooMany
+      : { ok: false, code: "wrong_credentials", formError: WRONG_SIGN_IN_MESSAGE };
   }
 
   deps.throttle.recordSuccess(key);

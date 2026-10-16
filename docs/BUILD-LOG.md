@@ -2139,7 +2139,7 @@ Things found while the owner tested Steps 46–49 at home, besides the review fi
 
 ## Step 50.1: the real sign-in form (2026-10-12)
 
-**Decisions confirmed first.** The owner confirmed the recipe's four decisions, and pointed out that parents will sign in through the Expo app, not the web. Checked against `docs/backend/step-53.3-parent-api.md` (first called step-53-parent-api.md, then step-53.1-parent-api.md): Step 53 moves parent sign-in into a service that both the web portal and `/api/v1/parents/login` call, so the wrong-try limit and the single "isn't right" answer reach the app too. Signing the web portal's cookie still mattered: the portal stays live until the app exists, and its unsigned cookie would have let anyone who typed `parent-balanga-1` see that parent's children once deployed.
+**Decisions confirmed first.** The owner confirmed the recipe's four decisions, and pointed out that parents will sign in through the Expo app, not the web. Checked against `docs/backend/step-53.4-parent-api.md` (first called step-53-parent-api.md, then step-53.1-parent-api.md): Step 53 moves parent sign-in into a service that both the web portal and `/api/v1/parents/login` call, so the wrong-try limit and the single "isn't right" answer reach the app too. Signing the web portal's cookie still mattered: the portal stays live until the app exists, and its unsigned cookie would have let anyone who typed `parent-balanga-1` see that parent's children once deployed.
 
 **What was built.**
 - `src/services/auth/login-throttle.ts`: 5 wrong passwords per key in 15 minutes lock it for 15 minutes. In memory, with a sweep once more than 1,000 keys are held, so a flood of made-up emails can't grow it forever.
@@ -2337,3 +2337,30 @@ Plan reviewed with the systems-architect subagent in two rounds (no blocking con
   - `npm test`: 96 files, 677 tests passed, with the Postgres paging test running against the test database.
   - `npm run build`, then Playwright parent, login, isolation and a11y specs: 178 passed, 10 skipped by design.
   - Not looked at in a browser at 360 and 1280 px; the owner's check covers it.
+
+## Step 53.3: parent tokens and the sign-in API (2026-10-16)
+
+Plan reviewed with the systems-architect in two rounds (no blocking concerns), kept as one step. The code review continued the same architect with `SendMessage` rather than starting a new one, the token-saving change agreed that day. The recipe, `docs/backend/step-53.3-parent-sign-in-api.md`, was written from the real diff.
+
+- **What the plan review changed:**
+  - The limiter's memory is bounded, with one limiter per kind so one can't push another's lockouts out (P-020).
+  - Sign-ups are limited per network.
+  - IPv6 is counted by its /64, and loopback is never counted.
+  - `/me` skips the recent-taps read.
+  - Old tokens are cleared at each sign-in.
+  - `PushToken` moved to Step 53.4.
+  - From my own failure-mode check: school launch night, many parents on one Wi-Fi, which set the limits' sizes (P-021).
+- **Checked before relying on it:**
+  - Next.js fills `x-forwarded-for` from the socket only when the header is missing (`node_modules/next/dist/server/base-server.js`), and `request.ip` is gone since Next 15. So the last entry is the one Heroku adds.
+  - Playwright's `reuseExistingServer` keeps the limiter's memory across local runs, which is why loopback isn't counted and the API tests send their own `203.0.113.x` addresses.
+- **Small surprises:**
+  - Prisma 7's `migrate dev` no longer regenerates the client, so `npx prisma generate` ran after it.
+  - `AttendanceStatus` lives in `src/components/status-pill.tsx`, not the attendance module.
+  - A throttle test's own expectation was wrong: the evicted key was `b`, not `c`. The code was right, and the test now says each step.
+- **The code review:** no blocking concerns, one leak fixed. The sign-up route copies the password into the web form's `confirmPassword`, so a missing password also sent back a `confirmPassword` message the app has no field for; it's now dropped, with a browser test that posts `{}`. Following its "no maximum length" note, passwords are capped at 128 characters and emails at 254, for sign-up and both sign-ins, since every try runs the slow hash. Its notes for Steps 53.4, 54 and 55 are in `docs/PLAN.md`; the most important is that `PushToken` must cascade from its sign-in token, or `deleteStale` would make every sign-in fail.
+- **Checks run here:**
+  - `npm run lint`, `npm run typecheck` and `npm run check:tokens`: clean.
+  - `npm test`: 99 files, 707 tests passed.
+  - `npm run build`, then Playwright parent-api, parent, login, isolation and a11y: 185 passed, 17 skipped by design.
+- **The owner's full run found one clash** (`docs/PROBLEMS-LOG.md`, P-022). The API test's child had no seed tap, so the tap-station tests, which tap the next student with no tap, could tap him first, and the test's own tap became a repeat that stored nothing. My run above hadn't included the station tests. The test now uses Divine Garcia, who already has a morning tap, and checks her day reads time in then time out. After the fix, `npm run test:e2e` passed (93), and so did the owner's full run.
+- **A slip of mine:** running Prettier on all of `src` reformatted ten files outside this step (the dashboard and station pages, `demo-shortcuts.tsx`, `login-mobile-header.tsx`, `isolation.test.ts`, `sign-in-link-dialog.tsx`, `staff-form.tsx`, `request-origin.ts`, `session.ts`, `staff-sign-in.test.ts`). The diffs are line breaks and spacing only, with no change in behaviour; they're kept in this commit. Next time, Prettier runs only on the files a step changes.

@@ -2,12 +2,7 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { Role } from "@/features/staff/types";
-import {
-  schoolRepository,
-  staffRepository,
-  type SchoolRepository,
-  type StaffRepository,
-} from "@/data/repositories";
+import { schoolRepository, staffRepository, type SchoolRepository, type StaffRepository } from "@/data/repositories";
 import { sessionSecret } from "./env";
 import { passwordVersion } from "./password";
 import {

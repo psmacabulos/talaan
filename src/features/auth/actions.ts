@@ -7,7 +7,7 @@ import { hashPassword } from "@/lib/password";
 import { endStaffSession, startStaffSession } from "@/lib/session";
 import { setDevSession } from "@/lib/session-actions";
 import { clearThemeOverride } from "@/lib/theme/theme-override-actions";
-import { loginThrottle } from "@/services/auth/login-throttle";
+import { staffSignInThrottle } from "@/services/auth/login-throttle";
 import { readSetPasswordToken } from "@/services/auth/set-password-link";
 import { checkStaffSignIn } from "@/services/auth/staff-sign-in";
 import { LINK_USED_MESSAGE } from "./messages";
@@ -31,7 +31,7 @@ export async function signIn(input: LoginInput): Promise<SignInResult> {
 
   const result = await checkStaffSignIn(parsed.data, {
     staff: staffRepository,
-    throttle: loginThrottle,
+    throttle: staffSignInThrottle,
     now: Date.now(),
   });
   if (!result.ok) return result;

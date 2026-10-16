@@ -1,7 +1,7 @@
 export type LoginThrottle = {
   /** True while this key is locked out. Checked before the password, so a locked account is refused even with the right one. */
   isLocked(key: string, now: number): boolean;
-  /** Counts a wrong password. Returns true when this failure locked the key. */
+  /** Counts a wrong password (or, for sign-ups, an attempt). Returns true when this one locked the key. */
   recordFailure(key: string, now: number): boolean;
   /** A right password clears the count. */
   recordSuccess(key: string): void;
@@ -9,25 +9,54 @@ export type LoginThrottle = {
 
 type Entry = { failures: number[]; lockedUntil: number | null };
 
-/** Above this many keys, a failure also sweeps out entries that no longer matter. */
+/** Above this many keys, a failure also sweeps out entries that no longer matter, at most once a minute. */
 const SWEEP_ABOVE = 1_000;
+const SWEEP_EVERY_MS = 60_000;
+
+/** The most keys one throttle remembers, so rotating addresses or emails can't grow it without end (Step 53.3). */
+const MAX_KEYS = 10_000;
 
 /**
- * `maxFailures` wrong passwords for one key within `windowMs` lock that key
- * for `windowMs`. Kept in the server's memory, like the live monitor's tap
+ * `maxFailures` failures for one key within `windowMs` lock that key for
+ * `windowMs`. Kept in the server's memory, like the live monitor's tap
  * channel: on one server that covers every request, and a restart clears
  * it, which is acceptable for a pilot (docs/AUTH.md).
+ *
+ * Bounded (Step 53.3): stale entries are swept at most once a minute, and at
+ * `maxKeys` the oldest key that isn't locked makes room for a new one. A
+ * live lockout is never dropped to make room; if every key is locked, a new
+ * key just isn't counted until one frees up.
  */
-export function createLoginThrottle(options: { maxFailures: number; windowMs: number }): LoginThrottle {
-  const { maxFailures, windowMs } = options;
+export function createLoginThrottle(options: {
+  maxFailures: number;
+  windowMs: number;
+  maxKeys?: number;
+}): LoginThrottle {
+  const { maxFailures, windowMs, maxKeys = MAX_KEYS } = options;
   const entries = new Map<string, Entry>();
+  let lastSweep = -Infinity;
+
+  function isLockedEntry(entry: Entry, now: number) {
+    return entry.lockedUntil !== null && now < entry.lockedUntil;
+  }
 
   function sweep(now: number) {
+    lastSweep = now;
     for (const [key, entry] of entries) {
-      const locked = entry.lockedUntil !== null && now < entry.lockedUntil;
       const recent = entry.failures.some((at) => now - at < windowMs);
-      if (!locked && !recent) entries.delete(key);
+      if (!isLockedEntry(entry, now) && !recent) entries.delete(key);
     }
+  }
+
+  /** Frees one place for a new key: the oldest one that isn't locked. False when every key is locked. */
+  function makeRoom(now: number): boolean {
+    for (const [key, entry] of entries) {
+      if (!isLockedEntry(entry, now)) {
+        entries.delete(key);
+        return true;
+      }
+    }
+    return false;
   }
 
   return {
@@ -39,8 +68,10 @@ export function createLoginThrottle(options: { maxFailures: number; windowMs: nu
       return false;
     },
     recordFailure(key, now) {
-      if (entries.size > SWEEP_ABOVE) sweep(now);
-      const entry = entries.get(key) ?? { failures: [], lockedUntil: null };
+      if (entries.size > SWEEP_ABOVE && now - lastSweep >= SWEEP_EVERY_MS) sweep(now);
+      const existing = entries.get(key);
+      if (!existing && entries.size >= maxKeys && !makeRoom(now)) return false;
+      const entry = existing ?? { failures: [], lockedUntil: null };
       entry.failures = [...entry.failures.filter((at) => now - at < windowMs), now];
       const locked = entry.failures.length >= maxFailures;
       if (locked) {
@@ -56,8 +87,30 @@ export function createLoginThrottle(options: { maxFailures: number; windowMs: nu
   };
 }
 
-/** 5 wrong passwords in 15 minutes lock that email for 15 minutes (owner decision, 2026-10-12). */
-export const loginThrottle = createLoginThrottle({ maxFailures: 5, windowMs: 15 * 60_000 });
+const FIFTEEN_MINUTES = 15 * 60_000;
+
+/**
+ * Each kind of count has its own throttle (Step 53.3), so one kind filling
+ * up can never push another kind's lockouts out.
+ */
+export const staffSignInThrottle = createLoginThrottle({ maxFailures: 5, windowMs: FIFTEEN_MINUTES });
+
+/** 5 wrong passwords for one parent email in 15 minutes. */
+export const parentSignInThrottle = createLoginThrottle({ maxFailures: 5, windowMs: FIFTEEN_MINUTES });
+
+/**
+ * 30 wrong parent passwords from one address in 15 minutes, whatever the
+ * emails: someone trying many emails. Loose on purpose, since many parents
+ * can share one address (a school's Wi-Fi, a mobile carrier's NAT).
+ */
+export const parentAddressThrottle = createLoginThrottle({ maxFailures: 30, windowMs: FIFTEEN_MINUTES });
+
+/**
+ * 100 sign-ups from one address in an hour. Generous for a school's launch
+ * night on one Wi-Fi, but it bounds the password hashing a stranger can make
+ * the server do, and how fast "email taken" answers can be collected.
+ */
+export const parentSignUpThrottle = createLoginThrottle({ maxFailures: 100, windowMs: 60 * 60_000 });
 
 /** The throttle's key for a staff email. Parents use `parentThrottleKey`, so the two never share a count. */
 export function staffThrottleKey(email: string): string {

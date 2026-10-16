@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
 import {
@@ -10,7 +11,8 @@ import {
 } from "@/data/repositories";
 import { SIGNED_OUT_MESSAGE } from "@/features/auth/messages";
 import { clearParentSession, getParentSession, setParentSession } from "@/lib/parent-session";
-import { loginThrottle } from "@/services/auth/login-throttle";
+import { clientAddressKey } from "@/lib/client-address";
+import { parentAddressThrottle, parentSignInThrottle, parentSignUpThrottle } from "@/services/auth/login-throttle";
 import { checkParentSignIn } from "@/services/parents/check-parent-sign-in";
 import { linkChildToParent, type LinkChildFieldErrors } from "@/services/parents/link-child-to-parent";
 import { registerParent, type ParentSignupFieldErrors } from "@/services/parents/register-parent";
@@ -24,6 +26,11 @@ export type ParentLoginActionResult = { ok: true } | { ok: false; formError: str
 export type LinkChildActionResult =
   { ok: true; studentName: string } | { ok: false; formError?: string; fieldErrors?: LinkChildFieldErrors };
 
+/** Who the sign-in limits count this request against (`clientAddressKey`). */
+async function requestAddress(): Promise<string | null> {
+  return clientAddressKey((await headers()).get("x-forwarded-for"));
+}
+
 /**
  * Step 22's signup. The rules live in `registerParent`
  * (src/services/parents/), shared with the parent app's API from Step 53.3;
@@ -33,8 +40,17 @@ export type LinkChildActionResult =
  * state).
  */
 export async function signUpParent(input: ParentSignupInput): Promise<ParentSignupActionResult> {
-  const result = await registerParent(input, { parents: parentRepository });
-  if (!result.ok) return { ok: false, fieldErrors: result.fieldErrors };
+  const result = await registerParent(input, {
+    parents: parentRepository,
+    signUpThrottle: parentSignUpThrottle,
+    address: await requestAddress(),
+    now: Date.now(),
+  });
+  if (!result.ok) {
+    return "fieldErrors" in result
+      ? { ok: false, fieldErrors: result.fieldErrors }
+      : { ok: false, formError: result.formError };
+  }
 
   await setParentSession(result.parent.id);
   refresh();
@@ -49,7 +65,9 @@ export async function signUpParent(input: ParentSignupInput): Promise<ParentSign
 export async function signInParent(input: ParentLoginInput): Promise<ParentLoginActionResult> {
   const result = await checkParentSignIn(input, {
     parents: parentRepository,
-    throttle: loginThrottle,
+    throttle: parentSignInThrottle,
+    addressThrottle: parentAddressThrottle,
+    address: await requestAddress(),
     now: Date.now(),
   });
   if (!result.ok) return { ok: false, formError: result.formError };
