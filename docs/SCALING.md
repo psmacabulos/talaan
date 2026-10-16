@@ -165,7 +165,7 @@ Today that's a small change: `ParentStudentLink` already has its own `schoolId`.
 
 **Decided 2026-10-13 (owner):** one account per parent, because a parent can have children at different schools. The school moves from the parent to each linked child. Sign-up needs no school. Linking a child asks for the school as well as the LRN, last name and birth date, so a wrong guess never searches every school. The parent row in `docs/SCHOOL-ISOLATION.md` changes to match. Built in Step 53, before the API's shape is fixed.
 
-### 2.2 Parent screens load everything ever recorded (Step 53)
+### 2.2 Parent screens load everything ever recorded (fixed in Step 53.2, 2026-10-16)
 
 ```ts
 // src/app/parent/(protected)/page.tsx
@@ -177,6 +177,12 @@ const tapsByStudent = await Promise.all(
 The parent home page loads **every tap each child ever made**. The bell in the parent layout loads **every notification ever**, on every page (`getParentNotifications` in `src/features/parents/notifications-data.ts`). A child taps about 400 times a school year. After the morning push, thousands of parents open the app within minutes, so each of those requests should be small.
 
 **Fix:** Step 53's services load today only, or one page at a time, newest first. The unread count is a count in the database.
+
+**Built in Step 53.2.**
+- The home page reads each child's taps for today and their last 10.
+- The bell reads the newest 5 and an unread count that stops at 10.
+- The feed reads 30 at a time with a cursor.
+- One child's unread count still walks that child's own rows when their parent reads everything (about 400 a year). That's bounded by one child, not by the school; add a partial index on unread rows only if `EXPLAIN` shows it matters (`docs/backend/step-53.2-paged-parent-data.md`).
 
 ### 2.3 Push needs a delivery record per phone, and a worker (Step 54)
 
@@ -339,6 +345,8 @@ EXPLAIN SELECT * FROM "Tap" WHERE "studentId" = 'student-0001'
 ```
 
 On a table this small, Postgres often reads the whole table (`Seq Scan`), because that's genuinely faster for a few hundred rows. To see whether an index *could* be used, run `SET enable_seqscan = off;` first. `Bitmap Index Scan on "Tap_studentId_tappedAt_idx"` means yes. `Disabled: true` under a `Seq Scan` means no usable index exists (section 3.2). `\q` quits.
+
+**See the SQL Prisma sends.** Make a client with `log: ["query"]` in a throwaway script, run it with `npx tsx`, then delete it. That's how Step 53.2 found that a capped `count` orders by `id` unless told otherwise (`docs/PROBLEMS-LOG.md`, P-016).
 
 **Check the live database:** `heroku pg:info --app <name>` shows the plan, the data size, and how many connections are in use.
 

@@ -1,7 +1,7 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ████████████████░░░░ 78%**  (242 of 312 tasks, 66 of 83 steps approved)
+**Overall progress: ████████████████░░░░ 79%**  (246 of 312 tasks, 66 of 83 steps approved)
 
 **Next up:** Step 53.1, Parent sign-in services (ready for your review)
 
@@ -74,7 +74,7 @@
 | 52 | Deploy the demo to Heroku | ██████████ 100% | Approved |
 | 53 | One parent account for any number of schools | ██████████ 100% | Approved |
 | 53.1 | Parent sign-in services | ████████░░  80% | Ready for your review |
-| 53.2 | Paged parent data | ░░░░░░░░░░   0% | Not started |
+| 53.2 | Paged parent data | ████████░░  80% | Ready for your review |
 | 53.3 | Parent tokens and the sign-in API | ░░░░░░░░░░   0% | Not started |
 | 53.4 | The parent notifications API | ░░░░░░░░░░   0% | Not started |
 | 54 | Push notifications reach the phone | ░░░░░░░░░░   0% | Not started |
@@ -737,12 +737,12 @@ Commit: `feat(parents): move parent sign-in into services and store emails in lo
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 53.2: Paged parent data
-Plan: `docs/SCALING.md` 2.2. Reviewed with the systems-architect on 2026-10-16. Its recipe is written from the real diff.
-- [ ] Each child's taps for today only (`listByStudentOnDate`, reused by Step 61), through a `childrenToday` service.
-- [ ] Notifications a page at a time, newest first by `(tappedAt, id)`: one query per child, one after another, merged with the same order. "Show older" carries an opaque cursor (base64url of `<tappedAt>|<id>`, ids limited to `[a-z0-9-]`), written into `docs/PARENT-APP-BRIEF.md` as `nextBefore`.
-- [ ] The unread count is counted by the database and stops at 10 (the bell shows "9+"). "Mark all read" is one query, and the feed shows it from that count, not from the page in view.
-- [ ] The bell gets the newest 5 and the count, so the browser never receives the whole history. The feed shows 30 with "Show older".
-Done when: a parent page loads the same number of rows in a child's fifth year as in their first, and every check passes.
+Plan: `docs/SCALING.md` 2.2. Reviewed with the systems-architect on 2026-10-16 (two more rounds, no blocking concerns). Kept as one step (owner decision, 2026-10-16). Its recipe is written from the real diff.
+- [x] Each child's taps for today (`listByStudentOnDate`, reused by Step 61) and their last 10 taps (`listRecentByStudent`), through a `childrenToday` service. The card's "Attendance history" of every tap ever becomes "Recent taps", the last 10 (owner decision, 2026-10-16).
+- [x] Notifications a page at a time, newest first by `(tappedAt, id)`: one query per child, one after another, merged with the same order. "Show older" carries an opaque cursor (base64url of `<tappedAt>|<id>`, ids limited to `[a-z0-9-]`), written into `docs/PARENT-APP-BRIEF.md` as `nextBefore`. Tested against Postgres too, for ties. Changed while building: ids must be a lowercase UUID or the seed's `notification-0001`, since Postgres and JavaScript order other hyphenated ids differently (`docs/PROBLEMS-LOG.md`, P-017).
+- [x] The unread count is counted by the database, one capped count per child (newest first, so Postgres can stop at the 10th), and stops at 10: the bell shows "9+" and says "more than 9 unread". "Mark all read" and "mark read" are one query each, limited to each linked child at that child's school. The feed shows "Mark all as read" from the count, not from the page in view.
+- [x] The bell gets the newest 5 and the count, so the browser never receives the whole history. The feed shows 30 with "Show older" and "Back to newest". The parent's links are read once per page (React `cache`). Added by the code review: a notification reaches the browser with only the child's id and name (P-018).
+Done when: a parent page loads the same number of rows in a child's fifth year as in their first, except the unread count, which is bounded by one child's own notifications (never all children's or the school's). Every check passes.
 Commit: `perf(parents): load parent data one day or one page at a time`
 - [ ] Owner review: I checked it and said "approved"
 
@@ -758,7 +758,7 @@ Commit: `feat(api): add parent tokens and the parent sign-in API`
 
 ### Step 53.4: The parent notifications API
 Recipe: `docs/backend/step-53.3-parent-api.md`, the part after the sign-in addresses.
-- [ ] `/api/v1/parents/notifications` (with `before` and `limit`), `…/:id/read`, `…/read-all` and `push-tokens`. The app registers an Expo push token (owner decision, 2026-10-13), since Step 54 sends through Expo's push service.
+- [ ] `/api/v1/parents/notifications` (with `before` and `limit`), `…/:id/read`, `…/read-all` and `push-tokens`. From Step 53.2's review: clamp `limit` (1–50; a negative `take` reverses Prisma's order), and answer a cursor that doesn't decode with `400`, not the first page. The app registers an Expo push token (owner decision, 2026-10-13), since Step 54 sends through Expo's push service.
 - [ ] Parent tokens can load their own children's photos, and no one else's.
 - [ ] `docs/PARENT-API.md`, unit tests, and `e2e/parent-api.spec.ts` (sign up, link, tap, notification, read, logout).
 Done when: the `curl` checks in the recipe work, `docs/PARENT-API.md` is ready to copy into the app's repository, and every check passes.

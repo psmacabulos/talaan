@@ -30,22 +30,31 @@ export function toTapData(tap: Tap) {
 
 /** Oldest first; the id only breaks a tie between two taps in the same millisecond. */
 const EARLIEST_FIRST = [{ tappedAt: "asc" as const }, { id: "asc" as const }];
+const NEWEST_FIRST = [{ tappedAt: "desc" as const }, { id: "desc" as const }];
+
+/** From the school's midnight on `date` up to (not including) the next one. */
+function schoolDay(date: string) {
+  return { gte: new Date(schoolTimeToIso(date, "00:00")), lt: new Date(schoolTimeToIso(nextDate(date), "00:00")) };
+}
 
 export function createPrismaTapRepository(db: PrismaClient = prisma): TapRepository {
   return {
     async listBySchoolOnDate(schoolId, date) {
-      // From the school's midnight up to (not including) the next one. The
-      // (schoolId, tappedAt) index answers this without reading other days.
+      // The (schoolId, tappedAt) index answers this without reading other days.
+      const rows = await db.tap.findMany({ where: { schoolId, tappedAt: schoolDay(date) }, orderBy: EARLIEST_FIRST });
+      return rows.map(toTap);
+    },
+    async listByStudentOnDate(schoolId, studentId, date) {
+      // The (studentId, tappedAt) index reads just this student's day, however many years they've tapped.
       const rows = await db.tap.findMany({
-        where: {
-          schoolId,
-          tappedAt: {
-            gte: new Date(schoolTimeToIso(date, "00:00")),
-            lt: new Date(schoolTimeToIso(nextDate(date), "00:00")),
-          },
-        },
+        where: { studentId, schoolId, tappedAt: schoolDay(date) },
         orderBy: EARLIEST_FIRST,
       });
+      return rows.map(toTap);
+    },
+    async listRecentByStudent(schoolId, studentId, limit) {
+      // Read backwards along the (studentId, tappedAt) index, stopping after `limit`.
+      const rows = await db.tap.findMany({ where: { studentId, schoolId }, orderBy: NEWEST_FIRST, take: limit });
       return rows.map(toTap);
     },
     async listByStudent(schoolId, studentId) {

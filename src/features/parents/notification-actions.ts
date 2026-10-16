@@ -4,15 +4,18 @@ import { refresh } from "next/cache";
 import { notificationRepository, parentStudentLinkRepository } from "@/data/repositories";
 import { SIGNED_OUT_MESSAGE } from "@/features/auth/messages";
 import { getParentSession } from "@/lib/parent-session";
+import { markAllParentNotificationsRead, markParentNotificationRead } from "@/services/parents/notifications";
 
 export type NotificationActionResult = { ok: true } | { ok: false; formError: string };
 
+const deps = { links: parentStudentLinkRepository, notifications: notificationRepository };
+
 /**
- * Step 24's "mark read", for one notification. It's looked up only within
- * the schools of the parent's own links (Step 53), so any other school's id
- * answers "no longer exists", like a made-up one. Within that school, it
- * must be for one of the parent's own linked children. `refresh()` because
- * this action doesn't touch a cookie (see `attendance/actions.ts`'s note).
+ * Step 24's "mark read", for one notification. `markParentNotificationRead`
+ * marks it only if it's for one of the parent's linked children, at that
+ * child's school (Step 53), so another parent's id or a made-up one gets the
+ * same answer. `refresh()` because this action doesn't touch a cookie (see
+ * `attendance/actions.ts`'s note).
  */
 export async function markNotificationRead(id: string): Promise<NotificationActionResult> {
   const session = await getParentSession();
@@ -20,42 +23,22 @@ export async function markNotificationRead(id: string): Promise<NotificationActi
     return { ok: false, formError: SIGNED_OUT_MESSAGE };
   }
 
-  const links = await parentStudentLinkRepository.listByParent(session.parentId);
-  const schoolIds = [...new Set(links.map((link) => link.schoolId))];
-  const found = await Promise.all(schoolIds.map((schoolId) => notificationRepository.getInSchool(schoolId, id)));
-  const notification = found.find((candidate) => candidate !== null);
-  if (!notification) {
+  if (!(await markParentNotificationRead(session.parentId, id, deps))) {
     return { ok: false, formError: "That notification no longer exists." };
   }
 
-  if (!links.some((link) => link.schoolId === notification.schoolId && link.studentId === notification.studentId)) {
-    return { ok: false, formError: "That notification isn't for your children." };
-  }
-
-  await notificationRepository.markRead(notification.schoolId, id);
   refresh();
   return { ok: true };
 }
 
+/** Every unread notification of the parent's children, in one write. The read mark is shared by a child's guardians. */
 export async function markAllNotificationsRead(): Promise<NotificationActionResult> {
   const session = await getParentSession();
   if (!session) {
     return { ok: false, formError: SIGNED_OUT_MESSAGE };
   }
 
-  const links = await parentStudentLinkRepository.listByParent(session.parentId);
-  const notifications = (
-    await Promise.all(links.map((link) => notificationRepository.listByStudent(link.schoolId, link.studentId)))
-  ).flat();
-
-  // One read flag per notification, shared by every guardian of that child
-  // (Step 20's Phase 1 model) — marking it read here clears it for all.
-  for (const notification of notifications) {
-    if (!notification.read) {
-      await notificationRepository.markRead(notification.schoolId, notification.id);
-    }
-  }
-
+  await markAllParentNotificationsRead(session.parentId, deps);
   refresh();
   return { ok: true };
 }

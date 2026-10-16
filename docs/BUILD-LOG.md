@@ -2313,3 +2313,27 @@ The old Step 53.1 recipe (the whole parent API) was checked against the code Ste
 - **A near miss.** After the code review, the migration's comment was reworded, though the migration had already been applied locally. Prisma keeps a checksum of applied migrations, so `migrate dev` would have called the file modified and offered a reset, which deletes every row. The original text was restored byte for byte, and `npx prisma migrate status` said "up to date". The rule now: never edit an applied migration, not even its comments.
 - **Checks run here** (at the owner's request in this workflow): `npm run lint`, `npm run typecheck` and `npm run check:tokens` clean; `npm test` 92 files, 642 tests passed; `npm run build`, then `npx playwright test e2e/parent.spec.ts e2e/login.spec.ts`: 36 passed, 2 skipped (the parent flow is mobile-only by design; both mobile runs passed).
 - **The code review** (systems-architect, after the build): no blocking concerns. Two of its points were applied: every service failure now carries a `code`, so 53.3's API maps them in one place. Three went into Steps 53.3 and 53.4 in `docs/PLAN.md`: no transaction around `registerParent`, a retried sign-up answers "email taken", and the post-deploy email check. Left as is: the decoy hash is made on first use, so the first unknown-email sign-in after a restart runs scrypt twice.
+
+## Step 53.2: paged parent data (2026-10-16)
+
+Plan reviewed with the systems-architect subagent in two rounds (no blocking concerns), then built as one step (owner decision: not split in two). The recipe, `docs/backend/step-53.2-paged-parent-data.md`, was written from the real diff.
+
+- **Found before planning.** The child card's "Attendance history" listed every tap on record (`child-summary-card.tsx`). Loading only today's taps would have quietly removed it, so the owner chose a bounded "Recent taps", the last 10.
+- **The review's main changes.**
+  - Each count and "mark read" is limited by each child **and that child's school** together (an `OR` of pairs), not "any of these students at any of these schools".
+  - The bell says "more than 9 unread" at the cap.
+  - The test versions of the repositories get every new method, and there's a Postgres test for ties.
+- **Checked by logging Prisma's SQL** (a throwaway `npx tsx` script with `log: ["query"]`, deleted after). A capped `count` became `COUNT(*)` over a subquery with `ORDER BY id LIMIT`, which sorts every unread row first. With `orderBy: tappedAt desc` the subquery orders by `tappedAt`, so Postgres can stop early (P-016). The first try at the script failed with a `TransformError` on top-level `await`; renaming it `.mts` fixed that.
+- **A gap both review rounds missed, found while writing the Postgres test.** The cursor allowed any id of `[a-z0-9-]`, on the idea that JavaScript and Postgres sort such ids alike. A query on the local database showed `ab < a-c` in Postgres and `a-c < ab` in JavaScript (`en_US` skips hyphens). The ids are now limited to the two shapes that exist (P-017).
+- **The code review** (after the build): no blocking concerns. Four of its five points were fixed:
+  - only the child's id and name reach the browser (P-018);
+  - a bad `?before=` is treated as the first page;
+  - a cursor that couldn't be read back throws;
+  - the Postgres test uses ids that differ past the first character.
+  Its API points went into Steps 53.3/53.4 in `docs/PLAN.md`. Left as is: the count and the list would disagree for a child whose student record was deleted.
+- **One test failure while fixing, from the test itself.** After more tied rows were added, the Postgres test read only two pages of a child who now had three. The order it got was right; the test now pages until there's nothing left.
+- **Checks run here:**
+  - `npm run lint`, `npm run typecheck` and `npm run check:tokens`: clean.
+  - `npm test`: 96 files, 677 tests passed, with the Postgres paging test running against the test database.
+  - `npm run build`, then Playwright parent, login, isolation and a11y specs: 178 passed, 10 skipped by design.
+  - Not looked at in a browser at 360 and 1280 px; the owner's check covers it.

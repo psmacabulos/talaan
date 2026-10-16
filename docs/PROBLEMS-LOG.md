@@ -4,27 +4,66 @@ Every problem hit while building and running Bantay Aral, from the day it happen
 
 **How to add an entry.** Give it the next number, today's date, and a title that names the symptom ("Server answers every request with 500"), not the fix. Fill in the same headings as the entries below, and add a diagram when the problem involves more than one system. When an entry is fixed, update its **Status** in place and in the index; don't start a new entry. Questions that were only confusion, with nothing broken, go in `docs/LEARNING-LOG.md` instead. The table at the end of each section links to them.
 
+**Kind** (added 2026-10-16, owner request) says what a fix was worth:
+- **Security**: it closes a way to reach, guess or leak something.
+- **Performance**: it makes the app do less work, which is what keeps it on the cheap plans as schools grow. These entries carry measured numbers from the benchmark below.
+- **Other**: everything else, with what it was (build, setup, tests, docs, correctness, reliability).
+
 Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.md` explains how the live server works.
 
 ## Index
 
-| # | Date | Problem | Area | Status |
-|---|---|---|---|---|
-| [P-001](#p-001--2026-10-13--the-start-up-check-would-have-stopped-every-browser-test-run) | 2026-10-13 | The start-up check would have stopped every browser test run | CI, Playwright | Resolved |
-| [P-002](#p-002--2026-10-13--npm-ci-would-refuse-to-install-after-moving-three-packages) | 2026-10-13 | `npm ci` would refuse to install after moving three packages | Build | Resolved |
-| [P-003](#p-003--2026-10-13--the-recipe-opened-the-gate-with-a-token-in-the-address) | 2026-10-13 | The recipe opened the gate with a token in the address | Docs | Resolved |
-| [P-004](#p-004--2026-10-13--unclear-how-code-gets-to-heroku-and-why-the-first-deploy-didnt-start) | 2026-10-13 | Unclear how code gets to Heroku, and why the first deploy didn't start | Deploy | Resolved |
-| [P-005](#p-005--2026-10-13--ci-failed-at-typecheck-after-the-push) | 2026-10-13 | CI failed at Typecheck after the push | CI | Resolved |
-| [P-006](#p-006--2026-10-13--the-bare-domain-couldnt-point-at-heroku-from-hostinger) | 2026-10-13 | The bare domain couldn't point at Heroku from Hostinger | Domain | Resolved |
-| [P-007](#p-007--2026-10-13--the-live-site-answered-every-request-with-500) | 2026-10-13 | The live site answered every request with 500 | Heroku, settings | Resolved |
-| [P-008](#p-008--2026-10-13--the-r2-secret-access-key-couldnt-be-found-again) | 2026-10-13 | The R2 secret access key couldn't be found again | Cloudflare R2 | Resolved |
-| [P-009](#p-009--2026-10-13--the-bucket-wasnt-named-talaan-photos) | 2026-10-13 | The bucket wasn't named `talaan-photos` | Cloudflare R2 | Resolved |
-| [P-010](#p-010--2026-10-13--a-missing-setting-gives-500s-instead-of-a-crashed-dyno) | 2026-10-13 | A missing setting gives 500s instead of a crashed dyno | Heroku, Next.js | Open: owner decides |
-| [P-011](#p-011--2026-10-14--heroku-run-answered-run-command-not-found) | 2026-10-14 | `heroku run` answered `run: command not found` | Heroku CLI, docs | Resolved |
-| [P-012](#p-012--2026-10-15--prisma-migrate-dev-refused-to-drop-a-column-here) | 2026-10-15 | `prisma migrate dev` refused to drop a column here | Prisma, building | Resolved |
-| [P-013](#p-013--2026-10-15--a-sign-in-test-still-picked-a-school-at-sign-up) | 2026-10-15 | A sign-in test still picked a school at sign-up | Playwright | Resolved |
-| [P-014](#p-014--2026-10-16--parent-emails-were-stored-as-typed-and-every-sign-in-read-the-whole-table) | 2026-10-16 | Parent emails were stored as typed, and every sign-in read the whole table | Database, sign-in | Fixed, waiting for the owner's checks |
-| [P-015](#p-015--2026-10-16--parent-sign-in-answered-faster-for-an-email-with-no-account) | 2026-10-16 | Parent sign-in answered faster for an email with no account | Security, sign-in | Fixed, waiting for the owner's checks |
+| # | Date | Problem | Kind | Area | Status |
+|---|---|---|---|---|---|
+| [P-001](#p-001--2026-10-13--the-start-up-check-would-have-stopped-every-browser-test-run) | 2026-10-13 | The start-up check would have stopped every browser test run | Other: tests | CI, Playwright | Resolved |
+| [P-002](#p-002--2026-10-13--npm-ci-would-refuse-to-install-after-moving-three-packages) | 2026-10-13 | `npm ci` would refuse to install after moving three packages | Other: build | Build | Resolved |
+| [P-003](#p-003--2026-10-13--the-recipe-opened-the-gate-with-a-token-in-the-address) | 2026-10-13 | The recipe opened the gate with a token in the address | Security | Docs | Resolved |
+| [P-004](#p-004--2026-10-13--unclear-how-code-gets-to-heroku-and-why-the-first-deploy-didnt-start) | 2026-10-13 | Unclear how code gets to Heroku, and why the first deploy didn't start | Other: deploy | Deploy | Resolved |
+| [P-005](#p-005--2026-10-13--ci-failed-at-typecheck-after-the-push) | 2026-10-13 | CI failed at Typecheck after the push | Other: build | CI | Resolved |
+| [P-006](#p-006--2026-10-13--the-bare-domain-couldnt-point-at-heroku-from-hostinger) | 2026-10-13 | The bare domain couldn't point at Heroku from Hostinger | Other: setup | Domain | Resolved |
+| [P-007](#p-007--2026-10-13--the-live-site-answered-every-request-with-500) | 2026-10-13 | The live site answered every request with 500 | Other: setup | Heroku, settings | Resolved |
+| [P-008](#p-008--2026-10-13--the-r2-secret-access-key-couldnt-be-found-again) | 2026-10-13 | The R2 secret access key couldn't be found again | Other: setup | Cloudflare R2 | Resolved |
+| [P-009](#p-009--2026-10-13--the-bucket-wasnt-named-talaan-photos) | 2026-10-13 | The bucket wasn't named `talaan-photos` | Other: setup | Cloudflare R2 | Resolved |
+| [P-010](#p-010--2026-10-13--a-missing-setting-gives-500s-instead-of-a-crashed-dyno) | 2026-10-13 | A missing setting gives 500s instead of a crashed dyno | Other: reliability | Heroku, Next.js | Open: owner decides |
+| [P-011](#p-011--2026-10-14--heroku-run-answered-run-command-not-found) | 2026-10-14 | `heroku run` answered `run: command not found` | Other: docs | Heroku CLI, docs | Resolved |
+| [P-012](#p-012--2026-10-15--prisma-migrate-dev-refused-to-drop-a-column-here) | 2026-10-15 | `prisma migrate dev` refused to drop a column here | Other: build | Prisma, building | Resolved |
+| [P-013](#p-013--2026-10-15--a-sign-in-test-still-picked-a-school-at-sign-up) | 2026-10-15 | A sign-in test still picked a school at sign-up | Other: tests | Playwright | Resolved |
+| [P-014](#p-014--2026-10-16--parent-emails-were-stored-as-typed-and-every-sign-in-read-the-whole-table) | 2026-10-16 | Parent emails were stored as typed, and every sign-in read the whole table | Performance | Database, sign-in | Fixed, waiting for the owner's checks |
+| [P-015](#p-015--2026-10-16--parent-sign-in-answered-faster-for-an-email-with-no-account) | 2026-10-16 | Parent sign-in answered faster for an email with no account | Security | Security, sign-in | Fixed, waiting for the owner's checks |
+| [P-016](#p-016--2026-10-16--a-capped-count-still-sorted-every-unread-row) | 2026-10-16 | A capped count still sorted every unread row | Performance | Prisma, database | Fixed, waiting for the owner's checks |
+| [P-017](#p-017--2026-10-16--postgres-and-javascript-order-some-ids-differently) | 2026-10-16 | Postgres and JavaScript order some ids differently | Other: correctness | Database, paging | Fixed, waiting for the owner's checks |
+| [P-018](#p-018--2026-10-16--the-bell-sent-each-childs-full-record-to-the-browser) | 2026-10-16 | The bell sent each child's full record to the browser | Security (privacy) | Privacy, parent portal | Fixed, waiting for the owner's checks |
+| [P-019](#p-019--2026-10-16--parent-pages-loaded-every-tap-and-notification-ever) | 2026-10-16 | Parent pages loaded every tap and notification ever | Performance | Parent portal, database | Fixed, waiting for the owner's checks |
+
+
+## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
+
+**How it was measured.**
+- **The data:** a scratch database (`talaan_bench`, dropped afterwards) with one school of **5,000 students** and **7,500 parents** (1.5 per student), and one school year of data: 200 school days, a time in and a time out each, so **2 million taps and 2 million notifications** (939 MB). Two children had six years of history (2,400 of each). One of them had a parent who never reads, so all 2,400 notifications stayed unread.
+- **The code:** a throwaway script ran the old code (rebuilt line for line from before the fix) and the new code through the real Prisma repositories: 5 warm-up runs, then 20–100 timed runs, median and 95th percentile.
+- **Where:** the owner's laptop, with Postgres on the same machine.
+
+| What | Before | After | Difference |
+|---|---|---|---|
+| A parent page (the bell plus the home page), child in their **1st year** | 800 rows read, **216 KB** to the browser, 5.2 ms | 19 rows, **2.7 KB**, 1.9 ms | 42× fewer rows, 80× less data |
+| The same, child in their **6th year** | 4,800 rows, **1.3 MB**, 11.5 ms (95th: 15.4 ms) | 19 rows, **2.7 KB**, 2.2 ms | 250× fewer rows, 480× less data; **the same as year 1** |
+| Unread count, 2,400 unread (P-016) | load all and count in JavaScript: 4.4 ms | capped count, newest first: 0.20 ms | 22× faster (the first capped try, ordered by id: 0.49 ms) |
+| Find a parent by email, 7,500 parents (P-014) | case-insensitive search of every row: 2.45 ms | exact lookup on the index: 0.23 ms | 11× faster; the old way grows with every parent, the new one barely moves |
+
+**What it means for a busy morning at 5,000 students.** The pushes go out as students tap in, and most parents open the app or portal within half an hour. Say 7,500 page opens:
+
+| Per morning | Before, 1st year | Before, 6th year | After, any year |
+|---|---|---|---|
+| Rows the database reads | 6 million | 36 million | 0.14 million |
+| Data sent from the dyno | 1.6 GB | 9.7 GB | 20 MB |
+| Server time on the laptop | 39 s | 86 s | 16 s |
+| Data on each parent's phone per school year (one open a day) | 43 MB | 260 MB | 0.5 MB |
+
+**On the Basic dyno.** The laptop times are the easy part. A Basic dyno has one shared CPU and 512 MB of memory, and Heroku Basic runs exactly one dyno, so it can't add a second at the rush. The bigger cost was size: in a burst of 25 opens a second (a fifth of the parents in the first minute), the old code in a child's sixth year would send about 32 MB a second and hold a few megabytes of rows per request in memory. That's the kind of load that shows up as slow pages and memory warnings (Heroku's R14) on a 512 MB dyno. The new code sends about 70 KB a second for the same burst. These are estimates from the measured sizes, not a load test on Heroku.
+
+**On the bill.** Today's plan is $12 a month (`docs/DEPLOY.md`). When one Basic dyno can't keep up, the next step is Standard dynos, about $25 a month each, and it takes two to gain anything ($50), or one Standard-2X with 1 GB ($50). Heroku's list prices; check heroku.com/pricing before deciding. So the old pages would likely have pushed a 5,000-student school from **$12 to about $55 a month** within a year or two. The new pages keep these screens inside the $12 plan whatever the number of years. The database size doesn't change: paging reads less, it doesn't store less (storage is `docs/SCALING.md` section 6). Parents gain too: on prepaid data, 260 MB a year just to open the portal is real money.
+
+**To check it on the live server**, compare the router's `service=` time for `GET /parent` in `heroku logs --tail --app bantayaral` before and after the deploy.
 
 ---
 
@@ -67,6 +106,7 @@ flowchart LR
 - **Where:** the Step 52 recipe's "Verify it worked".
 - **Symptom:** the recipe said to open `/gate?token=…`. That does nothing: the gate takes its token on its setup screen (Step 47).
 - **Solution:** the recipe and `docs/DEPLOY.md` were corrected.
+- **Impact (security):** a gate token in an address would end up in the browser's history, server logs and any shared screenshot, and anyone holding it can record taps as that gate.
 - **Status:** Resolved.
 
 ### P-004 · 2026-10-13 · Unclear how code gets to Heroku, and why the first deploy didn't start
@@ -325,6 +365,7 @@ Both problems below were found while planning Step 53.1, in a review of the code
   3. `heroku run --app <name> "npx prisma migrate resolve --rolled-back parent_email_lowercase"` (quoted, as P-011 explains). It's `--rolled-back`, not `--applied`, because nothing in the file ran. Until this is done, every deploy stops with Prisma's `P3009` error.
   4. Deploy again.
 - **After the deploy**, check that nobody signed up on the old code while the new release was starting: `heroku pg:psql --app <name> -c 'SELECT count(*) FROM "Parent" WHERE email <> lower(trim(email));'` should be 0. If it isn't, run the migration's `UPDATE` line the same way.
+- **Impact (performance):** at 7,500 parents, finding a parent by email went from 2.45 ms to 0.23 ms (the benchmark above). The old search reads every parent, so it grows with every school that joins. It also stops two accounts that differ only by case.
 - **Status:** Fixed, waiting for the owner's checks and the deploy.
 
 ### P-015 · 2026-10-16 · Parent sign-in answered faster for an email with no account
@@ -336,4 +377,62 @@ Both problems below were found while planning Step 53.1, in a review of the code
   2. **The decoy check inside the repository's `verifyPassword`.** Chosen.
 - **Solution:** `verifyPassword` always runs scrypt, against `decoyPasswordHash()` (`src/lib/password.ts`, now shared with staff sign-in) when the email has no account. A unit test checks the decoy is used.
 - **Still open, on purpose:** sign-up's "An account with this email already exists" also tells a stranger the email is registered. Closing that means confirming an email by sending to it, which waits for the email service (Step 55.5). The sign-in limit also counts per email only, so trying many emails isn't limited yet. Step 53.3 adds a limit per address.
+- **Impact (security):** someone with a list of emails could have learned which ones have a parent account here, a first step for phishing a parent or guessing passwords, without ever signing in.
+- **Status:** Fixed, waiting for the owner's checks.
+
+---
+
+## The parent API, part 3 (Step 53.2, 2026-10-16)
+
+```mermaid
+flowchart LR
+    B["Parent's browser"] -->|"/parent, ?before=cursor"| Next["Next.js server<br/>services/parents"]
+    Next -->|"one query per child,<br/>LIMIT 31 / LIMIT 10"| PG[("Postgres<br/>en_US collation")]
+    PG -->|rows| Next
+    Next -->|"merge in JavaScript,<br/>names only"| B
+```
+
+### P-016 · 2026-10-16 · A capped count still sorted every unread row
+- **Where:** planning the unread count for `countUnreadForStudent` (`src/data/repositories/prisma-notification-repository.ts`), against the local database.
+- **Symptom:** a throwaway script with `log: ["query"]` showed what `count({ where, take: 10 })` sends:
+  ```
+  SELECT COUNT(*) FROM (SELECT id FROM "Notification" WHERE … ORDER BY "id" ASC LIMIT $4 OFFSET $5) AS "sub"
+  ```
+- **Cause:** with `take` and no order, Prisma orders by `id`. To find the 10 lowest ids, Postgres has to collect and sort **every** matching unread row first, so the cap saved nothing.
+- **Options weighed:**
+  1. A partial index on unread rows. It's a migration, and it leaves the sort in place.
+  2. **Order by `tappedAt` newest first, one count per child.** Then Postgres can walk the `(studentId, tappedAt)` index backwards and stop at the 10th unread row. Chosen.
+- **Solution:** `orderBy: [{ tappedAt: "desc" }]` on the count; the logged SQL then reads `ORDER BY "tappedAt" DESC LIMIT`. The service counts each child in turn and stops at 10.
+- **Still open, on purpose:** for a child whose parent reads everything, Postgres still checks every one of that child's rows (about 400 a year) before it knows there are fewer than 10 unread. Measure it with `EXPLAIN (ANALYZE, BUFFERS)`, and add a partial index only if it shows up.
+- **Impact (performance):** for a child with 2,400 unread notifications, counting them for the bell went from 4.4 ms (loading them all) to 0.20 ms; the first capped try, ordered by id, took 0.49 ms (the benchmark above).
+- **Status:** Fixed, waiting for the owner's checks.
+
+### P-017 · 2026-10-16 · Postgres and JavaScript order some ids differently
+- **Where:** Step 53.2's paging. Each child's page comes from Postgres (`ORDER BY "tappedAt" DESC, "id" DESC`), then the pages are merged in JavaScript, and both must agree on the order of two notifications in the same millisecond.
+- **Symptom:** checked on the local database while building:
+  ```
+  Postgres:   ab < a-c
+  JavaScript: a-c < ab
+  ```
+- **Cause:** the database uses the `en_US.utf8` collation, which skips hyphens on its first pass. JavaScript's `<` compares character codes, where `-` comes before letters. The plan's cursor allowed any id of `[a-z0-9-]`, which two architect reviews accepted. If two siblings tapped in the same millisecond with ids like these, "Show older" could have repeated one or skipped one.
+- **Options weighed:**
+  1. Sort with the "C" collation in SQL. Prisma can't set a collation on `orderBy`.
+  2. **Accept only the two id shapes that exist:** a lowercase UUID (every id the server makes) or the seed's `notification-0001`. Hyphens fall in the same places within each shape, and the two shapes differ at the first character, so both orders agree. Chosen.
+- **Solution:** `NOTIFICATION_ID` in `src/features/parents/notification-cursor.ts`. Encoding a cursor for any other id throws, so a mistake shows up instead of quietly looping "Show older" back to page one. `src/data/repositories/prisma-notification-paging.test.ts` pages tied rows of both shapes across two children on the real database.
+- **Status:** Fixed, waiting for the owner's checks.
+
+### P-018 · 2026-10-16 · The bell sent each child's full record to the browser
+- **Where:** `NotificationsBell` and `NotificationList`, both client components, since Step 24. Found by the architect's review of Step 53.2's code.
+- **Symptom:** nothing visible. Each notification item carried the whole `Student` (birth date, LRN, guardian's name and mobile) as a prop, and props of a client component are sent to the browser in the page's data.
+- **Cause:** `ParentNotificationItem.student` was typed as the full `Student`, and the screens only ever showed the name.
+- **Solution:** the type is now `Pick<Student, "id" | "firstName" | "lastName">`, and `listParentNotifications` copies only those. CLAUDE.md: students are minors, collect and send the minimum.
+- **Impact (security, privacy):** every parent page carried each linked child's birth date, LRN and guardian's mobile into the browser, where anyone with the device could read them. The parent has the right to see that data, but CLAUDE.md asks for the minimum, since the students are minors. The same fix cut each page's bell data from up to 1.3 MB to under 3 KB (P-019).
+- **Status:** Fixed, waiting for the owner's checks.
+
+### P-019 · 2026-10-16 · Parent pages loaded every tap and notification ever
+- **Where:** the parent home page (`src/app/parent/(protected)/page.tsx`) and the bell in the parent layout, on every parent page. Found in the 2026-10-13 review (`docs/SCALING.md` 2.2) and fixed in Step 53.2.
+- **Symptom:** nothing visible with the demo's handful of rows. With a year of real data, each open read 800 rows and sent 216 KB to the browser; by a child's sixth year, 4,800 rows and 1.3 MB.
+- **Cause:** the home page loaded each child's whole tap history to show today's status and a history list. The bell loaded every notification ever to show 5 and a count, and passed them all to a client component, which sends them to the browser.
+- **Options weighed:** see `docs/backend/step-53.2-paged-parent-data.md`. Chosen: today's taps plus the last 10, the newest 5 notifications, a count that stops at 10, and the feed 30 at a time with a cursor.
+- **Impact (performance):** a parent page now reads 19 rows and sends 2.7 KB in any year, against 4,800 rows and 1.3 MB in a child's sixth year. At 5,000 students that's 20 MB instead of up to 9.7 GB sent each morning, which keeps these pages on the Basic dyno ($12 a month in all) instead of about $55 (the benchmark above).
 - **Status:** Fixed, waiting for the owner's checks.

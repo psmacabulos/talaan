@@ -6,8 +6,12 @@ import { DEFAULT_LATENCY_MS, simulateLatency } from "./latency";
 export interface TapRepository {
   /** A school's taps on one calendar day on the school's clock ("2026-06-19"), earliest first. What every one-day page loads, instead of the school's whole history. */
   listBySchoolOnDate(schoolId: string, date: string): Promise<Tap[]>;
-  /** One student's taps, only within `schoolId` (Step 51). */
+  /** One student's taps, only within `schoolId` (Step 51). Their whole history: Step 61 moves its last callers to `listByStudentOnDate`. */
   listByStudent(schoolId: string, studentId: string): Promise<Tap[]>;
+  /** One student's taps on one calendar day on the school's clock ("2026-06-19"), earliest first, only within `schoolId`. */
+  listByStudentOnDate(schoolId: string, studentId: string, date: string): Promise<Tap[]>;
+  /** One student's newest `limit` taps, newest first (the id breaks a tie), only within `schoolId`. */
+  listRecentByStudent(schoolId: string, studentId: string, limit: number): Promise<Tap[]>;
   /**
    * Any tap by id, at any school. Unscoped on purpose: only `recordTap`'s
    * replay check uses it (a device-made id seen before), and it compares the
@@ -40,6 +44,21 @@ export function createMockTapRepository(data: Tap[] = seedTaps, options: { laten
     async listByStudent(schoolId, studentId) {
       await simulateLatency(latencyMs);
       return data.filter((tap) => tap.studentId === studentId && tap.schoolId === schoolId);
+    },
+    async listByStudentOnDate(schoolId, studentId, date) {
+      await simulateLatency(latencyMs);
+      return data
+        .filter(
+          (tap) => tap.schoolId === schoolId && tap.studentId === studentId && schoolDateOf(tap.tappedAt) === date,
+        )
+        .sort((a, b) => Date.parse(a.tappedAt) - Date.parse(b.tappedAt) || (a.id < b.id ? -1 : 1));
+    },
+    async listRecentByStudent(schoolId, studentId, limit) {
+      await simulateLatency(latencyMs);
+      return data
+        .filter((tap) => tap.schoolId === schoolId && tap.studentId === studentId)
+        .sort((a, b) => Date.parse(b.tappedAt) - Date.parse(a.tappedAt) || (a.id < b.id ? 1 : -1))
+        .slice(0, limit);
     },
     async getById(id) {
       await simulateLatency(latencyMs);

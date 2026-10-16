@@ -8,23 +8,25 @@ import { formatSchoolDate } from "@/lib/school-time";
 export const formatTapDate = formatSchoolDate;
 
 /**
- * One linked child's card on the parent dashboard: today's status plus a
- * plain history of every tap on record for them, newest first. `schoolName`
- * is given only when the parent's children are at more than one school.
+ * One linked child's card on the parent dashboard: today's status, from
+ * today's taps, plus their most recent taps, newest first (the last 10
+ * since Step 53.2, never every tap on record). `schoolName` is given only
+ * when the parent's children are at more than one school.
  */
 export function ChildSummaryCard({
   student,
-  taps,
+  todayTaps,
+  recentTaps,
   day,
   schoolName,
 }: {
   student: Student;
-  taps: Tap[];
+  todayTaps: Tap[];
+  recentTaps: Tap[];
   day: SchoolDay;
   schoolName?: string;
 }) {
-  const status = studentStatus(student.id, taps, day);
-  const history = [...taps].sort((a, b) => Date.parse(b.tappedAt) - Date.parse(a.tappedAt));
+  const status = studentStatus(student.id, todayTaps, day);
 
   return (
     <div className="rounded-lg border border-border bg-card p-4">
@@ -42,12 +44,12 @@ export function ChildSummaryCard({
       </div>
 
       <div className="mt-4 border-t border-border pt-3">
-        <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Attendance history</h3>
-        {history.length === 0 ? (
+        <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Recent taps</h3>
+        {recentTaps.length === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">No taps on record yet.</p>
         ) : (
           <ul className="mt-2 flex flex-col gap-1.5">
-            {history.map((tap) => (
+            {recentTaps.map((tap) => (
               <li key={tap.id} className="flex items-center justify-between text-sm">
                 <span className="text-foreground">{formatTapDate(tap.tappedAt)}</span>
                 <span className="text-muted-foreground">{formatTapTime(tap.tappedAt)}</span>

@@ -15,23 +15,26 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { formatTapTime } from "@/features/attendance/status";
 import { markAllNotificationsRead, markNotificationRead } from "./notification-actions";
-import { countUnreadNotifications, notificationKindLabel } from "./notification-format";
+import { notificationKindLabel } from "./notification-format";
 import type { ParentNotificationItem } from "./notification-format";
 
-const MAX_ITEMS = 5;
+/** How the trigger is read out: the true count up to 9, then "more than 9", since the count stops at 10 (Step 53.2). */
+function unreadLabel(unread: number): string {
+  if (unread === 0) return "Notifications";
+  return unread > 9 ? "Notifications, more than 9 unread" : `Notifications, ${unread} unread`;
+}
 
 /**
  * Step 24's notification bell, rendered in the parent portal's header. The
  * data comes from the (server) protected layout, so this component only
- * handles the menu: a badge with the unread count on the trigger, the five
- * newest notifications, "Mark all as read", and a "View all" link to the
- * full feed page. Clicking an item marks it read without closing the menu
+ * handles the menu: a badge with the unread count on the trigger, the
+ * newest notifications (the layout loads 5, never the whole history),
+ * "Mark all as read", and a "View all" link to the full feed page. Clicking an item marks it read without closing the menu
  * (a parent often clears several at once); the server actions' `refresh()`
  * updates the props in place.
  */
-export function NotificationsBell({ items }: { items: ParentNotificationItem[] }) {
+export function NotificationsBell({ items, unread }: { items: ParentNotificationItem[]; unread: number }) {
   const [isPending, startTransition] = useTransition();
-  const unread = countUnreadNotifications(items);
 
   function markRead(id: string) {
     startTransition(() => {
@@ -57,12 +60,7 @@ export function NotificationsBell({ items }: { items: ParentNotificationItem[] }
     // outside still close it.
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={unread === 0 ? "Notifications" : `Notifications, ${unread} unread`}
-          className="relative"
-        >
+        <Button variant="ghost" size="icon" aria-label={unreadLabel(unread)} className="relative">
           <Bell aria-hidden="true" />
           {unread > 0 ? (
             <span
@@ -99,7 +97,7 @@ export function NotificationsBell({ items }: { items: ParentNotificationItem[] }
           </p>
         ) : (
           <>
-            {items.slice(0, MAX_ITEMS).map(({ notification, student }) => (
+            {items.map(({ notification, student }) => (
               <DropdownMenuItem
                 key={notification.id}
                 onSelect={(event) => {

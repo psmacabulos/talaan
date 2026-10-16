@@ -68,8 +68,13 @@ describeWithDatabase("Prisma repositories keep schools apart (Step 51; needs E2E
   it("notifications: another school finds nothing and marks nothing read", async () => {
     const notification = await db.notification.findFirstOrThrow({ where: { schoolId: BALANGA } });
     await expect(notifications.getInSchool(OCEANVIEW, notification.id)).resolves.toBeNull();
-    await expect(notifications.listByStudent(OCEANVIEW, notification.studentId)).resolves.toEqual([]);
-    await expect(notifications.markRead(OCEANVIEW, notification.id)).resolves.toBeNull();
+    await expect(
+      notifications.listPageForStudent(OCEANVIEW, notification.studentId, { before: null, take: 10 }),
+    ).resolves.toEqual([]);
+    await expect(notifications.countUnreadForStudent(OCEANVIEW, notification.studentId, 10)).resolves.toBe(0);
+    await expect(
+      notifications.markReadForChildren([{ schoolId: OCEANVIEW, studentId: notification.studentId }], notification.id),
+    ).resolves.toBe(false);
     await expect(notifications.getInSchool(BALANGA, notification.id)).resolves.toMatchObject({
       read: notification.read,
     });

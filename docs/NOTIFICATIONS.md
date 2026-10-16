@@ -45,7 +45,7 @@ flowchart LR
     Kind["deriveTapKind(tap, student's taps)"]
     Create["notificationRepository.create({ read: false })"]
     subgraph "Parent sees it"
-      Layout["(protected) layout → getParentNotifications()"]
+      Layout["(protected) layout → listParentNotifications(5) + countParentUnread()"]
       Bell["NotificationsBell"]
       Page["/parent/notifications"]
     end
@@ -103,14 +103,20 @@ Both call sites keep their existing `refresh()` — the fan-out helper itself ne
 
 ## Reading it back: the parent side
 
-`getParentNotifications(parentId)` (`src/features/parents/notifications-data.ts`) is the single read path, used by **both** consumers:
+Since Step 53.2 the read path is `src/services/parents/notifications.ts`, and it never loads a parent's whole history (`docs/SCALING.md` 2.2):
 
-- The **bell** (`NotificationsBell`, rendered in `src/app/parent/(protected)/layout.tsx`'s header) shows the five newest items in a dropdown plus the unread count on its badge; the layout fetches once and passes items down, and the actions' `refresh()` re-renders the layout too — which is how the badge clears in place after "Mark all as read".
-- The **page** (`/parent/notifications`) shows everything, grouped by day.
+- **`listParentNotifications(parentId, { before, limit })`** gives one page, newest first by `(tappedAt, id)`. For each linked child, one after another, it asks for at most `limit + 1` below the cursor (`listPageForStudent`), then merges them in the same order and keeps `limit`. A notification goes out with only the child's name, because the bell and the feed are browser components.
+- **`countParentUnread(parentId)`** counts each child's unread, newest first so Postgres can stop early, and stops at 10. The bell shows "9+" from 10, so counting further would be wasted work.
+- **The cursor** (`src/features/parents/notification-cursor.ts`) is base64url of `<tappedAt>|<id>`, in `?before=` on the web and the API's `nextBefore`. A bad one means the first page. Ids must be a lowercase UUID or the seed's `notification-0001`: Postgres's `en_US` collation skips hyphens on its first pass, so for ids of other shapes it can order two tied rows differently from JavaScript (`docs/PROBLEMS-LOG.md`, P-017).
 
-The read path joins links → students → notifications in parallel and sorts newest first; each child is read within their own link's `schoolId`, the school the server checked when the child was linked. Since Step 53 a `Parent` has no school of its own, so one account can follow children at several schools.
+Its two consumers:
 
-Marking read goes through two server actions in `src/features/parents/notification-actions.ts`, both gated on `getParentSession()` **plus** link membership (`parentStudentLinkRepository.listByParent`) and a `schoolId` match — a parent can only mark their own children's notifications read:
+- The **bell** (`NotificationsBell`, rendered in `src/app/parent/(protected)/layout.tsx`'s header) gets the five newest and the count. The actions' `refresh()` re-renders the layout, which is how the badge clears in place after "Mark all as read".
+- The **page** (`/parent/notifications`) shows 30, grouped by day, with "Show older" and "Back to newest". "Mark all as read" shows from the count, so unread items on older pages still show it.
+
+Each child is read within their own link's `schoolId`, the school the server checked when the child was linked. Since Step 53 a `Parent` has no school of its own, so one account can follow children at several schools. The layout and the page share one read of the links per render (`src/features/parents/parent-links.ts`, React's `cache`).
+
+Marking read goes through two server actions in `src/features/parents/notification-actions.ts`, both gated on `getParentSession()`. Each is one write, limited to each of the parent's linked children **at that child's school** (`markReadForChildren`, `markAllReadForChildren`), so a parent can only mark their own children's notifications read, and another parent's id gets the same answer as a made-up one:
 
 - `markNotificationRead(id)` — one item (the bell's item click and the feed's unread-row click).
 - `markAllNotificationsRead()` — everything currently unread (the bell's and the page's "Mark all as read" buttons).
@@ -127,8 +133,8 @@ Marking read goes through two server actions in `src/features/parents/notificati
 
 **I want to change when notifications fire.** Edit `notifyParentsForTap()` — the preference table lives in its doc comment. Every outcome (off / time-in-only / both, plus null-student and unknown-school skips) has a unit test in `src/features/attendance/notify-parents.test.ts`; extend those before the behavior.
 
-**I want a new screen to show notifications.** Import `getParentNotifications(parentId)` from `src/features/parents/notifications-data.ts` — it returns `{ notification, student }[]` sorted newest-first. Reuse `notificationKindLabel()` for the "tapped in / tapped out" wording and `formatTapTime()`/`formatTapDate()` for the times, so every screen spells and formats them identically.
+**I want a new screen to show notifications.** Call `listParentNotifications(parentId, { before, limit }, deps)` from `src/services/parents/notifications.ts`: it returns one page of `{ notification, student }` (the student's id and name only), newest first, and `nextBefore` for the next page. Never load every notification. Reuse `notificationKindLabel()` for the "tapped in / tapped out" wording and `formatTapTime()`/`formatTapDate()` for the times, so every screen spells and formats them identically.
 
-**I want per-parent read state (Phase 2).** Add a `parentId` to the notification records (or a separate read-receipt table), and update `countUnreadNotifications()` / `markAllNotificationsRead()` in `src/features/parents/notifications-data.ts` and `notification-actions.ts` — both already funnel every read/read-count through one function each, so those are the only places that change.
+**I want per-parent read state (Phase 2).** Add a `parentId` to the notification records (or a separate read-receipt table), and update `countUnreadForStudent`, `markReadForChildren` and `markAllReadForChildren` in the notification repository, and their callers in `src/services/parents/notifications.ts`, which funnels every read, count and mark through one function each.
 
 **I want to see the full sequence of a student's taps (bell → details, Phase 2).** The `Notification` carries no tap list — it's a flat copy. Join back through `tapRepository.listByStudent(notification.studentId)` filtered to the same day, or wait for the Phase 2 `tapId` column and join directly.

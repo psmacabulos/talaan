@@ -148,7 +148,7 @@ Only endpoints a **non-browser client** needs to call move to this versioned, to
 | `POST /api/v1/parents/login` | Parent web portal, parent app | Email + password | Issues the same token shape to both: an access token (short-lived) and a refresh token. The web portal keeps them in an httpOnly cookie; the Phase 3 app keeps them in secure device storage. Same endpoint, same response shape, different storage — not a different API. |
 | `POST /api/v1/parents/refresh` | Parent web portal, parent app | Refresh token | Issues a new access token without asking for the password again. |
 | `POST /api/v1/parents/link-child` | Parent web portal, parent app | Parent access token | Same LRN + last name + birth date check as today. |
-| `GET /api/v1/parents/notifications` | Parent web portal, parent app | Parent access token | Same shape `getParentNotifications()` already returns today. |
+| `GET /api/v1/parents/notifications` | Parent web portal, parent app | Parent access token | One page of `listParentNotifications()` (Step 53.2), with `nextBefore` and a capped `unreadCount`. |
 | `POST /api/v1/parents/notifications/:id/read` | Parent web portal, parent app | Parent access token | Same as today's `markNotificationRead`. |
 | `POST /api/v1/push-tokens` | Parent web portal (Web Push), parent app (FCM, Phase 3) | Parent access token | Registers or refreshes a `PushToken` for the signed-in parent. |
 

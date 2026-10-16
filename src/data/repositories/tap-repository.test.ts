@@ -103,4 +103,29 @@ describe("createMockTapRepository", () => {
 
     await expect(repo.listBySchoolOnDate("school-b", DAY)).resolves.toEqual([tapB]);
   });
+  it("listByStudentOnDate() gives one student's day at one school, earliest first", async () => {
+    const later = { ...tapA, id: "00000000-0000-4000-8000-000000000010", tappedAt: schoolTimeToIso(DAY, "16:05") };
+    const nextDay = {
+      ...tapA,
+      id: "00000000-0000-4000-8000-000000000011",
+      tappedAt: schoolTimeToIso("2026-06-21", "07:50"),
+    };
+    const repo = createMockTapRepository([later, tapA, nextDay, tapB], { latencyMs: 0 });
+
+    await expect(repo.listByStudentOnDate("school-a", "student-a", DAY)).resolves.toEqual([tapA, later]);
+    await expect(repo.listByStudentOnDate("school-b", "student-a", DAY)).resolves.toEqual([]);
+  });
+
+  it("listRecentByStudent() gives the newest few, newest first, at one school", async () => {
+    const later = { ...tapA, id: "00000000-0000-4000-8000-000000000010", tappedAt: schoolTimeToIso(DAY, "16:05") };
+    const nextDay = {
+      ...tapA,
+      id: "00000000-0000-4000-8000-000000000011",
+      tappedAt: schoolTimeToIso("2026-06-21", "07:50"),
+    };
+    const repo = createMockTapRepository([tapA, later, nextDay, tapB], { latencyMs: 0 });
+
+    await expect(repo.listRecentByStudent("school-a", "student-a", 2)).resolves.toEqual([nextDay, later]);
+    await expect(repo.listRecentByStudent("school-b", "student-a", 2)).resolves.toEqual([]);
+  });
 });

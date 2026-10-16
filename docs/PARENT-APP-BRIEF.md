@@ -84,7 +84,7 @@ Steps M1–M8 below get there. Everything else waits until after the demo, and i
 | `GET /api/v1/parents/me` | yes | | `{ parent, children: [ChildToday] }` |
 | `POST /api/v1/parents/children` | yes | `{ schoolId, lrn, lastName, birthDate }` | `201 { child: ChildToday }` |
 | `GET /api/v1/parents/children/:id/taps?date=YYYY-MM-DD` | yes | | `{ date, status, flexible, taps: [{ at, kind }] }`, or `404` for a child who isn't theirs |
-| `GET /api/v1/parents/notifications?before=<id>&limit=30` | yes | | `{ notifications: [Item], unreadCount, nextBefore }` |
+| `GET /api/v1/parents/notifications?before=<cursor>&limit=30` | yes | | `{ notifications: [Item], unreadCount, nextBefore }` |
 | `POST /api/v1/parents/notifications/:id/read` | yes | | `204` |
 | `POST /api/v1/parents/notifications/read-all` | yes | | `204` |
 | `POST /api/v1/parents/push-tokens` | yes | `{ token, platform }` (`ios`, `android`) | `204`. It saves the Expo push token, or moves it to this parent. |
@@ -126,7 +126,7 @@ type Item = {
 };
 ```
 
-**Paging:** the feed comes 30 at a time, newest first. Pass the last answer's `nextBefore` as `before` for the next page. `nextBefore` is null at the end.
+**Paging:** the feed comes 30 at a time, newest first. Pass the last answer's `nextBefore` as `before` for the next page. `nextBefore` is null at the end. It's an opaque string (decided 2026-10-16, Talaan Step 53.2): send it back exactly as received, and never build or read one. `unreadCount` stops at 10, so show "9+" from 10.
 
 ### Errors
 

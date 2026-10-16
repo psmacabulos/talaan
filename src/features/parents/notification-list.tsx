@@ -12,7 +12,7 @@ import type { Notification } from "./types";
  * The full notification feed on /parent/notifications. A client component
  * only because an unread item is a button: clicking it marks it read via a
  * server action, whose `refresh()` swaps the item into its plain read form
- * in place. Items arrive newest-first from `getParentNotifications`; this
+ * in place. Items arrive newest-first, one page at a time, from `listParentNotifications`; this
  * component only groups them by day for display.
  */
 export function NotificationList({ items }: { items: ParentNotificationItem[] }) {
