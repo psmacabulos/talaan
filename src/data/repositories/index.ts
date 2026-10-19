@@ -30,3 +30,5 @@ export { createMockParentTokenRepository, type ParentTokenRepository } from "./p
 export { parentTokenRepository, createPrismaParentTokenRepository } from "./prisma-parent-token-repository";
 export { createMockPushTokenRepository, type PushTokenRepository } from "./push-token-repository";
 export { pushTokenRepository, createPrismaPushTokenRepository } from "./prisma-push-token-repository";
+export { createMockPushOutboxRepository, type PushOutboxRepository } from "./push-outbox-repository";
+export { pushOutboxRepository, createPrismaPushOutboxRepository } from "./prisma-push-outbox-repository";

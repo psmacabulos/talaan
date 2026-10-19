@@ -1143,6 +1143,13 @@ Not a bug in the code. A dev server that was already running kept using an **old
 
 **Fix:** stop `npm run dev` (Ctrl+C) and start it again after any step that adds or changes a model. Production never hits this, because a deploy always starts a fresh process with the new client.
 
+### What's an "outbox", and what does `FOR UPDATE SKIP LOCKED` do? (Step 54)
+An **outbox** is a "to send" list kept in the same database as the thing that caused it. The tap and its `Notification` are saved in one transaction, so if the tap is stored, the promise to tell the parents is too. A worker sends later, and can retry. Sending straight from the tap's request would lose the push whenever Expo is slow or down, or the server restarts at the wrong moment.
+
+**`FOR UPDATE SKIP LOCKED`** lets several workers share one list safely. Each one locks the rows it takes, and the others skip locked rows instead of waiting for them, so no row is ever sent twice by two workers at once. There's one worker today, but a deploy briefly runs the old and new server side by side.
+
+The whole design is in [`docs/PUSH.md`](PUSH.md).
+
 ### What's a database transaction, and why is the push-token write a "batch"? (Step 53.4)
 A **transaction** is a group of writes that happen all together or not at all. If the second fails, the first is undone, so nobody ever sees half a change. Prisma has two kinds:
 - **Batch:** `prisma.$transaction([write1, write2])`. Every write is known in advance, so they go to Postgres in one trip. Saving a phone's push address is one: delete its old row, create the new one.

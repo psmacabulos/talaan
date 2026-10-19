@@ -10,6 +10,8 @@ const GOOD: NodeJS.ProcessEnv = {
   S3_BUCKET: "talaan-photos",
   S3_ACCESS_KEY_ID: "key-id",
   S3_SECRET_ACCESS_KEY: "key-secret",
+  PUSH_SENDER: "expo",
+  EXPO_ACCESS_TOKEN: "expo-token",
 };
 
 describe("checkProductionEnv", () => {
@@ -44,6 +46,17 @@ describe("checkProductionEnv", () => {
   it("refuses a pinned demo clock", () => {
     expect(checkProductionEnv({ ...GOOD, DEMO_NOW: "2026-06-19T09:15:00+08:00" })).toEqual([
       expect.stringMatching(/^DEMO_NOW is set/),
+    ]);
+  });
+
+  it("asks whether pushes really go out, and for Expo's access token when they do", () => {
+    expect(checkProductionEnv({ ...GOOD, PUSH_SENDER: "log", EXPO_ACCESS_TOKEN: undefined })).toEqual([]);
+    expect(checkProductionEnv({ ...GOOD, PUSH_SENDER: undefined })).toEqual([
+      expect.stringMatching(/^PUSH_SENDER must be/),
+    ]);
+    expect(checkProductionEnv({ ...GOOD, PUSH_SENDER: "fcm" })).toHaveLength(1);
+    expect(checkProductionEnv({ ...GOOD, EXPO_ACCESS_TOKEN: "" })).toEqual([
+      expect.stringMatching(/needs EXPO_ACCESS_TOKEN/),
     ]);
   });
 

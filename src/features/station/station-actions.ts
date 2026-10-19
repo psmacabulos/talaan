@@ -11,6 +11,7 @@ import {
 import { SIGNED_OUT_MESSAGE } from "@/features/auth/messages";
 import { getSession } from "@/lib/session";
 import { notifyParentsForTap } from "@/features/attendance/notify-parents";
+import { wakePushWorker } from "@/services/push/push-worker";
 import type { StationTapOutcome } from "./resolve-station-tap";
 
 /** The signed-in school, or an error for anyone who can't use the tap station. */
@@ -39,6 +40,7 @@ export async function syncStationTaps(outcomes: StationTapOutcome[]): Promise<{ 
   const schoolId = await stationSchoolId();
 
   let synced = 0;
+  let notified = false;
   for (const outcome of outcomes) {
     if (outcome.status !== "recorded") continue;
     // The browser resolved this tap, so its contents are only a claim
@@ -52,11 +54,12 @@ export async function syncStationTaps(outcomes: StationTapOutcome[]): Promise<{ 
       // Only a valid tap notifies parents (Step 24). A lost-card tap raises
       // the alert below instead — pinging parents about it would read as a
       // normal arrival — and an unknown-card tap has no student to notify.
-      await notifyParentsForTap(outcome.tap, {
+      const notification = await notifyParentsForTap(outcome.tap, {
         schoolRepository,
         tapRepository,
         notificationRepository,
       });
+      if (notification) notified = true;
     }
     if (outcome.kind === "lost") {
       await alertRepository.create({
@@ -71,6 +74,8 @@ export async function syncStationTaps(outcomes: StationTapOutcome[]): Promise<{ 
     synced++;
   }
 
+  // One wake for the whole batch: the pushes go now (Step 54).
+  if (notified) wakePushWorker();
   if (synced > 0) refresh();
   return { synced };
 }

@@ -30,8 +30,8 @@ function before(now: string, ms: number): string {
 /**
  * Signs a phone in (Step 53.3): a new random token, returned once and kept
  * only as its hash. The parent's revoked tokens, and those unused for 90
- * days, are cleared first, so a parent who signs in many times over the
- * years keeps only a few rows.
+ * days that have no push address (Step 54), are cleared first, so a parent
+ * who signs in many times over the years keeps only a few rows.
  */
 export async function issueParentToken(
   parentId: string,

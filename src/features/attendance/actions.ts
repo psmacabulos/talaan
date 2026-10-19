@@ -12,6 +12,7 @@ import {
   notificationRepository,
 } from "@/data/repositories";
 import { photoPath } from "@/features/students/photo";
+import { wakePushWorker } from "@/services/push/push-worker";
 import { publishTap } from "@/services/taps/tap-events";
 import { DEFAULT_ATTENDANCE_TIMES, MAIN_GATE_STATION_ID, schoolToday, studentsWithoutTapToday } from "./status";
 import { notifyParentsForTap } from "./notify-parents";
@@ -85,8 +86,9 @@ export async function simulateTap(): Promise<SimulateTapResult> {
     };
     await tapRepository.create(tap);
     // The tap is in — fan it out to the student's linked parents (Step 24),
-    // honoring the school's notification preference.
-    await notifyParentsForTap(tap, { schoolRepository, tapRepository, notificationRepository });
+    // honoring the school's notification preference, and push it to their
+    // phones now (Step 54).
+    if (await notifyParentsForTap(tap, { schoolRepository, tapRepository, notificationRepository })) wakePushWorker();
     // And to any open guardhouse monitor (Step 48), so a demo without a
     // reader still shows there. Only students with no tap today are picked,
     // so it's always a time in.

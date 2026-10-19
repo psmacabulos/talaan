@@ -25,7 +25,7 @@ flowchart TB
         Services["Service layer<br/>src/services/**<br/>the real logic, framework-agnostic"]
         Repos["Repositories<br/>src/data/**<br/>Prisma-backed in Phase 2"]
         Outbox[("Notification outbox<br/>one row per tap that should notify someone")]
-        Worker["Outbox worker<br/>a separate long-running process"]
+        Worker["Outbox worker<br/>inside the web server for now (Step 54, docs/PUSH.md)"]
         SSE["SSE stream<br/>/api/v1/gate/stream"]
     end
 
@@ -212,6 +212,7 @@ src/
   - **No timed heartbeat (owner decision, 2026-10-09).** The owner asked whether pinging every minute is needed, and what happens when the guard switches the tablet off after the morning rush. Decided: the heartbeat endpoint is the setup check only, and every tap updates `lastSeenAt`, so the rush costs no extra requests. A tablet switched off simply shows "last seen 9:12 AM", with no alarm, and carries on when it's switched back on. The monitor sends nothing: a dead TV is a black screen the guard can see, and it can't lose taps. A 5-minute check-in while idle stays an option for after the demo.
   - Rejected: a staff account left signed in on the guardhouse TV (anyone at the TV could open the admin pages); a public page with less detail (no photo defeats the guard's check of face against card); a fully public page.
 - **Push goes through Expo's push service (decided 2026-10-13).** The parent app registers an Expo push token, and Step 54's worker sends through Expo's free service, which delivers through Firebase Cloud Messaging on Android and Apple's push service on iOS. This is still the "push through Firebase Cloud Messaging" plan; Expo handles both platforms' credentials.
+- **The push worker runs inside the web dyno, and makes one delivery per phone when it sends (built in Step 54, 2026-10-16).** The `Notification` row is the outbox, written in the tap's transaction. The worker claims it with `FOR UPDATE SKIP LOCKED` and writes its deliveries in the same transaction that marks it pushed. It runs when woken after a notification is written, and every 30 seconds. It costs $0; a worker dyno ($7) can run the same code later. Pushes go to every phone whose sign-in isn't revoked, however long unused. See `docs/PUSH.md`.
 - **The product is called Bantay Aral (decided 2026-10-13).** Its domain is `bantayaral.com`, since talaan.com wasn't available. "Talaan" stays the code name everywhere people don't see it: the repository, package, database, cookies, token prefixes and code (Step 51.5).
 - **Tap direction: confirmed — keep guessing it from order, don't store it explicitly.** A tap, by itself, only says "this card was read at this time" — the reader has no idea whether the student was walking in or walking out, the same way a single turnstile just sees "someone passed." With one reader at one gate and no second reader, button or time-of-day rule to base an explicit direction on, the app keeps assuming the 1st tap of the day is "time in," the 2nd is "time out," the 3rd is "time in" again, and so on — worked out fresh from the tap list each time, never stored as a label. This is the same approach `docs/ATTENDANCE-MODEL.md` and `docs/PLAN.md` already had decided; this document's first draft re-raised it and the owner re-confirmed it.
 

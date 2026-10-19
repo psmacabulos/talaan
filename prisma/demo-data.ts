@@ -100,7 +100,12 @@ export async function insertDemoData(db: PrismaClient) {
   });
 
   await db.notification.createMany({
-    data: seedNotifications.map((notification) => ({ id: notification.id, ...toNotificationData(notification) })),
+    // The seed's notifications are history: marked pushed, so the push worker (Step 54) never sends them.
+    data: seedNotifications.map((notification) => ({
+      id: notification.id,
+      ...toNotificationData(notification),
+      pushedAt: new Date(),
+    })),
     skipDuplicates: true,
   });
 }

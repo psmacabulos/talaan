@@ -31,7 +31,10 @@ export function createPrismaParentTokenRepository(db: PrismaClient = prisma): Pa
     },
     async deleteStale(parentId, usedBefore) {
       await db.parentToken.deleteMany({
-        where: { parentId, OR: [{ revokedAt: { not: null } }, { lastUsedAt: { lt: new Date(usedBefore) } }] },
+        where: {
+          parentId,
+          OR: [{ revokedAt: { not: null } }, { lastUsedAt: { lt: new Date(usedBefore) }, pushToken: { is: null } }],
+        },
       });
     },
   };

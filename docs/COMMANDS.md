@@ -281,6 +281,8 @@ The answer has a `token` starting with `tal_par_`. Put it in a variable, then:
 | `curl -s -X POST http://localhost:3000/api/v1/parents/push-tokens -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"token":"ExponentPushToken[test]","platform":"android"}' -o /dev/null -w "%{http_code}\n"` | `204`; the phone's push address is saved |
 | `curl -s -X POST http://localhost:3000/api/v1/parents/logout -H "Authorization: Bearer $TOKEN" -o /dev/null -w "%{http_code}\n"` | `204`; the phone's push address is removed and the token stops working |
 
+After registering a push token, use Simulate a tap on that parent's child: the dev server's terminal shows `push: 1 message(s) to the log sender, none sent` and `push: sent 1, …` (Step 54, `docs/PUSH.md`). Restart `npm run dev` after pulling Step 54, so the push worker starts.
+
 Five wrong passwords for one email answer `429` for 15 minutes. Locally, requests come from this computer's own address, which the per-network limits never count. The tests send `X-Forwarded-For: 203.0.113.x` to try them.
 
 ---

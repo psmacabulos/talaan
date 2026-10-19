@@ -37,7 +37,9 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-020](#p-020--2026-10-16--the-sign-in-limit-could-be-flooded-or-walked-around) | 2026-10-16 | The sign-in limit could be flooded, or walked around with many emails | Security | Sign-in | Resolved |
 | [P-021](#p-021--2026-10-16--a-schools-launch-night-could-trip-the-address-limit) | 2026-10-16 | A school's launch night could trip the address limit | Other: known risk | Sign-in | Open: watch the logs |
 | [P-022](#p-022--2026-10-16--the-parent-api-test-tapped-a-child-the-station-tests-had-already-tapped) | 2026-10-16 | The parent API test tapped a child the station tests had already tapped | Other: tests | Playwright | Resolved |
-| [P-023](#p-023--2026-10-16--saving-a-push-address-as-the-phone-signed-out-answered-500) | 2026-10-16 | Saving a push address as the phone signed out answered 500 | Other: correctness | Parent API, database | Fixed, waiting for the owner's checks |
+| [P-023](#p-023--2026-10-16--saving-a-push-address-as-the-phone-signed-out-answered-500) | 2026-10-16 | Saving a push address as the phone signed out answered 500 | Other: correctness | Parent API, database | Resolved |
+| [P-024](#p-024--2026-10-16--a-browser-test-couldnt-load-the-prisma-client) | 2026-10-16 | A browser test couldn't load the Prisma Client | Other: tests | Playwright, Prisma | Fixed, waiting for the owner's checks |
+| [P-025](#p-025--2026-10-16--two-type-errors-in-step-54s-tests) | 2026-10-16 | Two type errors in Step 54's tests | Other: tests | TypeScript | Fixed, waiting for the owner's checks |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -511,4 +513,41 @@ sequenceDiagram
   1. Leave it: rare, and the app retries. But a `500` looks like a server fault in the logs, and the app's one error handler expects the API's shape.
   2. **Catch `P2003` and answer `401`**, which is what the phone would get on its next request anyway. Chosen.
 - **Solution:** `isForeignKeyViolation` in `src/data/repositories/prisma-errors.ts`. `replace` answers `"signed_out"`, and `registerPushToken` turns that into `401 unauthorized`. A unit test in `push-tokens.test.ts` covers it.
+- **Status:** Resolved: the owner's checks passed.
+
+---
+
+## Push notifications (Step 54, 2026-10-16)
+
+### P-024 · 2026-10-16 · A browser test couldn't load the Prisma Client
+- **Where:** `e2e/parent-api.spec.ts`, while building Step 54. The test needs to see what the push worker did, which no address shows, so it read the `PushDelivery` table directly.
+- **Symptom:** `npx playwright test --list parent-api` found no tests:
+  ```
+  Warning: Failed to load the ES module: …/src/generated/prisma/client.ts.
+  SyntaxError: Cannot use 'import.meta' outside a module
+     at parent-api.spec.ts:4
+  ```
+- **Cause:** Prisma 7's generated client is an ES module that uses `import.meta`. Playwright loads test files as CommonJS, where `import.meta` doesn't exist.
+- **Options weighed:**
+  1. A test-only address on the server that reports deliveries. That's a door into minors' data on every server, just for a test.
+  2. Import `pg` directly in the test. It's only a dependency of a dependency (`@prisma/adapter-pg`), not ours.
+  3. **A small script run with `tsx`**, the way `e2e/global-setup.ts` already runs `create-test-devices.ts`. Chosen.
+- **Solution:** `e2e/push-delivery.ts` prints one delivery's status as JSON, and the test runs it with `execFileSync("npx", ["tsx", …])` against the test database, polling until the push is sent. `--list` now loads the file (14 tests).
+- **Lesson:** a Playwright test can't import the Prisma Client. Reach the database through a `tsx` script.
+- **Status:** Fixed, waiting for the owner's checks.
+
+### P-025 · 2026-10-16 · Two type errors in Step 54's tests
+- **Where:** the owner's `npm run typecheck`, after Step 54 was built. I'd run the tests, but not the type check, which is the owner's.
+- **Symptom:**
+  ```
+  src/data/repositories/prisma-notification-repository.test.ts:5:7 - error TS2741: Property 'pushedAt' is missing in type '{ …; createdAt: Date; }' but required in type '{ …; pushedAt: Date | null; }'.
+  src/services/push/push-sender.test.ts:84:40 - error TS2352: Conversion of type '{ PUSH_SENDER: string; }' to type 'ProcessEnv' may be a mistake … Property 'NODE_ENV' is missing
+  ```
+- **Cause:**
+  1. An older test builds a whole Prisma `Notification` row by hand, and the new `pushedAt` column made that row incomplete.
+  2. Next.js types `process.env.NODE_ENV` as required, so a settings object without it can't be cast to `ProcessEnv`.
+
+  Vitest strips types without checking them, so both tests still passed.
+- **Solution:** the row gets `pushedAt: null`, and the test's name now says it drops `pushedAt` too. The settings objects include `NODE_ENV: "test"`, with no cast, like `env.test.ts`.
+- **Lesson:** a new column breaks every hand-built row of that table in the tests. Search the tests for the model's row type when adding one. A passing Vitest run doesn't mean the types are right: only `npm run typecheck` checks them.
 - **Status:** Fixed, waiting for the owner's checks.

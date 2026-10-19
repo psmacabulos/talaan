@@ -41,5 +41,13 @@ export function checkProductionEnv(env: NodeJS.ProcessEnv): string[] {
     if (missing.length > 0) problems.push(`PHOTO_STORAGE="s3" needs ${missing.join(", ")}.`);
   }
   if (env.DEMO_NOW) problems.push("DEMO_NOW is set: a live server must run on the real clock.");
+  // Step 54: say on purpose whether pushes really go out.
+  if (env.PUSH_SENDER !== "expo" && env.PUSH_SENDER !== "log") {
+    problems.push(
+      'PUSH_SENDER must be "expo" (send pushes) or "log" (only log them, until the parent app can receive them).',
+    );
+  } else if (env.PUSH_SENDER === "expo" && !env.EXPO_ACCESS_TOKEN) {
+    problems.push('PUSH_SENDER="expo" needs EXPO_ACCESS_TOKEN, so only this server can push to the app\'s phones.');
+  }
   return problems;
 }

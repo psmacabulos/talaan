@@ -1,5 +1,7 @@
+import { execFileSync } from "node:child_process";
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import { seedStudents } from "../src/data/seed/students";
+import { e2eDatabaseUrl } from "./database";
 import { activeCardSerialFor, readerDigitsFor, TEST_GATE_TOKEN, testEmail } from "./test-data";
 
 /**
@@ -18,6 +20,15 @@ import { activeCardSerialFor, readerDigitsFor, TEST_GATE_TOKEN, testEmail } from
  */
 const CHILD_NAME = "Divine Garcia";
 const child = seedStudents.find((student) => `${student.firstName} ${student.lastName}` === CHILD_NAME)!;
+
+/** What the push worker did with one notification for one phone (Step 54), read from the test database: no address shows it. */
+function pushDelivery(notificationId: string, token: string): { status: string; ticketId: string | null } | null {
+  const output = execFileSync("npx", ["tsx", "e2e/push-delivery.ts", notificationId, token], {
+    env: { ...process.env, DATABASE_URL: e2eDatabaseUrl() },
+    encoding: "utf8",
+  });
+  return JSON.parse(output.trim().split("\n").at(-1)!);
+}
 
 let addressCounter = 10;
 function freshAddress() {
@@ -119,6 +130,20 @@ test.describe("Parent API (Steps 53.3 and 53.4)", () => {
     expect(first.unreadCount).toBe(1);
     expect(first.nextBefore).toBeNull();
 
+    // Push: the phone's Expo push token is saved; anything else is refused.
+    const pushToken = `ExponentPushToken[playwright-${Date.now()}]`;
+    const registered = await request.post("/api/v1/parents/push-tokens", {
+      headers: auth,
+      data: { token: pushToken, platform: "android" },
+    });
+    expect(registered.status()).toBe(204);
+    const notPush = await request.post("/api/v1/parents/push-tokens", {
+      headers: auth,
+      data: { token: "not-a-push-token", platform: "web" },
+    });
+    expect(notPush.status()).toBe(400);
+    expect(Object.keys((await notPush.json()).error.fields).sort()).toEqual(["platform", "token"]);
+
     // Back in 3 minutes later: past the 2-minute repeat window, and within
     // the 5 minutes a gate's clock may run ahead, so it's her next time in.
     const back = await (await tapAt(new Date(Date.parse(tap.tappedAt) + 3 * 60_000).toISOString())).json();
@@ -131,6 +156,17 @@ test.describe("Parent API (Steps 53.3 and 53.4)", () => {
     const page2 = await feed(`?limit=1&before=${encodeURIComponent(page1.nextBefore)}`);
     expect(page2.notifications.map((item: FeedItem) => item.kind)).toEqual(["time_out"]);
     expect(page2.nextBefore).toBeNull();
+
+    // Step 54: her time in was pushed to this phone, through the log sender.
+    await expect
+      .poll(
+        () => {
+          const delivery = pushDelivery(page1.notifications[0].id, pushToken);
+          return delivery && { status: delivery.status, fromLogSender: delivery.ticketId?.startsWith("log-") };
+        },
+        { timeout: 20_000 },
+      )
+      .toEqual({ status: "sent", fromLogSender: true });
 
     // Read marks: one, then all. Another child's notification is 404.
     const newest = page1.notifications[0].id;
@@ -153,20 +189,6 @@ test.describe("Parent API (Steps 53.3 and 53.4)", () => {
       headers: auth,
     });
     expect(otherPhoto.status()).toBe(404);
-
-    // Push: the phone's Expo push token is saved; anything else is refused.
-    const pushToken = `ExponentPushToken[playwright-${Date.now()}]`;
-    const registered = await request.post("/api/v1/parents/push-tokens", {
-      headers: auth,
-      data: { token: pushToken, platform: "android" },
-    });
-    expect(registered.status()).toBe(204);
-    const notPush = await request.post("/api/v1/parents/push-tokens", {
-      headers: auth,
-      data: { token: "not-a-push-token", platform: "web" },
-    });
-    expect(notPush.status()).toBe(400);
-    expect(Object.keys((await notPush.json()).error.fields).sort()).toEqual(["platform", "token"]);
 
     expect((await request.post("/api/v1/parents/logout", { headers: auth })).status()).toBe(204);
     const afterLogout = await request.get("/api/v1/parents/me", { headers: auth });

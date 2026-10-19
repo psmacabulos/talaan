@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ████████████████░░░░ 82%**  (257 of 314 tasks, 69 of 83 steps approved)
+**Overall progress: ████████████████░░░░ 82%**  (262 of 318 tasks, 70 of 84 steps approved)
 
-**Next up:** Step 53.4, The parent notifications API (ready for your review)
+**Next up:** Step 54, Push notifications reach the phone (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -76,8 +76,9 @@
 | 53.1 | Parent sign-in services | ██████████ 100% | Approved |
 | 53.2 | Paged parent data | ██████████ 100% | Approved |
 | 53.3 | Parent tokens and the sign-in API | ██████████ 100% | Approved |
-| 53.4 | The parent notifications API | ████████░░  80% | Ready for your review |
-| 54 | Push notifications reach the phone | ░░░░░░░░░░   0% | Not started |
+| 53.4 | The parent notifications API | ██████████ 100% | Approved |
+| 54 | Push notifications reach the phone | ████████░░  80% | Ready for your review |
+| 54.1 | Push receipts and cleanup | ░░░░░░░░░░   0% | Not started |
 | 55 | Safe for real parents | ░░░░░░░░░░   0% | Not started |
 | 55.5 | Forgot password by email | ░░░░░░░░░░   0% | Not started |
 | 56 | One read, one tap | ░░░░░░░░░░   0% | Not started |
@@ -764,19 +765,28 @@ Recipe: `docs/backend/step-53.4-parent-api.md`, the part after the sign-in addre
 - [x] `docs/PARENT-API.md`, unit tests, and `e2e/parent-api.spec.ts` (sign up, link, tap, notification, read, logout).
 Done when: the `curl` checks in the recipe work, `docs/PARENT-API.md` is ready to copy into the app's repository, and every check passes.
 Commit: `feat(api): add the parent notifications API for the mobile app`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ## Phase 2b: ready for real schools (added 2026-10-13)
 On 2026-10-13, before the first deploy, the owner asked for a review of the whole app, looking for anything that works for one school but gets worse with more schools, bigger schools or more years. It's written up in `docs/SCALING.md`. Each step below fixes one or more of its items, in the order they're due. Step 54 (push) comes first because the demo needs it. Steps 55–64 follow the demo, one at a time. None of these steps has a recipe yet: each gets one, approved by the owner, before its code. Any step can be split if it grows too big for one sitting.
 
 ### Step 54: Push notifications reach the phone
-Plan: `docs/SCALING.md` 2.3, from the plan's after-demo list (the notification outbox and its worker). Moved up to come right after Step 53 on 2026-10-13: the demo needs a tap at the gate to buzz a parent's phone. Its last check needs the parent app to register a push token (`docs/PARENT-APP-BRIEF.md`, app step M7), so it can be finished while the app is being built.
-- [ ] One delivery record per phone for each notification (waiting, sent, failed, tries), written in the same transaction as the tap. Never to a push token whose sign-in token is revoked or unused for 90 days (Step 53.3 review).
-- [ ] Decided in the recipe (Step 53.4's architect review): the 90-day rule above would quietly stop pushes for a parent who reads the banners but never opens the app, against "never silently lost". Either registering a push token keeps the sign-in alive, or push addresses are dropped only when Expo answers `DeviceNotRegistered`. Also turn on Expo's enhanced push security.
-- [ ] A worker that sends them in batches through Expo's push service (Step 53's plan; free, and it delivers through Firebase Cloud Messaging on Android and Apple's push service on iOS), and retries failures. Its running cost (one more dyno, or inside the web server at first) is stated before it's added.
-- [ ] Tests: a failed send is retried, and a phone that's gone is dropped.
-Done when: a tap at the gate arrives on a test phone as a push, and every check passes.
+Recipe: `docs/backend/step-54-push-notifications.md`, approved by the owner on 2026-10-16 after one plan review with the systems-architect. Plan: `docs/SCALING.md` 2.3, from the plan's after-demo list (the notification outbox and its worker). Moved up to come right after Step 53 on 2026-10-13: the demo needs a tap at the gate to buzz a parent's phone. Its last check needs the parent app to register a push token (`docs/PARENT-APP-BRIEF.md`, app step M7), so it can be finished while the app is being built.
+- [x] The `Notification` row is the outbox (`pushedAt`). The worker writes one delivery record per phone (waiting, sending, sent, failed, tries) when it sends, in the same transaction that marks the notification pushed (owner decision, 2026-10-16: not in the tap's own transaction). Old notifications are marked pushed by the migration and the seed.
+- [x] Which phones: every push address of the child's linked parents whose sign-in isn't revoked, however long unused. A sign-in with a push address is no longer cleared after 90 days (owner decision, 2026-10-16, the 90-day question from Step 53.4's review).
+- [x] A worker inside the web dyno ($0; a worker dyno would be $7 a month) that sends batches through Expo's push service (free; it delivers through Firebase Cloud Messaging on Android and Apple's push service on iOS), behind a `PushSender` (`PUSH_SENDER=expo|log`, `EXPO_ACCESS_TOKEN`). It retries with a growing wait for up to 6 hours, and drops a phone Expo says is gone. The child's first name only on the lock screen.
+- [x] Tests: a failed send is retried, a phone that's gone is dropped, two claims never take the same row (Postgres), and a gate tap reaches the `log` sender. `docs/PUSH.md`.
+Done when: every check passes, and once the app's M7 is done, a tap at the gate arrives on a test phone as a push.
 Commit: `feat(push): send tap notifications to parents' phones`
+- [ ] Owner review: I checked it and said "approved"
+
+### Step 54.1: Push receipts and cleanup
+Split from Step 54 on 2026-10-16 (owner approval, architect review). Due before a second school.
+- [ ] Expo's receipts, checked 15 minutes after a send: a phone that's gone is dropped, and a delivery that failed after Expo accepted it is marked failed.
+- [ ] Sent and failed deliveries older than 7 days are deleted, in batches, so the table stays small.
+- [ ] From Step 54's code review: a whole request Expo refuses (`http_400`) is retried one message at a time, so one bad message can't hold back the other 99.
+Done when: a delivery's receipt is checked in a test, old rows are cleared, and every check passes.
+Commit: `feat(push): check push receipts and clear old deliveries`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 55: Safe for real parents

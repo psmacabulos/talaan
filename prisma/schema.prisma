@@ -212,12 +212,49 @@ model PushToken {
   // signs in as another parent moves its row to that sign-in.
   token         String       @unique
   platform      PushPlatform
-  // One push address per signed-in phone. Deleted with its sign-in, so
-  // clearing stale sign-ins (issueParentToken) clears their push tokens too.
-  parentTokenId String       @unique
-  parentToken   ParentToken  @relation(fields: [parentTokenId], references: [id], onDelete: Cascade)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  // One push address per signed-in phone. Deleted with its sign-in. A
+  // sign-in that has one isn't cleared for being unused (Step 54), so a
+  // parent who only reads the banners keeps getting them.
+  parentTokenId String         @unique
+  parentToken   ParentToken    @relation(fields: [parentTokenId], references: [id], onDelete: Cascade)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  deliveries    PushDelivery[]
+}
+
+enum PushDeliveryStatus {
+  waiting
+  sending
+  sent
+  failed
+}
+
+// One push to one phone (Step 54), made by the push worker from a
+// notification. Step 54.1 checks Expo's receipt and clears old rows.
+model PushDelivery {
+  id             String             @id @default(uuid())
+  notificationId String
+  notification   Notification       @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  // A phone that signs out, or that Expo says is gone, takes its pending pushes with it.
+  pushTokenId    String
+  pushToken      PushToken          @relation(fields: [pushTokenId], references: [id], onDelete: Cascade)
+  status         PushDeliveryStatus @default(waiting)
+  // Failed sends so far. A rate-limit answer doesn't count.
+  tries          Int                @default(0)
+  nextAttemptAt  DateTime           @default(now())
+  // While "sending": if the worker died mid-send, the row is due again after this.
+  claimedUntil   DateTime?
+  // Expo's ticket, for Step 54.1's receipts.
+  ticketId       String?
+  // Expo's error code or a short reason, never the push token.
+  lastError      String?
+  createdAt      DateTime           @default(now())
+  sentAt         DateTime?
+
+  @@unique([notificationId, pushTokenId])
+  @@index([status, nextAttemptAt])
+  // Postgres doesn't index a foreign key by itself: removing a phone would read every row.
+  @@index([pushTokenId])
 }
 
 model ParentStudentLink {
@@ -256,9 +293,17 @@ model Notification {
   tappedAt  DateTime
   read      Boolean          @default(false)
   createdAt DateTime         @default(now())
+  // The outbox (Step 54): when the push worker made this notification's
+  // deliveries, one per phone. Null means still to send. Written in the
+  // same transaction as those deliveries, so a push is never lost between
+  // the two.
+  pushedAt   DateTime?
+  deliveries PushDelivery[]
 
   @@index([studentId, tappedAt])
   @@index([schoolId])
+  // Only the few still to send, oldest first: the worker's one question.
+  @@index([createdAt], map: "Notification_to_push", where: raw("\"pushedAt\" IS NULL"))
 }
 
 enum DeviceKind {

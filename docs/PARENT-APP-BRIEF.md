@@ -203,12 +203,14 @@ The LRN, birth date, guardian details and other students never come back from th
 
 ## Push notifications
 
-- Talaan's Step 54 sends the pushes. Until it's live, the app shows new notifications when it's opened, with pull to refresh.
+- Talaan's Step 54 sends the pushes, built 2026-10-16. Until the live server sends for real (`PUSH_SENDER=expo`, at the deploy after M7), the app shows new notifications when it's opened, with pull to refresh.
+- A push reads title "Bantay Aral", body "Juan tapped in at 7:56 AM" (the child's first name only), with `data: { notificationId, childId }`. Tapping it opens the feed at that notification.
+- **Create the Android channel `attendance` before registering the push token.** Android doesn't show a push sent to a channel the phone doesn't have.
 - Use `expo-notifications`, and register with `getExpoPushTokenAsync`, which needs the project's EAS project id (free). **Push needs a development build, not Expo Go** (Expo Go can't receive push on Android). Read Expo's current push setup guide when you reach M7, since it changes between SDK versions.
 - **Android needs a Firebase project** (free), so Expo's service can deliver through Firebase Cloud Messaging. That means the app's `google-services.json`, and the FCM key uploaded to Expo's credentials. The owner creates these. Give them the exact steps.
 - **Ask for permission at a moment that explains itself:** right after the parent links their first child ("Get a notification when Jose taps in or out?"), not on first launch.
 - Register the token with `POST /api/v1/parents/push-tokens` after sign-in, whenever it changes, and on each app start. It's cheap, and the server keeps one row per phone.
-- On Android, create a notification channel ("Attendance"), so the notification makes a sound and shows on the lock screen.
+- On Android, the notification channel has the id `attendance` and the name "Attendance", so the notification makes a sound and shows on the lock screen.
 - Tapping a notification opens the feed, scrolled to that entry if it's there.
 - In the foreground, show it in the app, and refresh the home screen and the feed.
 

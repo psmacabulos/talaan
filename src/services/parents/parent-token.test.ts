@@ -65,4 +65,21 @@ describe("parent tokens", () => {
 
     expect(tokens.rows.map((row) => row.parentId)).toEqual(["parent-2", "parent-1"]);
   });
+
+  it("keeps a long-unused sign-in that still receives pushes, but not a revoked one (Step 54)", async () => {
+    const withPushAddress = new Set<string>();
+    const tokens = createMockParentTokenRepository(withPushAddress);
+    await issueParentToken("parent-1", "phone that only reads banners", NOW, { tokens });
+    await issueParentToken("parent-1", "signed-out phone", NOW, { tokens });
+    const [bannersOnly, signedOut] = tokens.rows.map((row) => row.id);
+    withPushAddress.add(bannersOnly).add(signedOut);
+    await tokens.revoke(signedOut, NOW);
+
+    await issueParentToken("parent-1", "new phone", later(91 * DAY), { tokens });
+
+    const ids = tokens.rows.map((row) => row.id);
+    expect(ids).toContain(bannersOnly);
+    expect(ids).not.toContain(signedOut);
+    expect(ids).toHaveLength(2);
+  });
 });

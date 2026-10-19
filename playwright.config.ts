@@ -60,6 +60,8 @@ export default defineConfig({
       DATABASE_URL: e2eDatabaseUrl(),
       DEMO_NOW: "2026-06-19T09:15:00+08:00",
       SESSION_SECRET: TEST_SESSION_SECRET,
+      // Pushes are made and "sent" to the log, never to Expo (Step 54).
+      PUSH_SENDER: "log",
     },
     timeout: 120_000,
   },

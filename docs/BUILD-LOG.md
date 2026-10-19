@@ -2398,3 +2398,31 @@ Plan reviewed with the systems-architect in one round: nothing blocking, nothing
   - A length cap on notification ids before the query. It's cosmetic: ids are TEXT, and the query is scoped to the parent's children.
   - A browser test that logout removes the push row. No address shows it, so the unit test `signOutParentPhone` covers it.
 - **For the owner to measure** (architect's suggestion): P2002 retries and any P2003 on `POST /push-tokens` in the dev log, and queries per feed request (expected 1 + 3 per child) with Prisma's `log: ["query"]`, for a parent with two children.
+
+## Step 54: push notifications reach the phone (2026-10-16)
+
+The recipe, `docs/backend/step-54-push-notifications.md`, was written before the code, as Phase 2b asks, and the owner approved it after one plan-review round with a fresh systems-architect. The same architect then reviewed the finished code, continued with `SendMessage`. The topic doc is `docs/PUSH.md`.
+
+- **What the plan review changed** (three blocking points, all accepted after checking them):
+  - My plan had the notification claim commit before its deliveries were written. A crash between the two would have lost the push for good. `fanOut` is now one interactive transaction: claim, phone lookup and `createMany` together.
+  - My answer to the 90-day question contradicted Step 53.3's cleanup: signing in on phone B deleted phone A's unused sign-in, and its push address with it. `deleteStale` now keeps an unused sign-in that has a push address.
+  - I'd told the architect partial indexes weren't available. They are: `schema.prisma` already turns on `partialIndexes` for `Card_one_active_per_student`. `Notification_to_push` uses `raw("\"pushedAt\" IS NULL")`, and `prisma migrate diff` printed "This is an empty migration" afterwards, so there's no drift.
+  - The smaller points are all in the recipe: an index on `pushTokenId`, giving up by time instead of by tries, rate limits not counted as tries, a 30-second fetch timeout, one join and one write-back per batch, the database's clock throughout, the worker starting outside production too, a re-run for a wake mid-pass, and `EXPO_ACCESS_TOKEN` required with `expo`.
+- **The step was split** (owner approval): Expo's receipts and the 7-day cleanup are Step 54.1.
+- **Commands run:**
+  - `npx prisma migrate dev --create-only --name push_deliveries`. Then I added `UPDATE "Notification" SET "pushedAt" = CURRENT_TIMESTAMP;` to the SQL, so no old notification is ever pushed, before `npx prisma migrate dev` applied it.
+  - `npx prisma generate`, then `npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script`: empty.
+  - The new Postgres-backed test first failed with `column "pushedAt" does not exist`. The browser-test database hadn't had the migration yet, since Playwright's global setup applies migrations only when it runs. I ran just its first command, `npx prisma migrate deploy` with `DATABASE_URL` set to `E2E_DATABASE_URL` (loaded by `dotenv`, never printed), and the 4 tests passed.
+- **A problem hit** (`docs/PROBLEMS-LOG.md`, P-024): Playwright can't load the generated Prisma Client (`Cannot use 'import.meta' outside a module`). The browser test now reads the delivery through `e2e/push-delivery.ts`, run with `tsx`, like `create-test-devices.ts`. `npx playwright test --list parent-api` then listed the file's 14 tests.
+- **Small surprises:**
+  - The first unit run had one failure: a timeout read as "network". In the test environment a `DOMException` isn't an `instanceof Error`, so the sender now checks the error's name only.
+  - Prettier wrote one `if` over two lines without braces; I added the braces.
+  - In `.env.example`, optional settings are commented out with quoted values; the push settings follow that.
+- **A slip of mine:** one command's shell substitution tried to read `.env` with `grep` and failed before printing anything. Nothing was read. Settings are now loaded only through `dotenv`, the way the scripts already do.
+- **Checks run here** (targeted only; the full suite, build and Playwright are the owner's):
+  - `npx vitest run` on the push, settings, parent, photo, isolation, attendance and station tests: 27 files, 210 passed.
+  - `prisma-push-outbox.test.ts` on real Postgres: 4 passed.
+  - Prettier on the changed files.
+- **The code review:** nothing blocking. Its four "not blocking" notes are written into `docs/PUSH.md`'s "Known limits", and the whole-batch retry became a task in Step 54.1.
+- **For the owner to measure** (architect's suggestion): the `push:` log lines during the morning rush (sent, retrying, failed, too old), connections in use (`heroku pg:info`), and `PushDelivery` rows added per day.
+- **The owner's type check found two errors in my tests** (`docs/PROBLEMS-LOG.md`, P-025). A hand-built Prisma `Notification` row was missing the new `pushedAt`, and a settings object was cast to `ProcessEnv` without `NODE_ENV`. Vitest doesn't check types, so both had passed. Both are fixed, and the two files pass again (7 tests).

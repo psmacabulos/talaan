@@ -67,6 +67,8 @@ Set with `heroku config:set NAME=value --app bantayaral`. Type secrets yourself;
 | `PGSSLMODE` | you: `no-verify` | Heroku Postgres only accepts encrypted connections, but Node can't verify its certificate. This keeps the encryption without the check (Heroku's own advice for Node). |
 | `SESSION_SECRET` | you: `$(openssl rand -base64 32)` | Signs every sign-in cookie and set-password link. Changing it signs everyone out and voids open links. |
 | `PHOTO_STORAGE` | you: `s3` | Photos go to R2. The dyno's disk is wiped on every restart and deploy. |
+| `PUSH_SENDER` | you: `log` now, `expo` at the deploy after the parent app's M7 | Step 54. `log` makes the pushes and only logs how many would go. Without it the server refuses to start, so **set it before pushing Step 54**: `heroku config:set PUSH_SENDER=log --app bantayaral`. |
+| `EXPO_ACCESS_TOKEN` | you: expo.dev, your account, Access tokens | Only with `PUSH_SENDER=expo`, which requires it: only this server can push to the app's phones. |
 | `S3_ENDPOINT` | you | `https://<account-id>.r2.cloudflarestorage.com` |
 | `S3_BUCKET` | you: `talaan-photos` | The private bucket. |
 | `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | you | An R2 API token with Object Read & Write on `talaan-photos` only. |
@@ -80,6 +82,7 @@ Never set on Heroku: `DEMO_NOW` (the server refuses to start) and `E2E` (it woul
 | Web server | Heroku Basic dyno (never sleeps) | $7 |
 | Database | Heroku Postgres Essential-0 (1 GB, 20 connections) | $5 |
 | Photos | Cloudflare R2 free tier (10 GB; 500 thumbnails are about 8 MB) | $0 |
+| Push notifications | Expo's push service (free); the worker runs inside the web dyno (`docs/PUSH.md`) | $0 |
 | **Total** | | **$12**, covered by the Heroku for GitHub Students credit ($13 a month) |
 
 The credit shows on Heroku's Account → Billing page. Until it does, the card on the account is charged.

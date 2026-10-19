@@ -15,12 +15,19 @@ export interface ParentTokenRepository {
   touch(id: string, now: string, olderThan: string): Promise<void>;
   /** Signs that one phone out. */
   revoke(id: string, now: string): Promise<void>;
-  /** Removes a parent's revoked tokens and those unused since `usedBefore`, so old sign-ins don't pile up. */
+  /**
+   * Removes a parent's revoked tokens, and those unused since `usedBefore`
+   * that have no push address, so old sign-ins don't pile up. A phone that
+   * only reads the banners keeps its sign-in, and its pushes (Step 54).
+   */
   deleteStale(parentId: string, usedBefore: string): Promise<void>;
 }
 
 /** In memory, for tests. */
-export function createMockParentTokenRepository(): ParentTokenRepository & {
+export function createMockParentTokenRepository(
+  /** The ids of the sign-ins that have a push address, like `PushToken.parentTokenId`. */
+  withPushAddress: Set<string> = new Set(),
+): ParentTokenRepository & {
   rows: (StoredParentToken & { tokenHash: string })[];
 } {
   const rows: (StoredParentToken & { tokenHash: string })[] = [];
@@ -44,7 +51,8 @@ export function createMockParentTokenRepository(): ParentTokenRepository & {
     async deleteStale(parentId, usedBefore) {
       for (let index = rows.length - 1; index >= 0; index--) {
         const row = rows[index];
-        const stale = row.revokedAt !== null || Date.parse(row.lastUsedAt) < Date.parse(usedBefore);
+        const unused = Date.parse(row.lastUsedAt) < Date.parse(usedBefore) && !withPushAddress.has(row.id);
+        const stale = row.revokedAt !== null || unused;
         if (row.parentId === parentId && stale) rows.splice(index, 1);
       }
     },

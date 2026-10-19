@@ -195,6 +195,8 @@ A `Notification` row today is one line in the parent's feed, one per child per t
 
 Step 53's plan stores the phones' push tokens, so the app can register from its first version.
 
+**Built in Step 54 (2026-10-16), changed from the fix above** (owner approval, architect review): the delivery records are made by the worker, in the same transaction that marks the notification pushed, not in the tap's own transaction. The `Notification` row, written with the tap, is the outbox, so nothing can be lost, and a phone registered in between still gets the push. The worker runs inside the web dyno ($0). Step 54.1 adds Expo's receipts and deletes deliveries after 7 days, before a second school. See `docs/PUSH.md`.
+
 ## 3. More schools, bigger schools, more years
 
 ### 3.1 Every tap reads the student's whole history (Step 61)

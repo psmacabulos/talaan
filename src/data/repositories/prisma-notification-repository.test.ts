@@ -10,10 +10,11 @@ const row: NotificationRow = {
   tappedAt: new Date("2026-06-20T16:05:00Z"),
   read: false,
   createdAt: new Date("2026-06-20T16:05:01Z"),
+  pushedAt: null,
 };
 
 describe("toNotification", () => {
-  it("turns a row into the app's Notification, dropping createdAt", () => {
+  it("turns a row into the app's Notification, dropping createdAt and pushedAt", () => {
     expect(toNotification(row)).toEqual({
       id: "notification-a",
       schoolId: "school-a",

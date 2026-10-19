@@ -121,6 +121,10 @@ Marking read goes through two server actions in `src/features/parents/notificati
 - `markNotificationRead(id)` — one item (the bell's item click and the feed's unread-row click).
 - `markAllNotificationsRead()` — everything currently unread (the bell's and the page's "Mark all as read" buttons).
 
+## Pushing it to the phone (Step 54)
+
+The `Notification` row is also the push outbox. `pushedAt` stays null until the push worker has made one `PushDelivery` per phone, in the same transaction that sets it. The worker then sends them through Expo. Any code that writes a notification should call `wakePushWorker()` afterwards, so the push goes at once rather than at the next 30-second check. The gate route, `simulateTap` and `syncStationTaps` do. The full story is in `docs/PUSH.md`.
+
 ## Where Phase 1 deliberately simplifies
 
 - **Shared read state.** One `read` flag per notification, shared by every guardian of the same child — Step 20's approved model, no schema change. Phase 2 moves to per-parent records.
@@ -129,7 +133,7 @@ Marking read goes through two server actions in `src/features/parents/notificati
 
 ## Quick recipes
 
-**I want a new way to record taps (Phase 2's real Tap API, another simulate path).** After `tapRepository.create(tap)`, call `notifyParentsForTap(tap, { schoolRepository, tapRepository, notificationRepository })`. Skip it for taps with `studentId: null`, and consider skipping it for alert-raising taps (the lost-card pattern). Keep `refresh()` where it already is — in the action, not in the helper.
+**I want a new way to record taps (Phase 2's real Tap API, another simulate path).** After `tapRepository.create(tap)`, call `notifyParentsForTap(tap, { schoolRepository, tapRepository, notificationRepository })`, and `wakePushWorker()` when it returns a notification (Step 54). Skip it for taps with `studentId: null`, and consider skipping it for alert-raising taps (the lost-card pattern). Keep `refresh()` where it already is — in the action, not in the helper.
 
 **I want to change when notifications fire.** Edit `notifyParentsForTap()` — the preference table lives in its doc comment. Every outcome (off / time-in-only / both, plus null-student and unknown-school skips) has a unit test in `src/features/attendance/notify-parents.test.ts`; extend those before the behavior.
 

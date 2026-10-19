@@ -183,7 +183,8 @@ curl -s -X POST http://localhost:3000/api/v1/parents/push-tokens -H "Authorizati
 - Register after sign-in, whenever Expo gives a new token, and on every app start. Sending the same token again costs one read and writes nothing.
 - **One push address per signed-in phone.** A new token for the same sign-in replaces the old one. A phone that signs in as another parent moves its push address to that parent.
 - Sign-out removes it. A sign-in left unused for 90 days is cleared, push address included, the next time that parent signs in anywhere.
-- Pushes are sent from Step 54 on. Until then, the app shows new notifications when it's opened, with pull to refresh.
+- **What a push looks like** (Step 54): title "Bantay Aral", body "Juan tapped in at 7:56 AM" (the child's first name only), `data: { notificationId, childId }` so a tap can open the feed at that entry, `sound: "default"`, `priority: "high"`, Android `channelId: "attendance"`. The app must create the `attendance` channel before it registers its token: Android doesn't show a push sent to a channel the phone doesn't have.
+- **Which phones:** every push address of every parent linked to the child, whose sign-in isn't revoked, however long since the app was last opened. After 90 days unused the token stops working for the API, but the pushes keep coming; tapping one opens the app at sign-in. How it's sent: `docs/PUSH.md`.
 
 ### `POST /logout`
 
