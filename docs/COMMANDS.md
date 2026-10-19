@@ -285,6 +285,15 @@ After registering a push token, use Simulate a tap on that parent's child: the d
 
 Five wrong passwords for one email answer `429` for 15 minutes. Locally, requests come from this computer's own address, which the per-network limits never count. The tests send `X-Forwarded-For: 203.0.113.x` to try them.
 
+**Starting the parent app's repository** (`mobile/README.md`), with it cloned next to this folder as `bantayaral-parent-app`:
+
+| Command | What it does |
+|---|---|
+| `cp -R mobile/starter/. ../bantayaral-parent-app/` | Copies the starter kit (its `CLAUDE.md`, plan, docs, logo, `.claude` settings and `.env.example`) into the app's repository. The `/.` includes the hidden files. |
+| `cp docs/PARENT-API.md ../bantayaral-parent-app/docs/TALAAN-API.md` | Copies the API contract. Run it again whenever `docs/PARENT-API.md` changes. |
+| `ipconfig getifaddr en0` | This Mac's address on the Wi-Fi, only when the app should use Talaan on this Mac instead of Heroku: its `EXPO_PUBLIC_API_URL` becomes `http://<address>:3000`. |
+| `heroku config:set PUSH_SENDER=expo EXPO_ACCESS_TOKEN=<token> --app bantayaral` | At the app's M7: the live server sends real pushes instead of only logging them. Type the token yourself. |
+
 ---
 
 ## 8. Git: saving your work

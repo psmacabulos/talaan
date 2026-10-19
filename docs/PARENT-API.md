@@ -1,6 +1,6 @@
 # The parent API
 
-The contract between this backend and the Bantay Aral parent app (Expo, its own repository). Every address the app may call is here, with a `curl` example and a real answer from the local server. The app's repository keeps a copy of this file as `docs/TALAAN-API.md` (`docs/PARENT-APP-BRIEF.md`, "For the owner"). **When this file and the brief disagree, this file wins.** Built in Steps 53.3 (sign-in) and 53.4 (notifications, push tokens, photos).
+The contract between this backend and the Bantay Aral parent app (Expo, its own repository). Every address the app may call is here, with a `curl` example and a real answer from the local server. The app's repository keeps a copy of this file as `docs/TALAAN-API.md` (`mobile/README.md`, "How to start the new repository"). **When this file and the app's starter kit (`mobile/starter/`) disagree, this file wins.** Built in Steps 53.3 (sign-in) and 53.4 (notifications, push tokens, photos).
 
 Rules for changing it: a new field may be added at any time, since the app ignores fields it doesn't know. Renaming or removing a field, or changing what a status code means, needs a new version (`/api/v2/…`), because phones already in parents' hands still call the old one.
 
@@ -236,6 +236,6 @@ The LRN, the birth date, the guardian's name and mobile, the card serial, and an
 
 ## Quick recipes
 
-- **Add an address:** a route under `src/app/api/v1/parents/`, starting with `requireParent(request)`. Put the rule in a service under `src/services/parents/`, the answer in a `to…Json` function with a key test, and a row in the table above. Then copy this file to the app's repository again.
+- **Add an address:** a route under `src/app/api/v1/parents/`, starting with `requireParent(request)`. Put the rule in a service under `src/services/parents/`, the answer in a `to…Json` function with a key test, and a row in the table above. Then copy this file to the app's repository again (`mobile/README.md`, "Keeping it current").
 - **Add a field to an answer:** add it to its `to…Json` and to the test's expected keys, then to the shapes above. Adding is safe; renaming or removing needs `/api/v2`.
 - **Try it by hand:** `docs/COMMANDS.md`, section 7d.

@@ -833,9 +833,26 @@ The cost is a second (small) UI to build and maintain, which is fine because it 
 ### When can Talaan's build pause for the parent app, and how does the new repository learn everything? (owner question, 2026-10-13)
 **Pause after Step 53** (the parent API), once it's approved and live on Heroku. The app's own first step (M1, the setup) doesn't need the API, so it can start any time, in parallel. The app needs Steps 52 (a server a phone can reach) and 53 (the addresses it calls), nothing more, to sign parents up, link children and show their day. **Step 54** (push to the phone) was moved up to come straight after, because the demo needs a tap at the gate to buzz the phone. It's finished alongside the app, since its last check needs a real push token from the app. Steps 55–64 wait until after the demo.
 
-**The new repository starts from `docs/PARENT-APP-BRIEF.md`.** Its top section says what to copy where: the brief becomes the new repository's `CLAUDE.md`, and Talaan's `docs/PARENT-API.md` becomes its `docs/TALAAN-API.md`. Then it holds everything the work there needs: what Talaan is, the API, the design colours converted to hex (phones don't read the web's OKLCH colours), its own steps M1–M8, and the same working rules as here. When the app needs something the API doesn't have, it writes it down in `docs/API-REQUESTS.md` and you bring it back here as a step. The two repositories never drift apart quietly.
+**The new repository starts from `docs/PARENT-APP-BRIEF.md`** (replaced on 2026-10-19 by the `mobile/` starter kit, see the next entry). Its top section says what to copy where: the brief becomes the new repository's `CLAUDE.md`, and Talaan's `docs/PARENT-API.md` becomes its `docs/TALAAN-API.md`. Then it holds everything the work there needs: what Talaan is, the API, the design colours converted to hex (phones don't read the web's OKLCH colours), its own steps M1–M8, and the same working rules as here. When the app needs something the API doesn't have, it writes it down in `docs/API-REQUESTS.md` and you bring it back here as a step. The two repositories never drift apart quietly.
 
 **What it costs:** an Android demo is free (Expo's free plan, Firebase's free push, installing the app directly). Publishing on Google Play is about US$25, once. iOS push needs Apple's Developer Program, about US$99 a year, which is why the brief says Android first.
+
+### Is the API enough to start the app, and what do I copy into its repository? (owner question, 2026-10-19)
+**Yes, for the whole demo.** Steps 53.3 to 54.1 built every address the app calls: sign-up and sign-in, the children and their day, linking a child, the feed and read marks, photos, and registering a phone for push, plus the worker that sends the pushes. Only "forgot password" (Step 55.5) and "delete my account" (Step 60) are missing, and neither blocks the demo.
+
+**It's live:** you deployed Heroku through Step 54.1 on 2026-10-19, so the app talks to the live server over HTTPS from its first step, the same as the finished app will. Talaan on your Mac stays a fallback, for a Talaan change that isn't deployed yet. Pushes from Heroku only go to its log until the app's M7, when you set `PUSH_SENDER=expo` there.
+
+**What to copy:** the old single brief, which had to be cut and pasted by hand, became a folder, `mobile/starter/`, copied into the new repository as it is, plus `docs/PARENT-API.md` copied in as its `docs/TALAAN-API.md`. Two commands, in `mobile/README.md`. It includes a `CLAUDE.md` with your working rules, the plan, the product rules, design rules that hold whatever your own UI design says, the logo as vector data, and the same git-blocking settings as here. The API contract isn't copied into the folder, so there's only ever one copy of it in Talaan to keep current.
+
+### Does the parent app have its own database? (owner question, 2026-10-19)
+**No.** The app stores only the sign-in token (in the phone's secure storage) and a short-lived cache of what it was last shown. Every parent, link and notification lives in Talaan's database, the same one the web app uses. A parent who signs up in the app is a row in Talaan's `Parent` table, visible on the live database straight away.
+
+**Why the demo still needs a real student:** a parent can be created from the app, but a child can't. "Link a child" only *matches* a student the school already entered, by school, LRN, last name and birth date. So the demo script names one student who exists on the live server (Jose Pascual, from the seed), and any student you added there works the same way.
+
+### How does the app know which API to call? (owner question, 2026-10-19)
+Two separate things:
+- **Claude, writing the app,** learns the addresses from `docs/TALAAN-API.md` in the app's repository. It isn't in `mobile/`: the second copy command in `mobile/README.md` copies Talaan's `docs/PARENT-API.md` there under that name, so Talaan keeps only one copy. The app's `CLAUDE.md` says to read it first, and never to guess an address.
+- **The finished app, on a phone,** knows the server from `EXPO_PUBLIC_API_URL` in its `.env` (`https://bantayaral.herokuapp.com`), and the paths (`/api/v1/parents/login`, …) are written into its code from that contract.
 
 ## Two separate logins in one app, and a mock password (Step 22)
 
