@@ -1143,6 +1143,9 @@ Not a bug in the code. A dev server that was already running kept using an **old
 
 **Fix:** stop `npm run dev` (Ctrl+C) and start it again after any step that adds or changes a model. Production never hits this, because a deploy always starts a fresh process with the new client.
 
+### Why check push "receipts" at all, and how much does it store? (owner question, Step 54.1, 2026-10-19)
+The tap's time is saved before any push exists, so a late push changes nothing about attendance: it still says the saved time. Expo answers a push twice. The **ticket** (straight away) means "accepted". The **receipt** (about 15 minutes later) says "delivered", "the app is gone from this phone", or "too busy, not sent". We read receipts only for the last two: to stop pushing to dead phones, and to resend what was never sent. A "delivered" receipt needs nothing, so its row is deleted (owner decision), and receipts are checked every 5 minutes, not every minute. That keeps the table under 0.5 MB at the pilot. The full explanation, with the storage and query numbers, is the "Bantay Aral Push Flow" page: https://claude.ai/artifact/PgnXN3SSqE8DMRTudHWqAa. The design is in [`docs/PUSH.md`](PUSH.md) once Step 54.1 is built.
+
 ### What's an "outbox", and what does `FOR UPDATE SKIP LOCKED` do? (Step 54)
 An **outbox** is a "to send" list kept in the same database as the thing that caused it. The tap and its `Notification` are saved in one transaction, so if the tap is stored, the promise to tell the parents is too. A worker sends later, and can retry. Sending straight from the tap's request would lose the push whenever Expo is slow or down, or the server restarts at the wrong moment.
 

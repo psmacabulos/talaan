@@ -54,7 +54,7 @@ export async function parentPhotoViewer(
 export async function resolvePhotoViewer(authorization: string | null): Promise<PhotoViewer | null> {
   if (authorization) {
     if (readBearerToken(authorization)?.startsWith(PARENT_TOKEN_PREFIX)) {
-      // The real clock, never DEMO_NOW: a token's 90 days are real days.
+      // The real clock, never DEMO_NOW: a token's 30 days are real days.
       return parentPhotoViewer(authorization, new Date().toISOString(), {
         tokens: parentTokenRepository,
         links: parentStudentLinkRepository,

@@ -25,7 +25,7 @@ export function requestAddress(request: Request): string | null {
 
 /** The signed-in parent, or the `401` to answer with. */
 export async function requireParent(request: Request): Promise<ParentCaller | Response> {
-  // The real clock, never DEMO_NOW: a token's 90 days are real days.
+  // The real clock, never DEMO_NOW: a token's 30 days are real days.
   const caller = await authenticateParent(request.headers.get("authorization"), new Date().toISOString(), {
     tokens: parentTokenRepository,
   });

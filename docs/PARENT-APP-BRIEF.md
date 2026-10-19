@@ -69,7 +69,7 @@ Steps M1–M8 below get there. Everything else waits until after the demo, and i
 
 - Sign-up and sign-in answer with a **token** starting `tal_par_`. Keep it in `expo-secure-store` and nowhere else (never AsyncStorage, never logs).
 - Send it on every request as `Authorization: Bearer <token>`.
-- A token lasts **90 days from its last use**, so a parent who opens the app now and then never signs in again.
+- A token lasts **30 days from its last use** (Talaan decision, 2026-10-19). Any request keeps it alive, so **call `/me` and register the push token every time the app opens and every time it comes back to the foreground** (this is the only thing that keeps a sign-in, and its pushes, alive): a parent who opens the app at least once a month never signs in again. After 30 days unused, the sign-in is cleared and pushes stop until the parent signs in again; say so plainly on the sign-in screen ("Sign in again to keep getting notifications").
 - **Any `401` means signed out.** Clear the token and everything cached, and go to the sign-in screen.
 - Sign out calls `POST /api/v1/parents/logout`, which revokes the token and removes the phone's push token, then clears everything locally.
 

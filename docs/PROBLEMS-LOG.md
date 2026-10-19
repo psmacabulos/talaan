@@ -38,8 +38,8 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-021](#p-021--2026-10-16--a-schools-launch-night-could-trip-the-address-limit) | 2026-10-16 | A school's launch night could trip the address limit | Other: known risk | Sign-in | Open: watch the logs |
 | [P-022](#p-022--2026-10-16--the-parent-api-test-tapped-a-child-the-station-tests-had-already-tapped) | 2026-10-16 | The parent API test tapped a child the station tests had already tapped | Other: tests | Playwright | Resolved |
 | [P-023](#p-023--2026-10-16--saving-a-push-address-as-the-phone-signed-out-answered-500) | 2026-10-16 | Saving a push address as the phone signed out answered 500 | Other: correctness | Parent API, database | Resolved |
-| [P-024](#p-024--2026-10-16--a-browser-test-couldnt-load-the-prisma-client) | 2026-10-16 | A browser test couldn't load the Prisma Client | Other: tests | Playwright, Prisma | Fixed, waiting for the owner's checks |
-| [P-025](#p-025--2026-10-16--two-type-errors-in-step-54s-tests) | 2026-10-16 | Two type errors in Step 54's tests | Other: tests | TypeScript | Fixed, waiting for the owner's checks |
+| [P-024](#p-024--2026-10-16--a-browser-test-couldnt-load-the-prisma-client) | 2026-10-16 | A browser test couldn't load the Prisma Client | Other: tests | Playwright, Prisma | Resolved |
+| [P-025](#p-025--2026-10-16--two-type-errors-in-step-54s-tests) | 2026-10-16 | Two type errors in Step 54's tests | Other: tests | TypeScript | Resolved |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -534,7 +534,7 @@ sequenceDiagram
   3. **A small script run with `tsx`**, the way `e2e/global-setup.ts` already runs `create-test-devices.ts`. Chosen.
 - **Solution:** `e2e/push-delivery.ts` prints one delivery's status as JSON, and the test runs it with `execFileSync("npx", ["tsx", …])` against the test database, polling until the push is sent. `--list` now loads the file (14 tests).
 - **Lesson:** a Playwright test can't import the Prisma Client. Reach the database through a `tsx` script.
-- **Status:** Fixed, waiting for the owner's checks.
+- **Status:** Resolved: the owner's checks passed.
 
 ### P-025 · 2026-10-16 · Two type errors in Step 54's tests
 - **Where:** the owner's `npm run typecheck`, after Step 54 was built. I'd run the tests, but not the type check, which is the owner's.
@@ -550,4 +550,4 @@ sequenceDiagram
   Vitest strips types without checking them, so both tests still passed.
 - **Solution:** the row gets `pushedAt: null`, and the test's name now says it drops `pushedAt` too. The settings objects include `NODE_ENV: "test"`, with no cast, like `env.test.ts`.
 - **Lesson:** a new column breaks every hand-built row of that table in the tests. Search the tests for the model's row type when adding one. A passing Vitest run doesn't mean the types are right: only `npm run typecheck` checks them.
-- **Status:** Fixed, waiting for the owner's checks.
+- **Status:** Resolved: the owner's checks passed.

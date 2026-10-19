@@ -7,10 +7,16 @@ export const PARENT_TOKEN_PREFIX = "tal_par_";
 
 const DAY_MS = 24 * 60 * 60_000;
 
-/** A token stops working after this long unused (docs/PARENT-APP-BRIEF.md: "90 days from its last use"). */
-export const PARENT_TOKEN_UNUSED_LIMIT_MS = 90 * DAY_MS;
+/**
+ * A sign-in stops working after this long unused, and the push worker's
+ * hourly cleanup deletes it with its push address (owner decision,
+ * 2026-10-19; it was 90 days). Opening the app counts as use, so a parent
+ * who opens it at least once a month never signs in again and keeps
+ * getting pushes.
+ */
+export const PARENT_TOKEN_UNUSED_LIMIT_MS = 30 * DAY_MS;
 
-/** How often a token's `lastUsedAt` is written: once an hour is plenty for a 90-day limit, and spares a write per request. */
+/** How often a token's `lastUsedAt` is written: once an hour is plenty for a 30-day limit, and spares a write per request. */
 const TOUCH_EVERY_MS = 60 * 60_000;
 
 export type ParentTokenDeps = { tokens: ParentTokenRepository };
@@ -29,9 +35,9 @@ function before(now: string, ms: number): string {
 
 /**
  * Signs a phone in (Step 53.3): a new random token, returned once and kept
- * only as its hash. The parent's revoked tokens, and those unused for 90
- * days that have no push address (Step 54), are cleared first, so a parent
- * who signs in many times over the years keeps only a few rows.
+ * only as its hash. The parent's revoked tokens, and those unused for 30
+ * days, are cleared first, so a parent who signs in many times over the
+ * years keeps only a few rows.
  */
 export async function issueParentToken(
   parentId: string,
@@ -48,7 +54,7 @@ export async function issueParentToken(
 /**
  * The parent behind an `Authorization: Bearer tal_par_…` header, or null
  * for anything else: no header, a gate's token, an unknown, revoked or
- * 90-days-unused token. Using a token keeps it alive, so a parent who opens
+ * 30-days-unused token. Using a token keeps it alive, so a parent who opens
  * the app now and then never signs in again. The token is never logged.
  */
 export async function authenticateParent(

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { EXPO_PUSH_URL, expoPushSender, getPushSender, logPushSender, type PushMessage } from "./push-sender";
+import {
+  EXPO_PUSH_URL,
+  EXPO_RECEIPTS_URL,
+  expoPushSender,
+  getPushSender,
+  logPushSender,
+  type PushMessage,
+} from "./push-sender";
 
 const MESSAGE: PushMessage = {
   to: "ExponentPushToken[a]",
@@ -72,12 +79,64 @@ describe("expoPushSender", () => {
   });
 });
 
+describe("expoPushSender.getReceipts", () => {
+  it("asks for the tickets' receipts and reads each one", async () => {
+    const { calls, fetchImpl } = fakeFetch(() =>
+      Response.json({
+        data: {
+          "ticket-1": { status: "ok" },
+          "ticket-2": { status: "error", message: "gone", details: { error: "DeviceNotRegistered" } },
+          "ticket-3": { status: "error", message: "no code" },
+        },
+      }),
+    );
+    const result = await expoPushSender("expo-token", fetchImpl).getReceipts([
+      "ticket-1",
+      "ticket-2",
+      "ticket-3",
+      "ticket-4",
+    ]);
+
+    expect(result).toEqual({
+      ok: true,
+      receipts: {
+        "ticket-1": { status: "ok" },
+        "ticket-2": { status: "error", error: "DeviceNotRegistered" },
+        "ticket-3": { status: "error", error: "unknown" },
+      },
+    });
+    expect(calls[0].url).toBe(EXPO_RECEIPTS_URL);
+    expect(JSON.parse(String(calls[0].init.body))).toEqual({ ids: ["ticket-1", "ticket-2", "ticket-3", "ticket-4"] });
+    expect(new Headers(calls[0].init.headers).get("Authorization")).toBe("Bearer expo-token");
+  });
+
+  it("treats an answer with only errors, or no answer, as no receipts at all", async () => {
+    const errorsOnly = fakeFetch(() => Response.json({ errors: [{ code: "VALIDATION_ERROR" }] })).fetchImpl;
+    await expect(expoPushSender(undefined, errorsOnly).getReceipts(["t"])).resolves.toEqual({
+      ok: false,
+      error: "bad_answer",
+    });
+    const timeout = fakeFetch(() => Promise.reject(new DOMException("slow", "TimeoutError"))).fetchImpl;
+    await expect(expoPushSender(undefined, timeout).getReceipts(["t"])).resolves.toEqual({
+      ok: false,
+      error: "timeout",
+    });
+  });
+});
+
 describe("logPushSender and getPushSender", () => {
   it("accepts every message without sending it", async () => {
     const result = await logPushSender().send([MESSAGE, MESSAGE]);
     expect(result.ok && result.tickets.every((ticket) => ticket.status === "ok" && ticket.id.startsWith("log-"))).toBe(
       true,
     );
+  });
+
+  it("answers every receipt as delivered", async () => {
+    await expect(logPushSender().getReceipts(["log-1", "log-2"])).resolves.toEqual({
+      ok: true,
+      receipts: { "log-1": { status: "ok" }, "log-2": { status: "ok" } },
+    });
   });
 
   it("sends for real only when PUSH_SENDER is expo", async () => {

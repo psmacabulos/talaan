@@ -34,7 +34,7 @@ sequenceDiagram
 
 - Sign-up and login answer with a `token` starting `tal_par_`. It's shown once. Keep it in `expo-secure-store`, never in AsyncStorage or a log.
 - Send it on every other request: `Authorization: Bearer tal_par_…`.
-- One token per phone. It works until the parent signs out on that phone, or until it goes **90 days without being used**. Any use keeps it alive, so a parent who opens the app now and then never signs in again.
+- One token per phone. It works until the parent signs out on that phone, or until it goes **30 days without being used** (owner decision, 2026-10-19; it was 90). Any request keeps it alive, so **call the API every time the app opens and every time it comes back to the foreground** (`/me`, and register the push token): a parent who opens the app at least once a month never signs in again. After 30 days unused, the sign-in is deleted with its push address, pushes stop, and the next request gets `401`.
 - **Any `401` means signed out.** Clear the token and everything cached, and show sign-in.
 - The server stores only the token's sha256. Signing out revokes it at once.
 
@@ -182,9 +182,9 @@ curl -s -X POST http://localhost:3000/api/v1/parents/push-tokens -H "Authorizati
 - `token` is what `getExpoPushTokenAsync()` gives: `ExponentPushToken[…]` or `ExpoPushToken[…]`, at most 200 characters. `platform` is `ios` or `android`. Anything else is `400`.
 - Register after sign-in, whenever Expo gives a new token, and on every app start. Sending the same token again costs one read and writes nothing.
 - **One push address per signed-in phone.** A new token for the same sign-in replaces the old one. A phone that signs in as another parent moves its push address to that parent.
-- Sign-out removes it. A sign-in left unused for 90 days is cleared, push address included, the next time that parent signs in anywhere.
+- Sign-out removes it. A sign-in left unused for 30 days is cleared within the hour, push address included.
 - **What a push looks like** (Step 54): title "Bantay Aral", body "Juan tapped in at 7:56 AM" (the child's first name only), `data: { notificationId, childId }` so a tap can open the feed at that entry, `sound: "default"`, `priority: "high"`, Android `channelId: "attendance"`. The app must create the `attendance` channel before it registers its token: Android doesn't show a push sent to a channel the phone doesn't have.
-- **Which phones:** every push address of every parent linked to the child, whose sign-in isn't revoked, however long since the app was last opened. After 90 days unused the token stops working for the API, but the pushes keep coming; tapping one opens the app at sign-in. How it's sent: `docs/PUSH.md`.
+- **Which phones:** every push address of every parent linked to the child, whose sign-in isn't revoked and was used in the last 30 days. A push may arrive a few minutes late: the tap's time is saved at the gate, and the push says that time. How it's sent: `docs/PUSH.md`.
 
 ### `POST /logout`
 

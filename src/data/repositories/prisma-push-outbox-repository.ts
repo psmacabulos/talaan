@@ -1,10 +1,10 @@
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import type { NotificationKind } from "@/features/parents/types";
 import { prisma } from "@/lib/db";
-import type { DeliveryResult, PushOutboxRepository } from "./push-outbox-repository";
+import type { DeliveryResult, PushOutboxRepository, ReceiptDue, ReceiptResult } from "./push-outbox-repository";
 
 /**
- * The push outbox in Postgres (Step 54). Raw SQL for the two claims:
+ * The push outbox in Postgres (Steps 54 and 54.1). Raw SQL for the claims and the cleanup:
  * `FOR UPDATE SKIP LOCKED` lets two workers (a deploy's old and new server,
  * a `heroku run`, a worker dyno later) each take different rows, never the
  * same one, and Prisma's query builder can't say it. Names are quoted
@@ -12,7 +12,7 @@ import type { DeliveryResult, PushOutboxRepository } from "./push-outbox-reposit
  */
 export function createPrismaPushOutboxRepository(db: PrismaClient = prisma): PushOutboxRepository {
   return {
-    async fanOut(limit, maxAgeMs) {
+    async fanOut(limit, { maxAgeMs, signInUnusedMs }) {
       // One transaction: a notification is never marked pushed without its
       // deliveries, so a crash between the two can't lose a push.
       return db.$transaction(async (tx) => {
@@ -32,12 +32,14 @@ export function createPrismaPushOutboxRepository(db: PrismaClient = prisma): Pus
         let deliveries = 0;
         if (fresh.length > 0) {
           // Every push address of every parent linked to the child at the
-          // notification's school, whose sign-in isn't revoked (Step 54).
+          // notification's school, whose sign-in isn't revoked (Step 54) and
+          // was used in the last 30 days (Step 54.1).
           const targets = await tx.$queryRaw<{ notificationId: string; pushTokenId: string }[]>`
             SELECT n."id" AS "notificationId", p."id" AS "pushTokenId"
             FROM "Notification" AS n
             JOIN "ParentStudentLink" AS l ON l."studentId" = n."studentId" AND l."schoolId" = n."schoolId"
             JOIN "ParentToken" AS t ON t."parentId" = l."parentId" AND t."revokedAt" IS NULL
+              AND t."lastUsedAt" >= now() - make_interval(secs => ${signInUnusedMs / 1000})
             JOIN "PushToken" AS p ON p."parentTokenId" = t."id"
             WHERE n."id" IN (${Prisma.join(fresh)})`;
           const made = await tx.pushDelivery.createMany({
@@ -92,7 +94,101 @@ export function createPrismaPushOutboxRepository(db: PrismaClient = prisma): Pus
       if (results.length === 0) return;
       await db.$transaction(results.map((result) => saveResult(db, result)));
     },
+
+    async receiptsDue(limit) {
+      return db.$queryRaw<ReceiptDue[]>`
+        SELECT d."id", d."ticketId", d."pushTokenId",
+               (EXTRACT(EPOCH FROM now() - d."sentAt") * 1000)::float8 AS "sentAgeMs",
+               (EXTRACT(EPOCH FROM now() - n."createdAt") * 1000)::float8 AS "notificationAgeMs"
+        FROM "PushDelivery" AS d
+        JOIN "Notification" AS n ON n."id" = d."notificationId"
+        WHERE d."receiptDueAt" <= now() AND d."ticketId" IS NOT NULL
+        ORDER BY d."receiptDueAt"
+        LIMIT ${limit}`;
+    },
+
+    async saveReceipts(results, askAgainInMs) {
+      const statements = receiptStatements(db, results, askAgainInMs);
+      if (statements.length > 0) await db.$transaction(statements);
+    },
+
+    async cleanUp({ failedKeepMs, signInUnusedMs, batch, maxBatches }) {
+      // Batches with SKIP LOCKED, so a big delete never holds many rows at
+      // once, and a second worker running it at the same time just skips.
+      let failedDeliveries = 0;
+      for (let round = 0; round < maxBatches; round++) {
+        const deleted = await db.$executeRaw`
+          DELETE FROM "PushDelivery" WHERE "id" IN (
+            SELECT "id" FROM "PushDelivery"
+            WHERE "status" = 'failed' AND "nextAttemptAt" < now() - make_interval(secs => ${failedKeepMs / 1000})
+            LIMIT ${batch}
+            FOR UPDATE SKIP LOCKED
+          )`;
+        failedDeliveries += deleted;
+        if (deleted < batch) break;
+      }
+      let signIns = 0;
+      for (let round = 0; round < maxBatches; round++) {
+        // The cascade takes each sign-in's push address and its deliveries.
+        const deleted = await db.$executeRaw`
+          DELETE FROM "ParentToken" WHERE "id" IN (
+            SELECT "id" FROM "ParentToken"
+            WHERE "revokedAt" IS NOT NULL OR "lastUsedAt" < now() - make_interval(secs => ${signInUnusedMs / 1000})
+            LIMIT ${batch}
+            FOR UPDATE SKIP LOCKED
+          )`;
+        signIns += deleted;
+        if (deleted < batch) break;
+      }
+      return { failedDeliveries, signIns };
+    },
   };
+}
+
+/**
+ * One statement per kind of receipt outcome, not one per row (Step 54.1).
+ * Each touches only rows still sent and waiting for a receipt, so repeating
+ * one, or a second worker writing the same rows, changes nothing more.
+ */
+function receiptStatements(db: PrismaClient, results: ReceiptResult[], askAgainInMs: number) {
+  const idsOf = (outcome: ReceiptResult["outcome"]) =>
+    results.filter((result) => result.outcome === outcome).map((result) => result.id);
+  const waitingForReceipt = Prisma.sql`"status" = 'sent' AND "receiptDueAt" IS NOT NULL`;
+  const statements: Prisma.PrismaPromise<unknown>[] = [];
+
+  const delivered = idsOf("delivered");
+  if (delivered.length > 0) {
+    statements.push(db.$executeRaw`
+      DELETE FROM "PushDelivery" WHERE "id" IN (${Prisma.join(delivered)}) AND ${waitingForReceipt}`);
+  }
+  const notReady = idsOf("not_ready");
+  if (notReady.length > 0) {
+    statements.push(db.$executeRaw`
+      UPDATE "PushDelivery" SET "receiptDueAt" = now() + make_interval(secs => ${askAgainInMs / 1000})
+      WHERE "id" IN (${Prisma.join(notReady)}) AND ${waitingForReceipt}`);
+  }
+  const resend = idsOf("resend");
+  if (resend.length > 0) {
+    statements.push(db.$executeRaw`
+      UPDATE "PushDelivery"
+      SET "status" = 'waiting', "receiptDueAt" = NULL, "ticketId" = NULL, "nextAttemptAt" = now(),
+          "lastError" = 'MessageRateExceeded'
+      WHERE "id" IN (${Prisma.join(resend)}) AND ${waitingForReceipt}`);
+  }
+  // Failed rows grouped by error, so each group is one statement.
+  const failedByError = new Map<string, string[]>();
+  for (const result of results) {
+    if (result.outcome !== "failed") continue;
+    failedByError.set(result.error, [...(failedByError.get(result.error) ?? []), result.id]);
+  }
+  for (const [error, ids] of failedByError) {
+    statements.push(db.$executeRaw`
+      UPDATE "PushDelivery" SET "status" = 'failed', "receiptDueAt" = NULL, "lastError" = ${error}
+      WHERE "id" IN (${Prisma.join(ids)}) AND ${waitingForReceipt}`);
+  }
+  const gone = [...new Set(results.flatMap((result) => (result.outcome === "gone" ? [result.pushTokenId] : [])))];
+  if (gone.length > 0) statements.push(db.pushToken.deleteMany({ where: { id: { in: gone } } }));
+  return statements;
 }
 
 /** One result as one statement, for `saveResults`'s single transaction. */
@@ -101,7 +197,8 @@ function saveResult(db: PrismaClient, result: DeliveryResult) {
     case "sent":
       return db.$executeRaw`
         UPDATE "PushDelivery"
-        SET "status" = 'sent', "ticketId" = ${result.ticketId}, "sentAt" = now(), "claimedUntil" = NULL, "lastError" = NULL
+        SET "status" = 'sent', "ticketId" = ${result.ticketId}, "sentAt" = now(), "claimedUntil" = NULL, "lastError" = NULL,
+            "receiptDueAt" = now() + make_interval(secs => ${result.receiptInMs / 1000})
         WHERE "id" = ${result.id} AND "status" = 'sending'`;
     case "retry":
       return db.$executeRaw`

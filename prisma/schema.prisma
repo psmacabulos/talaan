@@ -189,7 +189,8 @@ model ParentToken {
   tokenHash  String    @unique
   // What the app says it is, e.g. "Pixel 7", so a parent can tell sessions apart later.
   label      String?
-  // Moved forward at most once an hour; a token unused for 90 days stops working.
+  // Moved forward at most once an hour, so opening the app keeps it alive.
+  // A token unused for 30 days stops working and is cleared (Step 54.1).
   lastUsedAt DateTime  @default(now())
   revokedAt  DateTime?
   createdAt  DateTime  @default(now())
@@ -212,9 +213,9 @@ model PushToken {
   // signs in as another parent moves its row to that sign-in.
   token         String       @unique
   platform      PushPlatform
-  // One push address per signed-in phone. Deleted with its sign-in. A
-  // sign-in that has one isn't cleared for being unused (Step 54), so a
-  // parent who only reads the banners keeps getting them.
+  // One push address per signed-in phone. Deleted with its sign-in, which
+  // is cleared after 30 days unused (Step 54.1): the parent opens the app,
+  // or signs in again, to keep getting pushes.
   parentTokenId String         @unique
   parentToken   ParentToken    @relation(fields: [parentTokenId], references: [id], onDelete: Cascade)
   createdAt     DateTime       @default(now())
@@ -230,7 +231,8 @@ enum PushDeliveryStatus {
 }
 
 // One push to one phone (Step 54), made by the push worker from a
-// notification. Step 54.1 checks Expo's receipt and clears old rows.
+// notification. Deleted once Expo's receipt says it was delivered (Step
+// 54.1); a failed one is kept 7 days.
 model PushDelivery {
   id             String             @id @default(uuid())
   notificationId String
@@ -250,9 +252,15 @@ model PushDelivery {
   lastError      String?
   createdAt      DateTime           @default(now())
   sentAt         DateTime?
+  // When to ask Expo for this push's receipt (Step 54.1). Null: not sent
+  // yet. A delivered push's row is deleted, so nothing about a success is kept.
+  receiptDueAt   DateTime?
 
   @@unique([notificationId, pushTokenId])
+  // Also the cleanup's: a failed row's nextAttemptAt is never earlier than its createdAt.
   @@index([status, nextAttemptAt])
+  // Only the sent pushes still waiting for a receipt.
+  @@index([receiptDueAt], map: "PushDelivery_receipt_due", where: raw("\"receiptDueAt\" IS NOT NULL"))
   // Postgres doesn't index a foreign key by itself: removing a phone would read every row.
   @@index([pushTokenId])
 }

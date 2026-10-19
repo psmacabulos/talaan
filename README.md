@@ -38,6 +38,18 @@ There are no environment variables required yet in Phase 1 — see [`.env.exampl
 
 The full list, grouped by task, with the database, gate and git commands too: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 
+## Parent notifications: the rules
+
+Owner decisions of 2026-10-16 and 2026-10-19. The full design is in [`docs/PUSH.md`](docs/PUSH.md), and a plain explanation with the numbers is the "Bantay Aral Push Flow" page (https://claude.ai/artifact/PgnXN3SSqE8DMRTudHWqAa).
+
+1. **The tap's time is what matters.** It's saved in the database the moment the card is read, before any push exists. The attendance pages and the parent's feed never depend on a push.
+2. **A push may arrive a few minutes late, but never silently disappears.** The notification is saved with the tap, and a worker sends it to every linked parent's phone through Expo (free), trying again with a growing wait for up to 6 hours. It says the saved time ("Juan tapped in at 7:56 AM", the first name only), however late it arrives.
+3. **Background checks run every 5 minutes, not every few seconds.** A new tap is pushed straight away. Retries, receipts and cleanup wait for the 5-minute check, and receipts and cleanup run only when nothing is waiting to be sent.
+4. **We keep no record of a successful push.** About 15 minutes after a push, Expo's receipt says how it went. If it was delivered, its row is deleted. Receipts are read only to stop pushing to phones whose app is gone, and to send again what Expo was too busy to send.
+5. **Failed pushes are kept 7 days**, for looking into a problem, then deleted.
+6. **A parent's sign-in lasts 30 days from its last use, and opening the app counts as use.** A parent who opens the app at least once a month never signs in again and keeps getting pushes. After 30 days without opening it, the sign-in is cleared and pushes stop, until the parent signs in again.
+7. **It costs nothing extra.** The worker runs inside the web server, and Expo's push service is free. `PUSH_SENDER=log` keeps pushes in the log only (development, the tests, and the live server until the parent app can receive them); `expo` sends them, with `EXPO_ACCESS_TOKEN` ([`docs/DEPLOY.md`](docs/DEPLOY.md)).
+
 ## Theming
 
 Every color a school sees comes from a **theme preset** — never a hardcoded value in a component. Presets live in [`src/lib/theme/presets.ts`](src/lib/theme/presets.ts); `src/lib/theme/contrast.ts` checks every one of them against WCAG AA automatically (see [`docs/STYLING-SYSTEM.md`](docs/STYLING-SYSTEM.md) for how the whole mechanism fits together).

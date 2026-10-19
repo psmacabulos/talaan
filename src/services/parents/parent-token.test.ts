@@ -34,14 +34,15 @@ describe("parent tokens", () => {
     await expect(authenticateParent(`Bearer ${token}`, NOW, { tokens })).resolves.toBeNull();
   });
 
-  it("stops working after 90 days unused, and using it keeps it alive", async () => {
+  it("stops working after 30 days unused, and using it keeps it alive", async () => {
     const tokens = createMockParentTokenRepository();
     const token = await issueParentToken("parent-1", null, NOW, { tokens });
 
-    await expect(authenticateParent(`Bearer ${token}`, later(80 * DAY), { tokens })).resolves.not.toBeNull();
-    // Used on day 80, so on day 160 it's been 80 days unused: still fine.
-    await expect(authenticateParent(`Bearer ${token}`, later(160 * DAY), { tokens })).resolves.not.toBeNull();
-    await expect(authenticateParent(`Bearer ${token}`, later(251 * DAY), { tokens })).resolves.toBeNull();
+    await expect(authenticateParent(`Bearer ${token}`, later(20 * DAY), { tokens })).resolves.not.toBeNull();
+    // Used on day 20, so on day 45 it's been 25 days unused: still fine.
+    await expect(authenticateParent(`Bearer ${token}`, later(45 * DAY), { tokens })).resolves.not.toBeNull();
+    // Used on day 45; day 76 is 31 days later.
+    await expect(authenticateParent(`Bearer ${token}`, later(76 * DAY), { tokens })).resolves.toBeNull();
   });
 
   it("writes lastUsedAt at most once an hour", async () => {
@@ -61,25 +62,8 @@ describe("parent tokens", () => {
     await issueParentToken("parent-2", "someone else's", NOW, { tokens });
     await tokens.revoke(tokens.rows[1].id, NOW);
 
-    await issueParentToken("parent-1", "new phone", later(91 * DAY), { tokens });
+    await issueParentToken("parent-1", "new phone", later(31 * DAY), { tokens });
 
     expect(tokens.rows.map((row) => row.parentId)).toEqual(["parent-2", "parent-1"]);
-  });
-
-  it("keeps a long-unused sign-in that still receives pushes, but not a revoked one (Step 54)", async () => {
-    const withPushAddress = new Set<string>();
-    const tokens = createMockParentTokenRepository(withPushAddress);
-    await issueParentToken("parent-1", "phone that only reads banners", NOW, { tokens });
-    await issueParentToken("parent-1", "signed-out phone", NOW, { tokens });
-    const [bannersOnly, signedOut] = tokens.rows.map((row) => row.id);
-    withPushAddress.add(bannersOnly).add(signedOut);
-    await tokens.revoke(signedOut, NOW);
-
-    await issueParentToken("parent-1", "new phone", later(91 * DAY), { tokens });
-
-    const ids = tokens.rows.map((row) => row.id);
-    expect(ids).toContain(bannersOnly);
-    expect(ids).not.toContain(signedOut);
-    expect(ids).toHaveLength(2);
   });
 });

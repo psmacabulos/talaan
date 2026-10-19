@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createMockPushOutboxRepository, type DueDelivery } from "@/data/repositories/push-outbox-repository";
 import { toPushMessage } from "./push-message";
 import type { PushMessage, PushSender } from "./push-sender";
-import { GIVE_UP_AFTER_MS, resultFor, retryDelayMs, sendDue } from "./send-due";
+import { GIVE_UP_AFTER_MS, RECEIPT_WAIT_MS, resultFor, retryDelayMs, sendDue } from "./send-due";
 
 function delivery(id: string, overrides: Partial<DueDelivery> = {}): DueDelivery {
   return {
@@ -38,12 +38,14 @@ describe("toPushMessage", () => {
 });
 
 describe("resultFor", () => {
-  it("marks an accepted push sent, with Expo's ticket", () => {
+  it("marks an accepted push sent, with Expo's ticket and its receipt in 15 minutes", () => {
     expect(resultFor(delivery("a"), { ok: true, ticket: { status: "ok", id: "ticket-1" } })).toEqual({
       id: "a",
       outcome: "sent",
       ticketId: "ticket-1",
+      receiptInMs: RECEIPT_WAIT_MS,
     });
+    expect(RECEIPT_WAIT_MS).toBe(15 * 60_000);
   });
 
   it("drops a phone whose app is gone", () => {
@@ -101,6 +103,7 @@ describe("sendDue", () => {
           ],
         };
       },
+      getReceipts: async () => ({ ok: true, receipts: {} }),
     };
 
     await sendDue({ outbox, sender });
@@ -108,18 +111,76 @@ describe("sendDue", () => {
     expect(requests).toHaveLength(1);
     expect(requests[0].map((message) => message.to)).toEqual(["ExponentPushToken[a]", "ExponentPushToken[b]"]);
     expect(outbox.saved).toEqual([
-      { id: "a", outcome: "sent", ticketId: "ticket-a" },
+      { id: "a", outcome: "sent", ticketId: "ticket-a", receiptInMs: RECEIPT_WAIT_MS },
       { id: "b", outcome: "gone", pushTokenId: "push-b" },
     ]);
   });
 
   it("puts the whole batch back to try again when the request fails", async () => {
     const outbox = createMockPushOutboxRepository([delivery("a"), delivery("b")]);
-    const sender: PushSender = { send: async () => ({ ok: false, error: "network" }) };
+    const sender: PushSender = {
+      send: async () => ({ ok: false, error: "network" }),
+      getReceipts: async () => ({ ok: true, receipts: {} }),
+    };
 
     await sendDue({ outbox, sender });
 
     expect(outbox.saved.map((result) => result.outcome)).toEqual(["retry", "retry"]);
+  });
+
+  it("after a refused batch, sends each message alone and fails only the one Expo refuses alone", async () => {
+    const outbox = createMockPushOutboxRepository([delivery("a"), delivery("bad"), delivery("c")]);
+    const requests: string[][] = [];
+    const sender: PushSender = {
+      async send(messages) {
+        requests.push(messages.map((message) => message.to));
+        if (messages.length > 1 || messages[0].to.includes("bad")) return { ok: false, error: "http_400" };
+        return { ok: true, tickets: [{ status: "ok", id: `ticket-${messages[0].to}` }] };
+      },
+      getReceipts: async () => ({ ok: true, receipts: {} }),
+    };
+
+    await sendDue({ outbox, sender });
+
+    expect(requests).toHaveLength(4);
+    expect(outbox.saved.map((result) => [result.id, result.outcome])).toEqual([
+      ["a", "sent"],
+      ["bad", "failed"],
+      ["c", "sent"],
+    ]);
+  });
+
+  it("keeps retrying the whole batch when every message is refused alone too", async () => {
+    const outbox = createMockPushOutboxRepository([delivery("a"), delivery("b")]);
+    const sender: PushSender = {
+      send: async () => ({ ok: false, error: "http_400" }),
+      getReceipts: async () => ({ ok: true, receipts: {} }),
+    };
+
+    await sendDue({ outbox, sender });
+
+    expect(outbox.saved.map((result) => result.outcome)).toEqual(["retry", "retry"]);
+  });
+
+  it("leaves the messages it had no time for to the next pass, not counted as a try", async () => {
+    const outbox = createMockPushOutboxRepository([delivery("a"), delivery("b"), delivery("c")]);
+    let clock = 0;
+    const sender: PushSender = {
+      async send(messages) {
+        if (messages.length > 1) return { ok: false, error: "http_400" };
+        clock += 61_000;
+        return { ok: true, tickets: [{ status: "ok", id: "t" }] };
+      },
+      getReceipts: async () => ({ ok: true, receipts: {} }),
+    };
+
+    await sendDue({ outbox, sender }, () => clock);
+
+    expect(outbox.saved[0]).toMatchObject({ id: "a", outcome: "sent" });
+    expect(outbox.saved.slice(1)).toEqual([
+      expect.objectContaining({ id: "b", outcome: "retry", countsAsTry: false }),
+      expect.objectContaining({ id: "c", outcome: "retry", countsAsTry: false }),
+    ]);
   });
 
   it("sends nothing when nothing is due", async () => {
@@ -129,6 +190,7 @@ describe("sendDue", () => {
         calls += 1;
         return { ok: true, tickets: [] };
       },
+      getReceipts: async () => ({ ok: true, receipts: {} }),
     };
     await expect(sendDue({ outbox: createMockPushOutboxRepository(), sender })).resolves.toEqual([]);
     expect(calls).toBe(0);

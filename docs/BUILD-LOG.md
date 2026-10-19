@@ -2426,3 +2426,40 @@ The recipe, `docs/backend/step-54-push-notifications.md`, was written before the
 - **The code review:** nothing blocking. Its four "not blocking" notes are written into `docs/PUSH.md`'s "Known limits", and the whole-batch retry became a task in Step 54.1.
 - **For the owner to measure** (architect's suggestion): the `push:` log lines during the morning rush (sent, retrying, failed, too old), connections in use (`heroku pg:info`), and `PushDelivery` rows added per day.
 - **The owner's type check found two errors in my tests** (`docs/PROBLEMS-LOG.md`, P-025). A hand-built Prisma `Notification` row was missing the new `pushedAt`, and a settings object was cast to `ProcessEnv` without `NODE_ENV`. Vitest doesn't check types, so both had passed. Both are fixed, and the two files pass again (7 tests).
+
+## Step 54.1: push receipts and cleanup (2026-10-19)
+
+The recipe, `docs/backend/step-54.1-push-receipts.md`, was written before the code and reviewed with a fresh systems-architect (one round). The owner then asked how push receipts work, and was concerned about the 430 MB storage figure and per-minute checks. I answered with a page, "Bantay Aral Push Flow" (https://claude.ai/artifact/PgnXN3SSqE8DMRTudHWqAa).
+
+- **The owner's decisions** (2026-10-19). The principle behind them: the tap's saved time is what matters, and a push may be a few minutes late.
+  - Receipts every 5 minutes, not every minute.
+  - No stored record of a successful push.
+  - The worker's background check every 5 minutes, not 30 seconds.
+  - A parent's sign-in lasts 30 days from its last use, not 12 months as I'd proposed. "They just need to sign in to keep receiving pushes."
+  - All of it written plainly in `README.md`. Saved as a memory too, so later steps follow the same principle.
+- **What the plan review changed** (two blocking points, both accepted):
+  - Receipts for the 7:00 pushes come due at 7:15, mid-rush. Checking them inside the one-at-a-time pass would have delayed new taps, so receipts and cleanup run only in a pass with nothing to send.
+  - My first "one at a time" rule would have failed every message for good when the cause was system-wide. A message refused alone now fails only if another got through.
+  - Also taken: a single `receiptDueAt` column instead of a claim; one statement per outcome; cleanup by the existing `(status, nextAttemptAt)` index; `SKIP LOCKED` in the cleanup; setup errors logged loudly.
+- **The 30 days changed more than the cleanup.** The hourly cleanup deletes any sign-in unused for 30 days, so a 90-day API limit would have been meaningless. `PARENT_TOKEN_UNUSED_LIMIT_MS` is now 30 days for everyone. Step 54's `deleteStale` exception for sign-ins with a push address is gone, and the fan-out pushes only to sign-ins used in the last 30 days. `PARENT-API.md`, the app brief, `AUTH.md` and `ARCHITECTURE.md` say 30 days now. The brief asks the app to call `/me` and register its push token every time it opens.
+- **Commands run:**
+  - `npx prisma migrate dev --create-only --name push_receipts`. Then I added `UPDATE "PushDelivery" SET "receiptDueAt" = CURRENT_TIMESTAMP WHERE "status" = 'sent';`, so Step 54's sent rows are checked once, before `npx prisma migrate dev` applied it.
+  - `npx prisma generate`, then `npx prisma migrate diff …`: "This is an empty migration".
+  - The same `npx prisma migrate deploy` on the test database, through `dotenv`, as in Step 54.
+- **Small surprises:**
+  - The receipt wait first lived in `check-receipts.ts`, but `send-due.ts` needs it for the "sent" result, and `check-receipts.ts` already imports from `send-due.ts`. It moved there to avoid a circular import.
+  - Two callbacks in `sendDue` got explicit return types, so TypeScript keeps `ok: true` as a literal. That's P-025's lesson, since Vitest wouldn't catch it.
+  - A Python edit of the recipe stopped on one search string with two leading spaces the file didn't have. Nothing had been written, and it was rerun.
+- **Checks run here** (targeted; the full suite, type check, build and Playwright are the owner's):
+  - `npx vitest run src/services src/data src/features src/lib`: 99 files, 736 tests passed. That includes 33 push tests and the 6 Postgres-backed outbox tests.
+  - Instead of the type check, I searched for the type breaks this step could cause: callers of the mock token repository, every `PushSender` object, every "sent" result and every `fanOut` call. Nothing was missing.
+- **The code review:** nothing blocking. Two fixes taken:
+  - The one-by-one retry's 60-second budget now starts at the claim, so its worst case is 90 seconds, inside the 2-minute claim. Before, a second worker could have taken the rows back and sent them twice.
+  - `checkReceipts` reads up to 5 batches of 1,000 per quiet check, when there's a backlog, so a big school's morning is checked well within Expo's 24 hours.
+
+  Recorded instead of changed:
+  - the app must call the API every time it opens and returns to the foreground (`PARENT-API.md`, the brief, `ARCHITECTURE.md`);
+  - a resend waits up to 5 minutes (the owner's rule);
+  - the sign-in cleanup reads the whole table (an index only if needed).
+
+  All four are in `docs/PUSH.md`'s known limits.
