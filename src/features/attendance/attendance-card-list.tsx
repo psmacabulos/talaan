@@ -4,6 +4,8 @@ import { StudentAvatar, studentName } from "@/features/students/student-display"
 import { cn } from "@/lib/utils";
 import type { AttendanceRow } from "./attendance-table";
 import { DayTapsIndicator } from "./day-taps";
+import { ManualTapNote } from "./manual-tap-note";
+import { RecordTimeInButton } from "./record-time-in-button";
 import { dayTapSummary, formatTapTime, studentStatus, type SchoolDay } from "./status";
 import type { Tap } from "./types";
 
@@ -22,6 +24,10 @@ import type { Tap } from "./types";
  * dashboard's class roll, which already sits inside a bordered panel, so
  * it uses thin dividers there instead of boxes inside a box, the same as
  * the "Live taps" list beside it.
+ *
+ * On today's roll, a student with no tap yet gets "Record time in" under
+ * their status, where the time will appear (Step 55); once they've tapped,
+ * the time takes its place.
  */
 export function AttendanceCardList({
   rows,
@@ -29,6 +35,7 @@ export function AttendanceCardList({
   day,
   label,
   variant = "cards",
+  canRecordTimeIn = false,
 }: {
   rows: AttendanceRow[];
   taps: Tap[];
@@ -36,6 +43,8 @@ export function AttendanceCardList({
   day: SchoolDay;
   label: string;
   variant?: "cards" | "rows";
+  /** Today's roll on the Attendance page: offer "Record time in" to students with no tap yet. */
+  canRecordTimeIn?: boolean;
 }) {
   return (
     <ul aria-label={label} className={cn("flex flex-col", variant === "cards" ? "gap-2" : "divide-y divide-border")}>
@@ -61,29 +70,34 @@ export function AttendanceCardList({
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
               <StatusPill status={studentStatus(student.id, taps, day)} flexible={day.flexible} />
-              <p className="text-sm text-muted-foreground tabular-nums">
-                {summary.timeIn ? (
-                  <>
-                    <span className="sr-only">In at </span>
-                    {/* "In" is spelled out only beside an "Out"; alone, the time says it. */}
-                    {summary.timeOut ? <span aria-hidden="true">In </span> : null}
-                    <time dateTime={summary.timeIn.tappedAt}>{formatTapTime(summary.timeIn.tappedAt)}</time>
-                    {/* On its own line: side by side they squeezed a long name until it broke mid-word at 360px. */}
-                    {summary.timeOut ? (
-                      <span className="block">
-                        <span className="sr-only">, out at </span>
-                        <span aria-hidden="true">Out </span>
-                        <time dateTime={summary.timeOut.tappedAt}>{formatTapTime(summary.timeOut.tappedAt)}</time>
-                      </span>
-                    ) : null}
-                  </>
-                ) : (
-                  <>
-                    <span aria-hidden="true">—</span>
-                    <span className="sr-only">No tap yet</span>
-                  </>
-                )}
-              </p>
+              {canRecordTimeIn && !summary.timeIn ? (
+                <RecordTimeInButton studentId={student.id} studentName={studentName(student)} layout="card" />
+              ) : (
+                <p className="text-sm text-muted-foreground tabular-nums">
+                  {summary.timeIn ? (
+                    <>
+                      <span className="sr-only">In at </span>
+                      {/* "In" is spelled out only beside an "Out"; alone, the time says it. */}
+                      {summary.timeOut ? <span aria-hidden="true">In </span> : null}
+                      <time dateTime={summary.timeIn.tappedAt}>{formatTapTime(summary.timeIn.tappedAt)}</time>
+                      <ManualTapNote tap={summary.timeIn} className="block" />
+                      {/* On its own line: side by side they squeezed a long name until it broke mid-word at 360px. */}
+                      {summary.timeOut ? (
+                        <span className="block">
+                          <span className="sr-only">, out at </span>
+                          <span aria-hidden="true">Out </span>
+                          <time dateTime={summary.timeOut.tappedAt}>{formatTapTime(summary.timeOut.tappedAt)}</time>
+                        </span>
+                      ) : null}
+                    </>
+                  ) : (
+                    <>
+                      <span aria-hidden="true">—</span>
+                      <span className="sr-only">No tap yet</span>
+                    </>
+                  )}
+                </p>
+              )}
               <DayTapsIndicator summary={summary} studentName={studentName(student)} date={day.date} />
             </div>
           </li>

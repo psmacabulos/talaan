@@ -22,7 +22,10 @@ export const seedStaff: Staff[] = [
       id: `staff-principal-${school.id}`,
       schoolId: school.id,
       role: "principal",
-      ...nameAt(schoolIndex * 2 + 1),
+      // The pilot school's real principal (owner, 2026-10-20); the demo schools keep made-up names.
+      ...(school.id === "school-balanga"
+        ? { firstName: "Catherine L.", lastName: "Jongco" }
+        : nameAt(schoolIndex * 2 + 1)),
       email: `principal@${school.id}.talaan.example`,
       status: "active",
     };

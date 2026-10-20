@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Tap } from "@/features/attendance/types";
+import type { CardTap } from "./record-tap";
 import { toGateTapEvent } from "./publish-tap";
 import { publishTap, subscribeToTaps, type GateTapEvent } from "./tap-events";
 
@@ -30,7 +30,7 @@ describe("tap events", () => {
 });
 
 describe("toGateTapEvent", () => {
-  const tap: Tap = {
+  const tap: CardTap = {
     id: "t1",
     schoolId: "school-a",
     stationId: "device-gate",

@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { Tap } from "@/features/attendance/types";
-import type { TapStudent } from "@/services/taps/record-tap";
+import type { CardTap, TapStudent } from "@/services/taps/record-tap";
 import { toGateTapResponse } from "./responses";
 
-const tap: Tap = {
+const tap: CardTap = {
   id: "6f1c2b7e-3a4d-4e5f-8a9b-0c1d2e3f4a5b",
   schoolId: "school-a",
   stationId: "device-gate",

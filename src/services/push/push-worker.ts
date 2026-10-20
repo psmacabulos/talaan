@@ -174,8 +174,8 @@ export function startPushWorker(deps: PushDeps): void {
 }
 
 /**
- * Called right after a notification is written (the gate, Simulate a tap,
- * the station), so the push goes now, not at the next check. Does nothing
+ * Called right after a notification is written (the gate, a time in
+ * recorded by hand, the station), so the push goes now, not at the next check. Does nothing
  * where no worker was started: tests, and the build.
  */
 export function wakePushWorker(): void {

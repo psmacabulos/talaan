@@ -41,7 +41,7 @@ flowchart TB
         Feed["LiveTapFeed"]
     end
 
-    Action["simulateTap()<br/>actions.ts"]
+    Action["recordTimeIn()<br/>actions.ts (Step 55)"]
 
     Roster --> StudentStatus
     Taps --> StudentStatus
@@ -55,7 +55,6 @@ flowchart TB
     StudentStatus --> Roll
     Taps --> Feed
 
-    Waiting --> Action
     Action -->|new Tap| Taps
 
     style StudentStatus fill:#223060,color:#fff
@@ -145,17 +144,34 @@ Two thin wrappers do all the summarising, and both just call `studentStatus()` i
 
 `attendanceByGrade` only returns grades that **actually exist at that school**. Two of the three demo schools only have three grade levels each — they'd otherwise show three permanently-empty rows for grades they don't teach.
 
-## "Simulate a tap", end to end
+## Recording a time in by hand (Step 55), end to end
 
-There's no real tap station yet (Step 19, and real hardware in Phase 2), so the dashboard has a button that manufactures one. It is a genuinely useful piece of plumbing to understand, because it's the same path a real tap will take.
+A sticker fails, or a student has none yet, and they're standing in the classroom. Their teacher (or the principal) opens **Attendance**, finds the student's row, and presses **Record time in**. It replaced Step 13's "Simulate a tap", which tapped the *next* student who hadn't tapped, never the one in front of you.
 
-`simulateTap()` in `src/features/attendance/actions.ts`:
+```mermaid
+sequenceDiagram
+    participant Row as RecordTimeInButton<br/>(attendance row)
+    participant Action as recordTimeIn()<br/>actions.ts
+    participant Service as recordManualTimeIn()<br/>services/taps
+    participant DB as Postgres (one transaction)
+    Row->>Row: confirm: "Record Juan Cruz's time in now?"
+    Row->>Action: recordTimeIn(studentId)
+    Action->>Service: school, student, who's asking, now
+    Service->>Service: in this school? a teacher's own class?<br/>no tap yet today?
+    Service->>DB: Tap (source manual, recordedById, fixed id)<br/>+ parent Notification
+    DB-->>Service: created, or "exists" (a second click)
+    Action->>Action: wake the push worker, tell the monitor, refresh()
+    Action-->>Row: toast "Juan Cruz's time in was recorded at 9:10 AM"
+```
 
-1. Reads the session. A **teacher** only ever draws from their own advisory class; a principal draws from the whole school.
-2. Asks `studentsWithoutTapToday()` who hasn't tapped — **idle students before absent ones**, so the demo tells a "still arriving" story before a "the day already ended" one.
-3. Walks that list looking for someone with an **active ID card**. No card, no tap — exactly like the real gate. A student with no card is collected into a separate list instead.
-4. Creates the tap through `tapRepository.create()` (idempotent by tap id, like a real station's upload).
-5. Calls **`refresh()`**, and returns a typed result saying what actually happened.
+The rules live in `recordManualTimeIn()` (`src/services/taps/record-manual-time-in.ts`), not in the button or the action:
+
+1. **Who.** A principal or super admin can record anyone at their school; a teacher only their own advisory class. Anyone else's student answers "not found".
+2. **Once a day, before any tap.** A student with any tap today, from a gate or by hand, is refused, so a hand-recorded tap is always a **time in**. The button is disabled then too, but the server checks again.
+3. **Now, honestly.** The time is the moment it's pressed, so a student recorded at 9:10 shows as **Late**, with "Recorded by staff" under the time. Picking an earlier arrival time is a later step: it brings rules (no future times, the right day, how it orders against later taps).
+4. **Two clicks, one tap.** The tap's id is made from the student and the date (`manualTimeInId`, shaped as a version 5 UUID). Two clicks, or two teachers at the same moment, make the same id. The database keeps the first, and the writer answers `"exists"` for the second, so parents get one notification. It goes through the same `tapWriter` as a gate's taps, so the tap and its notification are written together or not at all.
+5. **The card serial is kept when there is one.** The gate's 2-minute check looks for taps of the same serial, so a sticker that finally reads a minute after a hand-recorded time in is caught as a duplicate instead of becoming a time out. A student with no card gets a tap with no serial (`Tap.cardSerial` is nullable since Step 55).
+6. **Never claims a gate read it.** `stationId` is `"manual"`, `source` is `manual`, and `recordedById` names the staff member (kept as null if they're later removed).
 
 ### The `refresh()` line is load-bearing
 
@@ -165,18 +181,11 @@ import { refresh } from "next/cache";
 refresh();
 ```
 
-Without it the button appears to do nothing. Step 11's dev switcher gets a free re-render because it sets a **cookie**, and Next re-renders the page automatically when a Server Action changes one. `simulateTap` changes *data*, not a cookie — so it gets no such thing, and has to ask. See `docs/LEARNING-LOG.md`'s "Staying put but showing new data" entry for the three-way comparison (`cookie` / `redirect()` / `refresh()`).
+Without it the button appears to do nothing. Step 11's dev switcher gets a free re-render because it sets a **cookie**, and Next re-renders the page automatically when a Server Action changes one. `recordTimeIn` changes *data*, not a cookie, so it gets no such thing and has to ask. See `docs/LEARNING-LOG.md`'s "Staying put but showing new data" entry for the three-way comparison (`cookie` / `redirect()` / `refresh()`).
 
-### Why it returns a result instead of just running
+### Where the button sits
 
-```ts
-export type SimulateTapResult =
-  | { tapped: true; studentName: string }
-  | { tapped: false; reason: "no-school" | "everyone-in" }
-  | { tapped: false; reason: "no-card"; studentNames: string[] };
-```
-
-Three different things can happen, and the person clicking deserves to know which. The first version always said "Tap recorded", including when it had tapped nobody — which is how a student with no ID card ended up looking like a bug (`docs/BUILD-LOG.md`, Step 13 review round 1). Now a card-less student is named, and the class roll shows a "No card" (or "Lost") tag on that row instead of "No tap yet", so the reason is visible before anyone clicks anything. (It said "No ID card linked yet" until Step 27.8, which switched it to the same tag every other list uses.)
+Exactly where the time in will appear, and only while there's none: in the **Time in** cell of the desktop table (a small outline button), and under the status on a phone card (a quieter text button, still 44px tall to tap). Once the student has tapped, the time takes its place. Changed in the owner's review, 2026-10-20: a first version kept a disabled button on every tapped row in its own column, and put a boxed button under the name on phones, next to the "No card" tag. Ten disabled buttons hid the one that worked, and the phone card stacked three things on the left while the "—" on the right sat empty. Past days show no button at all.
 
 ## The attendance page (Step 17): picking one class, one day
 
@@ -197,7 +206,7 @@ Every `Tap` used everywhere above this point — the dashboard, the attendance p
 
 | Button | What it does | Writes |
 |---|---|---|
-| Valid card | Picks the first waiting student (`studentsWithoutTapToday`, same order the dashboard's own "Simulate a tap" uses) who has an active card. | A real `Tap`. |
+| Valid card | Picks the first waiting student (`studentsWithoutTapToday`: idle before absent, roster order) who has an active card. | A real `Tap`. |
 | Already tapped | Finds a student who already has a tap today and reports it back — CLAUDE.md's "repeated taps... are ignored" taken literally. | Nothing. |
 | Lost card | Finds a card on file marked `lost` and taps its original owner — same shape the seed data (`src/data/seed/taps.ts`) already established for exactly this scenario. | A `Tap` *and* an `Alert` (`lost_card_tapped`). |
 | Unknown card | Fabricates a serial that matches no card on file at all. | A `Tap` with `studentId: null` — `LiveTapFeed` already knew how to render this ("Unknown card", "Not linked to a student") before this step existed. |
@@ -215,6 +224,8 @@ Every `Tap` used everywhere above this point — the dashboard, the attendance p
 **I want attendance numbers on a new screen.** Import `countByStatus` / `attendanceByGrade` from `src/features/attendance/status.ts` and feed them a roster and a tap list from the repositories. Don't re-derive statuses by hand — these functions are unit-tested and the screens should agree with each other.
 
 **I want to show one student's status somewhere.** `studentStatus(student.id, taps, day)` returns the status; pass it straight to `<StatusPill status={...} />` (`docs/COMPONENTS.md`), which already knows the colors and labels.
+
+**I want to change who can record a time in by hand, or when.** Change `mayRecordFor()` or the "no tap yet today" check in `src/services/taps/record-manual-time-in.ts`, and its tests in `record-manual-time-in.test.ts`. The button only mirrors those rules; the server is what enforces them.
 
 **I want the actual arrival time, not just the status.** `todaysTap(student.id, taps, day)` returns the tap itself; `formatTapTime(tap.tappedAt)` renders it as "7:56 AM".
 

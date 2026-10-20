@@ -36,6 +36,9 @@ export type RecordTapInput = {
   receivedAt: string;
 };
 
+/** A tap the gate read, which always has a serial (only a time in recorded by hand can have none, Step 55). */
+export type CardTap = Tap & { cardSerial: string };
+
 /** Just what a gate screen shows: never the LRN, birth date or guardian. */
 export type TapStudent = Pick<Student, "id" | "firstName" | "lastName" | "gradeLevel" | "section">;
 
@@ -49,9 +52,9 @@ export type RecordTapResult =
       notified: boolean;
       replayed: boolean;
     }
-  | { outcome: "lost_card"; tap: Tap; student: TapStudent | null; replayed: boolean }
+  | { outcome: "lost_card"; tap: CardTap; student: TapStudent | null; replayed: boolean }
   /** A card that isn't this school's is never stored (2026-10-13): `tap` is then only what the gate read. */
-  | { outcome: "unknown_card"; tap: Tap; replayed: boolean }
+  | { outcome: "unknown_card"; tap: CardTap; replayed: boolean }
   | { outcome: "duplicate"; previousTap: Tap; student: TapStudent | null }
   | { outcome: "invalid_serial" };
 
@@ -72,7 +75,7 @@ const DEFAULT_DEPS: RecordTapDeps = {
   writer: tapWriter,
 };
 
-function toTapStudent(student: Student | null): TapStudent | null {
+export function toTapStudent(student: Student | null): TapStudent | null {
   if (!student) return null;
   const { id, firstName, lastName, gradeLevel, section } = student;
   return { id, firstName, lastName, gradeLevel, section };
@@ -96,18 +99,23 @@ async function directionOf(tap: Tap, studentId: string, deps: RecordTapDeps) {
  * a lost-card tap; one with a student otherwise was a normal one.
  */
 async function replay(tap: Tap, deps: RecordTapDeps): Promise<RecordTapResult> {
-  if (!tap.studentId) return { outcome: "unknown_card", tap, replayed: true };
+  // A tap recorded by hand for a student with no card has no serial to
+  // answer with; a gate never makes one, so it's never a gate's resend.
+  const { cardSerial } = tap;
+  if (cardSerial === null) return { outcome: "invalid_serial" };
+  const cardTap = { ...tap, cardSerial };
+  if (!tap.studentId) return { outcome: "unknown_card", tap: cardTap, replayed: true };
 
   const [student, card] = await Promise.all([
     deps.students.getInSchool(tap.schoolId, tap.studentId),
-    deps.cards.getBySerial(tap.cardSerial),
+    deps.cards.getBySerial(cardSerial),
   ]);
   if (card?.status === "lost" && card.studentId === tap.studentId) {
-    return { outcome: "lost_card", tap, student: toTapStudent(student), replayed: true };
+    return { outcome: "lost_card", tap: cardTap, student: toTapStudent(student), replayed: true };
   }
 
   const tapStudent = toTapStudent(student);
-  if (!tapStudent) return { outcome: "unknown_card", tap, replayed: true };
+  if (!tapStudent) return { outcome: "unknown_card", tap: cardTap, replayed: true };
   const { direction, notified } = await directionOf(tap, tap.studentId, deps);
   return { outcome: "recorded", tap, student: tapStudent, direction, notified, replayed: true };
 }
@@ -149,15 +157,16 @@ export async function recordTap(input: RecordTapInput, deps: RecordTapDeps = DEF
   if (!card || kind === "unknown") {
     // Not stored, so it's never "already tapped": the guard is told every
     // time (owner review, 2026-10-13). It isn't anyone's attendance.
+    const unknownSerial = card?.serial ?? serial;
     const tap = tapSchema.parse({
       id: input.clientTapId,
       schoolId: device.schoolId,
       stationId: device.id,
-      cardSerial: card?.serial ?? serial,
+      cardSerial: unknownSerial,
       studentId: null,
       tappedAt,
     });
-    return { outcome: "unknown_card", tap, replayed: false };
+    return { outcome: "unknown_card", tap: { ...tap, cardSerial: unknownSerial }, replayed: false };
   }
 
   // The card's own serial, so a 4-byte read of a 7-byte card is stored
@@ -181,14 +190,17 @@ export async function recordTap(input: RecordTapInput, deps: RecordTapDeps = DEF
   // A lost card's tap keeps its owner, so the alert can name them (recipe
   // decision 4).
   const studentId = card.studentId;
-  const tap = tapSchema.parse({
-    id: input.clientTapId,
-    schoolId: device.schoolId,
-    stationId: device.id,
+  const tap: CardTap = {
+    ...tapSchema.parse({
+      id: input.clientTapId,
+      schoolId: device.schoolId,
+      stationId: device.id,
+      cardSerial,
+      studentId,
+      tappedAt,
+    }),
     cardSerial,
-    studentId,
-    tappedAt,
-  });
+  };
 
   const student = studentId ? await deps.students.getInSchool(device.schoolId, studentId) : null;
   let alert: Alert | null = null;

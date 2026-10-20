@@ -20,7 +20,7 @@ export function createPrismaTapWriter(db: PrismaClient = prisma): TapWriter {
           if (notification) {
             await tx.notification.create({ data: { id: notification.id, ...toNotificationData(notification) } });
           }
-          await tx.device.update({ where: { id: deviceId }, data: { lastSeenAt: new Date(seenAt) } });
+          if (deviceId) await tx.device.update({ where: { id: deviceId }, data: { lastSeenAt: new Date(seenAt) } });
         });
         return "created";
       } catch (error) {

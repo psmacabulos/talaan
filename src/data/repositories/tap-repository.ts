@@ -23,7 +23,7 @@ export interface TapRepository {
   /** The earliest stored tap of this card at this school strictly between `from` and `to`, if any: the gate's 2-minute debounce (Step 45). */
   findByCardBetween(schoolId: string, cardSerial: string, from: string, to: string): Promise<Tap | null>;
   /**
-   * Appends a tap (Step 13's "Simulate a tap"). Idempotent by `id`, the
+   * Appends a tap (the Step 19 station's taps). Idempotent by `id`, the
    * same way a real station's tap would be (CLAUDE.md: "idempotent by a
    * device-made UUID... repeated taps... are ignored") — calling this twice
    * with the same `id` is a no-op the second time, not a duplicate.

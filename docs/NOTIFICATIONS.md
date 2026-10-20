@@ -37,7 +37,7 @@ Two deliberate design choices, both documented at the schema itself:
 ```mermaid
 flowchart LR
     subgraph "Tap happens"
-      Sim["dashboard: simulateTap()"]
+      Sim["attendance row: recordTimeIn() (Step 55)"]
       Station["station: syncStationTaps()"]
     end
     Fan["notifyParentsForTap(tap, deps)"]
@@ -89,13 +89,7 @@ Repositories arrive as parameters (`deps`) rather than being imported from the s
 
 ### The two call sites
 
-1. **`simulateTap()`** (`src/features/attendance/actions.ts`) — the dashboard's "Simulate a tap" button records the tap, then immediately fans it out:
-
-   ```ts
-   await tapRepository.create(tap);
-   await notifyParentsForTap(tap, { schoolRepository, tapRepository, notificationRepository });
-   refresh();
-   ```
+1. **`recordTimeIn()`** (`src/features/attendance/actions.ts`, Step 55) — the attendance row's "Record time in" button. Its service, `recordManualTimeIn()`, decides with `shouldNotifyParents` and writes the notification **in the same transaction** as the tap, through the gate's `tapWriter`, so a second click can't send a second one (`docs/ATTENDANCE-MODEL.md`, "Recording a time in by hand"). It replaced Step 13's `simulateTap()`.
 
 2. **`syncStationTaps()`** (`src/features/station/station-actions.ts`) — the tap station, but **only for `outcome.kind === "valid"`**. A lost-card tap raises an `Alert` instead (the designed response — pinging a parent "your lost card was tapped" before staff has seen it would be noise), and an unknown-card tap has `studentId: null` and nobody to notify.
 

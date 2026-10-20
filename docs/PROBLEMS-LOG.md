@@ -40,6 +40,8 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-023](#p-023--2026-10-16--saving-a-push-address-as-the-phone-signed-out-answered-500) | 2026-10-16 | Saving a push address as the phone signed out answered 500 | Other: correctness | Parent API, database | Resolved |
 | [P-024](#p-024--2026-10-16--a-browser-test-couldnt-load-the-prisma-client) | 2026-10-16 | A browser test couldn't load the Prisma Client | Other: tests | Playwright, Prisma | Resolved |
 | [P-025](#p-025--2026-10-16--two-type-errors-in-step-54s-tests) | 2026-10-16 | Two type errors in Step 54's tests | Other: tests | TypeScript | Resolved |
+| [P-026](#p-026--2026-10-19--the-live-server-answered-internal-server-error-after-step-54s-deploy) | 2026-10-19 | The live server answered "Internal Server Error" after Step 54's deploy | Other: reliability | Heroku, settings | Open: owner sets `PUSH_SENDER` |
+| [P-027](#p-027--2026-10-20--the-new-browser-test-found-its-student-already-tapped) | 2026-10-20 | The new browser test found its student already tapped | Other: tests | Playwright | Resolved |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -551,3 +553,47 @@ sequenceDiagram
 - **Solution:** the row gets `pushedAt: null`, and the test's name now says it drops `pushedAt` too. The settings objects include `NODE_ENV: "test"`, with no cast, like `env.test.ts`.
 - **Lesson:** a new column breaks every hand-built row of that table in the tests. Search the tests for the model's row type when adding one. A passing Vitest run doesn't mean the types are right: only `npm run typecheck` checks them.
 - **Status:** Resolved: the owner's checks passed.
+
+## The live server (2026-10-19)
+
+### P-026 · 2026-10-19 · The live server answered "Internal Server Error" after Step 54's deploy
+- **Where:** Heroku, release v20 (`Deploy b1a3315a`, Steps 54 and 54.1 together, since v19 was Step 53.4). Every page and API address: `/`, `/dashboard`, `/parent/signup`, `/gate/display`.
+- **Symptom:** the browser showed `Internal Server Error` (21 bytes). `heroku logs --app bantayaral`, on every request:
+  ```
+  Error: An error occurred while loading instrumentation hook: The server can't start with these settings:
+  - PUSH_SENDER must be "expo" (send pushes) or "log" (only log them, until the parent app can receive them).
+  heroku[router]: at=info method=GET path="/" host=bantayaral.com … status=500 bytes=21
+  ```
+- **Cause:** Step 54 made `PUSH_SENDER` a required setting on a live server (`checkProductionEnv` in `src/lib/env.ts`), so whether pushes really go out is always chosen on purpose. `docs/DEPLOY.md` says to run `heroku config:set PUSH_SENDER=log` **before** pushing Step 54, but it wasn't set: `heroku config` lists `DATABASE_URL`, `PGSSLMODE`, `PHOTO_STORAGE`, the four `S3_…` settings and `SESSION_SECRET`, and no `PUSH_SENDER`. CI and the tests passed because they never see Heroku's settings: the check runs only on the live server, when it starts. As in P-010, the failed check didn't stop the dyno; it answered 500 to everything.
+
+  ```mermaid
+  flowchart LR
+      Push["git push (Steps 54, 54.1)"] --> CI["CI: lint, tests, build ✓<br/>(no Heroku settings)"]
+      CI --> Release["Heroku release phase:<br/>prisma migrate deploy ✓"]
+      Release --> Web["web dyno starts"]
+      Web --> Check{"checkProductionEnv:<br/>PUSH_SENDER set?"}
+      Check -- "no" --> E500["every request: 500"]
+      Check -- "yes (after the fix)" --> OK["pages load"]
+  ```
+- **Options weighed:**
+  1. **Set the missing setting now:** `heroku config:set PUSH_SENDER=log --app bantayaral`. Heroku restarts the dyno by itself, and the check passes. Pushes are only logged until the parent app's M7, as planned. Immediate fix.
+  2. **Roll back to v19** (`heroku rollback v19`). Brings the site back, but undoes Steps 54 and 54.1 while v20's migrations stay in the database ahead of the code. Worse than option 1.
+  3. **Prevent it next time: check the settings in Heroku's release phase.** The Procfile's `release:` line already runs the migrations before a new version goes live. Running the same settings check there first means a missing setting fails the *release*, and Heroku keeps the old version running instead of serving 500s. A small code change with its own commit, decided by the owner. It also covers most of P-010.
+- **Solution:** option 1, typed by the owner. Option 3 proposed.
+- **Check:** `heroku config --app bantayaral` lists `PUSH_SENDER`; `https://bantayaral.com/api/v1/health` answers; the log has no "can't start with these settings" line after the restart.
+- **Status:** Open: the owner sets `PUSH_SENDER`.
+
+### P-027 · 2026-10-20 · The new browser test found its student already tapped
+- **Where:** the owner's `npm run test:e2e`, Step 55's new test in `e2e/attendance.spec.ts`, desktop project only.
+- **Symptom:**
+  ```
+  > 41 |     await button.click();
+  locator resolved to <button disabled … aria-label="Record time in for Ricardo Marasigan" …>
+  1 failed
+    [desktop] › e2e/attendance.spec.ts:29:7 › Attendance: record a time in by hand (Step 55) › records an untapped student's time in from their row, once
+  ```
+- **Cause:** every browser test shares one test database, reset once per run. `station.spec.ts`'s "Valid card" taps the next waiting Balanga student **who has a card**, in roster order, and in the full run it got to Ricardo Marasigan before the attendance test did, so his button was correctly disabled. Run alone (as while building), `attendance.spec.ts` passed. The phone project's student, Manuel Flores, has no card, which is why that one passed.
+- **Options weighed:** (1) run the station tests after this one (Playwright doesn't promise an order across files); (2) reset or remove his taps in the test (more code, and it hides the clash); (3) **pick students the station can never tap: ones with no card.** Chosen.
+- **Solution:** the desktop test records Teresa Lazaro (Grade 8 – Bonifacio, no card), and a comment says why both students are cardless.
+- **Lesson:** a browser test that writes to the shared database needs data no other spec can reach. Here, "no card" puts a student out of the station's reach.
+- **Status:** Resolved: `station.spec.ts` and `attendance.spec.ts` pass together.

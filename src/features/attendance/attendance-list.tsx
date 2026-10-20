@@ -17,11 +17,14 @@ export function AttendanceList({
   taps,
   day,
   counts,
+  canRecordTimeIn = false,
 }: {
   rows: AttendanceRow[];
   taps: Tap[];
   day: SchoolDay;
   counts: StatusCounts;
+  /** Today's roll: each student can have a time in recorded by hand (Step 55). */
+  canRecordTimeIn?: boolean;
 }) {
   return (
     <>
@@ -42,10 +45,10 @@ export function AttendanceList({
           </h3>
           <p className="text-xs text-muted-foreground">{rows.length} total</p>
         </div>
-        <AttendanceCardList rows={rows} taps={taps} day={day} label="Students" />
+        <AttendanceCardList rows={rows} taps={taps} day={day} label="Students" canRecordTimeIn={canRecordTimeIn} />
       </section>
       <div className="hidden md:block">
-        <AttendanceTable rows={rows} taps={taps} day={day} />
+        <AttendanceTable rows={rows} taps={taps} day={day} canRecordTimeIn={canRecordTimeIn} />
       </div>
     </>
   );

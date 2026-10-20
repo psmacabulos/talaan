@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { Tap } from "@/features/attendance/types";
+import type { CardTap } from "@/services/taps/record-tap";
 import { schoolTimeToIso } from "@/lib/school-time";
 import { createMockTapRepository } from "./tap-repository";
 
 const DAY = "2026-06-20";
 
-const tapA: Tap = {
+const tapA: CardTap = {
   id: "00000000-0000-4000-8000-000000000001",
   schoolId: "school-a",
   stationId: "station-main-gate",

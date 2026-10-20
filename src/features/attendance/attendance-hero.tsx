@@ -1,5 +1,4 @@
 import { AttendanceLegend, AttendanceSegmentedBar } from "./segmented-bar";
-import { SimulateTapButton } from "./simulate-tap-button";
 import type { StatusCounts } from "./status";
 
 /** The big "today" card: shared shape for both the school-wide and the class-only dashboard, just fed different counts and copy. */
@@ -40,7 +39,6 @@ export function AttendanceHero({
           </p>
           {flexible ? <p className="text-sm text-muted-foreground">Weekend: no late or absent times.</p> : null}
         </div>
-        <SimulateTapButton />
       </div>
       {/* Bar and legend are one unit — the legend is the bar's key — so they
           sit closer to each other than to the headline block above. */}

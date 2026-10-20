@@ -1,118 +1,61 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { staffRepository } from "@/data/repositories";
+import { SIGNED_OUT_MESSAGE } from "@/features/auth/messages";
 import { getNow } from "@/lib/clock";
+import { formatSchoolTime } from "@/lib/school-time";
 import { getSession } from "@/lib/session";
-import {
-  staffRepository,
-  studentRepository,
-  tapRepository,
-  cardRepository,
-  schoolRepository,
-  notificationRepository,
-} from "@/data/repositories";
-import { photoPath } from "@/features/students/photo";
 import { wakePushWorker } from "@/services/push/push-worker";
-import { publishTap } from "@/services/taps/tap-events";
-import { DEFAULT_ATTENDANCE_TIMES, MAIN_GATE_STATION_ID, schoolToday, studentsWithoutTapToday } from "./status";
-import { notifyParentsForTap } from "./notify-parents";
+import { publishStoredTap } from "@/services/taps/publish-tap";
+import { recordManualTimeIn } from "@/services/taps/record-manual-time-in";
+
+export type RecordTimeInResult = { ok: true; studentName: string; time: string } | { ok: false; error: string };
 
 /**
- * The dashboard's "Simulate a tap" button (docs/PLAN.md Step 13). Picks the
- * next student — idle before absent, roster order — who hasn't tapped
- * today and actually has an active card to tap with (a student with no
- * card, or a lost one, can't produce a real tap; same pool the reference
- * prototype's own `simTap()` draws from). A teacher only ever draws from
- * their own advisory class.
+ * The attendance row's "Record time in" button (Step 55): a staff member
+ * records a student's time in by hand, now, when their card didn't work or
+ * they have none. `recordManualTimeIn` holds the rules (a teacher only for
+ * their own class, nobody twice a day); this passes in who's asking, then
+ * tells the parents' phones and the guardhouse monitor, the same as a
+ * gate's tap.
  *
- * Doesn't mutate a cookie, so — unlike Step 11's `setDevSession` — nothing
- * here re-renders the page automatically; `refresh()` (next/cache) does
- * that explicitly. See docs/LEARNING-LOG.md's Step 13 entry: confirmed via
- * Next's own docs before assuming either way, since this project's
- * AGENTS.md/CLAUDE.md already flag this Next.js as having real breaking
- * changes from what training data would assume.
+ * Doesn't change a cookie, so nothing re-renders the page by itself:
+ * `refresh()` (next/cache) brings the new row in (docs/LEARNING-LOG.md,
+ * Step 13).
  */
-export type SimulateTapResult =
-  | { tapped: true; studentName: string }
-  | { tapped: false; reason: "signed-out" | "no-school" | "everyone-in" }
-  /**
-   * Nobody left who *can* tap, but some students still haven't — because
-   * no ID card has been issued to them yet. Worth naming them rather than
-   * lumping this in with "everyone's in": seeing a student sit on "Absent"
-   * all morning when they physically cannot tap is a real thing to act on
-   * (Step 16 is where a card gets linked), not a quirk of the demo button.
-   */
-  | { tapped: false; reason: "no-card"; studentNames: string[] };
-
-export async function simulateTap(): Promise<SimulateTapResult> {
+export async function recordTimeIn(studentId: string): Promise<RecordTimeInResult> {
   const session = await getSession();
-  if (!session) return { tapped: false, reason: "signed-out" };
-  if (!session.schoolId) return { tapped: false, reason: "no-school" };
+  if (!session) return { ok: false, error: SIGNED_OUT_MESSAGE };
+  if (!session.schoolId) return { ok: false, error: "Pick a school first." };
 
-  const roster = await studentRepository.listBySchool(session.schoolId);
-  let candidates = roster;
+  const staff = await staffRepository.getById(session.userId);
+  if (!staff) return { ok: false, error: SIGNED_OUT_MESSAGE };
 
-  if (session.role === "teacher") {
-    const staff = await staffRepository.getById(session.userId);
-    candidates = roster.filter(
-      (student) => student.gradeLevel === staff?.advisoryGradeLevel && student.section === staff?.advisorySection,
-    );
+  const result = await recordManualTimeIn({
+    schoolId: session.schoolId,
+    studentId,
+    staff: {
+      id: staff.id,
+      role: staff.role,
+      advisoryGradeLevel: staff.advisoryGradeLevel,
+      advisorySection: staff.advisorySection,
+    },
+    now: getNow(),
+  });
+
+  if (result.outcome === "not_found") return { ok: false, error: "That student isn't in a class you can record." };
+  const studentName = `${result.student.firstName} ${result.student.lastName}`;
+  if (result.outcome === "already_tapped") return { ok: false, error: `${studentName} already tapped in today.` };
+
+  if (result.notified) wakePushWorker();
+  // The tap is saved by now: a monitor that misses it mustn't make the
+  // teacher think it failed (Step 55's code review).
+  try {
+    await publishStoredTap(result);
+  } catch {
+    console.error("attendance: a time in recorded by hand didn't reach the monitor");
   }
-
-  // Stamped with the app's clock: the real time, or the demo morning when
-  // DEMO_NOW pins it (src/lib/clock.ts).
-  const now = getNow();
-  const school = await schoolRepository.getById(session.schoolId);
-  const day = schoolToday(now, school ?? DEFAULT_ATTENDANCE_TIMES);
-  const taps = await tapRepository.listBySchoolOnDate(session.schoolId, day.date);
-  const waiting = studentsWithoutTapToday(candidates, taps, day);
-
-  const cardless: string[] = [];
-
-  for (const student of waiting) {
-    const card = await cardRepository.getActiveForStudent(session.schoolId, student.id);
-    if (!card) {
-      cardless.push(`${student.firstName} ${student.lastName}`);
-      continue;
-    }
-
-    const tap = {
-      id: crypto.randomUUID(),
-      schoolId: session.schoolId,
-      stationId: MAIN_GATE_STATION_ID,
-      cardSerial: card.serial,
-      studentId: student.id,
-      tappedAt: now,
-    };
-    await tapRepository.create(tap);
-    // The tap is in — fan it out to the student's linked parents (Step 24),
-    // honoring the school's notification preference, and push it to their
-    // phones now (Step 54).
-    if (await notifyParentsForTap(tap, { schoolRepository, tapRepository, notificationRepository })) wakePushWorker();
-    // And to any open guardhouse monitor (Step 48), so a demo without a
-    // reader still shows there. Only students with no tap today are picked,
-    // so it's always a time in.
-    publishTap(tap.schoolId, {
-      id: tap.id,
-      outcome: "recorded",
-      direction: "time_in",
-      tappedAt: tap.tappedAt,
-      student: {
-        id: student.id,
-        firstName: student.firstName,
-        lastName: student.lastName,
-        gradeLevel: student.gradeLevel,
-        section: student.section,
-        photo: student.photoKey ? photoPath(student.photoKey) : null,
-      },
-    });
-
-    refresh();
-    return { tapped: true, studentName: `${student.firstName} ${student.lastName}` };
-  }
-
-  // Nothing was tapped. Say which of the two reasons it actually was, rather
-  // than one message that makes the reader work out the difference.
-  if (cardless.length > 0) return { tapped: false, reason: "no-card", studentNames: cardless };
-  return { tapped: false, reason: "everyone-in" };
+  refresh();
+  return { ok: true, studentName, time: formatSchoolTime(result.tap.tappedAt) };
 }

@@ -2463,3 +2463,34 @@ The recipe, `docs/backend/step-54.1-push-receipts.md`, was written before the co
   - the sign-in cleanup reads the whole table (an index only if needed).
 
   All four are in `docs/PUSH.md`'s known limits.
+
+## Step 55: record a time in by hand (2026-10-20)
+
+**Why it changed shape.** Step 55 was "safe for real parents" (demo tools off, limits on child linking). The night before a demo to the principal, the owner re-scoped it: keep a way to record a student's arrival when a sticker fails, but for a *chosen* student, from their row, and only before they've tapped. The demo-tools flag and the link limits moved to Step 55.1, and "the school and other guardians see each link" to Step 55.2.
+
+**Review.** The systems-architect reviewed the original plan (round 1: Balanga must not get demo tools from a migration default; insert-then-count for link tries; an HMAC key) and the re-scoped one (round 2). Round 2's facts were checked against the code before accepting them: `tapRepository.create` is an upsert with `update: {}` and can't say whether it inserted (`prisma-tap-repository.ts:84-88`); `Notification` has no `tapId`; the gate's debounce only matches the same card serial (`record-tap.ts:168`). So: a fixed id per student per day, the notification in the same transaction, and the card serial kept.
+
+**The one idea that saved code.** The architect proposed a new insert-or-null method. Reading `prisma-tap-writer.ts` showed the gate already has it: one transaction for tap, alert and notification, answering `"exists"` on a duplicate id. The only change it needed was `deviceId: string | null`.
+
+**Commands run:**
+
+```bash
+npx prisma format
+npx prisma migrate dev --name manual_taps --create-only   # SQL read: additive only
+npx prisma migrate dev
+npx prisma generate          # TapSource was missing: Prisma 7's migrate dev didn't regenerate
+npx tsc --noEmit             # listed every place that assumed a card serial (7 errors, all in tests and the gate's answers)
+npx vitest run src/services/taps/record-manual-time-in.test.ts src/data/repositories/prisma-tap-repository.test.ts
+# the test database needed the migration before the Postgres test (the e2e global setup normally does this):
+npx tsx -e '… execSync("npx prisma migrate deploy", { env: { …, DATABASE_URL: e2eDatabaseUrl() } })'
+npx vitest run src/services/taps/record-manual-time-in.pg.test.ts   # 2 passed
+npm run build && npx playwright test e2e/attendance.spec.ts          # 4 passed (desktop and mobile)
+```
+
+**Making `cardSerial` nullable.** `tsc` found the readers: the gate's `lost_card` and `unknown_card` answers, `replay()`'s card lookup, and four test fixtures. Rather than loosen the gate's API answers, `CardTap = Tap & { cardSerial: string }` types the gate's own results; a stored tap with no serial can only be a hand-recorded one, so `replay()` answers `invalid_serial` for it.
+
+**The browser test and two projects.** Playwright runs every test twice (mobile and desktop) against one test database, so a test that records a tap would find the student already tapped on its second run. Like `gate.spec.ts`, each project records its own student; the phone's (Manuel Flores) has no card, which covers the "no sticker" case for free.
+
+**Visual check.** Screenshots of `/attendance` for Grade 9 – Mabini and Grade 10 – Luna at 360 × 800 and 1280 × 800, light and dark, plus the confirmation dialog at both widths: the button sits in the table's last column (disabled when tapped), under the name on a phone card while untapped, and "Recorded by staff" sits under the time. A cleanup `rm` of old screenshots in the scratch folder was stopped by a safety check (an unquoted variable); the new shots overwrote them anyway.
+
+**Also:** the seed's Balanga principal is Catherine L. Jongco (owner request). And P-026 (the live server's missing `PUSH_SENDER`) was logged the same day.

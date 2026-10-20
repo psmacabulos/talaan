@@ -9,6 +9,8 @@ const row: TapRow = {
   cardSerial: "04:A3:5F:2B:91:C0:80",
   studentId: "student-a",
   tappedAt: new Date("2026-06-20T07:56:00Z"),
+  source: "card",
+  recordedById: null,
 };
 
 describe("toTap", () => {
@@ -20,7 +22,15 @@ describe("toTap", () => {
       cardSerial: "04:A3:5F:2B:91:C0:80",
       studentId: "student-a",
       tappedAt: "2026-06-20T07:56:00.000Z",
+      source: "card",
+      recordedById: null,
     });
+  });
+
+  it("keeps a time in recorded by hand, with who recorded it and no card (Step 55)", () => {
+    const tap = toTap({ ...row, cardSerial: null, source: "manual", recordedById: "staff-a" });
+    expect(tap).toMatchObject({ cardSerial: null, source: "manual", recordedById: "staff-a" });
+    expect(toTap({ ...row, ...toTapData(tap) })).toEqual(tap);
   });
 
   it("keeps an unknown card's tap, with no student", () => {

@@ -152,7 +152,7 @@ describe("seed data shape", () => {
 
   it("includes at least one lost-card tap with a matching alert", () => {
     const lostCardSerials = new Set(seedCards.filter((c) => c.status === "lost").map((c) => c.serial));
-    const lostCardTap = seedTaps.find((tap) => lostCardSerials.has(tap.cardSerial));
+    const lostCardTap = seedTaps.find((tap) => tap.cardSerial !== null && lostCardSerials.has(tap.cardSerial));
     expect(lostCardTap).toBeDefined();
 
     const matchingAlert = seedAlerts.find((alert) => alert.tapId === lostCardTap?.id);

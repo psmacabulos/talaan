@@ -1,10 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { AttendanceHero } from "./attendance-hero";
-
-// The hero's "Simulate a tap" button calls a server action; this test is
-// only about the words around it.
-vi.mock("./simulate-tap-button", () => ({ SimulateTapButton: () => null }));
 
 const WEEKDAY_COUNTS = { present: 3, late: 1, absent: 1, idle: 0 };
 const WEEKEND_COUNTS = { present: 2, late: 0, absent: 0, idle: 3 };

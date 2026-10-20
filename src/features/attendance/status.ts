@@ -4,7 +4,7 @@ import type { Student } from "@/features/students/types";
 import { formatSchoolTime, isWeekend, minutesFromClockTime, schoolDateOf, schoolMinutesOf } from "@/lib/school-time";
 import type { Tap } from "./types";
 
-/** The one tap station this demo has (CLAUDE.md's domain rules don't need more than one yet). Shared by the dashboard's "Simulate a tap" and the Step 19 tap station, so a tap from either always looks like it came from the same real place. */
+/** The Step 19 simulated tap station's one gate, so its taps always look like they came from the same real place. A time in recorded by hand uses "manual" instead (Step 55). */
 export const MAIN_GATE_STATION_ID = "station-main-gate";
 
 /**

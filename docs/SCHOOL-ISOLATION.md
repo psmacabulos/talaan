@@ -43,7 +43,7 @@ flowchart LR
 | `/schools` | super admin only | none: it lists every school, by design |
 | Students: `createStudent`, `updateStudent`, `checkCardSerial` | principal, super admin | `getSession().schoolId` |
 | Staff: `inviteStaff`, `createSignInLink`, `removeStaff` | principal, super admin | `getSession().schoolId`, and the target is looked up with `getInSchool` |
-| Attendance: `simulateTap` | staff | `getSession().schoolId` |
+| Attendance: `recordTimeIn` (Step 55) | staff; a teacher only for their own advisory class | `getSession().schoolId`, and the student is looked up with `getInSchool` |
 | Tap station: `syncStationTaps` | principal, super admin | `getSession().schoolId`. The browser's tap is only a claim: one for another school, or naming another school's student, is dropped (fixed in Step 51) |
 | Settings: notification preference, attendance times, theme | principal, super admin | `getSession().schoolId` |
 | `createSchool`, `openSchool` | super admin only | the new or chosen school, by design |

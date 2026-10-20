@@ -636,6 +636,12 @@ Discussed while reviewing Step 8's ER diagram (`Tap.stationId`) — full write-u
 ### How will "time in" and "time out" both show, if a student comes and goes more than once? (asked after Step 19)
 Full write-up: `docs/BUILD-LOG.md`'s "After Step 19" entry and `docs/PLAN.md`'s Phase 2 notes. Short version: nothing new needs to be *stored* — every tap is already its own record today, no per-day limit, so the full history already exists. What was actually missing was two decisions: (1) a 1-2 minute window to tell an accidental double-tap from a real second visit, past which taps just alternate in/out/in/out; (2) how to *show* it — decided to keep the table simple (just "Time in"/"Time out", the first and last tap) and only reveal the full list for the rare student who tapped more than twice, rather than showing every row's full tap history all the time.
 
+### Why doesn't a double click on "Record time in" make a time in and a time out? (owner question, 2026-10-20)
+Because the tap's id isn't random. Every tap has an id, and the database refuses a second row with the same one. A gate makes a fresh id for each tap. "Record time in" makes its id from the student and the date instead, so a second click on the same day, or a second teacher pressing it at the same moment, makes **the same id**. The database keeps the first, refuses the second, and the parents' notification, written in the same step as the tap, is only saved once. The button is also greyed out after a tap, but the server never trusts that alone. Full write-up: `docs/ATTENDANCE-MODEL.md`, "Recording a time in by hand".
+
+### Will a feature like this be a lot of code? (owner question, 2026-10-20)
+About 350 lines, half of them tests. Most of it already existed: the gate's writer (tap and notification together), the "who should be notified" rule, the guardhouse monitor's feed and the push worker are all reused. The new parts are one small database change, one service with the rules, the button with its confirmation, and the tests.
+
 ---
 
 ## What is a "repository"? (Step 9)

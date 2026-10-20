@@ -39,10 +39,11 @@ export function shouldNotifyParents(preference: NotificationPreference, kind: No
  *
  * Written as a flat copy of the tap's data at the moment it fires
  * (`features/parents/schemas.ts` documents why there's no `tapId`), so
- * callers invoke this right after the tap itself is persisted — the
- * dashboard's `simulateTap` and the station's `syncStationTaps` (valid taps
- * only; a lost-card tap raises an alert instead, and an unknown-card tap
- * has nobody to notify).
+ * callers invoke this right after the tap itself is persisted: the
+ * station's `syncStationTaps` (valid taps only; a lost-card tap raises an
+ * alert instead, and an unknown-card tap has nobody to notify). The gate
+ * and a time in recorded by hand (Step 55) write their notification in the
+ * same transaction as the tap instead, deciding with `shouldNotifyParents`.
  *
  * Repositories come in as parameters rather than importing the singletons,
  * so tests can hand it fresh mock instances — the same pattern

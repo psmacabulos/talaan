@@ -14,6 +14,8 @@ export function toTap(row: TapRow): Tap {
     cardSerial: row.cardSerial,
     studentId: row.studentId,
     tappedAt: row.tappedAt.toISOString(),
+    source: row.source,
+    recordedById: row.recordedById,
   });
 }
 
@@ -25,6 +27,8 @@ export function toTapData(tap: Tap) {
     cardSerial: tap.cardSerial,
     studentId: tap.studentId,
     tappedAt: new Date(tap.tappedAt),
+    source: tap.source ?? "card",
+    recordedById: tap.recordedById ?? null,
   };
 }
 

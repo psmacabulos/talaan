@@ -69,13 +69,15 @@ The order is a recommendation. Step 54 comes first because the demo needs a tap 
 
 ## 1. Before real students and parents use it
 
-### 1.1 The demo tools write real data (Step 55)
+### 1.1 The demo tools write real data (Steps 55 and 55.1)
 
 The dashboard's **Simulate a tap** button (every staff member, teachers included, for their own class) and the `/station` simulated kiosk (principals and super admins) both create real taps and real parent notifications (`simulateTap` in `src/features/attendance/actions.ts`, `syncStationTaps` in `src/features/station/station-actions.ts`). On a demo server that's the point. At a real school, a teacher could mark a student present who never came, and the parent would be told the child arrived.
 
 **Fix:** switch them off for real schools. The recipe decides how: a server setting, or a "demo school" flag on each school, since the demo and the pilot may share one server.
 
-### 1.2 Anyone can try birth dates to link a child (Step 55)
+**Update (Step 55, 2026-10-20):** the dashboard's button is gone. In its place, a staff member records one chosen student's time in by hand from their attendance row, saved with their name (`Tap.recordedById`) and shown as "Recorded by staff", once per student per day, before any tap. That's a real tool for a failed sticker, not a demo one. The `/station` kiosk is still a demo tool: Step 55.1 switches it per school.
+
+### 1.2 Anyone can try birth dates to link a child (Step 55.1)
 
 This is the most serious item, because the students are minors. Parent sign-up needs no check, and linking a child needs the LRN, last name and birth date, with no limit on wrong tries:
 

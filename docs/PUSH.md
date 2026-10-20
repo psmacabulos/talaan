@@ -131,7 +131,7 @@ Two copies of the worker each take different rows: the old and new server during
 Inside the web dyno: **$0 a month more**. Expo's push service is free.
 
 - `src/instrumentation.ts` starts it once when the server starts, in development, the browser tests and the live server alike, never during a build.
-- It runs when woken, right after a notification is written (the gate, Simulate a tap, the station). New taps never wait.
+- It runs when woken, right after a notification is written (the gate, a time in recorded by hand, the station). New taps never wait.
 - Every **5 minutes** (owner decision, 2026-10-19; it was 30 seconds) a check runs retries and, only if there's nothing to send, receipts and the hourly cleanup. So a retry or a receipt waits up to 5 minutes, which is fine: the tap's time is already saved.
 - One pass runs at a time. A wake during a pass makes one more pass straight after.
 - The state lives on `globalThis` (`src/services/push/push-worker.ts`), since the start-up hook and the route handlers are bundled apart.
@@ -174,7 +174,7 @@ The browser tests run with `PUSH_SENDER=log` (`playwright.config.ts`).
 
 ## Quick recipes
 
-- **See it work locally:** sign in with `curl`, register `ExponentPushToken[test]`, then use Simulate a tap on that parent's child (`docs/COMMANDS.md` 7d). The dev server logs `push: sent 1, …`.
+- **See it work locally:** sign in with `curl`, register `ExponentPushToken[test]`, then press **Record time in** on that parent's child's row on the Attendance page (`docs/COMMANDS.md` 7d). The dev server logs `push: sent 1, …`.
 - **Look at the outbox:** `npx prisma studio`, table `PushDelivery`. Or in `psql`: `SELECT status, count(*) FROM "PushDelivery" GROUP BY status;`
 - **Send for real:** `PUSH_SENDER=expo` and `EXPO_ACCESS_TOKEN` in `.env`, and a token from the parent app on a development build.
 - **Add another provider** (SMS, say): a new `PushSender`, a new `PUSH_SENDER` value, and its check in `checkProductionEnv`. The worker doesn't change.

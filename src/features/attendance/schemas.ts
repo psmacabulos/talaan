@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { cardSerialSchema } from "@/features/students/schemas";
 
+export const tapSourceSchema = z.enum(["card", "manual"]);
+
 export const tapSchema = z.object({
   // Made by the tapping device itself, not the server — this is what makes
   // a tap idempotent (CLAUDE.md: "repeated taps within a few minutes are
@@ -9,13 +11,18 @@ export const tapSchema = z.object({
   id: z.uuid(),
   schoolId: z.string().min(1),
   stationId: z.string().min(1),
-  cardSerial: cardSerialSchema,
+  // Null only for a time in recorded by hand for a student with no card (Step 55).
+  cardSerial: cardSerialSchema.nullable(),
   // The student linked to `cardSerial` at the moment of the tap, captured
   // here rather than looked up later — so re-linking a card afterwards can
   // never rewrite what an old tap "meant". `null` if the serial wasn't
   // linked to anyone (an unknown-card result at the station).
   studentId: z.string().min(1).nullable(),
   tappedAt: z.iso.datetime(),
+  // Step 55: "manual" when a staff member recorded it by hand, with who did
+  // it. Left out means "card", read at a gate.
+  source: tapSourceSchema.optional(),
+  recordedById: z.string().min(1).nullable().optional(),
 });
 
 /** Only one kind of alert exists so far: a lost card was tapped at a station. */

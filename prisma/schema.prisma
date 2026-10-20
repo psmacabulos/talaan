@@ -69,6 +69,8 @@ model Staff {
   createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt
 
+  recordedTaps Tap[]
+
   @@index([schoolId])
 }
 
@@ -126,20 +128,35 @@ model Card {
 model Tap {
   // Made by the tapping device, not the server: a tap sent twice (a retry
   // after a dropped connection) has the same id, so it's only stored once.
-  id         String   @id
-  schoolId   String
-  school     School   @relation(fields: [schoolId], references: [id], onDelete: Restrict)
-  stationId  String
+  id           String    @id
+  schoolId     String
+  school       School    @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  // The gate that read it, or "manual" for a time in recorded by hand.
+  stationId    String
   // Kept as a plain copy, not a link to Card: an unknown card has no row.
-  cardSerial String
+  // Null only for a time in recorded by hand for a student with no card
+  // (Step 55); with a card, its serial is kept, so the gate's 2-minute
+  // check also sees the recorded tap.
+  cardSerial   String?
   // Who the card belonged to at the moment of the tap. Null for an unknown card.
-  studentId  String?
-  student    Student? @relation(fields: [studentId], references: [id], onDelete: Restrict)
-  tappedAt   DateTime
-  alert      Alert?
+  studentId    String?
+  student      Student?  @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  tappedAt     DateTime
+  // Step 55: read at a gate, or recorded by hand by a staff member when a
+  // student's card didn't work or they have none.
+  source       TapSource @default(card)
+  // Who recorded it by hand. Kept as null if that staff member is removed.
+  recordedById String?
+  recordedBy   Staff?    @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+  alert        Alert?
 
   @@index([schoolId, tappedAt])
   @@index([studentId, tappedAt])
+}
+
+enum TapSource {
+  card
+  manual
 }
 
 enum AlertType {
@@ -181,19 +198,19 @@ model Parent {
 // The parent app's sign-in (Step 53.3): one row per signed-in phone. The
 // token itself is shown once, at sign-in, and only its sha256 is kept.
 model ParentToken {
-  id         String    @id @default(uuid())
+  id         String     @id @default(uuid())
   parentId   String
   // Unlike every other relation here: a token means nothing without its
   // parent, so deleting a parent account takes its tokens with it.
-  parent     Parent    @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  tokenHash  String    @unique
+  parent     Parent     @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  tokenHash  String     @unique
   // What the app says it is, e.g. "Pixel 7", so a parent can tell sessions apart later.
   label      String?
   // Moved forward at most once an hour, so opening the app keeps it alive.
   // A token unused for 30 days stops working and is cleared (Step 54.1).
-  lastUsedAt DateTime  @default(now())
+  lastUsedAt DateTime   @default(now())
   revokedAt  DateTime?
-  createdAt  DateTime  @default(now())
+  createdAt  DateTime   @default(now())
   pushToken  PushToken?
 
   @@index([parentId])
@@ -208,10 +225,10 @@ enum PushPlatform {
 // Step 54 sends to these. No parentId: the parent is the sign-in's, so the
 // two can never disagree.
 model PushToken {
-  id            String       @id @default(uuid())
+  id            String         @id @default(uuid())
   // The phone's address, as Expo gave it. One row per phone: a phone that
   // signs in as another parent moves its row to that sign-in.
-  token         String       @unique
+  token         String         @unique
   platform      PushPlatform
   // One push address per signed-in phone. Deleted with its sign-in, which
   // is cleared after 30 days unused (Step 54.1): the parent opens the app,
@@ -290,17 +307,17 @@ enum NotificationKind {
 }
 
 model Notification {
-  id        String           @id @default(uuid())
-  schoolId  String
-  school    School           @relation(fields: [schoolId], references: [id], onDelete: Restrict)
-  studentId String
-  student   Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
-  kind      NotificationKind
+  id         String           @id @default(uuid())
+  schoolId   String
+  school     School           @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  studentId  String
+  student    Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  kind       NotificationKind
   // A copy of the tap's time, so the feed can say "arrived 7:56 AM"
   // without looking the tap up.
-  tappedAt  DateTime
-  read      Boolean          @default(false)
-  createdAt DateTime         @default(now())
+  tappedAt   DateTime
+  read       Boolean          @default(false)
+  createdAt  DateTime         @default(now())
   // The outbox (Step 54): when the push worker made this notification's
   // deliveries, one per phone. Null means still to send. Written in the
   // same transaction as those deliveries, so a push is never lost between

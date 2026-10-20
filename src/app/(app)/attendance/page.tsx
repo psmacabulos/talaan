@@ -121,7 +121,15 @@ export default async function AttendancePage({ searchParams }: PageProps<"/atten
       cardStatus: deriveCardStatus(cardsByStudent[index] ?? []),
     }));
     const day = schoolDayFor(date, now, school ?? DEFAULT_ATTENDANCE_TIMES);
-    body = <AttendanceList rows={rows} taps={taps} day={day} counts={countByStatus(classStudents, taps, day)} />;
+    body = (
+      <AttendanceList
+        rows={rows}
+        taps={taps}
+        day={day}
+        counts={countByStatus(classStudents, taps, day)}
+        canRecordTimeIn={date === today}
+      />
+    );
   }
 
   return (
