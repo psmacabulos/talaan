@@ -74,8 +74,8 @@ Two details matter:
 |---|---|
 | Screens | Login, not found, parent login and signup, then every staff screen as principal, teacher (including the access-denied page) and super admin, and the three parent portal screens. Each in light and dark, at 360px and 1280px. |
 | Presets | Login and dashboard under school, ocean, emerald, crimson and violet, light and dark. |
-| Interactive states | Mobile nav drawer, Add student drawer before and after a failed submit, Edit student drawer and the card replace confirmation, Add school drawer, all four tap station results, parent login and link-a-child errors, and the notification bell menu. |
-| Keyboard | Skip link first and working (staff and parent), Tab kept inside a drawer, Esc closes it and focus goes back to the button *or table row* that opened it, mobile nav focus return, and tap station buttons at least 44px tall. |
+| Interactive states | Mobile nav drawer, Add student drawer before and after a failed submit, Edit student drawer and the card replace confirmation, Add school drawer, the "Record time in" confirmation (Step 55), parent login and link-a-child errors, and the notification bell menu. |
+| Keyboard | Skip link first and working (staff and parent), Tab kept inside a drawer, Esc closes it and focus goes back to the button *or table row* that opened it, and mobile nav focus return. (The tap station's 44px button check went with the station in Step 55.1; the real `/gate` doesn't have one yet.) |
 | Light/dark toggle | The menu open in the staff top bar, the parent header and on the login page (axe), and choosing Dark with only the keyboard, surviving a reload, then "Match device" going back. |
 
 Not covered: `/design-system`. It is dev-only, so the production build returns "not found" for it.
@@ -177,4 +177,4 @@ It then runs in light and dark at both sizes automatically.
 
 **Read a failure.** The test output lists the axe rule id (for example `color-contrast`), its impact and a CSS selector for each element. Search the rule id at dequeuniversity.com/rules/axe for an explanation. `npx playwright show-report` opens the full HTML report, and in CI it's uploaded as the `playwright-report` artifact when the audit fails.
 
-**Run just part of it.** `npx playwright test -g "tap station"` runs tests whose name matches. Add `--project=mobile` for only the 360px run. Run `npm run build` first if the code changed, because the audit tests the production build.
+**Run just part of it.** `npx playwright test -g "Record a time in"` runs tests whose name matches. Add `--project=mobile` for only the 360px run. Run `npm run build` first if the code changed, because the audit tests the production build.

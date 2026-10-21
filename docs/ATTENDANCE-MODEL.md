@@ -2,7 +2,7 @@
 
 Step 8 built what a `Tap` *is* (`docs/DATA-MODEL.md`). Step 9 built how it gets *read* (`docs/DATA-ACCESS.md`). Step 13 builds the piece in between those and the screen: **turning a pile of tap records into "who is in school right now"**.
 
-This is a genuinely separate subsystem from both, and it's the one every attendance-shaped screen sits on — the dashboard (Step 13), the attendance page (Step 17), the tap station (Step 19), and any report after that. See `docs/BUILD-LOG.md`'s Step 13, Step 17 and Step 19 entries for the decisions as they were made; this document is the reference for how the mechanism works.
+This is a genuinely separate subsystem from both, and it's the one every attendance-shaped screen sits on — the dashboard (Step 13), the attendance page (Step 17), the gate (Step 47), and any report after that. See `docs/BUILD-LOG.md`'s Step 13, Step 17 and Step 19 entries for the decisions as they were made; this document is the reference for how the mechanism works.
 
 ## The one idea to hold on to
 
@@ -31,7 +31,6 @@ flowchart TB
         StudentStatus["studentStatus()<br/>one student → present/late/absent/idle"]
         Counts["countByStatus()<br/>roster → the four totals"]
         ByGrade["attendanceByGrade()<br/>roster → one row per grade"]
-        Waiting["studentsWithoutTapToday()<br/>who still hasn't tapped"]
     end
 
     subgraph screen["The dashboard"]
@@ -48,7 +47,6 @@ flowchart TB
     Now --> StudentStatus
     StudentStatus --> Counts
     StudentStatus --> ByGrade
-    StudentStatus --> Waiting
 
     Counts --> Hero
     ByGrade --> Grades
@@ -105,7 +103,7 @@ if (tap) {
 return !day.flexible && day.minutesNow >= day.absentFrom ? "absent" : "idle";
 ```
 
-So on a weekend only two statuses can happen, and only their words change: `statusLabel(status, flexible)` (`src/components/status-pill.tsx`) shows **Came in** for present and **No tap** for idle. Every pill, the legend, the phone count tiles and the dashboard hero take `flexible={day.flexible}`. The legend and tiles then show just those two keys, and the hero says "N of M students came in" with the line "Weekend: no late or absent times." The tap station, notifications and lost-card alerts don't change at all. The rule is the same for every school. A school with regular Saturday classes, or a weekday holiday, would need a per-school calendar, which doesn't exist yet.
+So on a weekend only two statuses can happen, and only their words change: `statusLabel(status, flexible)` (`src/components/status-pill.tsx`) shows **Came in** for present and **No tap** for idle. Every pill, the legend, the phone count tiles and the dashboard hero take `flexible={day.flexible}`. The legend and tiles then show just those two keys, and the hero says "N of M students came in" with the line "Weekend: no late or absent times." The gate, notifications and lost-card alerts don't change at all. The rule is the same for every school. A school with regular Saturday classes, or a weekday holiday, would need a per-school calendar, which doesn't exist yet.
 
 **Two details that are easy to get wrong:**
 
@@ -130,7 +128,7 @@ flowchart LR
 ```
 
 - **Store instants, read them on the school's clock in one place.** Every tap, alert and notification time is a real moment. Only `src/lib/school-time.ts` turns one into the school's date (`schoolDateOf`), minutes into the day (`schoolMinutesOf`) or display text (`formatSchoolTime`, `formatSchoolDate`). The Philippines is UTC+8 all year with no daylight saving, so it adds 8 hours and reads the result with the `getUTC…` methods, which give the same answer on every computer. If a school outside the Philippines ever joins, this is the file to change.
-- **"Now" comes from `getNow()`** (`src/lib/clock.ts`), on the server only. It's the real time, unless `DEMO_NOW` pins it. Pages hand the resulting `SchoolDay` (or, for the tap station, the pinned time) to their components, so the browser and the server always agree on "now" for a page.
+- **"Now" comes from `getNow()`** (`src/lib/clock.ts`), on the server only. It's the real time, unless `DEMO_NOW` pins it. Pages hand the resulting `SchoolDay` to their components, so the browser and the server always agree on "now" for a page.
 - **`DEMO_NOW`** pins the clock to the demo morning (`"2026-06-19T09:15:00+08:00"`, a Friday; it was the 20th, a Saturday, until Step 44.6). The browser tests set it in `playwright.config.ts`, so they see the seed data's day on every run. You can set it in `.env` to show the sample data. Never set it on a real server. While it's set, every staff page shows a **Demo clock** badge in the top bar, so it can't go unnoticed.
 - **No default "now" anywhere.** Each status function takes its `SchoolDay` explicitly, so TypeScript points at every caller that has to say which day it means.
 - **Pages load one day of taps** with `tapRepository.listBySchoolOnDate(schoolId, date)` (from the school's midnight to the next, using the `(schoolId, tappedAt)` index), not the school's whole history. The dashboard's "Needs attention" panel loads each open alert's tap by id instead, since an alert nobody has dealt with can be from an earlier day.
@@ -198,22 +196,18 @@ Two things make this resolution non-trivial:
 
 The other wrinkle is the date. The page opens on today on the school's clock (Step 44), and `schoolDayFor(date, now)` judges any other date fairly: a past day is over, so a student with no tap is absent; a future day hasn't started, so nobody is. One exception: a past day with **no taps at all** anywhere in the school shows "No taps that day" instead of a whole class marked absent, because that's almost always a weekend, a holiday or a day the gate was off.
 
-## The tap station (Step 19): where a `Tap` actually comes from
+## Where a `Tap` comes from
 
-Every `Tap` used everywhere above this point — the dashboard, the attendance page, the seed data itself — has to originate somewhere. The tap station (`src/app/(app)/station/page.tsx`) is that origin point: a kiosk screen with four "Prototype controls" buttons standing in for a real card read (simulate-only, same confirmed scope as Step 16's card link — no manual serial entry or Web NFC), each producing one of the four results CLAUDE.md's domain rules describe.
+Every `Tap` the screens above read is written in one of two places, both through `tapWriter.record()`, which saves the tap with its alert or parent notification in one transaction:
 
-**Resolving is pure, on purpose.** `src/features/station/resolve-station-tap.ts`'s `resolveStationTap(kind, context, ids)` decides who/what a button press actually taps, given nothing but plain data (`students`, `taps`, `cards`, `now`) and the ids to stamp on whatever it creates. It never touches a repository or `next/cache` itself — which is what lets the exact same function run identically online (fed a fresh fetch by `station-actions.ts`) or offline (fed the kiosk's own already-loaded snapshot, client-side, in `tap-station-kiosk.tsx`).
-
-| Button | What it does | Writes |
+| Where | Code | What it writes |
 |---|---|---|
-| Valid card | Picks the first waiting student (`studentsWithoutTapToday`: idle before absent, roster order) who has an active card. | A real `Tap`. |
-| Already tapped | Finds a student who already has a tap today and reports it back — CLAUDE.md's "repeated taps... are ignored" taken literally. | Nothing. |
-| Lost card | Finds a card on file marked `lost` and taps its original owner — same shape the seed data (`src/data/seed/taps.ts`) already established for exactly this scenario. | A `Tap` *and* an `Alert` (`lost_card_tapped`). |
-| Unknown card | Fabricates a serial that matches no card on file at all. | A `Tap` with `studentId: null` — `LiveTapFeed` already knew how to render this ("Unknown card", "Not linked to a student") before this step existed. |
+| The real gate, `/gate` (Step 47), a tablet with the USB reader | `recordTap()` in `src/services/taps/record-tap.ts`, behind `POST /api/v1/gate/taps` | A tap for an active card (time in or out from the day's order), a tap and an alert for a lost card, nothing for an unknown card |
+| A time in recorded by hand on the attendance page (Step 55) | `recordManualTimeIn()` in `src/services/taps/record-manual-time-in.ts` | A tap with `source: manual` and who recorded it |
 
-**The offline queue works because every press folds into the next one's input.** The kiosk keeps every "recorded" outcome from the current session in `recorded` state, and feeds `[...taps, ...recordedTapsFrom(recorded)]` into the *next* `resolveStationTap` call — so pressing "Valid card" twice in a row, online or offline, always picks two different students, without needing to ask the server in between. Going offline doesn't change *how* resolution happens at all, only *when* the result gets persisted: `syncStationTaps()` (`station-actions.ts`) never re-resolves anything, it only writes down outcomes the kiosk already decided — one at a time for an online tap, or several at once for a queue that's just reconnected.
+The seed data (`src/data/seed/taps.ts`) writes the demo morning's taps directly.
 
-**One deliberate omission:** the "Lost card" result never names whose card it is, even though the resolved outcome carries that name. A kiosk screen at the gate is something anyone walking past can see — the name belongs to staff, in the dashboard's "Needs attention" panel, not broadcast publicly (CLAUDE.md: students are minors, collect the minimum).
+Until Step 55.1 there was a third: Phase 1's `/station`, a simulated kiosk where a principal pressed "Valid card", "Lost card" or "Unknown card" and the page made up a tap for the next waiting student. Once the real gate and its monitor existed, the station no longer matched them (no photos, an older look), and a principal could make a parent believe their child arrived when nobody tapped, so it was removed (owner decision, 2026-10-21).
 
 ## Quick recipes
 
@@ -234,5 +228,3 @@ Every `Tap` used everywhere above this point — the dashboard, the attendance p
 **I need "now" in a page or server action.** `getNow()` from `src/lib/clock.ts`, then `schoolToday(now, times)`. Never `new Date()` directly, or `DEMO_NOW` won't reach it.
 
 **I want a new screen that browses one class at a time (like the attendance page).** Reuse `classOptionsFromRoster()` and `resolveClassSelection()` from `src/features/attendance/attendance-search-params.ts` rather than writing new grade/section fallback logic — they already handle "the URL names a class that doesn't exist" and "this role is locked to one class" correctly.
-
-**I want to add a fifth kind of simulated tap station outcome.** Add it to `StationTapKind` and `resolveStationTap()` (`src/features/station/resolve-station-tap.ts`) — keep it a pure function of `{ students, taps, cards, now }`, so the kiosk can keep resolving it identically online and offline. Don't touch `station-actions.ts` unless the new outcome needs to write something `syncStationTaps()` doesn't already handle (a `Tap`, optionally an `Alert`).

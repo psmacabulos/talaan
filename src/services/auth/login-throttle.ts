@@ -112,6 +112,14 @@ export const parentAddressThrottle = createLoginThrottle({ maxFailures: 30, wind
  */
 export const parentSignUpThrottle = createLoginThrottle({ maxFailures: 100, windowMs: 60 * 60_000 });
 
+/**
+ * 5 wrong "link a child" tries by one parent in 15 minutes (Step 55.1),
+ * keyed by the parent's id. Kept in memory like the others, so a restart
+ * clears it; the real guard is the per-child count in Postgres
+ * (`src/services/parents/link-attempts.ts`), which a new account can't reset.
+ */
+export const parentLinkThrottle = createLoginThrottle({ maxFailures: 5, windowMs: FIFTEEN_MINUTES });
+
 /** The throttle's key for a staff email. Parents use `parentThrottleKey`, so the two never share a count. */
 export function staffThrottleKey(email: string): string {
   return `staff:${email.trim().toLowerCase()}`;

@@ -171,6 +171,9 @@ The two sessions never share a cookie: a browser can be signed in as staff and a
   - 5 wrong passwords per email in 15 minutes;
   - 30 wrong parent passwords per network in 15 minutes;
   - 100 parent sign-ups per network in an hour.
+  - 5 wrong "link a child" tries per parent in 15 minutes (Step 55.1).
+
+  Linking a child also has a limit that memory can't hold, since a restart would reset it: 10 tries per child (school, LRN and last name) in 24 hours, from any account, counted in Postgres (`LinkAttempt`, `src/services/parents/link-attempts.ts`, `docs/SCALING.md` 1.2).
   The network is the last `X-Forwarded-For` entry (`src/lib/client-address.ts`); this computer's own requests are never counted by network. The web portal uses the same limits as the app. `docs/PROBLEMS-LOG.md` P-020 and P-021 say why, and the launch-night risk.
 - **Signing a phone out** (Step 53.4) removes its push address (`PushToken`, one per sign-in) and then revokes the token. Each push address belongs to a sign-in, not to the parent directly, so a sign-in cleared after 30 days unused takes its push address with it.
 - **Every parent API answer** is copied field by field in `src/features/parents/api-responses.ts`, so the LRN, birth date and guardian never reach a phone. Recipes: `docs/backend/step-53.3-parent-sign-in-api.md` and `step-53.4-parent-api.md`; the full contract is `docs/PARENT-API.md`. So the limit and the single "isn't right" answer apply to the app too.

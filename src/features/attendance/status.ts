@@ -4,9 +4,6 @@ import type { Student } from "@/features/students/types";
 import { formatSchoolTime, isWeekend, minutesFromClockTime, schoolDateOf, schoolMinutesOf } from "@/lib/school-time";
 import type { Tap } from "./types";
 
-/** The Step 19 simulated tap station's one gate, so its taps always look like they came from the same real place. A time in recorded by hand uses "manual" instead (Step 55). */
-export const MAIN_GATE_STATION_ID = "station-main-gate";
-
 /**
  * Late after 8:05 AM, absent from 9:00 AM: the same defaults as the `School`
  * columns in prisma/schema.prisma. Each school changes its own in Settings
@@ -173,13 +170,6 @@ export function attendanceByGrade(students: Student[], taps: Tap[], day: SchoolD
       inSchoolPercent: inGrade.length === 0 ? 0 : (inSchool / inGrade.length) * 100,
     };
   });
-}
-
-/** Students with no tap yet today, in roster order — who "Simulate a tap" picks from. Idle students are offered before absent ones, so the demo tells a "still arriving" story before it tells a "the day already ended" one. */
-export function studentsWithoutTapToday(students: Student[], taps: Tap[], day: SchoolDay): Student[] {
-  const idle = students.filter((student) => studentStatus(student.id, taps, day) === "idle");
-  const absent = students.filter((student) => studentStatus(student.id, taps, day) === "absent");
-  return [...idle, ...absent];
 }
 
 /** A tap's time of day on the school's clock, e.g. "7:56 AM". */

@@ -32,3 +32,5 @@ export { createMockPushTokenRepository, type PushTokenRepository } from "./push-
 export { pushTokenRepository, createPrismaPushTokenRepository } from "./prisma-push-token-repository";
 export { createMockPushOutboxRepository, type PushOutboxRepository } from "./push-outbox-repository";
 export { pushOutboxRepository, createPrismaPushOutboxRepository } from "./prisma-push-outbox-repository";
+export { type LinkAttemptRepository } from "./link-attempt-repository";
+export { linkAttemptRepository, createPrismaLinkAttemptRepository } from "./prisma-link-attempt-repository";

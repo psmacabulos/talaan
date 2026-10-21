@@ -22,13 +22,8 @@ export interface TapRepository {
   getInSchool(schoolId: string, id: string): Promise<Tap | null>;
   /** The earliest stored tap of this card at this school strictly between `from` and `to`, if any: the gate's 2-minute debounce (Step 45). */
   findByCardBetween(schoolId: string, cardSerial: string, from: string, to: string): Promise<Tap | null>;
-  /**
-   * Appends a tap (the Step 19 station's taps). Idempotent by `id`, the
-   * same way a real station's tap would be (CLAUDE.md: "idempotent by a
-   * device-made UUID... repeated taps... are ignored") — calling this twice
-   * with the same `id` is a no-op the second time, not a duplicate.
-   */
-  create(tap: Tap): Promise<Tap>;
+  // No `create`: every tap is written by `TapWriter` (tap-writer.ts), with
+  // its alert or notification in the same transaction (Step 55.1).
 }
 
 export function createMockTapRepository(data: Tap[] = seedTaps, options: { latencyMs?: number } = {}): TapRepository {
@@ -78,13 +73,6 @@ export function createMockTapRepository(data: Tap[] = seedTaps, options: { laten
           .filter((tap) => Date.parse(tap.tappedAt) > start && Date.parse(tap.tappedAt) < end)
           .sort((a, b) => Date.parse(a.tappedAt) - Date.parse(b.tappedAt))[0] ?? null
       );
-    },
-    async create(tap) {
-      await simulateLatency(latencyMs);
-      if (!data.some((existing) => existing.id === tap.id)) {
-        data.push(tap);
-      }
-      return tap;
     },
   };
 }

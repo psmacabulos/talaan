@@ -96,15 +96,13 @@ export function createPrismaStudentRepository(db: PrismaClient = prisma): Studen
       }
     },
     async findForLink(schoolId, { lrn, lastName, birthDate }) {
-      const row = await db.student.findFirst({
-        where: {
-          schoolId,
-          lrn,
-          birthDate: fromDateString(birthDate),
-          // "cruz" matches "Cruz", like the mock's toLowerCase() comparison.
-          lastName: { equals: lastName.trim(), mode: "insensitive" },
-        },
-      });
+      // The last name is compared here, not by Postgres: Prisma's
+      // case-insensitive `equals` is an ILIKE, where "%" and "_" are
+      // wildcards, so "%" matched every last name (P-028). "cruz" still
+      // matches "Cruz", like the mock's comparison.
+      const wanted = lastName.trim().toLowerCase();
+      const rows = await db.student.findMany({ where: { schoolId, lrn, birthDate: fromDateString(birthDate) } });
+      const row = rows.find((candidate) => candidate.lastName.trim().toLowerCase() === wanted);
       return row ? toStudent(row) : null;
     },
   };

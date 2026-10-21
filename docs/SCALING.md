@@ -77,6 +77,8 @@ The dashboard's **Simulate a tap** button (every staff member, teachers included
 
 **Update (Step 55, 2026-10-20):** the dashboard's button is gone. In its place, a staff member records one chosen student's time in by hand from their attendance row, saved with their name (`Tap.recordedById`) and shown as "Recorded by staff", once per student per day, before any tap. That's a real tool for a failed sticker, not a demo one. The `/station` kiosk is still a demo tool: Step 55.1 switches it per school.
 
+**Fixed (Step 55.1, 2026-10-21):** `/station` is gone too (owner decision: it no longer matched the real gate and monitor, and it could make taps nobody made). Taps now come only from the real gate and from "Record time in", which says who recorded it.
+
 ### 1.2 Anyone can try birth dates to link a child (Step 55.1)
 
 This is the most serious item, because the students are minors. Parent sign-up needs no check, and linking a child needs the LRN, last name and birth date, with no limit on wrong tries:
@@ -95,6 +97,8 @@ if (!student) {
 Someone who knows a child's LRN and last name (a classmate's parent, an estranged relative) can try every birth date for a high-school age, about 2,500 tries and a few minutes. They then see when that child arrives and leaves, and with Step 53, the child's photo.
 
 **Fix:** a limit on wrong tries, per parent and per student. The school, and the child's other linked guardians, are told when a new parent links. Whether a principal approves each link first is a decision for the recipe.
+
+**Fixed (Step 55.1, 2026-10-21):** 5 wrong tries per parent in 15 minutes (in memory), and 10 tries per child in 24 hours (school, LRN and last name, from any number of accounts), counted in Postgres in a `LinkAttempt` table so a restart can't reset it. Each try is saved before it's counted, so tries sent all at once can't slip past the limit (tested with 50 at once). The table holds an HMAC of the three details with the server's secret, never the LRN. A locked child answers "Too many tries for this student. Try again tomorrow." whether or not the details match. Telling the school and the other guardians about a new link is Step 55.2.
 
 ### 1.3 Two reads of one card can become a time in and a time out (Step 56)
 
@@ -278,7 +282,6 @@ The Students page loads every student, asks for each one's cards separately, the
 | Page | At Balanga (500 students) | At a 3,000-student school |
 |---|---|---|
 | Students (`search-students.ts`) | about 500, one per student | about 3,000 |
-| Station (`src/app/(app)/station/page.tsx`) | one per student in the school | about 3,000 |
 | Attendance, and the teacher's dashboard | one per student in the class (about 40) | the same |
 | Schools (`src/app/(app)/schools/page.tsx`) | loads every student and staff member **of every school**, only to count them | 100 schools of 1,000 is 100,000 rows per view |
 

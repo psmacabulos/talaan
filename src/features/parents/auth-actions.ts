@@ -3,12 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
-import {
-  parentRepository,
-  parentStudentLinkRepository,
-  schoolRepository,
-  studentRepository,
-} from "@/data/repositories";
+import { parentRepository } from "@/data/repositories";
 import { SIGNED_OUT_MESSAGE } from "@/features/auth/messages";
 import { clearParentSession, getParentSession, setParentSession } from "@/lib/parent-session";
 import { clientAddressKey } from "@/lib/client-address";
@@ -93,11 +88,7 @@ export async function linkChild(input: LinkChildInput): Promise<LinkChildActionR
     return { ok: false, formError: SIGNED_OUT_MESSAGE };
   }
 
-  const result = await linkChildToParent(session.parentId, input, {
-    schools: schoolRepository,
-    students: studentRepository,
-    links: parentStudentLinkRepository,
-  });
+  const result = await linkChildToParent(session.parentId, input);
   if (!result.ok) {
     return "fieldErrors" in result
       ? { ok: false, fieldErrors: result.fieldErrors }

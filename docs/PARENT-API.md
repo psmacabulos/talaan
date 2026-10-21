@@ -136,6 +136,8 @@ curl -s -X POST http://localhost:3000/api/v1/parents/children -H "Authorization:
 
 `201 { child: ChildToday }`. No student with those details at that school: `404 not_found`. Already linked: `409 conflict`.
 
+**Wrong tries are limited** (Step 55.1): 5 wrong tries by one parent in 15 minutes answer `429 too_many_tries` ("Too many tries. Wait 15 minutes and try again."). And 10 tries for one child (school, LRN and last name) in 24 hours, from anyone, lock linking that child: `429 too_many_tries`, "Too many tries for this student. Try again tomorrow.", even with the right details. Show the message as it is; there's nothing for the parent to fix but to wait.
+
 ### `GET /children/:id/taps`
 
 ```bash
@@ -211,7 +213,7 @@ Every error has one shape:
 | `invalid_input` | 400 | a field failed the server's checks; `fields` has a message per field | show each message under its field |
 | `unauthorized` | 401 | no token, or not a working one | sign out, go to sign-in |
 | `wrong_credentials` | 401 | wrong email or password (`"That email or password isn't right."`) | show the message, keep the email |
-| `too_many_tries` | 429 | 5 wrong passwords for one email in 15 minutes, 30 from one network in 15 minutes, or 100 sign-ups from one network in an hour | show the message; the form stays usable |
+| `too_many_tries` | 429 | 5 wrong passwords for one email in 15 minutes, 30 from one network in 15 minutes, 100 sign-ups from one network in an hour, 5 wrong "link a child" tries by one parent in 15 minutes, or 10 tries for one child in 24 hours | show the message; the form stays usable |
 | `not_found` | 404 | not theirs, or doesn't exist (never "forbidden") | "That's no longer available", then refresh |
 | `conflict` | 409 | email taken, child already linked | show the message |
 

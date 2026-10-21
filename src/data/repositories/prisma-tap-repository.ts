@@ -82,16 +82,6 @@ export function createPrismaTapRepository(db: PrismaClient = prisma): TapReposit
       });
       return row ? toTap(row) : null;
     },
-    async create(tap) {
-      // The device's own id makes this idempotent: a retried tap finds its
-      // row already there and changes nothing.
-      const row = await db.tap.upsert({
-        where: { id: tap.id },
-        update: {},
-        create: { id: tap.id, ...toTapData(tap) },
-      });
-      return toTap(row);
-    },
   };
 }
 

@@ -111,26 +111,18 @@ const rosterStudents: Student[] = SECTION_SLOTS.flatMap((slot, slotIndex) =>
 export const ROSTER_STUDENT_COUNT = rosterStudents.length;
 
 // A spare batch of otherwise-ordinary Balanga students who never get a
-// seeded tap (see taps.ts). The tap-station e2e suite's "Valid card" button
-// always picks the *first* untapped student, and in CI several spec files
-// click it against the same shared server (station.spec.ts, parent.spec.ts,
-// a11y.spec.ts's tap-station check) across both the mobile and desktop
-// projects — up to 11 clicks in the worst case. The roster above only ever
-// leaves 6 students untapped, so without this batch the later clicks find
-// nobody left and fail. Kept in Rizal (grade 7, same section as the
-// roster's own untapped student) rather than a made-up section, since
-// nothing else in the app singles this section out by exact class size.
+// seeded tap (see taps.ts), kept in Rizal (grade 7) rather than a made-up
+// section. Added for Step 19's tap station, whose "Valid card" took the
+// next untapped student; the station is gone (Step 55.1), and the batch now
+// gives browser tests untapped students of their own, such as Katrina
+// Aguilar (no card) for "Record time in" (a11y.spec.ts).
 //
 // Named from residues 36-39, one each, no repeats: Balanga's own roster
 // (indices 0-35) already occupies every other residue mod 40, so those four
 // are the only ones guaranteed not to reproduce an existing Balanga
-// student's name (see studentAt's `nameIndex` comment) — and not to repeat
-// each other, which matters because parent.spec.ts looks up whichever
-// student got tapped by full name; a repeated name would find the wrong
-// one. Four is also enough: worst case, the suite's other tests draw at
-// most 6 of the 10 total (existing 6 + these 4) before the CI-only single
-// desktop test that must succeed gets its turn (see playwright.config.ts's
-// `workers` comment) — plenty of headroom.
+// student's name (see studentAt's `nameIndex` comment), and not to repeat
+// each other: tests look students up by full name, so a repeated name
+// would find the wrong one.
 const SPARE_STUDENT_COUNT = 4;
 const SAFE_NAME_RESIDUES = [36, 37, 38, 39];
 const spareStudents: Student[] = Array.from({ length: SPARE_STUDENT_COUNT }, (_, seatIndex) =>

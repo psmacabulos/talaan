@@ -85,25 +85,6 @@ describe("createMockTapRepository", () => {
     await expect(repo.listBySchoolOnDate("school-none", DAY)).resolves.toEqual([]);
   });
 
-  it("create() appends a new tap, visible to subsequent lists", async () => {
-    const data = [tapA];
-    const repo = createMockTapRepository(data, { latencyMs: 0 });
-    const newTap: Tap = { ...tapB, id: "00000000-0000-4000-8000-000000000099" };
-
-    await repo.create(newTap);
-
-    await expect(repo.listBySchoolOnDate("school-b", DAY)).resolves.toEqual([newTap]);
-  });
-
-  it("create() is idempotent by id — a repeated call doesn't duplicate the tap", async () => {
-    const data = [tapA];
-    const repo = createMockTapRepository(data, { latencyMs: 0 });
-
-    await repo.create(tapB);
-    await repo.create(tapB);
-
-    await expect(repo.listBySchoolOnDate("school-b", DAY)).resolves.toEqual([tapB]);
-  });
   it("listByStudentOnDate() gives one student's day at one school, earliest first", async () => {
     const later = { ...tapA, id: "00000000-0000-4000-8000-000000000010", tappedAt: schoolTimeToIso(DAY, "16:05") };
     const nextDay = {

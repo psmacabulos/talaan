@@ -3,6 +3,7 @@ import { staffSchema } from "@/features/staff/schemas";
 import type { Staff } from "@/features/staff/types";
 import { prisma } from "@/lib/db";
 import type { StaffRepository } from "./staff-repository";
+import { normalizeEmail } from "@/features/auth/schemas";
 
 /**
  * A database row → the app's own `Staff` type, checked by the same Zod
@@ -43,9 +44,14 @@ export function toStaffData(staff: Staff) {
 const OLDEST_FIRST = [{ createdAt: "asc" as const }, { id: "asc" as const }];
 
 export function createPrismaStaffRepository(db: PrismaClient = prisma): StaffRepository {
-  /** Case-insensitive, like the mock. Emails are stored in lower case (Step 50), so this finds at most one. */
+  /**
+   * Emails are stored trimmed and in lower case (Step 50), so an exact match
+   * on the unique index finds the one account. Not a case-insensitive
+   * `equals`: Prisma makes that an ILIKE, where "_" in an email is a
+   * wildcard, so "_dmin@…" found "admin@…" (P-028).
+   */
   function findRowByEmail(email: string) {
-    return db.staff.findFirst({ where: { email: { equals: email.trim(), mode: "insensitive" } } });
+    return db.staff.findUnique({ where: { email: normalizeEmail(email) } });
   }
 
   return {

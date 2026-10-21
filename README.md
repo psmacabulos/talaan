@@ -31,7 +31,7 @@ There are no environment variables required yet in Phase 1 — see [`.env.exampl
 | `npm run format`       | Reformat all files with Prettier.                                                                                                                              |
 | `npm run typecheck`    | Check TypeScript types without emitting output.                                                                                                                |
 | `npm run test`         | Run the test suite once with Vitest.                                                                                                                           |
-| `npm run test:e2e`     | Build the app, then run end-to-end tests (user journeys: login, add student, replace card, tap station, theme, parent flow) in a real browser with Playwright. |
+| `npm run test:e2e`     | Build the app, then run end-to-end tests (user journeys: login, add student, replace card, record a time in, the gate, theme, parent flow) in a real browser with Playwright. |
 | `npm run test:a11y`    | Build the app, then run the accessibility audit (axe on every screen, plus keyboard and focus checks) in a real browser with Playwright.                       |
 | `npm run check:tokens` | Fail if a raw color (hex/rgb/hsl/oklch or a Tailwind palette class) shows up outside the theme files.                                                          |
 | `npm run progress`     | Regenerate the progress table at the top of `docs/PLAN.md` from its checkboxes.                                                                                |

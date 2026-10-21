@@ -2494,3 +2494,32 @@ npm run build && npx playwright test e2e/attendance.spec.ts          # 4 passed 
 **Visual check.** Screenshots of `/attendance` for Grade 9 – Mabini and Grade 10 – Luna at 360 × 800 and 1280 × 800, light and dark, plus the confirmation dialog at both widths: the button sits in the table's last column (disabled when tapped), under the name on a phone card while untapped, and "Recorded by staff" sits under the time. A cleanup `rm` of old screenshots in the scratch folder was stopped by a safety check (an unquoted variable); the new shots overwrote them anyway.
 
 **Also:** the seed's Balanga principal is Catherine L. Jongco (owner request). And P-026 (the live server's missing `PUSH_SENDER`) was logged the same day.
+
+## Step 55.1: remove the tap station, and limit child linking (2026-10-21)
+
+**The owner's change of plan.** Asked what `/station` was, the owner recognised it as Phase 1's pretend gate, out of step with the real gate and monitor (no photos, an older look), and asked for it removed instead of switched per school, together with the link limits in one step.
+
+**Removing it.** Deleting `src/app/(app)/station` and `src/features/station` left the compiler to list what depended on them: the sidebar item, `isolation.test.ts` (rewritten to try `recordTimeIn` across schools), and, after a grep, `parent.spec.ts` and `a11y.spec.ts`. Then the code only the station used: `tapRepository.create` and `alertRepository.create` (every tap now goes through `tapWriter`), `notifyParentsForTap`, `studentsWithoutTapToday` and `MAIN_GATE_STATION_ID`. The first `tsc` after the deletion failed on `.next/types/validator.ts` still importing the deleted page; `npx next typegen` regenerated it (the owner's `npm run typecheck` runs it first anyway).
+
+**The browser tests got simpler.** `parent.spec.ts` used to press "Valid card" and read back whoever the station tapped, because several files competed for the same untapped students. Now it records Carmen Sison's time in by name. `isolation.test.ts`'s mock of `@/data/repositories` needed a `tapWriter` stub, since `record-manual-time-in.ts` reads it when the module loads.
+
+**The limits.** As the architect's round 1 said: per parent in memory (5 in 15 minutes), per child in Postgres (10 in 24 hours), each try saved before it's counted, the key an HMAC with `SESSION_SECRET`. The old-tries cleanup runs from a link try, at most once an hour, instead of being bolted onto the push worker's cleanup.
+
+```bash
+npx prisma migrate dev --name link_attempts --create-only   # SQL: a new table only
+npx prisma migrate dev && npx prisma generate
+# the test database, as in Step 55:
+npx tsx -e '… execSync("npx prisma migrate deploy", { env: { …, DATABASE_URL: e2eDatabaseUrl() } })'
+npx vitest run src/services/parents src/services/auth        # 74 passed
+npx vitest run src/services/parents/link-attempts.pg.test.ts  # 50 at once: at most 10 through
+npm run build && npx playwright test e2e/parent.spec.ts e2e/parent-api.spec.ts e2e/a11y.spec.ts e2e/attendance.spec.ts
+# 141 passed, 17 skipped (the usual phone-only and desktop-only skips)
+```
+
+**The code review (fresh systems-architect).** Save-then-count holds under READ COMMITTED. Two findings, both fixed: (1) it suspected the last-name lookup ran as `ILIKE`; a five-line script against the test database confirmed `%`, `P%`, `_ascual` and `Pascua_` all found Jose Pascual (P-028), and a grep found the same `mode: "insensitive"` in the staff email lookup, where `_` is a legal email character. (2) A refused try was kept, so retrying during a lock kept extending it; it's now taken back. Then:
+
+```bash
+npx vitest run src/services/parents src/data/repositories src/services/auth src/features   # 1 failed: the Postgres test still expected all 50 rows; now only the looked-up ones stay
+npx vitest run src/services/parents/link-attempts.pg.test.ts src/data/repositories/prisma-lookups.pg.test.ts   # 3 passed
+npm run build && npx playwright test e2e/login.spec.ts e2e/parent.spec.ts e2e/parent-api.spec.ts e2e/isolation.spec.ts   # 51 passed
+```

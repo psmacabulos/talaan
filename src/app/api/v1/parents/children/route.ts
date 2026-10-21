@@ -17,14 +17,11 @@ export async function POST(request: Request) {
   const read = await readJsonBody(request);
   if (!read) return apiError("invalid_input", "The request body isn't JSON.");
 
-  const result = await linkChildToParent(caller.parentId, read.body, {
-    schools: schoolRepository,
-    students: studentRepository,
-    links: parentStudentLinkRepository,
-  });
+  const result = await linkChildToParent(caller.parentId, read.body);
   if (!result.ok) {
     if (result.code === "invalid_input")
       return apiError("invalid_input", API_MESSAGES.invalidInput, result.fieldErrors);
+    if (result.code === "too_many_tries") return apiError("too_many_tries", result.formError);
     return apiError(result.code === "no_match" ? "not_found" : "conflict", result.formError);
   }
 

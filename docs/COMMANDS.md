@@ -326,3 +326,4 @@ The usual order: the checks (section 2), then `git add -A`, then `git commit -m 
 | "Too many tries. Wait 15 minutes and try again." | 5 wrong passwords for that email in 15 minutes. Wait, or restart `npm run dev` (the count is kept in the server's memory). |
 | Signed out after a restart, or on every page | The `SESSION_SECRET` in `.env` changed, or the cookie is more than 30 days old. Sign in again. |
 | `prisma migrate dev` asks to reset | Answer **N**, and send the message. Nothing is lost while you haven't answered yes. |
+| `heroku pg:psql …` says "The local psql command could not be located" | This Mac has no `psql`, but the Docker database does. Run the same query through it: `docker exec -it talaan-postgres psql "$(heroku config:get DATABASE_URL --app bantayaral)" -c '<the SQL>'` (start it first with `docker start talaan-postgres`). Or install `psql` for good: `brew install libpq && brew link --force libpq`. |

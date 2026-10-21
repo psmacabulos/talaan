@@ -37,6 +37,7 @@ model School {
   parentStudentLinks ParentStudentLink[]
   notifications      Notification[]
   devices            Device[]
+  linkAttempts       LinkAttempt[]
 }
 
 enum Role {
@@ -280,6 +281,24 @@ model PushDelivery {
   @@index([receiptDueAt], map: "PushDelivery_receipt_due", where: raw("\"receiptDueAt\" IS NOT NULL"))
   // Postgres doesn't index a foreign key by itself: removing a phone would read every row.
   @@index([pushTokenId])
+}
+
+// One "link a child" try (Step 55.1), so a child's details can't be guessed
+// one birth date at a time: 10 tries in 24 hours for one school, LRN and
+// last name lock linking that child until a day has passed. Never the LRN
+// itself: `keyHash` is an HMAC of the three with the server's secret. A
+// successful link removes its own row; the rest are deleted after 24 hours.
+model LinkAttempt {
+  id        String   @id @default(uuid())
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  keyHash   String
+  createdAt DateTime @default(now())
+
+  // "How many tries for this child in the last 24 hours?"
+  @@index([keyHash, createdAt])
+  // The cleanup of rows older than 24 hours.
+  @@index([createdAt])
 }
 
 model ParentStudentLink {

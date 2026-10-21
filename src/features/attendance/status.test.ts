@@ -11,7 +11,6 @@ import {
   schoolDayFor,
   schoolToday,
   studentStatus,
-  studentsWithoutTapToday,
 } from "./status";
 
 /** A time on the school's clock as a real instant: at("07:56") is 7:56 AM on the demo morning (Friday 19 June 2026) in the Philippines. */
@@ -171,23 +170,6 @@ describe("attendanceByGrade", () => {
     const [row] = attendanceByGrade(students, taps, DAY);
     expect(row.studentCount).toBe(2);
     expect(row.inSchoolPercent).toBe(50);
-  });
-});
-
-describe("studentsWithoutTapToday", () => {
-  it("lists idle students before absent ones", () => {
-    const students = [student("s1", 7), student("s2", 7), student("s3", 7)];
-    const taps = [tap("s1", at("07:00"))];
-    // s2/s3 have no tap; at NOW (09:15, past the absent cutoff) both read
-    // as absent, so this also exercises "no idle students left" below.
-    const result = studentsWithoutTapToday(students, taps, schoolToday(at("08:00")));
-    expect(result.map((s) => s.id)).toEqual(["s2", "s3"]);
-  });
-
-  it("excludes students who already tapped", () => {
-    const students = [student("s1", 7), student("s2", 7)];
-    const taps = [tap("s1", at("07:00"))];
-    expect(studentsWithoutTapToday(students, taps, DAY).map((s) => s.id)).toEqual(["s2"]);
   });
 });
 

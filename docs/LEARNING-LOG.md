@@ -642,6 +642,11 @@ Because the tap's id isn't random. Every tap has an id, and the database refuses
 ### Will a feature like this be a lot of code? (owner question, 2026-10-20)
 About 350 lines, half of them tests. Most of it already existed: the gate's writer (tap and notification together), the "who should be notified" rule, the guardhouse monitor's feed and the push worker are all reused. The new parts are one small database change, one service with the rules, the button with its confirmation, and the tests.
 
+### Is `/station` a gate? What are "the demo tools"? (owner question, 2026-10-20)
+No. `/station` (the **Tap station** menu item) is Phase 1's **pretend gate**, built in Step 19 before there was any hardware: a principal clicks "Valid card", "Lost card", "Unknown card" or "Simulate offline", and the page makes up a tap for the next student waiting. No card is read. The **real gate** is `/gate` (Step 47): a tablet with the USB NFC reader, signed in with its own device token, reading real stickers. The guardhouse screen is `/gate/display`.
+
+"The demo tools" were the two things that make taps up: the dashboard's old "Simulate a tap" button (gone since Step 55, replaced by "Record time in" for one chosen student) and `/station`. Both write real taps and real parent notifications, which is fine on a demo but wrong at a real school, where a principal clicking "Valid card" would tell a parent their child arrived when nobody tapped anything.
+
 ---
 
 ## What is a "repository"? (Step 9)

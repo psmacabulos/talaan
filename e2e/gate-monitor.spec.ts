@@ -15,13 +15,19 @@ test.describe("Gate monitor (Step 48)", () => {
     await signInAs(context, "principal", baseURL!);
     await page.goto("/gate/display");
     await expect(page.getByRole("heading", { name: "Gate monitor" })).toBeVisible();
-    // How often the name shows before the tap: their demo-morning tap may
-    // already be among today's latest. One more afterwards, with no reload,
-    // can only have come through the live stream. (Not "the newest panel":
-    // under the pinned demo clock the other project's tap gets the same
-    // 9:15 AM, and whichever arrives last is rightly the newest.)
-    const mentions = page.getByText(studentName, { exact: true });
-    const before = await mentions.count();
+    // The student's entries showing a given direction, in the newest panel or
+    // the "Earlier" list. Counted by direction, not by name alone: the list
+    // keeps only the latest taps, so their demo-morning "Time in" can drop
+    // off the end at the very moment the new tap arrives (P-029). (Not "the
+    // newest panel" alone: under the pinned demo clock the other project's
+    // tap gets the same 9:15 AM, and whichever arrives last is rightly newest.)
+    const entries = (label: string) =>
+      page
+        .getByRole("listitem")
+        .or(page.getByRole("region", { name: "Newest tap" }))
+        .filter({ has: page.getByText(studentName, { exact: true }) })
+        .filter({ hasText: label });
+    const before = { "Time in": await entries("Time in").count(), "Time out": await entries("Time out").count() };
     // The stream is open once the page has run its effect; give it a moment.
     await page.waitForTimeout(500);
 
@@ -33,9 +39,13 @@ test.describe("Gate monitor (Step 48)", () => {
         clientTappedAt: new Date().toISOString(),
       },
     });
-    expect((await response.json()).outcome).toBe("recorded");
+    const answer = await response.json();
+    expect(answer.outcome).toBe("recorded");
 
-    await expect(mentions).toHaveCount(before + 1, { timeout: 5_000 });
+    // One more entry with the direction the gate just answered, with no reload,
+    // can only have come through the live stream.
+    const label = answer.direction === "time_in" ? "Time in" : "Time out";
+    await expect(entries(label)).toHaveCount(before[label] + 1, { timeout: 5_000 });
   });
 
   test("a teacher doesn't get the live feed", async ({ page, context, baseURL }) => {

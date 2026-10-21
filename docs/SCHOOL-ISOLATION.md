@@ -39,12 +39,11 @@ flowchart LR
 
 | Way in | Who | Where the school comes from |
 |---|---|---|
-| Staff pages: `/dashboard`, `/attendance`, `/students`, `/staff`, `/station`, `/settings` | staff | `requireSession().schoolId`: their own school, or the one a super admin opened |
+| Staff pages: `/dashboard`, `/attendance`, `/students`, `/staff`, `/settings` | staff | `requireSession().schoolId`: their own school, or the one a super admin opened |
 | `/schools` | super admin only | none: it lists every school, by design |
 | Students: `createStudent`, `updateStudent`, `checkCardSerial` | principal, super admin | `getSession().schoolId` |
 | Staff: `inviteStaff`, `createSignInLink`, `removeStaff` | principal, super admin | `getSession().schoolId`, and the target is looked up with `getInSchool` |
 | Attendance: `recordTimeIn` (Step 55) | staff; a teacher only for their own advisory class | `getSession().schoolId`, and the student is looked up with `getInSchool` |
-| Tap station: `syncStationTaps` | principal, super admin | `getSession().schoolId`. The browser's tap is only a claim: one for another school, or naming another school's student, is dropped (fixed in Step 51) |
 | Settings: notification preference, attendance times, theme | principal, super admin | `getSession().schoolId` |
 | `createSchool`, `openSchool` | super admin only | the new or chosen school, by design |
 | `/api/v1/devices/heartbeat`, `/api/v1/gate/taps`, `/api/v1/gate/roster` | gate | `Device.schoolId`, from the token |
@@ -52,7 +51,7 @@ flowchart LR
 | `/api/v1/photos/<school>/…` | staff, gate, monitor, parent app | the viewer's school must equal the key's first part (`canViewPhoto`); for a `tal_par_` token, the key's school and student must be one of the parent's own links (Step 53.4); otherwise 404 |
 | `/parent/*` pages, `markNotificationRead`, `markAllNotificationsRead` | parent | each of the parent's own links carries its child's `schoolId` (Step 53); the parent session holds only the parent |
 | `/api/v1/parents/*` (the parent app) | parent | the same as the `/parent/*` pages: the `tal_par_` token gives only the parent, and each of their links carries its child's school. Another child's taps, or another child's notification marked read, is 404 (`docs/PARENT-API.md`) |
-| `linkChild` | parent | the school the parent picks, accepted only when a student there matches the LRN, last name and birth date; the new link saves it |
+| `linkChild` | parent | the school the parent picks, accepted only when a student there matches the LRN, last name and birth date; the new link saves it. Wrong tries are limited per parent and per child (Step 55.1) |
 | `/set-password` | whoever holds the link | the staff member in the signed token; the page shows only their own name and email |
 | `/design-system` | nobody in production | `notFound()` |
 

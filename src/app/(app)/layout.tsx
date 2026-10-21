@@ -11,7 +11,7 @@ import { AppShell } from "@/components/app-shell/app-shell";
 
 /**
  * The authenticated shell every screen below renders inside (dashboard,
- * attendance, students, staff, tap station, schools). `(app)` is a route
+ * attendance, students, staff, settings, schools). `(app)` is a route
  * group — it adds no path segment — and this stays a nested layout under
  * the existing root layout, not a second root layout.
  */

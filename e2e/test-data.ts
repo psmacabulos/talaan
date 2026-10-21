@@ -41,14 +41,7 @@ export function testStudentName(purpose: string): string {
   return `Test${purpose.charAt(0).toUpperCase()}${purpose.slice(1)}${TEST_RUN_ID}`;
 }
 
-/**
- * The parent flow test (parent.spec.ts) can't assume any one specific seed
- * student gets tapped — in CI, station.spec.ts/a11y.spec.ts's tap-station
- * tests draw from the same shared pool of untapped students (see
- * playwright.config.ts's `workers` comment and students.ts's spare batch).
- * It reads back whichever name the tap station actually shows and looks
- * them up here instead.
- */
+/** A Balanga seed student by full name, for tests that tap or link one particular student. */
 export function findBalangaStudentByFullName(fullName: string) {
   return seedStudents.find(
     (student) => student.schoolId === "school-balanga" && `${student.firstName} ${student.lastName}` === fullName,

@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Tap } from "@/features/attendance/types";
 import type { Session } from "@/lib/session";
 import type { ParentSession } from "@/lib/parent-session";
 import { seedCards, seedNotifications, seedStaff, seedStudents } from "@/data/seed";
@@ -45,6 +44,8 @@ vi.mock("@/data/repositories", async () => {
     parentStudentLinkRepository: createMockParentStudentLinkRepository(copy(seed.seedParentStudentLinks), options),
     schoolRepository: createMockSchoolRepository(copy(seed.seedSchools), options),
     alertRepository: createMockAlertRepository(copy(seed.seedAlerts), options),
+    // Never reached: every write below is refused before it (Step 55's recordTimeIn).
+    tapWriter: { record: async () => "created" as const },
   };
 });
 
@@ -53,7 +54,7 @@ const { studentRepository, staffRepository, tapRepository, notificationRepositor
 const { updateStudent } = await import("@/features/students/actions");
 const { checkCardSerial } = await import("@/features/students/card-actions");
 const { removeStaff, createSignInLink } = await import("@/features/staff/actions");
-const { syncStationTaps } = await import("@/features/station/station-actions");
+const { recordTimeIn } = await import("@/features/attendance/actions");
 const { markNotificationRead } = await import("@/features/parents/notification-actions");
 
 const OCEANVIEW = "school-oceanview";
@@ -96,24 +97,13 @@ describe("Oceanview can't reach Balanga's data (Step 51)", () => {
     expect(JSON.stringify(result)).not.toContain(balangaStudent.lastName);
   });
 
-  it("can't write a tap into Balanga's day through the tap station", async () => {
+  it("can't record a time in for a Balanga student (Step 55)", async () => {
     signInAsOceanview();
     const before = await tapRepository.listByStudent(BALANGA, balangaStudent.id);
-    const forged = (schoolId: string): Tap => ({
-      id: crypto.randomUUID(),
-      schoolId,
-      stationId: "station-forged",
-      cardSerial: balangaCard.serial,
-      studentId: balangaStudent.id,
-      tappedAt: "2026-06-19T08:00:00.000Z",
+    await expect(recordTimeIn(balangaStudent.id)).resolves.toEqual({
+      ok: false,
+      error: "That student isn't in a class you can record.",
     });
-    const result = await syncStationTaps([
-      // Claiming to be Balanga's tap.
-      { status: "recorded", kind: "valid", tap: forged(BALANGA), studentName: "x", gradeSection: "x" },
-      // Oceanview's own tap, but naming a Balanga student.
-      { status: "recorded", kind: "valid", tap: forged(OCEANVIEW), studentName: "x", gradeSection: "x" },
-    ]);
-    expect(result).toEqual({ synced: 0 });
     await expect(tapRepository.listByStudent(BALANGA, balangaStudent.id)).resolves.toEqual(before);
   });
 

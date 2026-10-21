@@ -38,31 +38,18 @@ test.describe("Parent flow (mobile only)", () => {
   test.skip(({ viewport }) => viewport!.width !== 360, "phone width only");
 
   test("parent signs up, links a child, and sees notification", async ({ page, context, baseURL }) => {
-    // Step 1: Principal taps a card at the station (to trigger a notification).
+    // Step 1: the principal records a time in by hand (Step 55), which
+    // notifies the child's parents like a gate tap. Carmen Sison has an LRN
+    // and no tap on the demo morning, and no other test taps her.
+    const student = findBalangaStudentByFullName("Carmen Sison");
     await signInAs(context, "principal", baseURL!);
-    await page.goto("/station");
-
-    // Tap a valid card. The station always picks the *first* untapped
-    // student in the shared Balanga seed pool — but in CI, other spec files
-    // (station.spec.ts, a11y.spec.ts's tap-station check) draw from that
-    // same pool first (see playwright.config.ts's `workers` comment), so
-    // this can't assume it'll land on any one specific student. Read back
-    // whoever it actually shows instead (the result is an aria-live region,
-    // not a dialog — see tap-station-kiosk.tsx).
-    await page.getByRole("button", { name: "Valid card" }).click();
-    // Scoped to <main> — the page also has a toast region with its own
-    // aria-live="polite" (sonner), which would otherwise make this locator
-    // ambiguous.
-    const resultPanel = page.locator("main").locator('[aria-live="polite"]');
-    await expect(resultPanel).toBeVisible();
-    const tappedName = (await resultPanel.locator("p").first().textContent())?.trim() ?? "";
-    const student = findBalangaStudentByFullName(tappedName);
-    test.skip(!student, `Could not match tap station result "${tappedName}" to a seed student`);
-    // Every 3rd seed student has no LRN yet (students.ts) — a parent can't
-    // self-link one of those, so skip rather than fail if the pool happens
-    // to hand us one.
-    test.skip(!student?.lrn, `${tappedName} has no LRN on file yet, so a parent can't self-link them`);
-    await expect(page.getByText(student!.lastName)).toBeVisible();
+    await page.goto("/attendance?date=2026-06-19&grade=7&section=Rizal");
+    await page.getByRole("button", { name: "Record time in for Carmen Sison" }).locator("visible=true").click();
+    await page
+      .getByRole("dialog", { name: "Record Carmen Sison's time in now?" })
+      .getByRole("button", { name: "Record time in" })
+      .click();
+    await expect(page.getByText("Carmen Sison's time in was recorded at 9:15 AM")).toBeVisible();
 
     // Step 2: Parent signs up with a new account.
     const newParentEmail = testEmail("parent-signup");

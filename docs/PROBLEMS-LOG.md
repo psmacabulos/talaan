@@ -42,6 +42,8 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-025](#p-025--2026-10-16--two-type-errors-in-step-54s-tests) | 2026-10-16 | Two type errors in Step 54's tests | Other: tests | TypeScript | Resolved |
 | [P-026](#p-026--2026-10-19--the-live-server-answered-internal-server-error-after-step-54s-deploy) | 2026-10-19 | The live server answered "Internal Server Error" after Step 54's deploy | Other: reliability | Heroku, settings | Open: owner sets `PUSH_SENDER` |
 | [P-027](#p-027--2026-10-20--the-new-browser-test-found-its-student-already-tapped) | 2026-10-20 | The new browser test found its student already tapped | Other: tests | Playwright | Resolved |
+| [P-028](#p-028--2026-10-21--a--as-a-last-name-linked-any-child-and-_-matched-staff-emails) | 2026-10-21 | A "%" as a last name linked any child, and "_" matched staff emails | Security | Child linking, staff sign-in | Resolved (deploy pending) |
+| [P-029](#p-029--2026-10-21--the-monitor-test-lost-count-when-an-old-tap-dropped-off-the-list) | 2026-10-21 | The monitor test lost count when an old tap dropped off the list | Other: tests | Playwright, `/gate/display` | Resolved |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -597,3 +599,42 @@ sequenceDiagram
 - **Solution:** the desktop test records Teresa Lazaro (Grade 8 – Bonifacio, no card), and a comment says why both students are cardless.
 - **Lesson:** a browser test that writes to the shared database needs data no other spec can reach. Here, "no card" puts a student out of the station's reach.
 - **Status:** Resolved: `station.spec.ts` and `attendance.spec.ts` pass together.
+
+### P-028 · 2026-10-21 · A "%" as a last name linked any child, and "_" matched staff emails
+- **Where:** `findForLink` in `src/data/repositories/prisma-student-repository.ts` (link a child, web and app) and `findRowByEmail` in `prisma-staff-repository.ts` (staff sign-in, invites). Found by the systems-architect in Step 55.1's code review, then confirmed against the test database.
+- **Symptom:** with Jose Pascual's LRN and birth date, every one of these last names found him:
+  ```
+  "Pascual" -> Jose Pascual
+  "%" -> Jose Pascual
+  "P%" -> Jose Pascual
+  "_ascual" -> Jose Pascual
+  "Pascua_" -> Jose Pascual
+  ```
+- **Cause:** both lookups used Prisma's `equals` with `mode: "insensitive"`, which Postgres runs as `ILIKE`. In `ILIKE`, `%` means "anything" and `_` means "any one character", and Prisma doesn't escape them. The last name only has to be non-empty, so `%` matched every child. An email may contain `_`, so `_dmin@talaan.example` found `admin@talaan.example`.
+  ```mermaid
+  flowchart LR
+      Form["link a child:<br/>LRN, last name '%', birth date"] --> Repo["findForLink"]
+      Repo -->|"lastName ILIKE '%'"| PG[("Postgres")]
+      PG -->|"matches any name"| Linked["child linked<br/>(arrivals, photo)"]
+  ```
+- **Impact (security):** since Step 38, anyone with a child's LRN and birth date could link that child without knowing their last name, and see when they arrive and leave, and their photo. With Step 55.1's new limit it would also have been a way around it: each spelling (`%`, `%%`, `P%`…) gets its own count. For staff, each `_` variant of an email had its own "5 wrong passwords" count, so a password could be guessed past the lock, still needing the password itself. No sign it was used: the live database has no real parents yet.
+- **Options weighed:** (1) escape `%`, `_` and `\` before the query (relies on how Prisma builds the query); (2) **compare exactly what is stored.** Chosen: staff emails are stored trimmed and in lower case (`inviteStaff`, the seed), so the lookup is an exact match on the unique index, which is also faster. For the child, the database finds the student by school, LRN and birth date, and the last name is compared in code after trimming and lowercasing (the same as the limit's key).
+- **Solution:** both lookups changed; `prisma-lookups.pg.test.ts` checks that `%`, `_` and `%ascual%` find nobody and that case and spaces still don't matter, against real Postgres. No other `mode: "insensitive"` is left in `src/`.
+- **Before deploying:** check that every live staff email is already lower case, since the exact match won't find one that isn't: `heroku pg:psql --app bantayaral -c 'SELECT count(*) FROM "Staff" WHERE email <> lower(trim(email));'` should be `0`. If it isn't: `UPDATE "Staff" SET email = lower(trim(email));` the same way.
+- **Status:** Resolved in code (Step 55.1); live after the next deploy.
+
+### P-029 · 2026-10-21 · The monitor test lost count when an old tap dropped off the list
+- **Where:** the owner's `npm run test:e2e` after Step 55.1, `e2e/gate-monitor.spec.ts`, desktop project.
+- **Symptom:**
+  ```
+  > 38 |     await expect(mentions).toHaveCount(before + 1, { timeout: 5_000 });
+  Locator:  getByText('Francisco Custodio', { exact: true })
+  Expected: 2
+  Received: 1
+  ```
+  The page snapshot showed the new tap had arrived: "Francisco Custodio · Time out · 9:15 AM".
+- **Cause:** the test counted how often the student's name showed, before and after a gate tap. The monitor keeps only the latest taps, and Steps 55 and 55.1 added more taps to Balanga's demo morning ("Record time in" in `attendance.spec.ts` and `parent.spec.ts`). So his demo-morning "Time in" was the oldest entry on the list and dropped off just as the new "Time out" arrived: one entry in, one out, still 1. The monitor itself worked.
+- **Options weighed:** (1) show more entries on the monitor (changes the product to suit a test); (2) **count the student's entries showing the direction the gate just answered.** Chosen: an old entry leaving can't lower that count, and the new tap is always the newest, so it can't be the one that drops off.
+- **Solution:** the test counts entries (list items, or the "Newest tap" panel) with the name **and** "Time in" or "Time out", and expects one more of the direction in the gate's answer.
+- **Lesson:** a test that counts things on a capped list breaks when other tests add data. Count something only the action under test can add.
+- **Status:** Resolved: the full browser suite passed twice in a row (85 passed).

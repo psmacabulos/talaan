@@ -18,7 +18,6 @@ const SCREENS: Screen[] = [
   { name: "attendance (principal)", path: "/attendance", as: "principal" },
   { name: "students (principal)", path: "/students", as: "principal" },
   { name: "staff (principal)", path: "/staff", as: "principal" },
-  { name: "tap station (principal)", path: "/station", as: "principal" },
   { name: "settings (principal)", path: "/settings", as: "principal" },
   { name: "dashboard (teacher)", path: "/dashboard", as: "teacher" },
   { name: "attendance (teacher)", path: "/attendance", as: "teacher" },
@@ -169,16 +168,17 @@ test.describe("interactive states", () => {
     await expect(trigger).toBeFocused();
   });
 
-  test("tap station results", async ({ page, context, baseURL }) => {
+  test("record a time in by hand: the confirmation (Step 55)", async ({ page, context, baseURL }) => {
     await signInAs(context, "principal", baseURL!);
-    await page.goto("/station");
-    for (const label of ["Valid card", "Already tapped", "Lost card", "Unknown card"]) {
-      await page.getByRole("button", { name: label, exact: true }).click();
-      // A valid tap uploads in the background and briefly disables (fades)
-      // this button; audit once the upload is done, not mid-fade.
-      await expect(page.getByRole("button", { name: "Simulate offline" })).toBeEnabled();
-      await expectNoBlockingViolations(page);
-    }
+    // Katrina Aguilar has no card and no tap on the demo morning; the dialog
+    // is cancelled, so nothing is recorded.
+    await page.goto("/attendance?date=2026-06-19&grade=7&section=Rizal");
+    const trigger = page.getByRole("button", { name: "Record time in for Katrina Aguilar" }).locator("visible=true");
+    await trigger.click();
+    await expect(page.getByRole("dialog", { name: "Record Katrina Aguilar's time in now?" })).toBeVisible();
+    await expectNoBlockingViolations(page);
+    await page.getByRole("button", { name: "Cancel" }).click();
+    await expect(page.getByRole("dialog")).toBeHidden();
   });
 
   test("parent login and link-a-child form errors", async ({ page, context, baseURL }) => {
@@ -258,15 +258,6 @@ test.describe("keyboard and focus", () => {
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toBeHidden();
     await expect(trigger).toBeFocused();
-  });
-
-  test("tap station buttons are at least 44px tall", async ({ page, context, baseURL }) => {
-    await signInAs(context, "principal", baseURL!);
-    await page.goto("/station");
-    for (const label of ["Valid card", "Already tapped", "Lost card", "Unknown card"]) {
-      const box = await page.getByRole("button", { name: label, exact: true }).boundingBox();
-      expect(box!.height, label).toBeGreaterThanOrEqual(44);
-    }
   });
 });
 

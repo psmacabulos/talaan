@@ -33,14 +33,6 @@ export function createPrismaAlertRepository(db: PrismaClient = prisma): AlertRep
       const rows = await db.alert.findMany({ where: { schoolId }, orderBy: { createdAt: "asc" } });
       return rows.map(toAlert);
     },
-    async create(alert) {
-      const row = await db.alert.upsert({
-        where: { id: alert.id },
-        update: {},
-        create: { id: alert.id, ...toAlertData(alert) },
-      });
-      return toAlert(row);
-    },
   };
 }
 

@@ -43,7 +43,7 @@ Commit: `feat(auth): add sign up, sign in and sign out`
 
 ### Step M4: Link a child
 - [ ] The school from `GET /schools`, the LRN (12 digits, number keyboard), last name, and birth date from a date picker
-- [ ] `404` ("no match") and `409` ("already linked") both shown clearly
+- [ ] `404` ("no match"), `409` ("already linked") and `429` ("too many tries", Talaan Step 55.1) all shown clearly
 - [ ] After linking, the new child appears at once (the answer is a `ChildToday`)
 Done when: linking the demo student works, and a wrong birth date and a second link both say so clearly.
 Commit: `feat(children): link a child with their LRN and birth date`

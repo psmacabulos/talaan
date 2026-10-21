@@ -20,7 +20,7 @@ Each test receives a mock repository with zero simulated latency, so tests aren'
 
 ## End-to-end tests: full user journeys
 
-**Files:** `e2e/login.spec.ts`, `e2e/students.spec.ts`, `e2e/station.spec.ts`, `e2e/theme.spec.ts`, `e2e/parent.spec.ts`  
+**Files:** `e2e/login.spec.ts`, `e2e/students.spec.ts`, `e2e/theme.spec.ts`, `e2e/parent.spec.ts`, `e2e/attendance.spec.ts`, the gate's and the parent API's (the full list is `npm run test:e2e` in `package.json`)  
 **Command:** `npm run test:e2e`  
 **Tools:** Playwright (Chrome, mobile and desktop viewports)  
 **Speed:** ~30–60 seconds
@@ -33,9 +33,9 @@ Runs twice per test: once at 360px (mobile) and once at 1280px (desktop).
 1. **Login:** form validation, sign-in flow (Phase 1 shows "not ready yet"), parent login redirects
 2. **Add student:** create a new student and search for them in the list
 3. **Replace card:** link a card, mark it lost, tap a new one
-4. **Tap station:** valid tap updates attendance, duplicate ignored, lost card raises alert, unknown card handled, offline queue syncs
+4. **Record a time in by hand** (Step 55): press the button on an untapped student's row, confirm, and the time and "Recorded by staff" appear (the `/station` journey before it was removed in Step 55.1)
 5. **Theme switching:** pick a preset from the dropdown, reload, verify it persists; "Saved theme" restores school colors
-6. **Parent flow** (phone only): principal taps a card, new parent signs up and links that child, sees the notification in the bell and on the notifications page, signs out and back in
+6. **Parent flow** (phone only): the principal records Carmen Sison's time in, a new parent signs up and links her, sees the notification in the bell and on the notifications page, signs out and back in
 
 ### Shared sample data
 
@@ -44,14 +44,9 @@ All tests run against one instance of the running app. The app resets its sample
 - Any test that creates records (add student, signup parent) uses unique names, emails and LRNs, generated with a test-run ID (from `test-data.ts`).
 - Tests never edit records that other tests read (e.g., don't change the seeded staff).
 - The parent flow runs only at phone width to avoid multiple tests trying to link the same student at the same time.
-- `station.spec.ts`'s own tests run serially (`test.describe.configure({ mode: "serial" })`) so they don't race each other for Balanga's shared pool of untapped students via "Valid card"/"Simulate a tap".
+- A test that taps or records a student uses one no other test touches, by name, and a different one per project (phone and desktop share the database). Students with no card are the safest: only the real gate and "Record time in" can tap anyone, and the gate tests use carded students.
 
-**Balanga's tap-station pool, and why `parent.spec.ts` doesn't assume a specific student:** `e2e/a11y.spec.ts`'s "tap station results" test *also* clicks "Valid card" against that same pool, and `npx playwright test` (what CI runs, unlike `npm run test:e2e`) runs both viewport projects and every spec file against one shared server. Across `a11y.spec.ts` × 2 projects, `parent.spec.ts` × 1, and `station.spec.ts`'s two tests × 2 projects, the suite can demand up to 11 successful draws in the worst case. Two things make this safe:
-
-1. `playwright.config.ts` sets `workers: 1` in CI only, so tests run in one deterministic sequence instead of racing across files/projects (local runs stay parallel — `reuseExistingServer` means this doesn't apply there anyway).
-2. `students.ts` seeds a few extra untapped-with-active-card Balanga students on top of the roster's own 6, so the pool has enough supply even after `a11y.spec.ts`'s and `station.spec.ts`'s own draws (worked out by tracing the actual worst-case draw order, not guessed).
-
-`parent.spec.ts` still can't assume *which* student it'll get (a11y's test, running first in CI's fixed order, always takes the pool's first one) — it reads back whichever name the tap station's result panel actually shows and looks that student up in the real seed data (`findBalangaStudentByFullName` in `test-data.ts`) instead of hardcoding one. If the pool happens to hand it the one-in-a-few students with no LRN on file yet (`students.ts`: every 3rd student is missing one, by design), it skips with a clear reason rather than failing — a parent genuinely can't self-link that child today, which isn't a bug in this test to paper over.
+**Until Step 55.1** the `/station` kiosk's "Valid card" tapped whichever Balanga student was next, so several spec files competed for one pool of untapped students, and `parent.spec.ts` had to read back whoever got tapped. With the station gone, every test names its own student (`parent.spec.ts`: Carmen Sison; `attendance.spec.ts`: Teresa Lazaro and Manuel Flores; `a11y.spec.ts`: Katrina Aguilar, dialog only). The spare batch in `students.ts` stays, as untapped students for tests like these.
 
 **A gotcha if you ever extend the spare batch further:** the seed's name generator (`nameAt` in `names.ts`) repeats every 40 students, and Balanga's own 36-student roster already uses every residue below 36 — so a naive spare student can silently duplicate an existing student's exact name (found the hard way: a spare student became a second "Juan Cruz", breaking `students.spec.ts`'s search-by-name test). Only residues 36-39 are safe within Balanga; see `studentAt()`'s `nameIndex` parameter in `students.ts`.
 
