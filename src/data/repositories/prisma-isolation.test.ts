@@ -5,6 +5,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
 import { createPrismaCardRepository } from "./prisma-card-repository";
 import { createPrismaNotificationRepository } from "./prisma-notification-repository";
+import { createPrismaParentStudentLinkRepository } from "./prisma-parent-student-link-repository";
 import { createPrismaStaffRepository } from "./prisma-staff-repository";
 import { createPrismaStudentRepository } from "./prisma-student-repository";
 import { createPrismaTapRepository } from "./prisma-tap-repository";
@@ -30,6 +31,7 @@ describeWithDatabase("Prisma repositories keep schools apart (Step 51; needs E2E
   const cards = createPrismaCardRepository(db);
   const taps = createPrismaTapRepository(db);
   const notifications = createPrismaNotificationRepository(db);
+  const links = createPrismaParentStudentLinkRepository(db);
 
   afterAll(() => db.$disconnect());
 
@@ -84,5 +86,18 @@ describeWithDatabase("Prisma repositories keep schools apart (Step 51; needs E2E
     await expect(notifications.getInSchool(BALANGA, notification.id)).resolves.toMatchObject({
       read: notification.read,
     });
+  });
+
+  it("parent links: another school sees neither a child's parent accounts nor the school's new links (Step 55.3)", async () => {
+    const link = await db.parentStudentLink.findFirstOrThrow({ where: { schoolId: BALANGA } });
+    const own = await links.listGuardiansInSchool(BALANGA, [link.studentId]);
+    expect(own.map((guardian) => guardian.linkId)).toContain(link.id);
+    // Never the parent's email.
+    expect(Object.keys(own[0].parent).sort()).toEqual(["firstName", "lastName", "mobile"]);
+
+    await expect(links.listGuardiansInSchool(OCEANVIEW, [link.studentId])).resolves.toEqual([]);
+    const since = new Date(link.linkedAt.getTime() - 1).toISOString();
+    const recent = await links.listRecentInSchool(OCEANVIEW, since, 50);
+    expect(recent.links.map((row) => row.linkId)).not.toContain(link.id);
   });
 });

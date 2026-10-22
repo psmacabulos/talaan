@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: █████████████████░░░ 85%**  (285 of 335 tasks, 75 of 87 steps approved)
+**Overall progress: █████████████████░░░ 85%**  (287 of 338 tasks, 75 of 88 steps approved)
 
-**Next up:** Step 55.3, The school sees each link, and can remove one (not started)
+**Next up:** Step 55.3, The school sees each link (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -82,7 +82,8 @@
 | 55 | Record a time in by hand | ██████████ 100% | Approved |
 | 55.1 | Remove the tap station, and limit child linking | ██████████ 100% | Approved |
 | 55.2 | Other guardians are told of each new link | ██████████ 100% | Approved |
-| 55.3 | The school sees each link, and can remove one | ░░░░░░░░░░   0% | Not started |
+| 55.3 | The school sees each link | ███████░░░  67% | Ready for your review |
+| 55.4 | A principal removes a wrong link | ░░░░░░░░░░   0% | Not started |
 | 55.5 | Forgot password by email | ░░░░░░░░░░   0% | Not started |
 | 56 | One read, one tap | ░░░░░░░░░░   0% | Not started |
 | 57 | Lost cards and alerts | ░░░░░░░░░░   0% | Not started |
@@ -825,12 +826,20 @@ Done when: a second guardian linking a child shows in the first guardian's feed 
 Commit: `feat(parents): tell a child's other guardians about each new link`
 - [x] Owner review: I checked it and said "approved"
 
-### Step 55.3: The school sees each link, and can remove one
-Split from Step 55.2 on 2026-10-22 (owner). With no approval step, the school's remedy for a wrong link is seeing it and removing it.
-- [ ] The student drawer lists the child's linked parent accounts (name, mobile, date linked); a principal can remove one, after a confirmation.
-- [ ] The dashboard shows the school's new parent links from the last 7 days.
-Done when: a principal sees a new link on the dashboard and in the drawer, removes it, and that parent no longer sees the child, and every check passes.
-Commit: `feat(parents): show each school its parent links, and let a principal remove one`
+### Step 55.3: The school sees each link
+Split from Step 55.2 on 2026-10-22 (owner). With no approval step, the school's remedy for a wrong link is seeing it and removing it. Cut in two on 2026-10-22 after the systems-architect's review (too big for one review): seeing is this step, removing is Step 55.4. Recipe first: `docs/backend/step-55.3-school-sees-links.md`.
+- [x] The student drawer lists the child's linked parent accounts (name, mobile, date linked), for principals and super admins, from one query for the page's students.
+- [x] The dashboard shows the school's new parent links from the last 7 days (migration `parent_links_by_school_and_date`: index `(schoolId, linkedAt)`).
+Done when: a principal sees a new link on the dashboard and in the drawer, a teacher sees neither, and every check passes.
+Commit: `feat(parents): show each school its parent links`
+- [ ] Owner review: I checked it and said "approved"
+
+### Step 55.4: A principal removes a wrong link
+Cut from Step 55.3 on 2026-10-22 (architect review). Removing and blocking ship together: without the block, a removed parent could link the child again a minute later.
+- [ ] "Remove" in the drawer's parent accounts, after a confirmation; the link is deleted with the parent's queued pushes about the child, and who removed it is kept.
+- [ ] The removed parent can't link that child again until the school chooses "Allow again"; the API answers `403 link_blocked`.
+Done when: a principal removes a link, that parent no longer sees the child or gets a push about them, can't link them again, and every check passes.
+Commit: `feat(parents): let a principal remove a parent link`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 55.5: Forgot password by email

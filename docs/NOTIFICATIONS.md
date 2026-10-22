@@ -146,6 +146,15 @@ sequenceDiagram
 
 **Reading:** every parent-facing read and write takes the asking parent (`viewerParentId`) and adds `recipientParentId IS NULL OR recipientParentId = viewer`. The page also brings the linking parent's two names (`FeedNotification`'s `aboutParent`), never their email or mobile. The capped count and the paging still walk the `(studentId, tappedAt)` index and stop early; the filter is checked on each row as it's read.
 
+### The school's side (Step 55.3)
+
+A link notice tells the child's other guardians; the school sees every link itself, without a notice:
+
+- **The student drawer's "Parent accounts"** (principals and super admins): each linked parent's name, mobile and the day they linked. The students page loads them for the 10 students it shows in one query (`listGuardiansInSchool`), and the drawer looks the open student up in that map each time it renders.
+- **The dashboard's "New parent links"**: the school's links from the last 7 days, the newest 5 listed and all of them counted (`listRecentInSchool`, on the `(schoolId, linkedAt)` index). Each row opens the students page searched for that child.
+
+Removing a wrong link is Step 55.4.
+
 ## Pushing it to the phone (Step 54)
 
 The `Notification` row is also the push outbox. `pushedAt` stays null until the push worker has made one `PushDelivery` per phone, in the same transaction that sets it. The worker then sends them through Expo. Any code that writes a notification should call `wakePushWorker()` afterwards, so the push goes at once rather than at the next 5-minute check. The gate route and `recordTimeIn` do. The full story is in `docs/PUSH.md`.

@@ -102,6 +102,8 @@ Someone who knows a child's LRN and last name (a classmate's parent, an estrange
 
 **Built (Step 55.2, 2026-10-22):** linking a child saves, in the same transaction, one `guardian_linked` notice for each guardian already linked to that child: "An account named Ana Santos linked to Juan Cruz. If you don't know them, contact the school." It reaches only that guardian (feed, unread count, read marks and push), never the parent who linked. Two parents linking one child at once take turns on the child's row (`FOR NO KEY UPDATE`, which never holds up a tap), so exactly one of them tells the other. See `docs/NOTIFICATIONS.md`, "A second kind".
 
+**Built (Step 55.3, 2026-10-22):** the school sees every link: in the student drawer ("Parent accounts": name, mobile, date linked) and on the dashboard ("New parent links", the last 7 days). Removing a wrong one, and keeping that parent from linking the child again, is Step 55.4.
+
 ### 1.3 Two reads of one card can become a time in and a time out (Step 56)
 
 The gate sends every read straight away, without waiting for the one before (`handleScan` in `src/features/gate/gate-kiosk.tsx`). The server checks for a tap in the last 2 minutes, then writes, in two separate moments:

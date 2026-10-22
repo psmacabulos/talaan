@@ -1,12 +1,28 @@
 import { PageHeader } from "@/components/page-header";
-import { schoolRepository, staffRepository, tapRepository } from "@/data/repositories";
+import { parentStudentLinkRepository, schoolRepository, staffRepository, tapRepository } from "@/data/repositories";
 import { NoSchoolSelected } from "@/features/attendance/no-school-selected";
 import { DEFAULT_ATTENDANCE_TIMES, schoolToday } from "@/features/attendance/status";
 import { getNow } from "@/lib/clock";
 import { requireSession } from "@/lib/session";
 import { parseStudentListParams } from "@/features/students/search-params";
-import { searchStudents } from "@/features/students/search-students";
+import { searchStudents, type StudentRow } from "@/features/students/search-students";
+import type { LinkedGuardian } from "@/features/parents/types";
 import { StudentsDirectory } from "@/features/students/students-directory";
+
+/**
+ * The parent accounts linked to the students on this page, by student id,
+ * in one query for all of them (Step 55.3). Only for staff who can open the
+ * drawer: a parent's mobile number is for the people who'd act on it.
+ */
+async function guardiansOf(schoolId: string, rows: StudentRow[]): Promise<Record<string, LinkedGuardian[]>> {
+  const guardians = await parentStudentLinkRepository.listGuardiansInSchool(
+    schoolId,
+    rows.map((row) => row.student.id),
+  );
+  const byStudent: Record<string, LinkedGuardian[]> = {};
+  for (const guardian of guardians) (byStudent[guardian.studentId] ??= []).push(guardian);
+  return byStudent;
+}
 
 export default async function StudentsPage({ searchParams }: PageProps<"/students">) {
   const session = await requireSession();
@@ -37,6 +53,7 @@ export default async function StudentsPage({ searchParams }: PageProps<"/student
       : undefined,
   });
   const taps = await tapRepository.listBySchoolOnDate(session.schoolId, day.date);
+  const guardiansByStudent = isTeacher ? {} : await guardiansOf(session.schoolId, items);
 
   return (
     <StudentsDirectory
@@ -55,6 +72,7 @@ export default async function StudentsPage({ searchParams }: PageProps<"/student
       day={day}
       showGradeFilter={!isTeacher}
       canEdit={!isTeacher}
+      guardiansByStudent={guardiansByStudent}
     />
   );
 }

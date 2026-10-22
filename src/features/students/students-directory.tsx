@@ -14,6 +14,7 @@ import { StudentsCardList } from "./students-card-list";
 import { StudentsPagination } from "./students-pagination";
 import { StudentsTable } from "./students-table";
 import { StudentsToolbar } from "./students-toolbar";
+import type { LinkedGuardian } from "@/features/parents/types";
 import type { Card, Student } from "./types";
 
 /**
@@ -36,6 +37,7 @@ export function StudentsDirectory({
   day,
   showGradeFilter,
   canEdit,
+  guardiansByStudent,
 }: {
   title: string;
   description: string;
@@ -47,6 +49,12 @@ export function StudentsDirectory({
   day: SchoolDay;
   showGradeFilter: boolean;
   canEdit: boolean;
+  /**
+   * The parent accounts linked to each student on this page, by student id
+   * (Step 55.3); empty for a teacher. Looked up when the drawer renders,
+   * never copied into its state, so a `refresh()` shows the current list.
+   */
+  guardiansByStudent: Record<string, LinkedGuardian[]>;
 }) {
   const [drawer, setDrawer] = useState<{ open: boolean; student?: Student; cards: Card[] }>({
     open: false,
@@ -100,6 +108,7 @@ export function StudentsDirectory({
         open={drawer.open}
         student={drawer.student}
         cards={drawer.cards}
+        guardians={drawer.student ? (guardiansByStudent[drawer.student.id] ?? []) : []}
         today={day.date}
         onOpenChange={(open) => setDrawer((current) => ({ ...current, open }))}
         onSuccess={() => setDrawer({ open: false, cards: [] })}

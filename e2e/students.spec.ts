@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import { seedParents } from "../src/data/seed/parents";
+import { seedStudents } from "../src/data/seed/students";
 import { signInAs } from "./sessions";
 import { testStudentName, testLrn } from "./test-data";
 
@@ -160,5 +162,23 @@ test.describe("Students", () => {
     await expect.poll(() => photo.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(256);
     await expect.poll(() => photo.evaluate((img: HTMLImageElement) => img.naturalHeight)).toBe(320);
     await expect(dialog.getByRole("button", { name: "Change photo" })).toBeVisible();
+  });
+
+  test("the drawer lists the parent accounts linked to a student (Step 55.3)", async ({ page, context, baseURL }) => {
+    await signInAs(context, "principal", baseURL!);
+    await page.goto("/students");
+
+    // student-0001 has two seed parents; no browser test links or unlinks them.
+    const child = seedStudents.find((student) => student.id === "student-0001")!;
+    const childName = `${child.firstName} ${child.lastName}`;
+    await page.getByLabel("Search students").fill(childName);
+    await page.getByRole("button", { name: `Edit ${childName}` }).click();
+
+    const accounts = page.getByRole("dialog").getByRole("region", { name: "Parent accounts" });
+    for (const id of ["parent-balanga-1", "parent-balanga-2"]) {
+      const parent = seedParents.find((candidate) => candidate.id === id)!;
+      await expect(accounts.getByText(`${parent.firstName} ${parent.lastName}`)).toBeVisible();
+      await expect(accounts.getByText(new RegExp(`${parent.mobile} · Linked`))).toBeVisible();
+    }
   });
 });

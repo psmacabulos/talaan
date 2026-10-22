@@ -2568,3 +2568,43 @@ Limit  (actual time=0.019..0.020 rows=2.00 loops=1)
 ```
 
 The same index walk as before, stopping at the cap; the recipient check is one more condition on each row it reads.
+
+## Step 55.3: the school sees each link (2026-10-22)
+
+**A split, from the review.** The plan was "see every link, and remove a wrong one". The systems-architect found it too big for one review, and the owner agreed to cut it: seeing is this step, removing (with a block on linking again, which has to ship with it) is Step 55.4. The architect's round-1 points for 55.4 are kept at the end of this step's recipe. Its point for this step: the drawer copies a student's row into its own state when it opens, so the parent list is looked up from the page's props by student id at render instead, or Step 55.4's `refresh()` after a removal would leave the removed parent on screen.
+
+**Migration.**
+
+```bash
+npx prisma migrate dev --name parent_links_by_school_and_date --create-only   # DROP INDEX schoolId; CREATE INDEX (schoolId, linkedAt)
+npx prisma migrate dev && npx prisma generate
+```
+
+Then `prisma migrate deploy` against the browser-test database too, the same way as in Step 55.2, so its Postgres tests had the new index.
+
+**One query for the page.** The students page asks for the links of the 10 students it shows in one `findMany` with `studentId IN (…)`, including only the parent's first name, last name and mobile, and only when the viewer can open the drawer. A teacher's page makes no extra query. `prisma-isolation.test.ts` checks the parent object has exactly those three keys, so an email can't slip in later.
+
+**Browser tests.** The seed parents' names are generated (`nameAt(500)`), so `students.spec.ts` reads them from `src/data/seed/parents.ts`. `parent.spec.ts`'s Step 55.2 test now also signs in as the principal and finds "Noticed Parent" in Carmen Sison's drawer, which is safe from the parallel test that also links Carmen (P-030) because it looks for its own parent's name.
+
+**Visual check.** The dashboard card and the drawer at 360 × 800 and 1280 × 800, light and dark, after a parent linked Carmen Sison (a throwaway Playwright spec, deleted afterwards, run with `--workers=1` this time). The card's pill reads "1 this week" on the phone run and "2 this week" on the desktop run, which came second. Carmen's drawer lists her seed parent, then the new ones, between "Parent or guardian" and "Photo".
+
+**Measured:** with `SET enable_seqscan = off`, the dashboard's question uses the new index on both columns:
+
+```text
+Limit  (actual time=0.058..0.059 rows=1.00 loops=1)
+  ->  Index Scan Backward using "ParentStudentLink_schoolId_linkedAt_idx" on "ParentStudentLink"
+        Index Cond: (("schoolId" = 'school-balanga'::text) AND ("linkedAt" >= (now() - '7 days'::interval)))
+```
+
+Targeted runs while building:
+
+```bash
+npx tsc --noEmit                                   # clean
+npx vitest run src/features/students/linked-parents.test.tsx src/features/parents/new-parent-links.test.tsx src/data/repositories/parent-student-link-repository.test.ts src/data/repositories/prisma-isolation.test.ts   # 21 passed
+npm run build && npx playwright test e2e/students.spec.ts e2e/parent.spec.ts   # 13 passed
+npx playwright test e2e/a11y.spec.ts               # 128 passed (the dashboard's axe check includes the new card)
+```
+
+**The drawer's query, measured too** (architect's request): on the seed's 10 links, Postgres reads them through the `(schoolId, linkedAt)` index and filters by student (`Index Scan using "ParentStudentLink_schoolId_linkedAt_idx"`, `Index Cond: ("schoolId" = 'school-balanga')`). That's every link at the school: cheap at 10, worth checking again once a school has hundreds, when the planner should prefer the `studentId` index (Step 61, "Queries that don't grow").
+
+**Architect's code review:** nothing blocking. Three limits went into the recipe: in a demo the card counts from the demo morning, a row searches the students page by name, and the page sends 10 students' parents' mobiles to principals and super admins only.

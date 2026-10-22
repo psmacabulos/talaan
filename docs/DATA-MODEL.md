@@ -126,6 +126,8 @@ One honest caveat, visible if you look closely at the diagram: `TAP.cardSerial` 
 
 **Step 55.2** adds a second kind, `guardian_linked` ("a new parent linked your child"), and two optional links from `NOTIFICATION` to `PARENT`: `recipientParentId` (only that parent sees it; empty for a tap, which every guardian sees) and `aboutParentId` (who linked). Deleting a parent account later (Step 60) takes the notices *for* them and empties the ones *about* them. See `docs/NOTIFICATIONS.md`, "A second kind".
 
+**Step 55.3** lets the school read `PARENT_STUDENT_LINK` from its side: a child's linked parents (name and mobile, never the email) in the student drawer, and the school's newest links on the dashboard. Its school index became `(schoolId, linkedAt)`, which serves both "this school's links" and "this school's links since a date".
+
 ## The shape of it, in one picture: which files define what
 
 ```mermaid

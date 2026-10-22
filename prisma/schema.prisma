@@ -319,7 +319,9 @@ model ParentStudentLink {
   // A parent links each child once. The link-a-child form already says
   // "already linked"; this makes it impossible, not just unlikely.
   @@unique([parentId, studentId])
-  @@index([schoolId])
+  // The dashboard's "new links in the last 7 days" (Step 55.3); also any
+  // lookup by school alone, which can use an index's first column.
+  @@index([schoolId, linkedAt])
   @@index([studentId])
 }
 

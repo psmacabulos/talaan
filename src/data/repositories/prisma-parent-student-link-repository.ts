@@ -59,6 +59,46 @@ export function createPrismaParentStudentLinkRepository(db: PrismaClient = prism
       const rows = await db.parentStudentLink.findMany({ where: { schoolId }, orderBy: FIRST_LINKED_FIRST });
       return rows.map(toParentStudentLink);
     },
+    async listGuardiansInSchool(schoolId, studentIds) {
+      if (studentIds.length === 0) return [];
+      const rows = await db.parentStudentLink.findMany({
+        where: { schoolId, studentId: { in: studentIds } },
+        orderBy: FIRST_LINKED_FIRST,
+        include: { parent: { select: { firstName: true, lastName: true, mobile: true } } },
+      });
+      return rows.map((row) => ({
+        linkId: row.id,
+        studentId: row.studentId,
+        linkedAt: row.linkedAt.toISOString(),
+        parent: row.parent,
+      }));
+    },
+    async listRecentInSchool(schoolId, since, take) {
+      // Both read the (schoolId, linkedAt) index: the count, and the newest
+      // few walking it backwards.
+      const where = { schoolId, linkedAt: { gte: new Date(since) } };
+      const [total, rows] = await Promise.all([
+        db.parentStudentLink.count({ where }),
+        db.parentStudentLink.findMany({
+          where,
+          orderBy: [{ linkedAt: "desc" }, { id: "desc" }],
+          take,
+          include: {
+            parent: { select: { firstName: true, lastName: true } },
+            student: { select: { id: true, firstName: true, lastName: true } },
+          },
+        }),
+      ]);
+      return {
+        total,
+        links: rows.map((row) => ({
+          linkId: row.id,
+          linkedAt: row.linkedAt.toISOString(),
+          parent: row.parent,
+          student: row.student,
+        })),
+      };
+    },
     async createWithNotices(link) {
       // One transaction: a link is never saved without its notices (Step 55.2).
       return db.$transaction(async (tx) => {

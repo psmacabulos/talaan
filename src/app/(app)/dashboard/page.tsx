@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/page-header";
 import {
   alertRepository,
   cardRepository,
+  parentStudentLinkRepository,
   schoolRepository,
   staffRepository,
   studentRepository,
@@ -18,6 +19,7 @@ import { NeedsAttention } from "@/features/attendance/needs-attention";
 import { NoSchoolSelected } from "@/features/attendance/no-school-selected";
 import { attendanceByGrade, countByStatus, DEFAULT_ATTENDANCE_TIMES, schoolToday } from "@/features/attendance/status";
 import { deriveCardStatus } from "@/features/students/card-status";
+import { NEW_LINKS_DAYS, NEW_LINKS_SHOWN, NewParentLinks, newLinksLabel } from "@/features/parents/new-parent-links";
 
 /** A plain bordered panel with a heading — the dashboard's repeated container. */
 function DashboardCard({
@@ -134,7 +136,11 @@ export default async function DashboardPage() {
   }
 
   const schoolId = session.schoolId;
-  const alerts = await alertRepository.listBySchool(schoolId);
+  const linksSince = new Date(Date.parse(now) - NEW_LINKS_DAYS * 24 * 60 * 60_000).toISOString();
+  const [alerts, newLinks] = await Promise.all([
+    alertRepository.listBySchool(schoolId),
+    parentStudentLinkRepository.listRecentInSchool(schoolId, linksSince, NEW_LINKS_SHOWN),
+  ]);
   const openAlerts = alerts.filter((alert) => !alert.acknowledged);
   const alertTaps = (
     await Promise.all(openAlerts.map((alert) => tapRepository.getInSchool(schoolId, alert.tapId)))
@@ -176,6 +182,17 @@ export default async function DashboardPage() {
             }
           >
             <NeedsAttention alerts={openAlerts} alertTaps={alertTaps} students={students} today={day.date} />
+          </DashboardCard>
+
+          <DashboardCard
+            title="New parent links"
+            aside={
+              <span className="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
+                {newLinksLabel(newLinks.total)}
+              </span>
+            }
+          >
+            <NewParentLinks links={newLinks.links} />
           </DashboardCard>
 
           <DashboardCard

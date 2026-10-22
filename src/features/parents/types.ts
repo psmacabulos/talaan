@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import type { notificationKindSchema, notificationSchema, parentSchema, parentStudentLinkSchema } from "./schemas";
 import type { linkChildSchema, parentLoginSchema, parentSignupSchema } from "./auth-schemas";
+import type { Student } from "../students/types";
 
 export type Parent = z.infer<typeof parentSchema>;
 export type ParentStudentLink = z.infer<typeof parentStudentLinkSchema>;
@@ -23,3 +24,19 @@ export type FeedNotification = Notification & { aboutParent: ParentName | null }
 export type ParentSignupInput = z.infer<typeof parentSignupSchema>;
 export type ParentLoginInput = z.infer<typeof parentLoginSchema>;
 export type LinkChildInput = z.infer<typeof linkChildSchema>;
+
+/** A parent account linked to a child, as the school sees it (Step 55.3). Never the parent's email. */
+export type LinkedGuardian = {
+  linkId: string;
+  studentId: string;
+  linkedAt: string;
+  parent: Pick<Parent, "firstName" | "lastName" | "mobile">;
+};
+
+/** One of a school's newest links, for the dashboard (Step 55.3). */
+export type RecentLink = {
+  linkId: string;
+  linkedAt: string;
+  parent: ParentName;
+  student: Pick<Student, "id" | "firstName" | "lastName">;
+};

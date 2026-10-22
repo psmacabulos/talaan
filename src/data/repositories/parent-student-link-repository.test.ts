@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Notification, ParentStudentLink } from "@/features/parents/types";
+import type { Student } from "@/features/students/types";
 import { createMockParentStudentLinkRepository } from "./parent-student-link-repository";
 
 const link1: ParentStudentLink = {
@@ -27,6 +28,18 @@ const link3: ParentStudentLink = {
 };
 
 const allLinks = [link1, link2, link3];
+
+const studentBase: Student = {
+  id: "student-x",
+  schoolId: "school-a",
+  firstName: "X",
+  lastName: "Y",
+  birthDate: "2012-03-14",
+  gradeLevel: 8,
+  section: "Rizal",
+  guardianName: "Maria Cruz",
+  guardianMobile: "09171234567",
+};
 
 describe("createMockParentStudentLinkRepository", () => {
   it("lists every child of a parent", async () => {
@@ -86,6 +99,61 @@ describe("createMockParentStudentLinkRepository", () => {
       tappedAt: link.linkedAt,
       read: false,
       aboutParentId: "parent-new",
+    });
+  });
+
+  describe("the school's view of its links (Step 55.3)", () => {
+    const parents = [
+      { id: "parent-a", firstName: "Ana", lastName: "Santos", mobile: "09170000001", email: "ana@x.com" },
+      { id: "parent-b", firstName: "Ben", lastName: "Reyes", mobile: "09170000002", email: "ben@x.com" },
+    ];
+    const students = [
+      { ...studentBase, id: "student-a", firstName: "Juan", lastName: "Cruz" },
+      { ...studentBase, id: "student-b", firstName: "Maria", lastName: "Ramos" },
+    ];
+    const elsewhere = { ...link3, id: "link-elsewhere", schoolId: "school-b", linkedAt: "2026-06-03T08:00:00Z" };
+    const later = { ...link3, linkedAt: "2026-06-02T08:00:00Z" };
+    const repo = () =>
+      createMockParentStudentLinkRepository([later, link2, link1, elsewhere], {
+        latencyMs: 0,
+        notifications: [],
+        parents,
+        students,
+      });
+
+    it("lists the asked students' parents at that school, oldest first, with name and mobile only", async () => {
+      await expect(repo().listGuardiansInSchool("school-a", ["student-a"])).resolves.toEqual([
+        {
+          linkId: "link-1",
+          studentId: "student-a",
+          linkedAt: link1.linkedAt,
+          parent: { firstName: "Ana", lastName: "Santos", mobile: "09170000001" },
+        },
+        {
+          linkId: "link-3",
+          studentId: "student-a",
+          linkedAt: later.linkedAt,
+          parent: { firstName: "Ben", lastName: "Reyes", mobile: "09170000002" },
+        },
+      ]);
+      await expect(repo().listGuardiansInSchool("school-a", [])).resolves.toEqual([]);
+      await expect(repo().listGuardiansInSchool("school-c", ["student-a"])).resolves.toEqual([]);
+    });
+
+    it("counts the school's links since a time, and lists the newest few with names", async () => {
+      const recent = await repo().listRecentInSchool("school-a", "2026-06-01T08:00:00Z", 1);
+      expect(recent.total).toBe(3);
+      expect(recent.links).toEqual([
+        {
+          linkId: "link-3",
+          linkedAt: later.linkedAt,
+          parent: { firstName: "Ben", lastName: "Reyes" },
+          student: { id: "student-a", firstName: "Juan", lastName: "Cruz" },
+        },
+      ]);
+      await expect(repo().listRecentInSchool("school-a", "2026-06-02T00:00:00Z", 5)).resolves.toMatchObject({
+        total: 1,
+      });
     });
   });
 });

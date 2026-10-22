@@ -163,6 +163,15 @@ test.describe("Parent flow (mobile only)", () => {
         .getByText(/If you don't know them, contact the school\./)
         .first(),
     ).toBeVisible();
+
+    // The school sees the new account in Carmen's drawer (Step 55.3).
+    await signInAs(context, "principal", baseURL!);
+    await page.goto("/students");
+    await page.getByLabel("Search students").fill("Carmen Sison");
+    await page.getByRole("button", { name: "Edit Carmen Sison" }).click();
+    await expect(
+      page.getByRole("dialog").getByRole("region", { name: "Parent accounts" }).getByText("Noticed Parent"),
+    ).toBeVisible();
   });
 
   test("one parent links children at two schools and sees both (Step 53)", async ({ page }) => {

@@ -1,5 +1,6 @@
-import type { Notification, ParentStudentLink } from "@/features/parents/types";
-import { seedNotifications, seedParentStudentLinks } from "@/data/seed";
+import type { LinkedGuardian, Notification, Parent, ParentStudentLink, RecentLink } from "@/features/parents/types";
+import type { Student } from "@/features/students/types";
+import { seedNotifications, seedParentStudentLinks, seedParents, seedStudents } from "@/data/seed";
 import { DEFAULT_LATENCY_MS, simulateLatency } from "./latency";
 
 export interface ParentStudentLinkRepository {
@@ -9,6 +10,14 @@ export interface ParentStudentLinkRepository {
   listByStudent(studentId: string): Promise<ParentStudentLink[]>;
   /** Every link within a school. */
   listBySchool(schoolId: string): Promise<ParentStudentLink[]>;
+  /**
+   * The links of these students, at `schoolId` only, each with the parent's
+   * name and mobile, oldest first, in one query (Step 55.3's drawer). Never
+   * the parent's email.
+   */
+  listGuardiansInSchool(schoolId: string, studentIds: string[]): Promise<LinkedGuardian[]>;
+  /** How many links `schoolId` got since `since`, and the newest `take` of them, with names (Step 55.3's dashboard). */
+  listRecentInSchool(schoolId: string, since: string, take: number): Promise<{ total: number; links: RecentLink[] }>;
   /**
    * Step 22's "link a child", with Step 55.2's notices: saves the link and,
    * in the same transaction, one `guardian_linked` notification for each of
@@ -25,12 +34,19 @@ export interface ParentStudentLinkRepository {
 /** A new link, and how many guardians it told (each one gets a push to send). */
 export type LinkWithNotices = { link: ParentStudentLink; noticesMade: number };
 
+/** In the order the links were made; the id breaks ties. */
+function firstLinkedFirst(a: ParentStudentLink, b: ParentStudentLink): number {
+  return a.linkedAt.localeCompare(b.linkedAt) || a.id.localeCompare(b.id);
+}
+
 export function createMockParentStudentLinkRepository(
   data: ParentStudentLink[] = seedParentStudentLinks,
-  options: { latencyMs?: number; notifications?: Notification[] } = {},
+  options: { latencyMs?: number; notifications?: Notification[]; parents?: Parent[]; students?: Student[] } = {},
 ): ParentStudentLinkRepository {
   const latencyMs = options.latencyMs ?? DEFAULT_LATENCY_MS;
   const notifications = options.notifications ?? seedNotifications;
+  const parents = options.parents ?? seedParents;
+  const students = options.students ?? seedStudents;
 
   return {
     async listByParent(parentId) {
@@ -44,6 +60,45 @@ export function createMockParentStudentLinkRepository(
     async listBySchool(schoolId) {
       await simulateLatency(latencyMs);
       return data.filter((link) => link.schoolId === schoolId);
+    },
+    async listGuardiansInSchool(schoolId, studentIds) {
+      await simulateLatency(latencyMs);
+      return data
+        .filter((link) => link.schoolId === schoolId && studentIds.includes(link.studentId))
+        .sort(firstLinkedFirst)
+        .flatMap((link) => {
+          const parent = parents.find((candidate) => candidate.id === link.parentId);
+          if (!parent) return [];
+          const { firstName, lastName, mobile } = parent;
+          return [
+            {
+              linkId: link.id,
+              studentId: link.studentId,
+              linkedAt: link.linkedAt,
+              parent: { firstName, lastName, mobile },
+            },
+          ];
+        });
+    },
+    async listRecentInSchool(schoolId, since, take) {
+      await simulateLatency(latencyMs);
+      const recent = data
+        .filter((link) => link.schoolId === schoolId && Date.parse(link.linkedAt) >= Date.parse(since))
+        .sort((a, b) => firstLinkedFirst(b, a));
+      const links = recent.slice(0, take).flatMap((link) => {
+        const parent = parents.find((candidate) => candidate.id === link.parentId);
+        const student = students.find((candidate) => candidate.id === link.studentId);
+        if (!parent || !student) return [];
+        return [
+          {
+            linkId: link.id,
+            linkedAt: link.linkedAt,
+            parent: { firstName: parent.firstName, lastName: parent.lastName },
+            student: { id: student.id, firstName: student.firstName, lastName: student.lastName },
+          },
+        ];
+      });
+      return { total: recent.length, links };
     },
     async createWithNotices(link) {
       await simulateLatency(latencyMs);
