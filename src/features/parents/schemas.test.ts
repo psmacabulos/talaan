@@ -66,6 +66,13 @@ describe("notificationSchema", () => {
     kind: "time_in",
     tappedAt: "2026-06-20T07:56:00Z",
     read: false,
+    recipientParentId: null,
+  };
+  const linkNotice = {
+    ...validNotification,
+    kind: "guardian_linked",
+    recipientParentId: "parent-balanga-1",
+    aboutParentId: "parent-new",
   };
 
   it("accepts a valid notification", () => {
@@ -74,5 +81,17 @@ describe("notificationSchema", () => {
 
   it("rejects an empty studentId", () => {
     expect(notificationSchema.safeParse({ ...validNotification, studentId: "" }).success).toBe(false);
+  });
+
+  it("accepts a link notice for one parent, and one whose linking account is gone (Step 55.2)", () => {
+    expect(notificationSchema.safeParse(linkNotice).success).toBe(true);
+    expect(notificationSchema.safeParse({ ...linkNotice, aboutParentId: null }).success).toBe(true);
+  });
+
+  it("rejects a tap's notification for one parent, and a link notice for nobody", () => {
+    expect(notificationSchema.safeParse({ ...validNotification, recipientParentId: "parent-balanga-1" }).success).toBe(
+      false,
+    );
+    expect(notificationSchema.safeParse({ ...linkNotice, recipientParentId: null }).success).toBe(false);
   });
 });

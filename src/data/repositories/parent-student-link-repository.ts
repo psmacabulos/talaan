@@ -1,5 +1,5 @@
-import type { ParentStudentLink } from "@/features/parents/types";
-import { seedParentStudentLinks } from "@/data/seed";
+import type { Notification, ParentStudentLink } from "@/features/parents/types";
+import { seedNotifications, seedParentStudentLinks } from "@/data/seed";
 import { DEFAULT_LATENCY_MS, simulateLatency } from "./latency";
 
 export interface ParentStudentLinkRepository {
@@ -10,20 +10,27 @@ export interface ParentStudentLinkRepository {
   /** Every link within a school. */
   listBySchool(schoolId: string): Promise<ParentStudentLink[]>;
   /**
-   * Step 22's "link a child". Idempotent by `id`, same as the other mock
-   * repositories' `create`. The caller checks "already linked" first (via
+   * Step 22's "link a child", with Step 55.2's notices: saves the link and,
+   * in the same transaction, one `guardian_linked` notification for each of
+   * the child's other guardians at that school, naming the new parent. Two
+   * parents linking one child at once take turns, so the second always
+   * tells the first. The caller checks "already linked" first (via
    * `listByParent`), for a friendly message; this returns `null` when the
    * parent already has a link to this student anyway (the same form sent
-   * twice at once), since only one can be kept.
+   * twice at once), since only one can be kept, and then makes no notice.
    */
-  create(link: ParentStudentLink): Promise<ParentStudentLink | null>;
+  createWithNotices(link: ParentStudentLink): Promise<LinkWithNotices | null>;
 }
+
+/** A new link, and how many guardians it told (each one gets a push to send). */
+export type LinkWithNotices = { link: ParentStudentLink; noticesMade: number };
 
 export function createMockParentStudentLinkRepository(
   data: ParentStudentLink[] = seedParentStudentLinks,
-  options: { latencyMs?: number } = {},
+  options: { latencyMs?: number; notifications?: Notification[] } = {},
 ): ParentStudentLinkRepository {
   const latencyMs = options.latencyMs ?? DEFAULT_LATENCY_MS;
+  const notifications = options.notifications ?? seedNotifications;
 
   return {
     async listByParent(parentId) {
@@ -38,16 +45,30 @@ export function createMockParentStudentLinkRepository(
       await simulateLatency(latencyMs);
       return data.filter((link) => link.schoolId === schoolId);
     },
-    async create(link) {
+    async createWithNotices(link) {
       await simulateLatency(latencyMs);
-      const twin = data.find(
-        (existing) => existing.parentId === link.parentId && existing.studentId === link.studentId,
+      const taken = data.some(
+        (existing) =>
+          existing.id === link.id || (existing.parentId === link.parentId && existing.studentId === link.studentId),
       );
-      if (twin && twin.id !== link.id) return null;
-      if (!data.some((existing) => existing.id === link.id)) {
-        data.push(link);
+      if (taken) return null;
+      const others = data.filter(
+        (existing) => existing.studentId === link.studentId && existing.schoolId === link.schoolId,
+      );
+      data.push(link);
+      for (const other of others) {
+        notifications.push({
+          id: crypto.randomUUID(),
+          schoolId: link.schoolId,
+          studentId: link.studentId,
+          kind: "guardian_linked",
+          tappedAt: link.linkedAt,
+          read: false,
+          recipientParentId: other.parentId,
+          aboutParentId: link.parentId,
+        });
       }
-      return link;
+      return { link, noticesMade: others.length };
     },
   };
 }

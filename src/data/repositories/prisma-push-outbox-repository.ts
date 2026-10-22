@@ -1,5 +1,5 @@
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
-import type { NotificationKind } from "@/features/parents/types";
+import type { Notification } from "@/features/parents/types";
 import { prisma } from "@/lib/db";
 import type { DeliveryResult, PushOutboxRepository, ReceiptDue, ReceiptResult } from "./push-outbox-repository";
 
@@ -33,11 +33,13 @@ export function createPrismaPushOutboxRepository(db: PrismaClient = prisma): Pus
         if (fresh.length > 0) {
           // Every push address of every parent linked to the child at the
           // notification's school, whose sign-in isn't revoked (Step 54) and
-          // was used in the last 30 days (Step 54.1).
+          // was used in the last 30 days (Step 54.1). A link notice goes to
+          // its one recipient only (Step 55.2).
           const targets = await tx.$queryRaw<{ notificationId: string; pushTokenId: string }[]>`
             SELECT n."id" AS "notificationId", p."id" AS "pushTokenId"
             FROM "Notification" AS n
             JOIN "ParentStudentLink" AS l ON l."studentId" = n."studentId" AND l."schoolId" = n."schoolId"
+              AND (n."recipientParentId" IS NULL OR l."parentId" = n."recipientParentId")
             JOIN "ParentToken" AS t ON t."parentId" = l."parentId" AND t."revokedAt" IS NULL
               AND t."lastUsedAt" >= now() - make_interval(secs => ${signInUnusedMs / 1000})
             JOIN "PushToken" AS p ON p."parentTokenId" = t."id"
@@ -62,7 +64,7 @@ export function createPrismaPushOutboxRepository(db: PrismaClient = prisma): Pus
           notificationId: string;
           studentId: string;
           childFirstName: string;
-          kind: NotificationKind;
+          kind: Notification["kind"];
           tappedAt: Date;
           ageMs: number;
         }[]

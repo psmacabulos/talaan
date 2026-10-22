@@ -34,26 +34,44 @@ export const parentStudentLinkSchema = z.object({
 });
 
 /**
- * Whether a notification is for a student arriving (time in) or leaving
- * (time out). A school's `notificationPreference` (`off` / `time_in_only` /
- * `time_in_and_time_out`, see schools/schemas.ts) decides which of these
- * actually fire, per school — never per parent.
+ * A tap's direction, and the kind of a tap's notification: a student
+ * arriving (time in) or leaving (time out). A school's
+ * `notificationPreference` (`off` / `time_in_only` / `time_in_and_time_out`,
+ * see schools/schemas.ts) decides which of these actually fire, per school —
+ * never per parent.
  */
 export const notificationKindSchema = z.enum(["time_in", "time_out"]);
 
-/**
- * A notification a parent sees in their in-app feed (Step 24). Stored as a
- * flat copy of the tap's data at the moment it fires — `studentId` and
- * `tappedAt` are copied from the tap, `kind` is derived from the tap
- * sequence — rather than referencing the tap by `id`. That's a deliberate
- * deferral (a `tapId` foreign key can be added in Phase 2 once there's a
- * real Tap API to join against), not an oversight.
- */
-export const notificationSchema = z.object({
+const notificationBase = {
   id: z.string().min(1),
   schoolId: z.string().min(1),
   studentId: z.string().min(1),
-  kind: notificationKindSchema,
+  /** When it happened: the tap's time, or the link's. */
   tappedAt: z.iso.datetime(),
   read: z.boolean(),
-});
+};
+
+/**
+ * A notification a parent sees in their in-app feed (Step 24), one of two
+ * kinds, told apart by `kind`:
+ *
+ * - **A tap** (`time_in`/`time_out`): a flat copy of the tap's data at the
+ *   moment it fires, rather than a reference to the tap. One row per child:
+ *   every guardian of the child sees it and shares its read mark, so it has
+ *   no recipient.
+ * - **A new guardian linked** (`guardian_linked`, Step 55.2): one row for
+ *   each guardian who's told, so it has exactly one recipient, and names the
+ *   parent who linked (`aboutParentId`, empty once that account is deleted).
+ *
+ * A union, so code that shows a notification has to handle both kinds; a
+ * missing one is a compile error, not a wrong word on a parent's phone.
+ */
+export const notificationSchema = z.discriminatedUnion("kind", [
+  z.object({ ...notificationBase, kind: notificationKindSchema, recipientParentId: z.null() }),
+  z.object({
+    ...notificationBase,
+    kind: z.literal("guardian_linked"),
+    recipientParentId: z.string().min(1),
+    aboutParentId: z.string().min(1).nullable(),
+  }),
+]);

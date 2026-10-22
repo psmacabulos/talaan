@@ -112,6 +112,8 @@ describe("parent API answers", () => {
         kind: "time_in",
         tappedAt: schoolTimeToIso(FRIDAY, "07:56"),
         read: false,
+        recipientParentId: null,
+        aboutParent: null,
       },
       // Spread on purpose: a whole student must still come out as just the name.
       student: { ...student },
@@ -125,6 +127,34 @@ describe("parent API answers", () => {
       read: false,
     });
     for (const secret of PRIVATE) expect(JSON.stringify(json)).not.toContain(secret);
+  });
+
+  it("gives a link notice the linking parent's two names only, or null once their account is gone (Step 55.2)", () => {
+    const notice = {
+      id: "00000000-0000-4000-8000-000000000002",
+      schoolId: "school-a",
+      studentId: student.id,
+      kind: "guardian_linked" as const,
+      tappedAt: schoolTimeToIso(FRIDAY, "18:12"),
+      read: false,
+      recipientParentId: "parent-1",
+      aboutParentId: "parent-2",
+    };
+    // Spread on purpose: a whole parent must still come out as just the two names.
+    const ana = { firstName: "Ana", lastName: "Santos", email: "ana@x.com", mobile: "09170000000" };
+    const json = toNotificationJson({ notification: { ...notice, aboutParent: { ...ana } }, student });
+    expect(json).toEqual({
+      id: "00000000-0000-4000-8000-000000000002",
+      childId: "student-juan",
+      childName: "Juan Dela Cruz",
+      kind: "guardian_linked",
+      at: `${FRIDAY}T18:12:00.000+08:00`,
+      read: false,
+      guardian: { firstName: "Ana", lastName: "Santos" },
+    });
+    expect(JSON.stringify(json)).not.toContain("ana@x.com");
+    expect(JSON.stringify(json)).not.toContain("parent-2");
+    expect(toNotificationJson({ notification: { ...notice, aboutParent: null }, student }).guardian).toBeNull();
   });
 
   it("answers every error in one shape, with its status", async () => {

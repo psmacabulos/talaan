@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ParentStudentLink } from "@/features/parents/types";
+import type { Notification, ParentStudentLink } from "@/features/parents/types";
 import { createMockParentStudentLinkRepository } from "./parent-student-link-repository";
 
 const link1: ParentStudentLink = {
@@ -51,20 +51,41 @@ describe("createMockParentStudentLinkRepository", () => {
   });
 
   it("creates a new link and it shows up for both sides", async () => {
-    const repo = createMockParentStudentLinkRepository([], { latencyMs: 0 });
-    await expect(repo.create(link1)).resolves.toEqual(link1);
+    const repo = createMockParentStudentLinkRepository([], { latencyMs: 0, notifications: [] });
+    await expect(repo.createWithNotices(link1)).resolves.toEqual({ link: link1, noticesMade: 0 });
     await expect(repo.listByParent("parent-a")).resolves.toEqual([link1]);
     await expect(repo.listByStudent("student-a")).resolves.toEqual([link1]);
   });
 
-  it("is idempotent when creating with an id that already exists", async () => {
-    const repo = createMockParentStudentLinkRepository([link1], { latencyMs: 0 });
-    await repo.create({ ...link1, studentId: "student-different" });
+  it("returns null, and keeps the first, for an id that already exists", async () => {
+    const repo = createMockParentStudentLinkRepository([link1], { latencyMs: 0, notifications: [] });
+    await expect(repo.createWithNotices({ ...link1, studentId: "student-different" })).resolves.toBeNull();
     await expect(repo.listByParent("parent-a")).resolves.toEqual([link1]);
   });
-  it("returns null for a second link between the same parent and student", async () => {
-    const repo = createMockParentStudentLinkRepository([link1], { latencyMs: 0 });
-    await expect(repo.create({ ...link1, id: "link-twin" })).resolves.toBeNull();
+
+  it("returns null for a second link between the same parent and student, and tells nobody", async () => {
+    const notifications: Notification[] = [];
+    const repo = createMockParentStudentLinkRepository([link1, link3], { latencyMs: 0, notifications });
+    await expect(repo.createWithNotices({ ...link1, id: "link-twin" })).resolves.toBeNull();
     await expect(repo.listByParent(link1.parentId)).resolves.toEqual([link1]);
+    expect(notifications).toEqual([]);
+  });
+
+  it("tells each of the child's other guardians at that school, about the new parent (Step 55.2)", async () => {
+    const notifications: Notification[] = [];
+    const elsewhere = { ...link3, id: "link-elsewhere", parentId: "parent-c", schoolId: "school-b" };
+    const repo = createMockParentStudentLinkRepository([link1, link3, elsewhere], { latencyMs: 0, notifications });
+    const link = { ...link1, id: "link-new", parentId: "parent-new" };
+
+    await expect(repo.createWithNotices(link)).resolves.toEqual({ link, noticesMade: 2 });
+    expect(notifications.map(({ recipientParentId }) => recipientParentId)).toEqual(["parent-a", "parent-b"]);
+    expect(notifications[0]).toMatchObject({
+      schoolId: "school-a",
+      studentId: "student-a",
+      kind: "guardian_linked",
+      tappedAt: link.linkedAt,
+      read: false,
+      aboutParentId: "parent-new",
+    });
   });
 });

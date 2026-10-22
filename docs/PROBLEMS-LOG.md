@@ -44,6 +44,8 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-027](#p-027--2026-10-20--the-new-browser-test-found-its-student-already-tapped) | 2026-10-20 | The new browser test found its student already tapped | Other: tests | Playwright | Resolved |
 | [P-028](#p-028--2026-10-21--a--as-a-last-name-linked-any-child-and-_-matched-staff-emails) | 2026-10-21 | A "%" as a last name linked any child, and "_" matched staff emails | Security | Child linking, staff sign-in | Resolved (deploy pending) |
 | [P-029](#p-029--2026-10-21--the-monitor-test-lost-count-when-an-old-tap-dropped-off-the-list) | 2026-10-21 | The monitor test lost count when an old tap dropped off the list | Other: tests | Playwright, `/gate/display` | Resolved |
+| [P-030](#p-030--2026-10-22--two-browser-tests-linked-the-same-child-at-once) | 2026-10-22 | Two browser tests linked the same child at once | Other: tests | Playwright, parent portal | Resolved |
+| [P-031](#p-031--2026-10-22--the-dev-server-refused-the-new-notification-kind) | 2026-10-22 | The dev server refused the new notification kind | Other: setup | Prisma, `npm run dev` | Resolved |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -638,3 +640,49 @@ sequenceDiagram
 - **Solution:** the test counts entries (list items, or the "Newest tap" panel) with the name **and** "Time in" or "Time out", and expects one more of the direction in the gate's answer.
 - **Lesson:** a test that counts things on a capped list breaks when other tests add data. Count something only the action under test can add.
 - **Status:** Resolved: the full browser suite passed twice in a row (85 passed).
+
+## Telling a child's other guardians (Step 55.2, 2026-10-22)
+
+### P-030 · 2026-10-22 · Two browser tests linked the same child at once
+- **Where:** Step 55.2's new test in `e2e/parent.spec.ts` ("a child's other guardian is told…"), while building, phone project.
+- **Symptom:**
+  ```
+  Error: expect(locator).toHaveCount(expected) failed
+  Locator:  locator('main').getByText(/linked to/)
+  Expected: 0
+  Received: 1
+  ```
+  The page snapshot showed, in the new parent's own feed: "An account named Test Parent linked to Carmen Sison. If you don't know them, contact the school."
+- **Cause:** the test linked `student-0006`, which is **Carmen Sison**, the same child the file's first test links. Playwright runs the two at the same time, and both new parents are called "Test Parent". This test's parent linked first, then the other test's parent linked her, so this parent was told, which is exactly what the feature should do. The test's "the parent who linked sees no notice" check counted any "linked to" text, not its own.
+  ```mermaid
+  sequenceDiagram
+      participant A as This test's parent
+      participant B as First test's parent
+      participant DB as Test database
+      A->>DB: links Carmen (told: parent-balanga-1)
+      B->>DB: links Carmen (told: parent-balanga-1 and A)
+      A->>DB: reads own feed: "Test Parent linked to Carmen" (B's link)
+  ```
+- **Options weighed:** (1) run the file's tests one after another (slower, and hides the clash); (2) a different child (every Balanga child linked in the seed either has no LRN, or another test links them too); (3) **give this test's parent a name of its own ("Noticed Parent") and check for that exact sentence.** Chosen: a notice about another parent in this feed is correct, so the test only has to rule out its own.
+- **Solution:** `signUpNewParent` takes an optional first name; the test checks for "An account named Noticed Parent linked to Carmen Sison." being absent from its own feed and present in `parent-balanga-1`'s.
+- **Lesson:** the same as P-027: a test that writes shared data checks for something only it can have made.
+- **Status:** Resolved: `e2e/parent.spec.ts` passes (3 passed).
+
+### P-031 · 2026-10-22 · The dev server refused the new notification kind
+- **Where:** the owner's `npm run dev`, linking Juan Cruz (two guardians) on `/parent/link-child` while reviewing Step 55.2.
+- **Symptom:**
+  ```
+  PrismaClientValidationError:
+  Invalid `prisma.notification.createMany()` invocation:
+  …
+        kind: "guardian_linked",
+  …
+  Invalid value for argument `kind`. Expected NotificationKind.
+      at eval (src/data/repositories/prisma-parent-student-link-repository.ts:81:9)
+  ```
+- **Cause:** the dev server had been running since 2026-10-21 20:11, and the step's `npx prisma generate` ran on 2026-10-22 at 12:31. A running server keeps the Prisma Client it loaded at start, whose list of `NotificationKind` values has no `guardian_linked`, and Prisma checks values against that list before sending anything to Postgres. The client on disk was already right (`src/generated/prisma/enums.ts` has `guardian_linked`), which is why the tests, each a fresh process, passed.
+- **Options weighed:** none needed: nothing in the code was wrong.
+- **Solution:** stop `npm run dev` and start it again after any migration or `prisma generate`. Added to the Step 55.2 recipe's "If something goes wrong".
+- **Lesson:** a schema change isn't live in a server that was already running; restart it, the same as after a dependency change.
+- **Status:** Resolved: after a restart, the owner linked a child and the notices showed (2026-10-22).
+

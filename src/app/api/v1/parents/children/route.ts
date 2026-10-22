@@ -4,6 +4,7 @@ import { API_MESSAGES, apiError, toChildTodayJson } from "@/features/parents/api
 import { getNow } from "@/lib/clock";
 import { childrenToday } from "@/services/parents/children-today";
 import { linkChildToParent } from "@/services/parents/link-child-to-parent";
+import { wakePushWorker } from "@/services/push/push-worker";
 
 /**
  * Links a child from the app (Step 53.3): the school, LRN, last name and
@@ -24,6 +25,8 @@ export async function POST(request: Request) {
     if (result.code === "too_many_tries") return apiError("too_many_tries", result.formError);
     return apiError(result.code === "no_match" ? "not_found" : "conflict", result.formError);
   }
+  // The child's other guardians are told (Step 55.2); send their pushes now.
+  if (result.noticesMade > 0) wakePushWorker();
 
   const children = await childrenToday(
     caller.parentId,

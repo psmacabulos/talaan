@@ -194,6 +194,9 @@ model Parent {
   updatedAt    DateTime            @updatedAt
   links        ParentStudentLink[]
   tokens       ParentToken[]
+  // Step 55.2's link notices: the ones for this parent, and the ones about them.
+  noticesFor   Notification[]      @relation("NotificationRecipient")
+  noticesAbout Notification[]      @relation("NotificationAbout")
 }
 
 // The parent app's sign-in (Step 53.3): one row per signed-in phone. The
@@ -323,31 +326,46 @@ model ParentStudentLink {
 enum NotificationKind {
   time_in
   time_out
+  // A parent linked this child (Step 55.2): one for each of the child's other guardians.
+  guardian_linked
 }
 
 model Notification {
-  id         String           @id @default(uuid())
-  schoolId   String
-  school     School           @relation(fields: [schoolId], references: [id], onDelete: Restrict)
-  studentId  String
-  student    Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
-  kind       NotificationKind
-  // A copy of the tap's time, so the feed can say "arrived 7:56 AM"
-  // without looking the tap up.
-  tappedAt   DateTime
-  read       Boolean          @default(false)
-  createdAt  DateTime         @default(now())
+  id                String           @id @default(uuid())
+  schoolId          String
+  school            School           @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  studentId         String
+  student           Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  kind              NotificationKind
+  // When it happened: a copy of the tap's time, so the feed can say
+  // "arrived 7:56 AM" without looking the tap up, or for guardian_linked
+  // the link's time (Step 55.2).
+  tappedAt          DateTime
+  read              Boolean          @default(false)
+  // Empty: every guardian of the child sees it and shares its read mark
+  // (taps). Set: only this parent does (Step 55.2's link notices). Goes
+  // with the parent's account if it's ever deleted.
+  recipientParentId String?
+  recipientParent   Parent?          @relation("NotificationRecipient", fields: [recipientParentId], references: [id], onDelete: Cascade)
+  // guardian_linked only: the parent who linked, for their name. Emptied
+  // if that account is ever deleted; the notice then says "A parent account".
+  aboutParentId     String?
+  aboutParent       Parent?          @relation("NotificationAbout", fields: [aboutParentId], references: [id], onDelete: SetNull)
+  createdAt         DateTime         @default(now())
   // The outbox (Step 54): when the push worker made this notification's
   // deliveries, one per phone. Null means still to send. Written in the
   // same transaction as those deliveries, so a push is never lost between
   // the two.
-  pushedAt   DateTime?
-  deliveries PushDelivery[]
+  pushedAt          DateTime?
+  deliveries        PushDelivery[]
 
   @@index([studentId, tappedAt])
   @@index([schoolId])
   // Only the few still to send, oldest first: the worker's one question.
   @@index([createdAt], map: "Notification_to_push", where: raw("\"pushedAt\" IS NULL"))
+  // Postgres doesn't index a foreign key by itself. Link notices only, so both stay tiny.
+  @@index([recipientParentId], map: "Notification_recipient", where: raw("\"recipientParentId\" IS NOT NULL"))
+  @@index([aboutParentId], map: "Notification_about", where: raw("\"aboutParentId\" IS NOT NULL"))
 }
 
 enum DeviceKind {

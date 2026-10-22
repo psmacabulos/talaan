@@ -1,4 +1,4 @@
-import type { NotificationKind } from "@/features/parents/types";
+import type { Notification } from "@/features/parents/types";
 
 /** What one fan-out did (Step 54): notifications claimed, how many were too old to push, deliveries made. */
 export type FanOutResult = { notifications: number; tooOld: number; deliveries: number };
@@ -12,7 +12,8 @@ export type DueDelivery = {
   notificationId: string;
   studentId: string;
   childFirstName: string;
-  kind: NotificationKind;
+  /** Every kind, link notices included (Step 55.2). */
+  kind: Notification["kind"];
   tappedAt: string;
   /** How long ago the notification was written, by the database's clock. */
   ageMs: number;

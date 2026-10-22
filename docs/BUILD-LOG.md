@@ -2523,3 +2523,48 @@ npx vitest run src/services/parents src/data/repositories src/services/auth src/
 npx vitest run src/services/parents/link-attempts.pg.test.ts src/data/repositories/prisma-lookups.pg.test.ts   # 3 passed
 npm run build && npx playwright test e2e/login.spec.ts e2e/parent.spec.ts e2e/parent-api.spec.ts e2e/isolation.spec.ts   # 51 passed
 ```
+
+## Step 55.2: other guardians are told of each new link (2026-10-22)
+
+**Scope, first.** The owner split the old 55.2 in two (this step tells the guardians; 55.3 shows the school every link and lets a principal remove one), decided that a principal does **not** approve links, and asked that every recipe from now on is written and approved before the code. `docs/backend/step-55.2-guardians-told-of-links.md` was approved, then built.
+
+**The architect, twice.** Round 1 (the plan): a link notice would have shown as "tapped out", because `notificationKindLabel` was a two-way ternary, so make `Notification` a discriminated union and the label an exhaustive `switch`; lock the student `FOR NO KEY UPDATE`, not `FOR UPDATE`, so a link never holds up a tap; `Cascade`/`SetNull` on the two new foreign keys for Step 60's account deletion; "An account named …", since names aren't checked. One correction went back: with the lock, two parents linking at once make exactly one notice, not one each. Round 2 (the code): nothing blocking; it suggested an exported lock helper (so the test can't drift from the code), a `FOR UPDATE` control case, a forced overlap in the race test, a CHECK constraint, and a longer `maxWait`. All five taken.
+
+**Migrations.**
+
+```bash
+npx prisma migrate dev --name guardian_link_notices --create-only     # enum value, two nullable columns, two FKs, two partial indexes
+npx prisma migrate dev && npx prisma generate
+npx prisma migrate dev --name notification_recipient_check --create-only   # empty: Prisma doesn't model CHECK; SQL written by hand
+npx prisma migrate dev
+```
+
+The CHECK has its own migration because Postgres won't use an enum value inside the transaction that added it.
+
+**The union did its job.** After `notificationSchema` became a union, `tsc` was clean once every tap notification had `recipientParentId: null`. The tap writers now take `TapNotification`, so a tap can't be written with a recipient. The repository methods that serve a parent gained a `viewerParentId`. Changing their argument lists touched the mock, the Prisma repository, the service and five test files.
+
+**The browser-test database had no new columns.** The first targeted `vitest` run failed in a Postgres test with `column "recipientParentId" of relation "Notification" does not exist`: the vitest database tests use the browser-test database, which Playwright only migrates in its own setup. Ran the same three commands as `e2e/global-setup.ts` (`prisma migrate deploy`, `db:reset`, `create-test-devices`) against `E2E_DATABASE_URL`. A first try through a scratch `tsx` script failed with `MODULE_NOT_FOUND` (the `@/` paths don't resolve outside the project), so a `node -e` with `dotenv` set `DATABASE_URL` from `E2E_DATABASE_URL` instead, without reading `.env`.
+
+**The race test's collision.** The first run of the new browser test failed because Playwright ran it at the same time as the file's first test, and both link Carmen Sison: see P-030. Fixed by giving this test's parent its own name.
+
+**Visual check.** Screenshots of `/parent/notifications` and the open bell for `parent-balanga-1` after a new parent linked Carmen, at 360 × 800 and 1280 × 800, light and dark (through a throwaway Playwright spec, deleted afterwards). The link notice wraps to three lines at 360 px with the same padding as a tap row; the bell's line is "Carmen has a new parent account linked". The page's subtitle now mentions link notices. Running both widths at once in that throwaway spec failed once on the phone, and passed run alone.
+
+Targeted runs while building:
+
+```bash
+npx tsc --noEmit                                   # clean
+npx vitest run src/features/parents src/data/repositories src/services/parents src/services/push src/services/taps src/data/seed src/features/isolation.test.ts   # 49 files, 359 passed
+npx vitest run src/data/repositories/prisma-link-notices.pg.test.ts src/data/repositories/prisma-push-outbox.test.ts   # 12 passed; the FOR UPDATE control takes 2 s, as meant
+npm run build && npx playwright test e2e/parent.spec.ts   # 3 passed (after P-030)
+```
+
+**Measured** (the architect's question): the capped unread count with the new filter, on the local database with `SET enable_seqscan = off` (the seed is too small for Postgres to want an index on its own):
+
+```text
+Limit  (actual time=0.019..0.020 rows=2.00 loops=1)
+  ->  Index Scan Backward using "Notification_studentId_tappedAt_idx" on "Notification"
+        Index Cond: ("studentId" = 'student-0001'::text)
+        Filter: ((NOT read) AND (("recipientParentId" IS NULL) OR ("recipientParentId" = 'parent-balanga-1'::text)) AND ("schoolId" = 'school-balanga'::text))
+```
+
+The same index walk as before, stopping at the cap; the recipient check is one more condition on each row it reads.

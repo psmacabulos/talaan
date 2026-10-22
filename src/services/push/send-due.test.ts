@@ -35,6 +35,14 @@ describe("toPushMessage", () => {
       "Juan tapped out at 4:05 PM",
     );
   });
+
+  it("says a new parent account was linked, with no adult's name and no time (Step 55.2)", () => {
+    expect(toPushMessage(delivery("c", { kind: "guardian_linked" }))).toMatchObject({
+      body: "A new parent account was linked to Juan",
+      data: { notificationId: "notification-c", childId: "student-0001" },
+      channelId: "attendance",
+    });
+  });
 });
 
 describe("resultFor", () => {

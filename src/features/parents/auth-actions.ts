@@ -11,6 +11,7 @@ import { parentAddressThrottle, parentSignInThrottle, parentSignUpThrottle } fro
 import { checkParentSignIn } from "@/services/parents/check-parent-sign-in";
 import { linkChildToParent, type LinkChildFieldErrors } from "@/services/parents/link-child-to-parent";
 import { registerParent, type ParentSignupFieldErrors } from "@/services/parents/register-parent";
+import { wakePushWorker } from "@/services/push/push-worker";
 import type { LinkChildInput, ParentLoginInput, ParentSignupInput } from "./types";
 
 export type ParentSignupActionResult =
@@ -95,6 +96,8 @@ export async function linkChild(input: LinkChildInput): Promise<LinkChildActionR
       : { ok: false, formError: result.formError };
   }
 
+  // The child's other guardians are told (Step 55.2); send their pushes now.
+  if (result.noticesMade > 0) wakePushWorker();
   refresh();
   return { ok: true, studentName: `${result.student.firstName} ${result.student.lastName}` };
 }

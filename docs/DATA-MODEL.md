@@ -124,6 +124,8 @@ One honest caveat, visible if you look closely at the diagram: `TAP.cardSerial` 
 
 `NOTIFICATION` deliberately stores a **flat copy** of the tap (`studentId`, `tappedAt`) plus a derived `kind`, rather than a `tapId` foreign key. That's an intentional deferral, not an oversight: a `tapId` can be added in Phase 2 once there's a real Tap API to join against. Until then the notification carries everything a feed needs on its own, and a later join can be introduced without invalidating any existing record.
 
+**Step 55.2** adds a second kind, `guardian_linked` ("a new parent linked your child"), and two optional links from `NOTIFICATION` to `PARENT`: `recipientParentId` (only that parent sees it; empty for a tap, which every guardian sees) and `aboutParentId` (who linked). Deleting a parent account later (Step 60) takes the notices *for* them and empties the ones *about* them. See `docs/NOTIFICATIONS.md`, "A second kind".
+
 ## The shape of it, in one picture: which files define what
 
 ```mermaid

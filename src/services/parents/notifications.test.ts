@@ -42,8 +42,33 @@ function uuid(n: number): string {
 }
 
 function notification(id: string, child: Student, tappedAt: string, read = false): Notification {
-  return { id, schoolId: child.schoolId, studentId: child.id, kind: "time_in", tappedAt, read };
+  return {
+    id,
+    schoolId: child.schoolId,
+    studentId: child.id,
+    kind: "time_in",
+    tappedAt,
+    read,
+    recipientParentId: null,
+  };
 }
+
+/** Step 55.2: `aboutParentId` linked `child`, told to `recipientParentId`. */
+function linkNotice(id: string, child: Student, recipientParentId: string, aboutParentId: string): Notification {
+  return {
+    id,
+    schoolId: child.schoolId,
+    studentId: child.id,
+    kind: "guardian_linked",
+    tappedAt: "2026-06-20T18:12:00.000Z",
+    read: false,
+    recipientParentId,
+    aboutParentId,
+  };
+}
+
+/** Ana's second guardian, who linked her after parent-1. */
+const parent3 = { id: "parent-3", firstName: "Rosa", lastName: "Santos", mobile: "09170000000", email: "rosa@x.com" };
 
 const ana = student("student-ana", "school-a");
 const ben = student("student-ben", "school-b");
@@ -52,13 +77,13 @@ const other = student("student-other", "school-a");
 function deps(notifications: Notification[]): ParentNotificationsDeps {
   return {
     links: createMockParentStudentLinkRepository(
-      [link("parent-1", ana), link("parent-1", ben), link("parent-2", other)],
+      [link("parent-1", ana), link("parent-1", ben), link("parent-2", other), link("parent-3", ana)],
       {
         latencyMs: 0,
       },
     ),
     students: createMockStudentRepository([ana, ben, other], { latencyMs: 0 }),
-    notifications: createMockNotificationRepository(notifications, { latencyMs: 0 }),
+    notifications: createMockNotificationRepository(notifications, { latencyMs: 0, parents: [parent3] }),
   };
 }
 
@@ -174,5 +199,33 @@ describe("marking read", () => {
     await markAllParentNotificationsRead("parent-1", d);
     await expect(countParentUnread("parent-1", d)).resolves.toBe(0);
     await expect(countParentUnread("parent-2", d)).resolves.toBe(1);
+  });
+});
+
+describe("link notices (Step 55.2)", () => {
+  // parent-3 linked Ana, so parent-1, already linked, was told.
+  const rows = () => [notification(uuid(1), ana, SAME_TIME), linkNotice(uuid(2), ana, "parent-1", "parent-3")];
+
+  it("reach the guardian who's told, with the new parent's name, and not the parent who linked", async () => {
+    const d = deps(rows());
+    const forOne = await listParentNotifications("parent-1", {}, d);
+    expect(forOne.items.map((item) => item.notification.id)).toEqual([uuid(2), uuid(1)]);
+    expect(forOne.items[0].notification.aboutParent).toEqual({ firstName: "Rosa", lastName: "Santos" });
+
+    const forThree = await listParentNotifications("parent-3", {}, d);
+    expect(forThree.items.map((item) => item.notification.id)).toEqual([uuid(1)]);
+  });
+
+  it("count as unread, and are marked read, only for the guardian who's told", async () => {
+    const d = deps(rows());
+    await expect(countParentUnread("parent-1", d)).resolves.toBe(2);
+    await expect(countParentUnread("parent-3", d)).resolves.toBe(1);
+
+    await expect(markParentNotificationRead("parent-3", uuid(2), d)).resolves.toBe(false);
+    await markAllParentNotificationsRead("parent-3", d);
+    // parent-3's "mark all" read the shared tap, never parent-1's notice.
+    await expect(countParentUnread("parent-1", d)).resolves.toBe(1);
+    await expect(markParentNotificationRead("parent-1", uuid(2), d)).resolves.toBe(true);
+    await expect(countParentUnread("parent-1", d)).resolves.toBe(0);
   });
 });

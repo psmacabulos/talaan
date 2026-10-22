@@ -19,6 +19,7 @@ export const seedNotifications: Notification[] = [
     kind: "time_in",
     tappedAt: schoolTimeToIso(SEED_DATE, "07:56"),
     read: false,
+    recipientParentId: null,
   },
   {
     id: "notification-0002",
@@ -27,6 +28,7 @@ export const seedNotifications: Notification[] = [
     kind: "time_in",
     tappedAt: schoolTimeToIso(SEED_DATE, "07:57"),
     read: true,
+    recipientParentId: null,
   },
   {
     id: "notification-0003",
@@ -35,5 +37,6 @@ export const seedNotifications: Notification[] = [
     kind: "time_out",
     tappedAt: schoolTimeToIso(SEED_DATE, "16:05"),
     read: false,
+    recipientParentId: null,
   },
 ];

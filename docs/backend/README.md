@@ -2,6 +2,8 @@
 
 > **Changed 2026-10-09: fast-track from Step 36 on.** Steps 30–35 were typed by the owner from these recipes, as described below. To reach a working demo and the gate hardware sooner, Claude now writes the backend code itself, the same way Phase 1 was built. What stays the same: the owner runs every check (lint, check:tokens, typecheck, test, build, Playwright) personally and reports the output, approves each step, and makes every commit; each step still gets a recipe in this folder to study later, written either before the code (approved first) or from the real diff afterwards; every question still becomes a `docs/LEARNING-LOG.md` entry. What changes: the "Claude does not edit backend source files" rule below no longer applies (`.env` is still the owner's alone), and a recipe is now study material rather than typing instructions. The rest of this page describes the original Steps 30–35 workflow.
 
+> **Changed 2026-10-22: recipe first, always.** From Step 55.2 on, the owner asked that every step's recipe is written before the code and approved first. A recipe is no longer written from the diff afterwards; if building changes anything, the recipe is updated to match before the review report.
+
 Phase 1 (the front end) was built by Claude, step by step, with the owner reviewing and approving each one. Phase 2 (the back end — real database, real auth, the tap API) flips that: **the owner writes every line of backend code personally**, to actually learn backend development, not just watch it happen. Claude's job changes from "build it" to "teach it."
 
 ## What Claude does for each step

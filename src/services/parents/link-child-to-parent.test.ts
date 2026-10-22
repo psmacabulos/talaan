@@ -3,6 +3,7 @@ import type { LinkAttemptRepository } from "@/data/repositories";
 import { createMockParentStudentLinkRepository } from "@/data/repositories/parent-student-link-repository";
 import { createMockSchoolRepository } from "@/data/repositories/school-repository";
 import { createMockStudentRepository } from "@/data/repositories/student-repository";
+import type { Notification } from "@/features/parents/types";
 import type { School } from "@/features/schools/types";
 import type { Student } from "@/features/students/types";
 import { TOO_MANY_TRIES_MESSAGE } from "@/features/auth/messages";
@@ -65,11 +66,15 @@ function fakeAttempts(): LinkAttemptRepository & { rows: { id: string; keyHash: 
   };
 }
 
+/** The notices the mock link repository made (Step 55.2), kept apart from the seed's. */
+let notices: Notification[] = [];
+
 function deps(attempts = fakeAttempts()): LinkChildDeps {
+  notices = [];
   return {
     schools: createMockSchoolRepository([schoolA, schoolB], { latencyMs: 0 }),
     students: createMockStudentRepository([juan], { latencyMs: 0 }),
-    links: createMockParentStudentLinkRepository([], { latencyMs: 0 }),
+    links: createMockParentStudentLinkRepository([], { latencyMs: 0, notifications: notices }),
     attempts,
     parentThrottle: createLoginThrottle({ maxFailures: 5, windowMs: 15 * 60_000 }),
     attemptKey: (schoolId, lrn, lastName) => linkAttemptKey("test-secret", schoolId, lrn, lastName),
@@ -81,7 +86,11 @@ const wrongBirthDate = { ...details, birthDate: "2012-03-15" };
 describe("linkChildToParent", () => {
   it("links a child whose details match at the chosen school, and saves that school", async () => {
     const d = deps();
-    await expect(linkChildToParent("parent-a", details, d, NOW)).resolves.toEqual({ ok: true, student: juan });
+    await expect(linkChildToParent("parent-a", details, d, NOW)).resolves.toEqual({
+      ok: true,
+      student: juan,
+      noticesMade: 0,
+    });
     await expect(d.links.listByParent("parent-a")).resolves.toMatchObject([
       { parentId: "parent-a", studentId: juan.id, schoolId: "school-a" },
     ]);
@@ -120,8 +129,54 @@ describe("linkChildToParent", () => {
 
   it("says 'already linked' when the same form sent twice at once loses the race", async () => {
     const d = deps();
-    const racing: LinkChildDeps = { ...d, links: { listByParent: async () => [], create: async () => null } };
+    const racing: LinkChildDeps = {
+      ...d,
+      links: { listByParent: async () => [], createWithNotices: async () => null },
+    };
     await expect(linkChildToParent("parent-a", details, racing)).resolves.toMatchObject({ code: "already_linked" });
+  });
+});
+
+describe("linkChildToParent tells the child's other guardians (Step 55.2)", () => {
+  it("makes one notice, for the guardian already linked, naming the new one", async () => {
+    const d = deps();
+    await linkChildToParent("parent-first", details, d, NOW);
+    expect(notices).toEqual([]);
+
+    await expect(linkChildToParent("parent-second", details, d, NOW + 60_000)).resolves.toMatchObject({
+      ok: true,
+      noticesMade: 1,
+    });
+    expect(notices).toEqual([
+      {
+        id: expect.any(String),
+        schoolId: "school-a",
+        studentId: juan.id,
+        kind: "guardian_linked",
+        tappedAt: new Date(NOW + 60_000).toISOString(),
+        read: false,
+        recipientParentId: "parent-first",
+        aboutParentId: "parent-second",
+      },
+    ]);
+  });
+
+  it("tells every guardian already linked, and makes nothing when the link isn't new", async () => {
+    const d = deps();
+    await linkChildToParent("parent-1", details, d, NOW);
+    await linkChildToParent("parent-2", details, d, NOW);
+    await expect(linkChildToParent("parent-3", details, d, NOW)).resolves.toMatchObject({ noticesMade: 2 });
+    // parent-2's link told parent-1; parent-3's told both.
+    expect(notices.map((notice) => notice.recipientParentId)).toEqual(["parent-1", "parent-1", "parent-2"]);
+
+    await linkChildToParent("parent-3", details, d, NOW);
+    expect(notices).toHaveLength(3);
+  });
+
+  it("saves the link at the time it's given", async () => {
+    const d = deps();
+    await linkChildToParent("parent-a", details, d, NOW);
+    await expect(d.links.listByParent("parent-a")).resolves.toMatchObject([{ linkedAt: new Date(NOW).toISOString() }]);
   });
 });
 

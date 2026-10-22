@@ -35,7 +35,7 @@ export default async function NotificationsPage({ searchParams }: PageProps<"/pa
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-10 sm:px-6">
       <PageHeader
         title="Notifications"
-        description="Every time your child taps in or out, it shows up here."
+        description="Every time your child taps in or out shows up here, and every new parent account linked to them."
         actions={unread > 0 ? <MarkAllReadButton /> : undefined}
       />
       {page.items.length === 0 && isFirstPage ? (

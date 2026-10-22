@@ -14,7 +14,7 @@ import {
 import { shouldNotifyParents } from "@/features/attendance/notify-parents";
 import { tapSchema } from "@/features/attendance/schemas";
 import type { Tap } from "@/features/attendance/types";
-import type { Notification } from "@/features/parents/types";
+import type { TapNotification } from "@/features/parents/types";
 import type { Staff } from "@/features/staff/types";
 import type { Student } from "@/features/students/types";
 import { schoolDateOf } from "@/lib/school-time";
@@ -122,7 +122,7 @@ export async function recordManualTimeIn(
   });
 
   const notified = school ? shouldNotifyParents(school.notificationPreference, "time_in") : false;
-  const notification: Notification | null = notified
+  const notification: TapNotification | null = notified
     ? {
         id: crypto.randomUUID(),
         schoolId: tap.schoolId,
@@ -130,6 +130,7 @@ export async function recordManualTimeIn(
         kind: "time_in",
         tappedAt: tap.tappedAt,
         read: false,
+        recipientParentId: null,
       }
     : null;
 

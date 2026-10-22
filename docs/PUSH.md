@@ -38,7 +38,7 @@ sequenceDiagram
 
 ## Which phones get a push
 
-Every push address (`PushToken`) of every parent linked to the child at that notification's school, whose sign-in (`ParentToken`) **isn't revoked and was used in the last 30 days** (owner decision, 2026-10-19; Step 54 had "however long unused"). Opening the app counts as use: the app calls the API when it starts, which moves `lastUsedAt` forward (at most once an hour).
+Every push address (`PushToken`) of every parent linked to the child at that notification's school (only the notice's recipient for a link notice, Step 55.2), whose sign-in (`ParentToken`) **isn't revoked and was used in the last 30 days** (owner decision, 2026-10-19; Step 54 had "however long unused"). Opening the app counts as use: the app calls the API when it starts, which moves `lastUsedAt` forward (at most once an hour).
 
 A phone stops getting pushes when:
 - **30 days pass without the app being opened.** The hourly cleanup deletes that sign-in, with its push address. The parent signs in again to get pushes again;
@@ -61,6 +61,8 @@ A phone stops getting pushes when:
 ```
 
 The **first name only**: the lock screen is visible to anyone near the phone, the text passes through Expo, Google and Apple, and students are minors. `toPushMessage` (`src/services/push/push-message.ts`) builds it.
+
+A link notice (Step 55.2) reads **"A new parent account was linked to Juan"**: no adult's name and no time on the lock screen; the feed has the details. It uses the same `attendance` channel, since Android drops a push sent to a channel the app hasn't made.
 
 ## A delivery's life
 

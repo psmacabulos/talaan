@@ -19,6 +19,8 @@ const describeWithDatabase = url ? describe : describe.skip;
 const BALANGA = "school-balanga";
 const CHILD = "student-0003";
 const PARENT = "push-test-parent";
+/** A second guardian of the same child, for Step 55.2's link notice. */
+const OTHER = "push-test-other";
 const HOUR = 60 * 60_000;
 const DAY = 24 * HOUR;
 const RULES = { maxAgeMs: 6 * HOUR, signInUnusedMs: 30 * DAY };
@@ -29,9 +31,9 @@ describeWithDatabase("push outbox on Postgres (Step 54; needs E2E_DATABASE_URL)"
 
   async function cleanUp() {
     await db.notification.deleteMany({ where: { id: { startsWith: "push-test-" } } });
-    await db.parentStudentLink.deleteMany({ where: { parentId: PARENT } });
+    await db.parentStudentLink.deleteMany({ where: { parentId: { in: [PARENT, OTHER] } } });
     // Its sign-ins, push addresses and their deliveries go with it.
-    await db.parent.deleteMany({ where: { id: PARENT } });
+    await db.parent.deleteMany({ where: { id: { in: [PARENT, OTHER] } } });
   }
 
   /** Fans out until nothing is left to claim, so this test's rows are done whatever else is waiting. */
@@ -258,6 +260,53 @@ describeWithDatabase("push outbox on Postgres (Step 54; needs E2E_DATABASE_URL)"
     const signIns = await db.parentToken.findMany({ where: { parentId: PARENT }, select: { id: true } });
     expect(signIns.map((row) => row.id)).toEqual(["push-test-live"]);
     await expect(db.pushToken.count({ where: { id: "push-test-stale-phone" } })).resolves.toBe(0);
+  });
+
+  it("sends a link notice only to its recipient's phones, not the other guardian's (Step 55.2)", async () => {
+    await db.parent.create({
+      data: {
+        id: OTHER,
+        firstName: "Other",
+        lastName: "Guardian",
+        mobile: "09170000001",
+        email: "push-test-other@example.com",
+        passwordHash: "not-a-real-hash",
+        tokens: {
+          create: {
+            id: "push-test-other-live",
+            tokenHash: "push-test-other-live",
+            pushToken: {
+              create: { id: "push-test-other-phone", token: "ExponentPushToken[push-test-other]", platform: "ios" },
+            },
+          },
+        },
+        links: { create: { id: "push-test-other-link", schoolId: BALANGA, studentId: CHILD } },
+      },
+    });
+    // OTHER just linked CHILD: PARENT, already linked, is told.
+    await db.notification.create({
+      data: {
+        id: "push-test-notice",
+        schoolId: BALANGA,
+        studentId: CHILD,
+        kind: "guardian_linked",
+        tappedAt: new Date(),
+        recipientParentId: PARENT,
+        aboutParentId: OTHER,
+      },
+    });
+
+    await fanOutAll();
+
+    const deliveries = await db.pushDelivery.findMany({ where: { notificationId: "push-test-notice" } });
+    expect(deliveries.map((delivery) => delivery.pushTokenId)).toEqual(["push-test-phone"]);
+    const [claimed] = (await outbox.claimDue(100, 2 * 60_000)).filter(
+      (delivery) => delivery.notificationId === "push-test-notice",
+    );
+    expect(claimed).toMatchObject({ kind: "guardian_linked", pushTokenId: "push-test-phone" });
+
+    // Out of the way of the next test, which removes PARENT's phone.
+    await db.notification.delete({ where: { id: "push-test-notice" } });
   });
 
   it("drops a phone that's gone, with its deliveries", async () => {

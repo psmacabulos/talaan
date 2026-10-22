@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { schoolTimeToIso } from "@/lib/school-time";
 import { NotificationsBell } from "./notifications-bell";
 import type { ParentNotificationItem } from "./notification-format";
+import type { TapNotification } from "./types";
 
 // The server actions have their own coverage; mocking them keeps
 // next/cache and the mock repositories out of this component test's
@@ -24,7 +25,7 @@ globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserv
 
 function item(
   overrides: {
-    notification?: Partial<ParentNotificationItem["notification"]>;
+    notification?: Partial<TapNotification>;
     student?: Partial<ParentNotificationItem["student"]>;
   } = {},
 ): ParentNotificationItem {
@@ -36,7 +37,9 @@ function item(
       kind: "time_in",
       tappedAt: schoolTimeToIso("2026-06-20", "07:56"),
       read: false,
+      recipientParentId: null,
       ...overrides.notification,
+      aboutParent: null,
     },
     student: {
       id: "student-1",
@@ -123,5 +126,31 @@ describe("NotificationsBell", () => {
     expect(screen.getByText(/tapped in/i)).toBeInTheDocument();
     expect(screen.getByText("4:05 PM")).toBeInTheDocument();
     expect(screen.getByText("View all")).toBeInTheDocument();
+  });
+
+  it("says a new parent account was linked, never as a tap (Step 55.2)", () => {
+    const notice: ParentNotificationItem = {
+      notification: {
+        id: "n-link",
+        schoolId: "school-a",
+        studentId: "student-1",
+        kind: "guardian_linked",
+        tappedAt: schoolTimeToIso("2026-06-20", "18:12"),
+        read: false,
+        recipientParentId: "parent-1",
+        aboutParentId: "parent-2",
+        aboutParent: { firstName: "Ana", lastName: "Santos" },
+      },
+      student: { id: "student-1", firstName: "Juan", lastName: "Dela Cruz" },
+    };
+    render(<NotificationsBell items={[notice]} unread={1} />);
+
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Notifications, 1 unread" }), {
+      button: 0,
+      ctrlKey: false,
+    });
+
+    expect(screen.getByText(/has a new parent account linked/i)).toBeInTheDocument();
+    expect(screen.queryByText(/tapped/i)).not.toBeInTheDocument();
   });
 });

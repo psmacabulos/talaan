@@ -38,10 +38,10 @@ async function linkedChildren(parentId: string, deps: Pick<ParentNotificationsDe
 
 /**
  * One page of a parent's notifications, newest first, across all their
- * linked children (`docs/SCALING.md` 2.2). Each child gives at most
- * `limit + 1` from below the cursor, one after another; merged in the same
- * order, the first `limit` are exactly the page, and anything past it means
- * there's an older page. A bad or missing `before` means the first page
+ * linked children (`docs/SCALING.md` 2.2), only the ones theirs to see
+ * (Step 55.2). Each child gives at most `limit + 1` from below the cursor,
+ * one after another; merged in the same order, the first `limit` are
+ * exactly the page, and anything past it means there's an older page. A bad or missing `before` means the first page
  * (the API answers a bad one with 400 before it gets here).
  */
 export async function listParentNotifications(
@@ -62,7 +62,7 @@ export async function listParentNotifications(
   for (const link of links) {
     const student = await deps.students.getInSchool(link.schoolId, link.studentId);
     if (!student) continue;
-    const notifications = await deps.notifications.listPageForStudent(link.schoolId, student.id, {
+    const notifications = await deps.notifications.listPageForStudent(link.schoolId, student.id, parentId, {
       before,
       take: limit + 1,
     });
@@ -91,6 +91,7 @@ export async function countParentUnread(
     unread += await deps.notifications.countUnreadForStudent(
       child.schoolId,
       child.studentId,
+      parentId,
       UNREAD_COUNT_CAP - unread,
     );
   }
@@ -99,22 +100,22 @@ export async function countParentUnread(
 
 /**
  * Marks one notification read, only if it's for one of the parent's linked
- * children. False for any other id, another parent's included, with no hint
- * which. The read mark is shared by the child's guardians
- * (`docs/NOTIFICATIONS.md`).
+ * children and theirs to see. False for any other id, another parent's
+ * included, with no hint which. A tap's read mark is shared by the child's
+ * guardians; a link notice is its one recipient's (`docs/NOTIFICATIONS.md`).
  */
 export async function markParentNotificationRead(
   parentId: string,
   id: string,
   deps: Pick<ParentNotificationsDeps, "links" | "notifications">,
 ): Promise<boolean> {
-  return deps.notifications.markReadForChildren(await linkedChildren(parentId, deps), id);
+  return deps.notifications.markReadForChildren(parentId, await linkedChildren(parentId, deps), id);
 }
 
-/** Marks every unread notification of the parent's linked children read, in one write. */
+/** Marks every unread notification the parent can see read, in one write. */
 export async function markAllParentNotificationsRead(
   parentId: string,
   deps: Pick<ParentNotificationsDeps, "links" | "notifications">,
 ): Promise<void> {
-  await deps.notifications.markAllReadForChildren(await linkedChildren(parentId, deps));
+  await deps.notifications.markAllReadForChildren(parentId, await linkedChildren(parentId, deps));
 }

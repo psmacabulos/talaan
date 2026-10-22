@@ -18,9 +18,9 @@ async function linkChild(page: Page, schoolName: string, student: Student) {
 }
 
 /** Signs up a brand-new parent; the app then opens "Link a child". */
-async function signUpNewParent(page: Page, email: string) {
+async function signUpNewParent(page: Page, email: string, firstName = "Test") {
   await page.goto("/parent/signup");
-  await page.getByLabel("First name").fill("Test");
+  await page.getByLabel("First name").fill(firstName);
   await page.getByLabel("Last name").fill("Parent");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Mobile number").fill("09171234567");
@@ -133,6 +133,36 @@ test.describe("Parent flow (mobile only)", () => {
     await expect(page).toHaveURL("/parent");
     const notificationStillThere = page.getByText(new RegExp(student!.lastName));
     await expect(notificationStillThere).toBeVisible();
+  });
+
+  test("a child's other guardian is told when a new parent links them (Step 55.2)", async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    // Carmen Sison: linked to parent-balanga-1 in the seed (student-0006), and has an LRN. The
+    // first test links her too, at the same time, so this parent has a name of its own.
+    const child = findBalangaStudentByFullName("Carmen Sison")!;
+    const told = (name: string) => `An account named ${name} Parent linked to Carmen Sison.`;
+
+    await signUpNewParent(page, testEmail("guardian-told"), "Noticed");
+    await linkChild(page, BALANGA, child);
+    await expect(page).toHaveURL("/parent");
+
+    // The parent who linked isn't told about themselves.
+    await page.goto("/parent/notifications");
+    await expect(page.locator("main").getByText(told("Noticed"))).toHaveCount(0);
+
+    // The guardian already linked is.
+    await signInAs(context, "parent", baseURL!);
+    await page.goto("/parent/notifications");
+    await expect(page.locator("main").getByText(told("Noticed"))).toBeVisible();
+    await expect(
+      page
+        .locator("main")
+        .getByText(/If you don't know them, contact the school\./)
+        .first(),
+    ).toBeVisible();
   });
 
   test("one parent links children at two schools and sees both (Step 53)", async ({ page }) => {

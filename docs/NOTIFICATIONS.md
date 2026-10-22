@@ -93,17 +93,72 @@ Marking read goes through two server actions in `src/features/parents/notificati
 - `markNotificationRead(id)` — one item (the bell's item click and the feed's unread-row click).
 - `markAllNotificationsRead()` — everything currently unread (the bell's and the page's "Mark all as read" buttons).
 
+## A second kind: "a new guardian linked" (Step 55.2)
+
+With no principal approving links (owner, 2026-10-22), a child's guardians are the ones who'd notice a stranger. So when a parent links a child, each guardian **already** linked to that child gets a notice:
+
+> An account named **Ana Santos** linked to **Juan Cruz**. If you don't know them, contact the school.
+
+A tap's notification has no recipient: it's about the child, and every guardian sees the same row. A link notice can't work that way. The parent who just linked mustn't get it, and a guardian who links *later* mustn't see old notices naming the guardians before them. So a link notice is **one row per guardian told**, with a recipient:
+
+| | Tap (`time_in`, `time_out`) | Link notice (`guardian_linked`) |
+|---|---|---|
+| Rows | one per tap | one per guardian already linked |
+| `recipientParentId` | empty: every guardian of the child | that guardian only |
+| `aboutParentId` | | the parent who linked (empty once their account is deleted) |
+| Read mark | shared by the child's guardians | the recipient's own |
+| `tappedAt` | the tap's time | the link's time |
+| School's notification setting | decides whether it's written | ignored: always written |
+
+`notificationSchema` is a **discriminated union** of the two, so a function that shows a notification must handle both. `notificationKindLabel` is a `switch` with no default, so a kind it forgets is a compile error, not "tapped out" on a parent's phone:
+
+```ts
+// src/features/parents/schemas.ts
+export const notificationSchema = z.discriminatedUnion("kind", [
+  z.object({ ...notificationBase, kind: notificationKindSchema, recipientParentId: z.null() }),
+  z.object({
+    ...notificationBase,
+    kind: z.literal("guardian_linked"),
+    recipientParentId: z.string().min(1),
+    aboutParentId: z.string().min(1).nullable(),
+  }),
+]);
+```
+
+`notificationKindSchema` still means only `time_in`/`time_out`: it's also the tap-direction type all over the attendance code, and a tap is never `guardian_linked`.
+
+**Written with the link, in one transaction** (`createWithNotices`, `src/data/repositories/prisma-parent-student-link-repository.ts`):
+
+```mermaid
+sequenceDiagram
+    participant S as linkChildToParent
+    participant DB as Postgres (one transaction)
+    S->>DB: lock the child's Student row (FOR NO KEY UPDATE)
+    S->>DB: insert the link (ON CONFLICT DO NOTHING: 0 rows = already linked)
+    S->>DB: read the child's other links at that school
+    S->>DB: one guardian_linked notice per other guardian
+    DB-->>S: COMMIT: { link, noticesMade }
+    S->>S: caller: wakePushWorker() if noticesMade > 0
+```
+
+- **The lock** makes two parents linking one child at once take turns, so the second always tells the first: exactly one notice, never zero. `FOR NO KEY UPDATE`, not `FOR UPDATE`, because saving a tap or a notification takes `FOR KEY SHARE` on the student through its foreign key, and `FOR UPDATE` would make a gate tap wait behind a link.
+- **"Skip if it already exists"**, not "catch the error": an error inside a Postgres transaction cancels all of it, notices included.
+
+**Reading:** every parent-facing read and write takes the asking parent (`viewerParentId`) and adds `recipientParentId IS NULL OR recipientParentId = viewer`. The page also brings the linking parent's two names (`FeedNotification`'s `aboutParent`), never their email or mobile. The capped count and the paging still walk the `(studentId, tappedAt)` index and stop early; the filter is checked on each row as it's read.
+
 ## Pushing it to the phone (Step 54)
 
 The `Notification` row is also the push outbox. `pushedAt` stays null until the push worker has made one `PushDelivery` per phone, in the same transaction that sets it. The worker then sends them through Expo. Any code that writes a notification should call `wakePushWorker()` afterwards, so the push goes at once rather than at the next 5-minute check. The gate route and `recordTimeIn` do. The full story is in `docs/PUSH.md`.
 
 ## Where Phase 1 deliberately simplifies
 
-- **Shared read state.** One `read` flag per notification, shared by every guardian of the same child — Step 20's approved model, no schema change. Phase 2 moves to per-parent records.
+- **Shared read state for taps.** One `read` flag per tap notification, shared by every guardian of the same child (Step 20's approved model). Link notices (Step 55.2) are one row per guardian, so each has its own.
 - **Live taps can only be time-ins today.** The simulate button and the station only ever produce a student's first tap of the day, so a *live* time-out notification can't be created in Phase 1. The alternation logic (`deriveTapKind`) and the preference gating are unit-tested instead (`status.test.ts`, `notify-parents.test.ts`), and the seed data includes a `time_out` notification so the rendering is real on screen.
 - **No pagination or search on the feed.** The mock data is tiny; both arrive with Phase 2's database. The page already says so in its own comment.
 
 ## Quick recipes
+
+**I want a notification for one parent only.** Add a kind to the `NotificationKind` enum (migration) and a branch to `notificationSchema`'s union with `recipientParentId: z.string().min(1)`, then fix every compile error the `switch`es raise (`notificationKindLabel`, `pushBody`, the feed row). Write it in the same transaction as whatever caused it, and call `wakePushWorker()` after. The feed, the counts, the read marks and the push fan-out already filter on the recipient.
 
 **I want a new way to record taps.** Build the tap and, when `shouldNotifyParents(school.notificationPreference, kind)` says so, its notification, then write both with `tapWriter.record()` so they're saved together or not at all, as `recordTap()` and `recordManualTimeIn()` do. Call `wakePushWorker()` afterwards when a notification was written (Step 54). Taps with `studentId: null` notify nobody, and a lost-card tap raises an alert instead.
 

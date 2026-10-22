@@ -6,7 +6,7 @@ import { photoPath } from "@/features/students/photo";
 import { toSchoolOffsetIso } from "@/lib/school-time";
 import type { ChildToday } from "@/services/parents/children-today";
 import type { ParentNotificationItem } from "./notification-format";
-import type { NotificationKind, Parent } from "./types";
+import type { Notification, NotificationKind, Parent, ParentName } from "./types";
 
 /**
  * The parent API's answers (Step 53.3, docs/PARENT-APP-BRIEF.md). Every
@@ -123,14 +123,20 @@ export type NotificationJson = {
   id: string;
   childId: string;
   childName: string;
-  kind: NotificationKind;
+  kind: Notification["kind"];
   at: string;
   read: boolean;
+  /** `guardian_linked` only (Step 55.2): who linked, null once their account is deleted. */
+  guardian?: ParentName | null;
 };
 
-/** One feed entry for `notifications` (Step 53.4): the child's id and name, never more of them. */
+/**
+ * One feed entry for `notifications` (Step 53.4): the child's id and name,
+ * never more of them. A link notice (Step 55.2) adds the linking parent's
+ * two names, never their email or mobile.
+ */
 export function toNotificationJson({ notification, student }: ParentNotificationItem): NotificationJson {
-  return {
+  const entry: NotificationJson = {
     id: notification.id,
     childId: student.id,
     childName: `${student.firstName} ${student.lastName}`,
@@ -138,4 +144,7 @@ export function toNotificationJson({ notification, student }: ParentNotification
     at: toSchoolOffsetIso(notification.tappedAt),
     read: notification.read,
   };
+  if (notification.kind !== "guardian_linked") return entry;
+  const { aboutParent } = notification;
+  return { ...entry, guardian: aboutParent && { firstName: aboutParent.firstName, lastName: aboutParent.lastName } };
 }

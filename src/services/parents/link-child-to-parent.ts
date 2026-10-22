@@ -23,14 +23,15 @@ export const NO_MATCHING_CHILD_MESSAGE =
 export type LinkChildFieldErrors = Partial<Record<keyof LinkChildInput, string>>;
 
 export type LinkChildResult =
-  | { ok: true; student: Student }
+  /** `noticesMade`: how many of the child's other guardians were told (Step 55.2); wake the push worker if any. */
+  | { ok: true; student: Student; noticesMade: number }
   | { ok: false; code: "invalid_input"; fieldErrors: LinkChildFieldErrors }
   | { ok: false; code: "no_match" | "already_linked" | "too_many_tries"; formError: string };
 
 export type LinkChildDeps = {
   schools: Pick<SchoolRepository, "getById">;
   students: Pick<StudentRepository, "findForLink">;
-  links: Pick<ParentStudentLinkRepository, "listByParent" | "create">;
+  links: Pick<ParentStudentLinkRepository, "listByParent" | "createWithNotices">;
   /** The per-child count of tries, in Postgres (Step 55.1). */
   attempts: LinkAttemptRepository;
   /** The per-parent count of wrong tries, in memory (Step 55.1). */
@@ -71,6 +72,10 @@ function alreadyLinked(student: Student): LinkChildResult {
  * hours from anyone. The child's try is saved and counted before the
  * student is looked up, so a locked child answers the same whether or not
  * the details match anyone.
+ *
+ * The link is saved with a notice for each of the child's other guardians
+ * (Step 55.2): with no principal approving links, the people who already
+ * care for the child are the ones who notice a stranger.
  */
 export async function linkChildToParent(
   parentId: string,
@@ -109,12 +114,12 @@ export async function linkChildToParent(
 
   // The same form sent twice at once passes the check above both times; the
   // repository keeps one link and answers null for the other.
-  const link = await deps.links.create({
+  const saved = await deps.links.createWithNotices({
     id: crypto.randomUUID(),
     schoolId: school.id,
     parentId,
     studentId: student.id,
-    linkedAt: new Date().toISOString(),
+    linkedAt: new Date(now).toISOString(),
   });
-  return link ? { ok: true, student } : alreadyLinked(student);
+  return saved ? { ok: true, student, noticesMade: saved.noticesMade } : alreadyLinked(student);
 }

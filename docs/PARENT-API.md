@@ -88,9 +88,11 @@ type Item = {
   id: string;
   childId: string;
   childName: string; // "Juan Cruz"
-  kind: "time_in" | "time_out";
+  kind: "time_in" | "time_out" | "guardian_linked";
   at: string;
   read: boolean;
+  // guardian_linked only (Step 55.2): who linked; null once their account is deleted.
+  guardian?: { firstName: string; lastName: string } | null;
 };
 ```
 
@@ -160,7 +162,12 @@ curl -s "http://localhost:3000/api/v1/parents/notifications?limit=2" -H "Authori
 - **`limit`** is 30 when left out, and is kept between 1 and 50 (`limit=500` gives 50). Anything but a whole number is `400`.
 - **Paging:** pass `nextBefore` back as `before` for the next, older page. It's `null` on the last page. It's opaque: send it back exactly as received, URL-encoded, and never build or read one. A `before` the server didn't make is `400` (`fields.before`), never quietly the first page. An empty `before=` means the first page.
 - **`unreadCount`** counts unread notifications across all the children, **and stops at 10**. 10 means "10 or more": show "9+" from 10.
-- **Read marks are shared** by a child's guardians: one notification row per child, not per parent. When one parent reads it, it's read for the other too, and their `unreadCount` drops.
+- **Read marks are shared** by a child's guardians for taps: one notification row per child, not per parent. When one parent reads it, it's read for the other too, and their `unreadCount` drops.
+- **`guardian_linked`** (Step 55.2): another parent account linked one of this parent's children. Only the guardians already linked get one, each their own (read marks aren't shared), and never the parent who linked. Show it as: "An account named Ana Santos linked to Juan Cruz. If you don't know them, contact the school." With `guardian: null`: "A parent account linked to Juan Cruz. …". `at` is when they linked. **Every kind must be handled:** don't show an unknown `kind` as a tap.
+
+  ```json
+  {"id":"…","childId":"student-0001","childName":"Juan Cruz","kind":"guardian_linked","at":"2026-10-22T18:12:00.000+08:00","read":false,"guardian":{"firstName":"Ana","lastName":"Santos"}}
+  ```
 
 ### `POST /notifications/:id/read` and `POST /notifications/read-all`
 
@@ -186,7 +193,8 @@ curl -s -X POST http://localhost:3000/api/v1/parents/push-tokens -H "Authorizati
 - **One push address per signed-in phone.** A new token for the same sign-in replaces the old one. A phone that signs in as another parent moves its push address to that parent.
 - Sign-out removes it. A sign-in left unused for 30 days is cleared within the hour, push address included.
 - **What a push looks like** (Step 54): title "Bantay Aral", body "Juan tapped in at 7:56 AM" (the child's first name only), `data: { notificationId, childId }` so a tap can open the feed at that entry, `sound: "default"`, `priority: "high"`, Android `channelId: "attendance"`. The app must create the `attendance` channel before it registers its token: Android doesn't show a push sent to a channel the phone doesn't have.
-- **Which phones:** every push address of every parent linked to the child, whose sign-in isn't revoked and was used in the last 30 days. A push may arrive a few minutes late: the tap's time is saved at the gate, and the push says that time. How it's sent: `docs/PUSH.md`.
+- **A link notice's push** (Step 55.2): body "A new parent account was linked to Juan", no adult's name and no time; same `data` and channel.
+- **Which phones:** every push address of every parent linked to the child (a link notice: only its one recipient), whose sign-in isn't revoked and was used in the last 30 days. A push may arrive a few minutes late: the tap's time is saved at the gate, and the push says that time. How it's sent: `docs/PUSH.md`.
 
 ### `POST /logout`
 

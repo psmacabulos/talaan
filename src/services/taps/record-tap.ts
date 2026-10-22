@@ -14,7 +14,7 @@ import { shouldNotifyParents } from "@/features/attendance/notify-parents";
 import { tapSchema } from "@/features/attendance/schemas";
 import { deriveTapKind } from "@/features/attendance/status";
 import type { Alert, Tap } from "@/features/attendance/types";
-import type { Notification, NotificationKind } from "@/features/parents/types";
+import type { NotificationKind, TapNotification } from "@/features/parents/types";
 import { firstFourBytes, normalizeCardSerial } from "@/features/students/card-serial";
 import type { Card, Student } from "@/features/students/types";
 import { matchCard } from "./match-card";
@@ -204,7 +204,7 @@ export async function recordTap(input: RecordTapInput, deps: RecordTapDeps = DEF
 
   const student = studentId ? await deps.students.getInSchool(device.schoolId, studentId) : null;
   let alert: Alert | null = null;
-  let notification: Notification | null = null;
+  let notification: TapNotification | null = null;
   let result: RecordTapResult;
 
   if (kind === "valid" && student) {
@@ -217,6 +217,7 @@ export async function recordTap(input: RecordTapInput, deps: RecordTapDeps = DEF
         kind: direction,
         tappedAt: tap.tappedAt,
         read: false,
+        recipientParentId: null,
       };
     }
     result = { outcome: "recorded", tap, student: toTapStudent(student)!, direction, notified, replayed: false };

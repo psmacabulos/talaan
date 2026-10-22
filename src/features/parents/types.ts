@@ -6,6 +6,18 @@ export type Parent = z.infer<typeof parentSchema>;
 export type ParentStudentLink = z.infer<typeof parentStudentLinkSchema>;
 export type NotificationKind = z.infer<typeof notificationKindSchema>;
 export type Notification = z.infer<typeof notificationSchema>;
+/** A tap's notification, for every guardian of the child. */
+export type TapNotification = Extract<Notification, { recipientParentId: null }>;
+/** Step 55.2's "a new guardian linked", for one parent. */
+export type LinkNotification = Extract<Notification, { kind: "guardian_linked" }>;
+/** Just a parent's name: all a link notice shows of the parent who linked. */
+export type ParentName = Pick<Parent, "firstName" | "lastName">;
+/**
+ * A notification as a parent's feed reads it: with the name of the parent
+ * who linked, for a link notice (null for a tap, or once that account is
+ * deleted). Writing one takes a plain `Notification`.
+ */
+export type FeedNotification = Notification & { aboutParent: ParentName | null };
 
 /** Step 22's signup, sign-in and link-a-child forms. The email is trimmed and lowercased (Step 53.1), but it's a string before and after, so (unlike `StudentFormValues`/`StudentFormInput`) one inferred type each is enough for both the form and the server action. */
 export type ParentSignupInput = z.infer<typeof parentSignupSchema>;

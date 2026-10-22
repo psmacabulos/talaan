@@ -1,9 +1,8 @@
-import type { ParentStudentLink as LinkRow, PrismaClient } from "@/generated/prisma/client";
+import type { ParentStudentLink as LinkRow, Prisma, PrismaClient } from "@/generated/prisma/client";
 import { parentStudentLinkSchema } from "@/features/parents/schemas";
 import type { ParentStudentLink } from "@/features/parents/types";
 import { prisma } from "@/lib/db";
 import type { ParentStudentLinkRepository } from "./parent-student-link-repository";
-import { isUniqueViolation } from "./prisma-errors";
 
 /** A database row → the app's own `ParentStudentLink`. */
 export function toParentStudentLink(row: LinkRow): ParentStudentLink {
@@ -26,6 +25,23 @@ export function toParentStudentLinkData(link: ParentStudentLink) {
   };
 }
 
+/**
+ * Two parents linking one child at once wait for each other here, so the
+ * second always sees the first (Step 55.2). NO KEY UPDATE, not UPDATE:
+ * saving a tap or a notification takes KEY SHARE on the student, through
+ * its foreign key, and must never wait on a link. Exported for the test
+ * that checks exactly that.
+ */
+export async function lockStudentForLink(tx: Prisma.TransactionClient, studentId: string): Promise<void> {
+  await tx.$queryRaw`SELECT 1 FROM "Student" WHERE "id" = ${studentId} FOR NO KEY UPDATE`;
+}
+
+/**
+ * How long a link waits for a free database connection, then to finish. A
+ * link that runs out rolls back whole, and its try was already taken back.
+ */
+const LINK_TRANSACTION = { maxWait: 5_000, timeout: 10_000 };
+
 /** In the order the links were made; the id breaks ties between seed rows. */
 const FIRST_LINKED_FIRST = [{ linkedAt: "asc" as const }, { id: "asc" as const }];
 
@@ -43,19 +59,37 @@ export function createPrismaParentStudentLinkRepository(db: PrismaClient = prism
       const rows = await db.parentStudentLink.findMany({ where: { schoolId }, orderBy: FIRST_LINKED_FIRST });
       return rows.map(toParentStudentLink);
     },
-    async create(link) {
-      try {
-        const row = await db.parentStudentLink.upsert({
-          where: { id: link.id },
-          update: {},
-          create: { id: link.id, ...toParentStudentLinkData(link) },
+    async createWithNotices(link) {
+      // One transaction: a link is never saved without its notices (Step 55.2).
+      return db.$transaction(async (tx) => {
+        await lockStudentForLink(tx, link.studentId);
+
+        // Skipped, not an error, when the parent and student are already
+        // linked (the same form sent twice at once): an error would cancel
+        // the whole transaction.
+        const inserted = await tx.parentStudentLink.createMany({
+          data: [{ id: link.id, ...toParentStudentLinkData(link) }],
+          skipDuplicates: true,
         });
-        return toParentStudentLink(row);
-      } catch (error) {
-        // The same parent and student, linked a moment ago by another request.
-        if (isUniqueViolation(error)) return null;
-        throw error;
-      }
+        if (inserted.count === 0) return null;
+
+        const others = await tx.parentStudentLink.findMany({
+          where: { studentId: link.studentId, schoolId: link.schoolId, parentId: { not: link.parentId } },
+          select: { parentId: true },
+        });
+        if (others.length === 0) return { link, noticesMade: 0 };
+        await tx.notification.createMany({
+          data: others.map(({ parentId }) => ({
+            schoolId: link.schoolId,
+            studentId: link.studentId,
+            kind: "guardian_linked" as const,
+            tappedAt: new Date(link.linkedAt),
+            recipientParentId: parentId,
+            aboutParentId: link.parentId,
+          })),
+        });
+        return { link, noticesMade: others.length };
+      }, LINK_TRANSACTION);
     },
   };
 }

@@ -69,7 +69,10 @@ describeWithDatabase("notification paging on Postgres (Step 53.2; needs E2E_DATA
     const anaExpected = expected.filter((id) => ROWS.find((row) => row.id === id)!.studentId === ANA);
     const seen: Notification[] = [];
     for (let page = 0; page < 10; page++) {
-      const rows = await notifications.listPageForStudent(BALANGA, ANA, { before: seen.at(-1) ?? null, take: 1 });
+      const rows = await notifications.listPageForStudent(BALANGA, ANA, "parent-test", {
+        before: seen.at(-1) ?? null,
+        take: 1,
+      });
       if (rows.length === 0 || !ids.includes(rows[0].id)) break;
       seen.push(...rows);
     }
@@ -103,16 +106,20 @@ describeWithDatabase("notification paging on Postgres (Step 53.2; needs E2E_DATA
   });
 
   it("counts unread no further than the cap", async () => {
-    await expect(notifications.countUnreadForStudent(BALANGA, BEN, 2)).resolves.toBe(2);
+    await expect(notifications.countUnreadForStudent(BALANGA, BEN, "parent-test", 2)).resolves.toBe(2);
   });
 
   it("marks a row read only for the right child at the right school", async () => {
     const row = ROWS[0];
     await expect(
-      notifications.markReadForChildren([{ schoolId: "school-oceanview", studentId: row.studentId }], row.id),
+      notifications.markReadForChildren(
+        "parent-test",
+        [{ schoolId: "school-oceanview", studentId: row.studentId }],
+        row.id,
+      ),
     ).resolves.toBe(false);
     await expect(
-      notifications.markReadForChildren([{ schoolId: BALANGA, studentId: row.studentId }], row.id),
+      notifications.markReadForChildren("parent-test", [{ schoolId: BALANGA, studentId: row.studentId }], row.id),
     ).resolves.toBe(true);
   });
 });
