@@ -130,7 +130,7 @@ flowchart LR
 
 ### First passwords and resets: set-password links (Step 50.5)
 
-Staff never sign themselves up, and there's no email service. A new account is **invited**, with no password, until its owner uses a link the app makes and the principal sends however they like (Messenger, Viber, SMS).
+Staff never sign themselves up. A new account is **invited**, with no password, until its owner uses a link the app makes and the principal sends however they like (Messenger, Viber, SMS).
 
 ```mermaid
 sequenceDiagram
@@ -151,6 +151,10 @@ sequenceDiagram
 - **Who can make one:** a principal (or a super admin viewing the school) for anyone at that school except themselves, through `createSignInLink` and `inviteStaff` (`src/features/staff/actions.ts`); a super admin for a new school's principal, through `createSchool`; and anyone with the server's terminal, through `npm run staff:link` (below). `makeSignInLink` (`src/features/staff/sign-in-link.ts`) builds the full address from the request (`src/lib/request-origin.ts`) and is not a Server Action.
 - **The page** (`src/app/set-password/page.tsx`) reads the token, greets the person by first name and shows their email, never the school. A bad link says "This link has expired or was already used. Ask your principal for a new one." `setPasswordWithLink` reads the token *again* on submit, stores the scrypt hash with `staffRepository.setPassword` (which also marks the account active), and starts the session.
 - **The first super admin** on a new server: `npm run staff:link -- --create-super-admin --email … --first-name … --last-name …` creates the account and prints its link's path. `npm run staff:link -- --email …` prints a link for any existing account. Both use the same `SESSION_SECRET` as the app, so the app accepts the link.
+
+### "Forgot your password?" by email (Step 55.5)
+
+Staff can now get a reset link themselves. The sign-in page's **Forgot your password?** goes to `/forgot-password`, which emails the same set-password link, valid for **1 hour** instead of 7 days, to an account that already has a password. The answer is the same for every email, the lookup and the email happen in `after()`, and three limits apply: 3 per email and 20 per network an hour, and 80 emails a day from the whole app. Invited accounts get nothing; their invitation stays the principal's link. After a reset, the sign-in lockout for that email clears and a "password was changed" email goes out. The link's address comes from `APP_URL`, never the request. While a live server's `EMAIL_SENDER` is `log`, the sign-in page keeps the "Ask your principal" note. Full write-up: `docs/EMAIL.md`.
 
 ## The parent session
 
@@ -194,6 +198,6 @@ if (!session.schoolId || session.role === "teacher") return { ok: false, formErr
 
 **Sign everyone out.** Change `SESSION_SECRET`. Every cookie's stamp stops matching.
 
-**Sign one person out everywhere.** Send them a password reset link (Staff → ⋮ → Copy password reset link, or `npm run staff:link -- --email …`). When they set a new password, their `pv` changes.
+**Sign one person out everywhere.** Send them a password reset link (Staff → ⋮ → Copy password reset link, `npm run staff:link -- --email …`, or they use "Forgot your password?"). When they set a new password, their `pv` changes.
 
 **A new kind of signed value** (a link, another cookie). Add a purpose to `SignPurpose` in `src/lib/signed-value.ts`, sign with `signValue`, read with `readSignedValue`, and check the payload's fields with a Zod schema, as `readStaffSessionCookie` does.

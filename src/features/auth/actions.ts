@@ -1,18 +1,36 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { staffRepository } from "@/data/repositories";
-import { sessionSecret } from "@/lib/env";
+import { clientAddressKey } from "@/lib/client-address";
+import { canEmailPeople, emailSender } from "@/lib/email/email-sender";
+import { appUrl, sessionSecret } from "@/lib/env";
 import { hashPassword } from "@/lib/password";
 import { endStaffSession, startStaffSession } from "@/lib/session";
 import { setDevSession } from "@/lib/session-actions";
 import { clearThemeOverride } from "@/lib/theme/theme-override-actions";
-import { staffSignInThrottle } from "@/services/auth/login-throttle";
+import { sendCappedEmail } from "@/services/auth/capped-email";
+import {
+  dailyEmailCap,
+  resetAddressThrottle,
+  staffResetEmailThrottle,
+  staffSignInThrottle,
+  staffThrottleKey,
+} from "@/services/auth/login-throttle";
+import { passwordChangedEmail } from "@/services/auth/reset-emails";
 import { readSetPasswordToken } from "@/services/auth/set-password-link";
+import { startStaffPasswordReset } from "@/services/auth/staff-password-reset";
 import { checkStaffSignIn } from "@/services/auth/staff-sign-in";
-import { LINK_USED_MESSAGE } from "./messages";
-import { loginSchema, setPasswordSchema } from "./schemas";
-import type { LoginInput, SetPasswordInput } from "./types";
+import {
+  EMAIL_UNAVAILABLE_MESSAGE,
+  FORGOT_PASSWORD_MESSAGE,
+  LINK_USED_MESSAGE,
+  RESET_TOO_MANY_MESSAGE,
+} from "./messages";
+import { forgotPasswordSchema, loginSchema, setPasswordSchema } from "./schemas";
+import type { ForgotPasswordInput, LoginInput, SetPasswordInput } from "./types";
 
 /** Only failure returns: on success `signIn` redirects instead. */
 export type SignInResult = { ok: false; formError: string };
@@ -39,6 +57,41 @@ export async function signIn(input: LoginInput): Promise<SignInResult> {
   await startStaffSession(result.staffId);
   await clearThemeOverride();
   redirect("/dashboard");
+}
+
+export type ForgotPasswordResult = { ok: true } | { ok: false; formError: string };
+
+/**
+ * "Forgot your password?" (Step 55.5). Answers the same whether or not the
+ * email has an account: the lookup and the email run in `after()`, once
+ * the answer has gone (src/services/auth/staff-password-reset.ts). The
+ * email and the network are read here, before that, since the request is
+ * gone by then. The limits run on the real clock, never DEMO_NOW.
+ */
+export async function requestPasswordReset(input: ForgotPasswordInput): Promise<ForgotPasswordResult> {
+  const parsed = forgotPasswordSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, formError: "Enter a valid email address." };
+  if (!canEmailPeople()) return { ok: false, formError: FORGOT_PASSWORD_MESSAGE };
+
+  const result = startStaffPasswordReset(parsed.data.email, clientAddressKey((await headers()).get("x-forwarded-for")), {
+    staff: staffRepository,
+    sender: emailSender(),
+    secret: sessionSecret(),
+    appUrl: appUrl(),
+    now: new Date(),
+    emailThrottle: staffResetEmailThrottle,
+    addressThrottle: resetAddressThrottle,
+    dailyCap: dailyEmailCap,
+  });
+  switch (result.outcome) {
+    case "accepted":
+      after(result.send);
+      return { ok: true };
+    case "too_many":
+      return { ok: false, formError: RESET_TOO_MANY_MESSAGE };
+    case "unavailable":
+      return { ok: false, formError: EMAIL_UNAVAILABLE_MESSAGE };
+  }
 }
 
 /** Sign out in the top bar and the mobile drawer: a plain form post, so it works before JavaScript loads. */
@@ -69,7 +122,8 @@ export type SetPasswordResult = { ok: false; formError?: string; fieldErrors?: S
  * the page was open), stores the new hash and makes an invited account
  * active, then signs the person in. The new hash changes their password
  * fingerprint, so this link, and every browser signed in before, stop
- * working.
+ * working. Since Step 55.5 it also clears their sign-in lockout, and after
+ * a reset (not a first password) emails them that the password changed.
  */
 export async function setPasswordWithLink(token: string, input: SetPasswordInput): Promise<SetPasswordResult> {
   const parsed = setPasswordSchema.safeParse(input);
@@ -86,6 +140,17 @@ export async function setPasswordWithLink(token: string, input: SetPasswordInput
   if (!staff) return { ok: false, formError: LINK_USED_MESSAGE };
 
   await staffRepository.setPassword(staff.id, await hashPassword(parsed.data.password));
+  staffSignInThrottle.recordSuccess(staffThrottleKey(staff.email));
+  if (staff.status === "active") {
+    const sender = emailSender();
+    after(() =>
+      sendCappedEmail(passwordChangedEmail(staff), "password changed email", {
+        sender,
+        dailyCap: dailyEmailCap,
+        now: Date.now(),
+      }),
+    );
+  }
   await startStaffSession(staff.id);
   await clearThemeOverride();
   redirect("/dashboard");

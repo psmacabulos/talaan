@@ -88,6 +88,8 @@ export function createLoginThrottle(options: {
 }
 
 const FIFTEEN_MINUTES = 15 * 60_000;
+const ONE_HOUR = 60 * 60_000;
+const ONE_DAY = 24 * ONE_HOUR;
 
 /**
  * Each kind of count has its own throttle (Step 53.3), so one kind filling
@@ -110,7 +112,7 @@ export const parentAddressThrottle = createLoginThrottle({ maxFailures: 30, wind
  * night on one Wi-Fi, but it bounds the password hashing a stranger can make
  * the server do, and how fast "email taken" answers can be collected.
  */
-export const parentSignUpThrottle = createLoginThrottle({ maxFailures: 100, windowMs: 60 * 60_000 });
+export const parentSignUpThrottle = createLoginThrottle({ maxFailures: 100, windowMs: ONE_HOUR });
 
 /**
  * 5 wrong "link a child" tries by one parent in 15 minutes (Step 55.1),
@@ -120,6 +122,22 @@ export const parentSignUpThrottle = createLoginThrottle({ maxFailures: 100, wind
  */
 export const parentLinkThrottle = createLoginThrottle({ maxFailures: 5, windowMs: FIFTEEN_MINUTES });
 
+/** 3 "Forgot your password?" emails asked for one staff email in an hour (Step 55.5), keyed by `staffResetKey`. */
+export const staffResetEmailThrottle = createLoginThrottle({ maxFailures: 3, windowMs: ONE_HOUR });
+
+/** 20 reset requests from one network in an hour, whatever the emails (Step 55.5). */
+export const resetAddressThrottle = createLoginThrottle({ maxFailures: 20, windowMs: ONE_HOUR });
+
+/**
+ * 80 emails a day from the whole app (Step 55.5), under Resend's free 100,
+ * so someone cycling through many emails can't use up the day and leave
+ * real resets failing. One key, `DAILY_EMAIL_KEY`, counts emails actually
+ * sent. Like every count here, a restart clears it; the provider's own
+ * daily limit still holds.
+ */
+export const dailyEmailCap = createLoginThrottle({ maxFailures: 80, windowMs: ONE_DAY });
+export const DAILY_EMAIL_KEY = "all";
+
 /** The throttle's key for a staff email. Parents use `parentThrottleKey`, so the two never share a count. */
 export function staffThrottleKey(email: string): string {
   return `staff:${email.trim().toLowerCase()}`;
@@ -127,4 +145,9 @@ export function staffThrottleKey(email: string): string {
 
 export function parentThrottleKey(email: string): string {
   return `parent:${email.trim().toLowerCase()}`;
+}
+
+/** "Forgot your password?"'s key for a staff email, never shared with the sign-in count. */
+export function staffResetKey(email: string): string {
+  return `staff-reset:${email.trim().toLowerCase()}`;
 }

@@ -47,6 +47,7 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-030](#p-030--2026-10-22--two-browser-tests-linked-the-same-child-at-once) | 2026-10-22 | Two browser tests linked the same child at once | Other: tests | Playwright, parent portal | Resolved |
 | [P-031](#p-031--2026-10-22--the-dev-server-refused-the-new-notification-kind) | 2026-10-22 | The dev server refused the new notification kind | Other: setup | Prisma, `npm run dev` | Resolved |
 | [P-032](#p-032--2026-10-22--the-sign-in-photo-loads-late-on-wide-screens) | 2026-10-22 | The sign-in photo loads late on wide screens | Performance | Next.js `Image`, sign-in | Fixed: owner to confirm the warning is gone |
+| [P-033](#p-033--2026-10-23--a-1-issue-badge-after-sending-a-reset-link) | 2026-10-23 | A "1 Issue" badge after sending a reset link | Other: development | `npm run dev`, `/forgot-password` | Not reproduced: watch |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -700,3 +701,10 @@ sequenceDiagram
 - **Measured after the fix** (production build, Playwright, a throwaway spec): a phone (360 px) now downloads the hidden photo's smallest copy, `w=256`, **8.7 KB** (it downloaded nothing before, since a lazy image that's hidden is never fetched); a 1280 px screen downloads `w=640`, **27.4 KB**, from the start. On a local server the largest paint is under 60 ms either way, so the gain only shows on a real network: Lighthouse on the live `/login` is the measure.
 - **Status:** Fixed (`loading="eager"`, 2026-10-23); `e2e/login.spec.ts` passes. The owner confirms the dev warning is gone.
 
+### P-033 · 2026-10-23 · A "1 Issue" badge after sending a reset link
+- **Where:** the owner's running `npm run dev`, `/forgot-password` at 360 px, during Step 55.5's visual check (a Playwright screenshot script).
+- **Symptom:** Next.js's development badge said "1 Issue" in the screenshot taken after "Send reset link". No error text was captured: the script didn't listen to the console on that run.
+- **Cause:** unknown. The same steps, repeated with a console and page-error listener and a fresh email, showed no error and no badge. Most likely the dev server was recompiling while Step 55.5's files changed (the server was started before `nodemailer` was installed, and the memory note says a new package isn't verified until a fresh `npm run dev`).
+- **Options weighed:** (1) chase it now: nothing to chase without the text; (2) note it and watch for it during the owner's review with a freshly started dev server.
+- **Solution:** (2). If the badge comes back, click it and copy the error into this entry.
+- **Status:** Not reproduced. The owner restarts `npm run dev` for the review (the new package) and watches for it.

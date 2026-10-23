@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
@@ -16,10 +17,11 @@ import { FORGOT_PASSWORD_MESSAGE } from "./messages";
  * Staff sign-in (Step 50.1): validates in the browser, then `signIn`
  * checks the real password on the server and redirects to the dashboard.
  * A refusal ("isn't right", "Too many tries") shows above the button,
- * and the typed email stays. "Forgot your password?" opens a note saying
- * who to ask for a reset link, since there's no email service yet.
+ * and the typed email stays. "Forgot your password?" goes to
+ * /forgot-password (Step 55.5), or, while a live server can't send email
+ * yet (`canResetByEmail` false), opens a note saying who to ask instead.
  */
-export function LoginForm() {
+export function LoginForm({ canResetByEmail }: { canResetByEmail: boolean }) {
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [showForgotHelp, setShowForgotHelp] = useState(false);
@@ -112,20 +114,29 @@ export function LoginForm() {
         )}
       </Button>
 
-      <div className="flex flex-col gap-2">
-        <button
-          type="button"
-          onClick={() => setShowForgotHelp((shown) => !shown)}
-          aria-expanded={showForgotHelp}
-          aria-controls="login-forgot-help"
-          className="text-sm text-link underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm w-fit"
+      {canResetByEmail ? (
+        <Link
+          href="/forgot-password"
+          className="w-fit rounded-sm text-sm text-link underline underline-offset-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         >
           Forgot your password?
-        </button>
-        <p id="login-forgot-help" hidden={!showForgotHelp} className="text-sm text-muted-foreground">
-          {FORGOT_PASSWORD_MESSAGE}
-        </p>
-      </div>
+        </Link>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => setShowForgotHelp((shown) => !shown)}
+            aria-expanded={showForgotHelp}
+            aria-controls="login-forgot-help"
+            className="text-sm text-link underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm w-fit"
+          >
+            Forgot your password?
+          </button>
+          <p id="login-forgot-help" hidden={!showForgotHelp} className="text-sm text-muted-foreground">
+            {FORGOT_PASSWORD_MESSAGE}
+          </p>
+        </div>
+      )}
     </form>
   );
 }

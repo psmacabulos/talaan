@@ -239,5 +239,36 @@ test.describe("Set-password links (Step 50.5)", () => {
   test("a made-up link is refused", async ({ page }) => {
     await page.goto("/set-password?token=made.up");
     await expect(page.getByRole("heading", { name: "This link doesn't work any more" })).toBeVisible();
+    await expect(page.getByText(/Use “Forgot your password\?” on the sign-in page/)).toBeVisible();
+  });
+});
+
+test.describe("Forgot your password (Step 55.5)", () => {
+  const SENT = "If that email belongs to a staff account, we've sent a link to it. It works for 1 hour.";
+
+  test("answers the same for a staff email and a made-up one", async ({ page }, testInfo) => {
+    // One real account per project, so the 3-an-hour limit per email is never reached, even with a retry.
+    const staffEmail =
+      testInfo.project.name === "mobile"
+        ? "teacher@school-balanga.talaan.example"
+        : "principal@school-balanga.talaan.example";
+    const madeUp = `nobody-${testInfo.project.name}-${Date.now()}@talaan.example`;
+
+    await page.goto("/");
+    await page.getByRole("link", { name: "Forgot your password?" }).click();
+    await expect(page).toHaveURL("/forgot-password");
+    await expect(page.getByRole("heading", { name: "Reset your password" })).toBeVisible();
+
+    for (const email of [staffEmail, madeUp]) {
+      await page.getByLabel("Email").fill(email);
+      await page.getByRole("button", { name: "Send reset link" }).click();
+      const answer = page.getByRole("status").filter({ hasText: SENT });
+      await expect(answer).toBeVisible();
+      await expect(answer).toContainText(email);
+      await page.getByRole("button", { name: "Send again" }).click();
+    }
+
+    await page.getByRole("link", { name: "Back to sign in" }).click();
+    await expect(page).toHaveURL("/");
   });
 });

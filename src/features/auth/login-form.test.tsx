@@ -8,8 +8,14 @@ vi.mock("./actions", () => ({ signIn: vi.fn() }));
 const { LoginForm } = await import("./login-form");
 
 describe("LoginForm", () => {
-  it("'Forgot your password?' says who to ask for a reset link, and hides it again", () => {
-    render(<LoginForm />);
+  it("'Forgot your password?' goes to the reset page when email works (Step 55.5)", () => {
+    render(<LoginForm canResetByEmail />);
+    expect(screen.getByRole("link", { name: "Forgot your password?" })).toHaveAttribute("href", "/forgot-password");
+    expect(screen.queryByText(FORGOT_PASSWORD_MESSAGE)).not.toBeInTheDocument();
+  });
+
+  it("'Forgot your password?' says who to ask while a live server can't email, and hides it again", () => {
+    render(<LoginForm canResetByEmail={false} />);
     const toggle = screen.getByRole("button", { name: /forgot your password/i });
 
     expect(toggle).toHaveAttribute("aria-expanded", "false");

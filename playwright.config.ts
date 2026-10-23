@@ -62,6 +62,8 @@ export default defineConfig({
       SESSION_SECRET: TEST_SESSION_SECRET,
       // Pushes are made and "sent" to the log, never to Expo (Step 54).
       PUSH_SENDER: "log",
+      // Emails only go to the server's log (Step 55.5).
+      EMAIL_SENDER: "log",
     },
     timeout: 120_000,
   },

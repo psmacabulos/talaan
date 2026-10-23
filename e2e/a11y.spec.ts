@@ -12,6 +12,7 @@ type Screen = { name: string; path: string; as: Persona };
 const SCREENS: Screen[] = [
   { name: "login", path: "/", as: "anonymous" },
   { name: "not found", path: "/no-such-page", as: "anonymous" },
+  { name: "forgot password", path: "/forgot-password", as: "anonymous" },
   { name: "parent login", path: "/parent/login", as: "anonymous" },
   { name: "parent signup", path: "/parent/signup", as: "anonymous" },
   { name: "dashboard (principal)", path: "/dashboard", as: "principal" },

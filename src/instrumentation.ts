@@ -12,8 +12,8 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
-  if (process.env.NODE_ENV === "production" && process.env.E2E !== "1") {
-    const { checkProductionEnv } = await import("@/lib/env");
+  const { checkProductionEnv, isLiveServer } = await import("@/lib/env");
+  if (isLiveServer()) {
     const problems = checkProductionEnv(process.env);
     if (problems.length > 0) {
       throw new Error(`The server can't start with these settings:\n- ${problems.join("\n- ")}`);

@@ -13,10 +13,17 @@ const tokenSchema = z.object({ staffId: z.string().min(1), pv: z.string().min(1)
  * works as a link or the other way round. `pv` is the password fingerprint
  * when the link was made ("none" for an invited account). Setting a
  * password changes it, so the link works only once, with no table of
- * used links.
+ * used links. A principal's link lasts 7 days; an emailed one passes
+ * `validForSeconds` (Step 55.5).
  */
-export function makeSetPasswordToken(staffId: string, passwordHash: string | null, secret: string, now: Date): string {
-  const exp = Math.floor(now.getTime() / 1000) + SET_PASSWORD_LINK_DAYS * 24 * 60 * 60;
+export function makeSetPasswordToken(
+  staffId: string,
+  passwordHash: string | null,
+  secret: string,
+  now: Date,
+  validForSeconds = SET_PASSWORD_LINK_DAYS * 24 * 60 * 60,
+): string {
+  const exp = Math.floor(now.getTime() / 1000) + validForSeconds;
   return signValue({ staffId, pv: passwordVersion(passwordHash), exp }, "set-password", secret);
 }
 
@@ -41,4 +48,9 @@ export async function readSetPasswordToken(
 /** The link's path. The caller puts the site's own address in front of it. */
 export function setPasswordPath(token: string): string {
   return `/set-password?token=${encodeURIComponent(token)}`;
+}
+
+/** The whole link for an email (Step 55.5), on `APP_URL` (src/lib/env.ts), never the request's own address. */
+export function setPasswordUrl(token: string, appUrl: string): string {
+  return new URL(setPasswordPath(token), appUrl).toString();
 }

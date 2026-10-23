@@ -2643,3 +2643,46 @@ npx playwright test e2e/students.spec.ts e2e/parent-api.spec.ts e2e/isolation.sp
 ```
 
 **Architect's code review:** nothing blocking. Taken: the two Server Actions now check their id with Zod (`z.string().min(1).max(64)`), and the recipe's known limits say that a parent allowed back sees the child's whole feed again. It also confirmed by reading that fan-out, removal and a tap can't deadlock: fan-out never asks for the student's lock, and `FOR NO KEY UPDATE` lives alongside a tap's `FOR KEY SHARE`.
+
+## Step 55.5: email, and staff reset their own password (2026-10-23)
+
+**Split first.** The plan's 55.5 held four things: an email service, parents resetting from the app and the web, staff resetting on the web, and a decision about invitations. Too much for one review, so it was cut in two: email and staff here, parents (emailed codes, new API addresses, signing out every phone) in 55.6. Staff came first because it reuses Step 50.5's set-password link and page, so this half proves email from end to end with little new code.
+
+**Architect, before the recipe.** Nothing blocking. Four points changed the plan:
+- an overall limit of 80 emails a day, since 3 per email an hour doesn't stop someone cycling through 40 staff emails and using up Resend's free 100;
+- invited accounts get nothing, since emailing them a link would be an email invitation to an address nobody checked;
+- a live server on `EMAIL_SENDER=log` keeps "Ask your principal", so it never says "we've sent a link" when nothing went;
+- `APP_URL` must be `https://`.
+
+The plan already built emailed links from `APP_URL` rather than `requestOrigin()`, which trusts headers anyone can send ("reset poisoning").
+
+**The package.** `npm view nodemailer time` showed 15 releases in the two weeks before this step, the newest the day before. So the recipe pinned one that had been out two weeks:
+
+```bash
+npm install --save-exact nodemailer@10.0.16   # MIT-0, no dependencies, its own types (no @types/nodemailer)
+```
+
+`package.json` gained one line and the lock file one entry. `npm audit` lists nothing for nodemailer. Its findings (shadcn's and eslint-config-next's `braces`, `@modelcontextprotocol/sdk`) were there before this step.
+
+**A test that was wrong, not the form.** `forgot-password-form.test.tsx` typed `" Ana.Reyes@school.example "` and expected the action to get it with the spaces. It got `"Ana.Reyes@school.example"`: an `<input type="email">` strips spaces around its value itself (the HTML standard's value sanitizing). The test now expects that; the server's `emailSchema` still trims and lowercases.
+
+**The limit, seen by hand.** The screenshot script sent the same made-up email three times; a fourth try timed out waiting for "we've sent". It was "Too many requests. Wait an hour and try again.", the 3-an-hour limit doing its job. The rest of the check used a fresh email each time.
+
+**Not reproduced.** One screenshot of the owner's running dev server showed Next's "1 Issue" badge after sending. Repeating the same steps with a console listener showed no error and no badge. It was most likely left over from the dev server recompiling while files changed.
+
+**Visual check.** `/forgot-password` at 360 and 1280 px, light and dark, before and after sending: the sign-in page's layout, the answer box with the email typed, "Send again" and "Back to sign in". A throwaway Playwright script in the scratchpad.
+
+Targeted runs while building:
+
+```bash
+npx tsc --noEmit                                         # clean
+npx vitest run src/lib src/services/auth src/features/auth   # 21 files, 164 passed
+npm run build && npx playwright test e2e/login.spec.ts e2e/a11y.spec.ts   # 168 passed, 8 skipped (as before)
+```
+
+**Architect's code review:** nothing blocking. It confirmed that the answer's timing can't tell a known email from an unknown one (`startStaffPasswordReset` makes no database call), that `staff.status` is read before the new password is stored (so "active" means a reset), and that one shared, unpooled SMTP sender is right at under 80 emails a day. Taken:
+- a Heroku dyno is always a live server, even with `E2E` set by mistake;
+- `SMTP_PORT` must be a number;
+- "Your password was changed" points to "Forgot your password?" rather than "ask your principal", which a super admin can't do.
+
+Two went into the recipe's known limits: the daily limit is a rolling 24 hours, and two submits of one link at once can both succeed (as in Step 50.5).

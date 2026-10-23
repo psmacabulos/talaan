@@ -185,7 +185,10 @@ Why the change was made, in a sentence or two.   ← body, optional
 | `ci` | the CI workflow (`.github/workflows/`) | `ci: run Postgres in CI and apply migrations` |
 | `chore` | upkeep: dependency updates, config, scripts | `chore: update dependencies and fix critical Next.js advisory` |
 | `refactor` | code restructured, behavior unchanged | `refactor(students): split the form into smaller components` |
+| `perf` | something works the same, only faster | `perf(auth): load the sign-in photo fast` |
 | `style` | formatting only (Prettier, whitespace) | `style: reformat the codebase at 120 columns` |
+
+**`fix` or `perf`? (owner question, 2026-10-23)** `fix` means something was wrong and now works. Loading the sign-in photo eagerly (P-032) broke nothing before: the page worked, its biggest image just started loading later than it could. So it's `perf`. The scope stays `auth`, since the photo is part of the sign-in pages.
 
 **`(scope)`**: optional. Names the area that changed, in one word: `db`, `students`, `theme`, `ui`. Leave it out when the change is spread everywhere.
 

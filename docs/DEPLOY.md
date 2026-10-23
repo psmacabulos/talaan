@@ -35,17 +35,19 @@ flowchart LR
 // src/instrumentation.ts
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
-  if (process.env.NODE_ENV !== "production" || process.env.E2E === "1") return;
 
-  const { checkProductionEnv } = await import("@/lib/env");
-  const problems = checkProductionEnv(process.env);
-  if (problems.length > 0) {
-    throw new Error(`The server can't start with these settings:\n- ${problems.join("\n- ")}`);
+  const { checkProductionEnv, isLiveServer } = await import("@/lib/env");
+  if (isLiveServer()) {
+    const problems = checkProductionEnv(process.env);
+    if (problems.length > 0) {
+      throw new Error(`The server can't start with these settings:\n- ${problems.join("\n- ")}`);
+    }
   }
+  // … then it starts the push worker (Step 54)
 }
 ```
 
-The browser tests also run a production server, deliberately with test settings (a pinned clock and photos in a local folder). `playwright.config.ts` sets `E2E=1` for that server only, which skips the check. **Never set `E2E` on Heroku.** The same applies to trying a production build on your laptop (`npm run build && npm start`): it needs `E2E=1` in front, or the real settings.
+The browser tests also run a production server, deliberately with test settings (a pinned clock and photos in a local folder). `playwright.config.ts` sets `E2E=1` for that server only, which skips the check. **Never set `E2E` on Heroku.** Since Step 55.5 it would be ignored there anyway: `isLiveServer()` (`src/lib/env.ts`) treats any Heroku dyno (`DYNO` is set) as live. The same applies to trying a production build on your laptop (`npm run build && npm start`): it needs `E2E=1` in front, or the real settings.
 
 ## One dyno only
 
@@ -69,11 +71,16 @@ Set with `heroku config:set NAME=value --app bantayaral`. Type secrets yourself;
 | `PHOTO_STORAGE` | you: `s3` | Photos go to R2. The dyno's disk is wiped on every restart and deploy. |
 | `PUSH_SENDER` | you: `log` now, `expo` at the deploy after the parent app's M7 | Step 54. `log` makes the pushes and only logs how many would go. Without it the server refuses to start, so **set it before pushing Step 54**: `heroku config:set PUSH_SENDER=log --app bantayaral`. |
 | `EXPO_ACCESS_TOKEN` | you: expo.dev, your account, Access tokens | Only with `PUSH_SENDER=expo`, which requires it: only this server can push to the app's phones. |
+| `EMAIL_SENDER` | you: `log` now, `smtp` once Resend has verified the domain | Step 55.5 (`docs/EMAIL.md`). `log` writes only each email's subject to the log, and the sign-in page keeps "Ask your principal". Without it the server refuses to start, so **set it before pushing Step 55.5**: `heroku config:set EMAIL_SENDER=log --app bantayaral`. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` | you: `smtp.resend.com`, `465`, `resend` | Only with `EMAIL_SENDER=smtp`, which requires them. |
+| `SMTP_PASSWORD` | you: a Resend API key, Sending access, `mail.bantayaral.com` only | The same. |
+| `EMAIL_FROM` | you: `Bantay Aral <no-reply@mail.bantayaral.com>` | The same. The address must be on the domain Resend verified. |
+| `APP_URL` | you: `https://bantayaral.herokuapp.com` | The same. Links in emails use it, never the request's own address. Must start with `https://`. |
 | `S3_ENDPOINT` | you | `https://<account-id>.r2.cloudflarestorage.com` |
 | `S3_BUCKET` | you: `talaan-photos` | The private bucket. |
 | `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | you | An R2 API token with Object Read & Write on `talaan-photos` only. |
 
-Never set on Heroku: `DEMO_NOW` (the server refuses to start) and `E2E` (it would skip the check).
+Never set on Heroku: `DEMO_NOW` (the server refuses to start) and `E2E` (meant only for the browser tests; ignored on a dyno since Step 55.5).
 
 ## What it costs
 
@@ -83,6 +90,7 @@ Never set on Heroku: `DEMO_NOW` (the server refuses to start) and `E2E` (it woul
 | Database | Heroku Postgres Essential-0 (1 GB, 20 connections) | $5 |
 | Photos | Cloudflare R2 free tier (10 GB; 500 thumbnails are about 8 MB) | $0 |
 | Push notifications | Expo's push service (free); the worker runs inside the web dyno (`docs/PUSH.md`) | $0 |
+| Email | Resend's free plan (3,000 a month, 100 a day; the app stops at 80 a day), `docs/EMAIL.md` | $0 |
 | **Total** | | **$12**, covered by the Heroku for GitHub Students credit ($13 a month) |
 
 The credit shows on Heroku's Account → Billing page. Until it does, the card on the account is charged.

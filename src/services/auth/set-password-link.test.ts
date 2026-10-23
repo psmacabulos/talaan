@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Staff } from "@/features/staff/types";
 import { createMockStaffRepository } from "@/data/repositories/staff-repository";
 import { makeStaffSessionCookie } from "@/lib/session-cookie";
-import { makeSetPasswordToken, readSetPasswordToken, setPasswordPath } from "./set-password-link";
+import { makeSetPasswordToken, readSetPasswordToken, setPasswordPath, setPasswordUrl } from "./set-password-link";
 
 const SECRET = "test-secret-0123456789-0123456789-abcdef";
 const NOW = new Date("2026-10-12T08:00:00Z");
@@ -44,6 +44,20 @@ describe("set-password links", () => {
       readSetPasswordToken(token, { ...deps, now: new Date(NOW.getTime() + 6 * DAY) }),
     ).resolves.not.toBeNull();
     await expect(readSetPasswordToken(token, { ...deps, now: new Date(NOW.getTime() + 7 * DAY) })).resolves.toBeNull();
+  });
+
+  it("stops working after 1 hour when it was emailed (Step 55.5)", async () => {
+    const { deps } = setup();
+    const token = makeSetPasswordToken(invited.id, null, SECRET, NOW, 60 * 60);
+    const at = (minutes: number) => ({ ...deps, now: new Date(NOW.getTime() + minutes * 60_000) });
+    await expect(readSetPasswordToken(token, at(59))).resolves.not.toBeNull();
+    await expect(readSetPasswordToken(token, at(60))).resolves.toBeNull();
+  });
+
+  it("builds an emailed link on the app's own address", () => {
+    expect(setPasswordUrl("a.b", "https://bantayaral.herokuapp.com")).toBe(
+      "https://bantayaral.herokuapp.com/set-password?token=a.b",
+    );
   });
 
   it("refuses a staff session cookie, which was signed for another purpose", async () => {

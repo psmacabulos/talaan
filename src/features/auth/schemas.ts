@@ -42,3 +42,6 @@ export const setPasswordSchema = z
     message: "Passwords don't match",
     path: ["confirmPassword"],
   });
+
+/** "Forgot your password?" (Step 55.5): one email, trimmed and in lower case before it's checked. */
+export const forgotPasswordSchema = z.object({ email: emailSchema });

@@ -6,6 +6,7 @@ import { LoginMobileHeader } from "@/features/auth/login-mobile-header";
 import { LoginForm } from "@/features/auth/login-form";
 import { DemoShortcuts } from "@/features/auth/demo-shortcuts";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { canEmailPeople } from "@/lib/email/email-sender";
 
 /**
  * The login screen (docs/PLAN.md Step 12) — now the site's entry point,
@@ -46,7 +47,7 @@ export default async function LoginPage() {
             <p className="text-sm text-muted-foreground">Use the account your school gave you.</p>
           </div>
 
-          <LoginForm />
+          <LoginForm canResetByEmail={canEmailPeople()} />
           {showDemoShortcuts && <DemoShortcuts />}
 
           <p className="text-center text-sm text-muted-foreground">

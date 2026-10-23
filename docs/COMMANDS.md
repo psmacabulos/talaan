@@ -227,6 +227,8 @@ More in `docs/GATE.md`.
 
 It prints a path like `/set-password?token=…`. Put the site's address in front of it: `http://localhost:3000/set-password?token=…` locally. On Heroku (Step 52) the same command runs as `heroku run --app bantayaral "npm run staff:link -- …"` (quotes included, see 7c), and the address is the Heroku one.
 
+Staff can also get a reset link themselves (Step 55.5): **Forgot your password?** on the sign-in page emails one that works for 1 hour. Locally, nothing is sent: the whole email, link included, appears in the `npm run dev` terminal (`EMAIL_SENDER` unset means "log", `docs/EMAIL.md`).
+
 In the app, a principal gets the same links without the terminal: the dialog after **Invite staff**, or Staff → ⋮ → **Copy sign-in link** / **Copy password reset link**. A super admin gets a new school's principal's link right after **Add school**.
 
 **Files:** `scripts/staff-link.ts`, `src/services/auth/set-password-link.ts`, `src/app/set-password/page.tsx`. Needs `SESSION_SECRET` in `.env`, the same one the app uses, or the app won't accept the link.
@@ -248,6 +250,9 @@ In the app, a principal gets the same links without the terminal: the dialog aft
 | `heroku run npx prisma db seed --app bantayaral` | Loads the demo data. First deploy only. |
 | `heroku run --app bantayaral "npm run staff:link -- --email <email>"` | A sign-in or reset link, as in 7b. Add `--create-super-admin --first-name … --last-name …` inside the quotes for the first account. |
 | `heroku run --app bantayaral "npm run device:create -- --school school-balanga --kind gate --label 'Main gate tablet'"` | A gate (or `--kind monitor`) token, as in section 7. |
+| `heroku config:set EMAIL_SENDER=log --app bantayaral` | Required from Step 55.5 on: emails only go to the log. Switch to `smtp` (with the settings in `docs/DEPLOY.md`) once Resend has verified `mail.bantayaral.com`. |
+| `heroku logs --app bantayaral --num 500 \| grep "email:"` | Recent email lines: failures (`reset email failed: EAUTH`) and the daily limit. Never addresses. |
+| `dig TXT resend._domainkey.mail.bantayaral.com +short` | Whether Resend's DKIM record is live yet. Empty while it's still spreading. |
 | `heroku pg:psql --app bantayaral` | A `psql` prompt on the live database. `\q` quits. |
 | `heroku pg:backups:capture --app bantayaral` | A backup right now. `heroku pg:backups --app bantayaral` lists them. |
 | `curl https://bantayaral.herokuapp.com/api/v1/health` | `{"ok":true,"database":"ok"}` when the site and its database are fine. |

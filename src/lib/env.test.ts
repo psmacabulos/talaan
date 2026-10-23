@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkProductionEnv } from "./env";
+import { appUrl, checkProductionEnv, isLiveServer } from "./env";
 
 const GOOD: NodeJS.ProcessEnv = {
   NODE_ENV: "production",
@@ -12,6 +12,13 @@ const GOOD: NodeJS.ProcessEnv = {
   S3_SECRET_ACCESS_KEY: "key-secret",
   PUSH_SENDER: "expo",
   EXPO_ACCESS_TOKEN: "expo-token",
+  EMAIL_SENDER: "smtp",
+  SMTP_HOST: "smtp.resend.com",
+  SMTP_PORT: "465",
+  SMTP_USER: "resend",
+  SMTP_PASSWORD: "re_secret",
+  EMAIL_FROM: "Bantay Aral <no-reply@mail.bantayaral.com>",
+  APP_URL: "https://bantayaral.herokuapp.com",
 };
 
 describe("checkProductionEnv", () => {
@@ -60,8 +67,50 @@ describe("checkProductionEnv", () => {
     ]);
   });
 
+  it("asks whether emails really go out, and for every SMTP setting when they do (Step 55.5)", () => {
+    expect(
+      checkProductionEnv({ ...GOOD, EMAIL_SENDER: "log", SMTP_HOST: undefined, APP_URL: undefined }),
+    ).toEqual([]);
+    expect(checkProductionEnv({ ...GOOD, EMAIL_SENDER: undefined })).toEqual([
+      expect.stringMatching(/^EMAIL_SENDER must be/),
+    ]);
+    expect(checkProductionEnv({ ...GOOD, EMAIL_SENDER: "resend" })).toHaveLength(1);
+    expect(checkProductionEnv({ ...GOOD, SMTP_PASSWORD: "", APP_URL: undefined })).toEqual([
+      'EMAIL_SENDER="smtp" needs SMTP_PASSWORD, APP_URL.',
+    ]);
+  });
+
+  it("refuses links in emails that aren't https", () => {
+    expect(checkProductionEnv({ ...GOOD, APP_URL: "http://bantayaral.herokuapp.com" })).toEqual([
+      "APP_URL must start with https://.",
+    ]);
+  });
+
+  it("refuses an SMTP port that isn't a number", () => {
+    expect(checkProductionEnv({ ...GOOD, SMTP_PORT: "smtp" })).toEqual([
+      "SMTP_PORT must be a port number, such as 465.",
+    ]);
+  });
+
   it("never repeats a setting's value", () => {
     const problems = checkProductionEnv({ ...GOOD, SESSION_SECRET: "leaky-secret", DEMO_NOW: "leaky-date" });
     expect(problems.join(" ")).not.toMatch(/leaky/);
+  });
+});
+
+describe("isLiveServer", () => {
+  it("is a production server, except the browser tests' own", () => {
+    expect(isLiveServer({ NODE_ENV: "production" })).toBe(true);
+    expect(isLiveServer({ NODE_ENV: "production", E2E: "1" })).toBe(false);
+    expect(isLiveServer({ NODE_ENV: "development" })).toBe(false);
+    // E2E set on Heroku by mistake changes nothing.
+    expect(isLiveServer({ NODE_ENV: "production", E2E: "1", DYNO: "web.1" })).toBe(true);
+  });
+});
+
+describe("appUrl", () => {
+  it("is APP_URL without a trailing slash, or the development address", () => {
+    expect(appUrl({ NODE_ENV: "production", APP_URL: "https://bantayaral.herokuapp.com/" })).toBe("https://bantayaral.herokuapp.com");
+    expect(appUrl({ NODE_ENV: "development" })).toBe("http://localhost:3000");
   });
 });
