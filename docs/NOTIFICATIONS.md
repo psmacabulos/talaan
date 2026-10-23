@@ -153,7 +153,7 @@ A link notice tells the child's other guardians; the school sees every link itse
 - **The student drawer's "Parent accounts"** (principals and super admins): each linked parent's name, mobile and the day they linked. The students page loads them for the 10 students it shows in one query (`listGuardiansInSchool`), and the drawer looks the open student up in that map each time it renders.
 - **The dashboard's "New parent links"**: the school's links from the last 7 days, the newest 5 listed and all of them counted (`listRecentInSchool`, on the `(schoolId, linkedAt)` index). Each row opens the students page searched for that child.
 
-Removing a wrong link is Step 55.4.
+**Removing a wrong link (Step 55.4).** "Remove", after a confirmation, deletes the link and saves a `LinkBlock` for that parent and child, in one transaction that also deletes the parent's pushes about the child still `waiting` or `sending`. Because every parent read and the push fan-out go through the links, the parent stops seeing the child and getting notices at once. Nobody is told. A removed parent who types the right details again gets "This child can't be linked to your account. Contact your child's school." (`403 link_blocked` in the app), until the school chooses "Allow again", which deletes the block. Linking and removing both lock the child's row first, and linking checks the block after the lock, so a removal and a relink can't both get through.
 
 ## Pushing it to the phone (Step 54)
 

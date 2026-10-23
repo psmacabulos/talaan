@@ -62,6 +62,8 @@ A phone stops getting pushes when:
 
 The **first name only**: the lock screen is visible to anyone near the phone, the text passes through Expo, Google and Apple, and students are minors. `toPushMessage` (`src/services/push/push-message.ts`) builds it.
 
+**A removed link (Step 55.4)** takes its parent's deliveries about that child that are still `waiting` or `sending` with it (a "sending" one that comes back as "retry" would otherwise be `waiting` again). The fan-out's phone lookup ends with `FOR SHARE OF l`, so a link being removed waits for a fan-out in progress, and the removal then finds those deliveries too. Only a push already handed to Expo can still arrive.
+
 A link notice (Step 55.2) reads **"A new parent account was linked to Juan"**: no adult's name and no time on the lock screen; the feed has the details. It uses the same `attendance` channel, since Android drops a push sent to a channel the app hasn't made.
 
 ## A delivery's life

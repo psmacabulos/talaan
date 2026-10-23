@@ -49,13 +49,14 @@ vi.mock("@/data/repositories", async () => {
   };
 });
 
-const { studentRepository, staffRepository, tapRepository, notificationRepository } =
+const { studentRepository, staffRepository, tapRepository, notificationRepository, parentStudentLinkRepository } =
   await import("@/data/repositories");
 const { updateStudent } = await import("@/features/students/actions");
 const { checkCardSerial } = await import("@/features/students/card-actions");
 const { removeStaff, createSignInLink } = await import("@/features/staff/actions");
 const { recordTimeIn } = await import("@/features/attendance/actions");
 const { markNotificationRead } = await import("@/features/parents/notification-actions");
+const { removeParentLink, allowParentLinkAgain } = await import("@/features/students/parent-link-actions");
 
 const OCEANVIEW = "school-oceanview";
 const BALANGA = "school-balanga";
@@ -95,6 +96,27 @@ describe("Oceanview can't reach Balanga's data (Step 51)", () => {
     const result = await checkCardSerial(balangaCard.serial);
     expect(result.ok).toBe(false);
     expect(JSON.stringify(result)).not.toContain(balangaStudent.lastName);
+  });
+
+  it("can't remove a Balanga parent link, or allow a Balanga block again (Step 55.4)", async () => {
+    signInAsOceanview();
+    const [balangaLink] = await parentStudentLinkRepository.listBySchool(BALANGA);
+    await expect(removeParentLink(balangaLink.id)).resolves.toEqual({
+      ok: false,
+      error: "That parent account was already removed.",
+    });
+    await expect(parentStudentLinkRepository.listBySchool(BALANGA)).resolves.toContainEqual(balangaLink);
+
+    // Balanga removes one itself; Oceanview still can't undo it.
+    await parentStudentLinkRepository.removeInSchool(BALANGA, balangaLink.id, `staff-principal-${BALANGA}`);
+    const [block] = await parentStudentLinkRepository.listBlocksInSchool(BALANGA, [balangaLink.studentId]);
+    await expect(allowParentLinkAgain(block.blockId)).resolves.toEqual({
+      ok: false,
+      error: "That parent can already link this child.",
+    });
+    await expect(
+      parentStudentLinkRepository.listBlocksInSchool(BALANGA, [balangaLink.studentId]),
+    ).resolves.toHaveLength(1);
   });
 
   it("can't record a time in for a Balanga student (Step 55)", async () => {

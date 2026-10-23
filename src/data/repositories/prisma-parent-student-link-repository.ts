@@ -2,7 +2,7 @@ import type { ParentStudentLink as LinkRow, Prisma, PrismaClient } from "@/gener
 import { parentStudentLinkSchema } from "@/features/parents/schemas";
 import type { ParentStudentLink } from "@/features/parents/types";
 import { prisma } from "@/lib/db";
-import type { ParentStudentLinkRepository } from "./parent-student-link-repository";
+import type { CreateLinkResult, ParentStudentLinkRepository } from "./parent-student-link-repository";
 
 /** A database row → the app's own `ParentStudentLink`. */
 export function toParentStudentLink(row: LinkRow): ParentStudentLink {
@@ -99,10 +99,18 @@ export function createPrismaParentStudentLinkRepository(db: PrismaClient = prism
         })),
       };
     },
-    async createWithNotices(link) {
+    async createWithNotices(link): Promise<CreateLinkResult> {
       // One transaction: a link is never saved without its notices (Step 55.2).
       return db.$transaction(async (tx) => {
         await lockStudentForLink(tx, link.studentId);
+
+        // Checked after the lock, so a removal and a relink of the same
+        // child can't both get through (Step 55.4).
+        const blocked = await tx.linkBlock.findUnique({
+          where: { parentId_studentId: { parentId: link.parentId, studentId: link.studentId } },
+          select: { id: true },
+        });
+        if (blocked) return { outcome: "blocked" };
 
         // Skipped, not an error, when the parent and student are already
         // linked (the same form sent twice at once): an error would cancel
@@ -111,13 +119,13 @@ export function createPrismaParentStudentLinkRepository(db: PrismaClient = prism
           data: [{ id: link.id, ...toParentStudentLinkData(link) }],
           skipDuplicates: true,
         });
-        if (inserted.count === 0) return null;
+        if (inserted.count === 0) return { outcome: "already_linked" };
 
         const others = await tx.parentStudentLink.findMany({
           where: { studentId: link.studentId, schoolId: link.schoolId, parentId: { not: link.parentId } },
           select: { parentId: true },
         });
-        if (others.length === 0) return { link, noticesMade: 0 };
+        if (others.length === 0) return { outcome: "linked", link, noticesMade: 0 };
         await tx.notification.createMany({
           data: others.map(({ parentId }) => ({
             schoolId: link.schoolId,
@@ -128,8 +136,62 @@ export function createPrismaParentStudentLinkRepository(db: PrismaClient = prism
             aboutParentId: link.parentId,
           })),
         });
-        return { link, noticesMade: others.length };
+        return { outcome: "linked", link, noticesMade: others.length };
       }, LINK_TRANSACTION);
+    },
+    async removeInSchool(schoolId, linkId, removedByStaffId) {
+      return db.$transaction(async (tx) => {
+        const link = await tx.parentStudentLink.findFirst({
+          where: { id: linkId, schoolId },
+          select: { parentId: true, studentId: true },
+        });
+        if (!link) return null;
+        // Takes turns with linking this child (Step 55.2's lock).
+        await lockStudentForLink(tx, link.studentId);
+
+        // Two principals removing at once: the second finds nothing left to delete.
+        const { count } = await tx.parentStudentLink.deleteMany({ where: { id: linkId, schoolId } });
+        if (count === 0) return null;
+        await tx.linkBlock.createMany({
+          data: [{ schoolId, parentId: link.parentId, studentId: link.studentId, removedByStaffId }],
+          skipDuplicates: true,
+        });
+        // Their pushes about this child that haven't gone yet. "sending" too:
+        // a send that comes back as "retry" goes back to "waiting", and one
+        // whose row is gone just updates nothing. The push worker's fan-out
+        // holds FOR SHARE on the links it reads, so the delete above waited
+        // for any fan-out in progress, and its deliveries are here to delete.
+        await tx.pushDelivery.deleteMany({
+          where: {
+            status: { in: ["waiting", "sending"] },
+            notification: { studentId: link.studentId },
+            pushToken: { parentToken: { parentId: link.parentId } },
+          },
+        });
+        return link;
+      }, LINK_TRANSACTION);
+    },
+    async listBlocksInSchool(schoolId, studentIds) {
+      if (studentIds.length === 0) return [];
+      const rows = await db.linkBlock.findMany({
+        where: { schoolId, studentId: { in: studentIds } },
+        orderBy: [{ removedAt: "desc" }, { id: "desc" }],
+        include: {
+          parent: { select: { firstName: true, lastName: true } },
+          removedBy: { select: { firstName: true, lastName: true } },
+        },
+      });
+      return rows.map((row) => ({
+        blockId: row.id,
+        studentId: row.studentId,
+        removedAt: row.removedAt.toISOString(),
+        parent: row.parent,
+        removedBy: row.removedBy,
+      }));
+    },
+    async allowAgainInSchool(schoolId, blockId) {
+      const { count } = await db.linkBlock.deleteMany({ where: { id: blockId, schoolId } });
+      return count > 0;
     },
   };
 }

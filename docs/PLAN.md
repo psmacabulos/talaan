@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: █████████████████░░░ 85%**  (287 of 338 tasks, 75 of 88 steps approved)
+**Overall progress: █████████████████░░░ 86%**  (290 of 338 tasks, 76 of 88 steps approved)
 
-**Next up:** Step 55.3, The school sees each link (ready for your review)
+**Next up:** Step 55.4, A principal removes a wrong link (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -82,8 +82,8 @@
 | 55 | Record a time in by hand | ██████████ 100% | Approved |
 | 55.1 | Remove the tap station, and limit child linking | ██████████ 100% | Approved |
 | 55.2 | Other guardians are told of each new link | ██████████ 100% | Approved |
-| 55.3 | The school sees each link | ███████░░░  67% | Ready for your review |
-| 55.4 | A principal removes a wrong link | ░░░░░░░░░░   0% | Not started |
+| 55.3 | The school sees each link | ██████████ 100% | Approved |
+| 55.4 | A principal removes a wrong link | ███████░░░  67% | Ready for your review |
 | 55.5 | Forgot password by email | ░░░░░░░░░░   0% | Not started |
 | 56 | One read, one tap | ░░░░░░░░░░   0% | Not started |
 | 57 | Lost cards and alerts | ░░░░░░░░░░   0% | Not started |
@@ -832,12 +832,12 @@ Split from Step 55.2 on 2026-10-22 (owner). With no approval step, the school's 
 - [x] The dashboard shows the school's new parent links from the last 7 days (migration `parent_links_by_school_and_date`: index `(schoolId, linkedAt)`).
 Done when: a principal sees a new link on the dashboard and in the drawer, a teacher sees neither, and every check passes.
 Commit: `feat(parents): show each school its parent links`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 55.4: A principal removes a wrong link
-Cut from Step 55.3 on 2026-10-22 (architect review). Removing and blocking ship together: without the block, a removed parent could link the child again a minute later.
-- [ ] "Remove" in the drawer's parent accounts, after a confirmation; the link is deleted with the parent's queued pushes about the child, and who removed it is kept.
-- [ ] The removed parent can't link that child again until the school chooses "Allow again"; the API answers `403 link_blocked`.
+Cut from Step 55.3 on 2026-10-22 (architect review). Removing and blocking ship together: without the block, a removed parent could link the child again a minute later. Recipe first: `docs/backend/step-55.4-remove-parent-link.md`.
+- [x] "Remove" in the drawer's parent accounts, after a confirmation; the link is deleted with the parent's queued pushes about the child, and who removed it is kept.
+- [x] The removed parent can't link that child again until the school chooses "Allow again"; the API answers `403 link_blocked`.
 Done when: a principal removes a link, that parent no longer sees the child or gets a push about them, can't link them again, and every check passes.
 Commit: `feat(parents): let a principal remove a parent link`
 - [ ] Owner review: I checked it and said "approved"

@@ -16,7 +16,13 @@ import type { Notification, NotificationKind, Parent, ParentName } from "./types
  */
 
 export type ApiErrorCode =
-  "invalid_input" | "unauthorized" | "wrong_credentials" | "too_many_tries" | "not_found" | "conflict";
+  | "invalid_input"
+  | "unauthorized"
+  | "wrong_credentials"
+  | "too_many_tries"
+  | "not_found"
+  | "conflict"
+  | "link_blocked";
 
 const STATUS: Record<ApiErrorCode, number> = {
   invalid_input: 400,
@@ -25,6 +31,9 @@ const STATUS: Record<ApiErrorCode, number> = {
   too_many_tries: 429,
   not_found: 404,
   conflict: 409,
+  // The school removed this parent from this child (Step 55.4). Only ever
+  // answered after the details matched, so it reveals nothing new.
+  link_blocked: 403,
 };
 
 /** The plain messages for errors that have no more specific one. */

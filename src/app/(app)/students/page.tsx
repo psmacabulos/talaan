@@ -6,22 +6,32 @@ import { getNow } from "@/lib/clock";
 import { requireSession } from "@/lib/session";
 import { parseStudentListParams } from "@/features/students/search-params";
 import { searchStudents, type StudentRow } from "@/features/students/search-students";
-import type { LinkedGuardian } from "@/features/parents/types";
+import type { LinkedGuardian, RemovedGuardian } from "@/features/parents/types";
 import { StudentsDirectory } from "@/features/students/students-directory";
 
+/** Rows grouped by their student's id, each group in the order given. */
+function byStudent<T extends { studentId: string }>(rows: T[]): Record<string, T[]> {
+  const grouped: Record<string, T[]> = {};
+  for (const row of rows) (grouped[row.studentId] ??= []).push(row);
+  return grouped;
+}
+
 /**
- * The parent accounts linked to the students on this page, by student id,
- * in one query for all of them (Step 55.3). Only for staff who can open the
- * drawer: a parent's mobile number is for the people who'd act on it.
+ * The parent accounts linked to the students on this page (Step 55.3), and
+ * the ones the school removed (Step 55.4), by student id: one query each
+ * for all of them. Only for staff who can open the drawer: a parent's
+ * mobile number is for the people who'd act on it.
  */
-async function guardiansOf(schoolId: string, rows: StudentRow[]): Promise<Record<string, LinkedGuardian[]>> {
-  const guardians = await parentStudentLinkRepository.listGuardiansInSchool(
-    schoolId,
-    rows.map((row) => row.student.id),
-  );
-  const byStudent: Record<string, LinkedGuardian[]> = {};
-  for (const guardian of guardians) (byStudent[guardian.studentId] ??= []).push(guardian);
-  return byStudent;
+async function parentAccountsOf(
+  schoolId: string,
+  rows: StudentRow[],
+): Promise<{ guardians: Record<string, LinkedGuardian[]>; removed: Record<string, RemovedGuardian[]> }> {
+  const studentIds = rows.map((row) => row.student.id);
+  const [guardians, removed] = await Promise.all([
+    parentStudentLinkRepository.listGuardiansInSchool(schoolId, studentIds),
+    parentStudentLinkRepository.listBlocksInSchool(schoolId, studentIds),
+  ]);
+  return { guardians: byStudent(guardians), removed: byStudent(removed) };
 }
 
 export default async function StudentsPage({ searchParams }: PageProps<"/students">) {
@@ -53,7 +63,7 @@ export default async function StudentsPage({ searchParams }: PageProps<"/student
       : undefined,
   });
   const taps = await tapRepository.listBySchoolOnDate(session.schoolId, day.date);
-  const guardiansByStudent = isTeacher ? {} : await guardiansOf(session.schoolId, items);
+  const parentAccounts = isTeacher ? { guardians: {}, removed: {} } : await parentAccountsOf(session.schoolId, items);
 
   return (
     <StudentsDirectory
@@ -72,7 +82,8 @@ export default async function StudentsPage({ searchParams }: PageProps<"/student
       day={day}
       showGradeFilter={!isTeacher}
       canEdit={!isTeacher}
-      guardiansByStudent={guardiansByStudent}
+      guardiansByStudent={parentAccounts.guardians}
+      removedByStudent={parentAccounts.removed}
     />
   );
 }

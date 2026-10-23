@@ -46,6 +46,7 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-029](#p-029--2026-10-21--the-monitor-test-lost-count-when-an-old-tap-dropped-off-the-list) | 2026-10-21 | The monitor test lost count when an old tap dropped off the list | Other: tests | Playwright, `/gate/display` | Resolved |
 | [P-030](#p-030--2026-10-22--two-browser-tests-linked-the-same-child-at-once) | 2026-10-22 | Two browser tests linked the same child at once | Other: tests | Playwright, parent portal | Resolved |
 | [P-031](#p-031--2026-10-22--the-dev-server-refused-the-new-notification-kind) | 2026-10-22 | The dev server refused the new notification kind | Other: setup | Prisma, `npm run dev` | Resolved |
+| [P-032](#p-032--2026-10-22--the-sign-in-photo-loads-late-on-wide-screens) | 2026-10-22 | The sign-in photo loads late on wide screens | Performance | Next.js `Image`, sign-in | Open: fix after Step 55.4 is committed |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -685,4 +686,16 @@ sequenceDiagram
 - **Solution:** stop `npm run dev` and start it again after any migration or `prisma generate`. Added to the Step 55.2 recipe's "If something goes wrong".
 - **Lesson:** a schema change isn't live in a server that was already running; restart it, the same as after a dependency change.
 - **Status:** Resolved: after a restart, the owner linked a child and the notices showed (2026-10-22).
+
+### P-032 · 2026-10-22 · The sign-in photo loads late on wide screens
+- **Where:** the owner's `npm run dev`, `/parent/login` (and `/login`, which uses the same panel), while reviewing Step 55.4.
+- **Symptom:**
+  ```
+  [browser] Image with src "/brand/sign-in-photo.jpg" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+  ```
+- **Cause:** `SignInPhoto` (`src/features/auth/login-art-panel.tsx`, Step 51.6) uses `next/image` with its default `loading="lazy"`. From 1280 px wide it's the largest thing on the page, so the browser counts the page as loaded only when the photo is, and a lazy image starts downloading later than it could. Phones are unaffected: the photo is hidden below 1280 px (`hidden xl:block`).
+- **Impact (performance):** a later Largest Contentful Paint on desktop sign-in; the target is Lighthouse 90+ on login (CLAUDE.md). Not measured yet.
+- **Options weighed:** (1) **`loading="eager"`**, as Next.js suggests: the photo starts at once; on a phone it's hidden, and its `sizes` (`0px` below 1280 px) makes the browser pick the smallest copy, so the extra download there should be tiny (to check). (2) `preload`: adds a `<link>` in the page's head, so even phones fetch it early; more than needed. (3) Leave it: it's a dev-only hint, but the score target is real.
+- **Solution:** (1), as its own commit once Step 55.4 is committed (one change per commit). Then check the phone's network panel for the photo's size, and the desktop LCP.
+- **Status:** Open: fix after Step 55.4 is committed.
 

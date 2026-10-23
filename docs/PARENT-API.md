@@ -136,7 +136,7 @@ curl -s -X POST http://localhost:3000/api/v1/parents/children -H "Authorization:
   -H 'Content-Type: application/json' -d '{"schoolId":"school-balanga","lrn":"…","lastName":"…","birthDate":"2012-03-14"}'
 ```
 
-`201 { child: ChildToday }`. No student with those details at that school: `404 not_found`. Already linked: `409 conflict`.
+`201 { child: ChildToday }`. No student with those details at that school: `404 not_found`. Already linked: `409 conflict`. The school removed this parent from this child (Step 55.4): `403 link_blocked`, until the school allows them again. A removed child also disappears from `/me`, and its taps and photo answer `404`.
 
 **Wrong tries are limited** (Step 55.1): 5 wrong tries by one parent in 15 minutes answer `429 too_many_tries` ("Too many tries. Wait 15 minutes and try again."). And 10 tries for one child (school, LRN and last name) in 24 hours, from anyone, lock linking that child: `429 too_many_tries`, "Too many tries for this student. Try again tomorrow.", even with the right details. Show the message as it is; there's nothing for the parent to fix but to wait.
 
@@ -224,8 +224,11 @@ Every error has one shape:
 | `too_many_tries` | 429 | 5 wrong passwords for one email in 15 minutes, 30 from one network in 15 minutes, 100 sign-ups from one network in an hour, 5 wrong "link a child" tries by one parent in 15 minutes, or 10 tries for one child in 24 hours | show the message; the form stays usable |
 | `not_found` | 404 | not theirs, or doesn't exist (never "forbidden") | "That's no longer available", then refresh |
 | `conflict` | 409 | email taken, child already linked | show the message |
+| `link_blocked` | 403 | linking a child the school removed this parent from (Step 55.4): "This child can't be linked to your account. Contact your child's school." | show the message |
 
-The `message` is plain, friendly English, ready to show as it is. A body that isn't JSON is `400` with no `fields`.
+The `message` is plain, friendly English, ready to show as it is. **A code the app doesn't know: show its `message`**, the same as `conflict`; new codes may be added.
+
+`link_blocked` is the one `403`. "Never forbidden" above is about not revealing whether something exists; this answer only comes after the LRN, last name and birth date matched, so it tells the parent nothing they didn't type. A body that isn't JSON is `400` with no `fields`.
 
 ## What the app never receives
 

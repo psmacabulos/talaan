@@ -2608,3 +2608,38 @@ npx playwright test e2e/a11y.spec.ts               # 128 passed (the dashboard's
 **The drawer's query, measured too** (architect's request): on the seed's 10 links, Postgres reads them through the `(schoolId, linkedAt)` index and filters by student (`Index Scan using "ParentStudentLink_schoolId_linkedAt_idx"`, `Index Cond: ("schoolId" = 'school-balanga')`). That's every link at the school: cheap at 10, worth checking again once a school has hundreds, when the planner should prefer the `studentId` index (Step 61, "Queries that don't grow").
 
 **Architect's code review:** nothing blocking. Three limits went into the recipe: in a demo the card counts from the demo morning, a row searches the students page by name, and the page sends 10 students' parents' mobiles to principals and super admins only.
+
+## Step 55.4: a principal removes a wrong link (2026-10-22)
+
+**Recipe first, review folded in.** The architect who reviewed 55.3 reviewed this half twice: the outline before the split, then the plan. Its blocking points were real:
+- the API's last line turned any new code into `409 conflict`, so the route's mapping became an exhaustive `switch`;
+- the push cleanup had to take `sending` deliveries as well as `waiting` ones;
+- the fan-out needed `FOR SHARE OF l`, so a removal can't land between its read and its write.
+
+One suggestion didn't fit: an `AlertDialog`. The project has none, and staff Remove uses the plain `Dialog`, so this does too.
+
+**Migration.**
+
+```bash
+npx prisma migrate dev --name link_blocks --create-only   # a new table, three indexes, four foreign keys
+npx prisma migrate dev && npx prisma generate
+```
+
+Then `prisma migrate deploy` on the browser-test database, as in Steps 55.2 and 55.3.
+
+**The return type changed shape.** `createWithNotices` answered a link or `null` ("already linked"). With "blocked" as a third answer, `null` would have been ambiguous, so it became `{ outcome: "linked" | "already_linked" | "blocked" }`. `tsc` then listed the four places to change: the service, its fake in `link-child-to-parent.test.ts`, and two assertions in `prisma-link-notices.pg.test.ts`.
+
+**Focus after a removal.** The dialog would normally return focus to the Remove button, but that button leaves with its row once `refresh()` lands, so focus would drop to the page. The dialog's `onCloseAutoFocus` focuses the section heading instead, only after a successful removal; `parent.spec.ts` checks it with `toBeFocused()`.
+
+**Visual check.** The confirmation dialog at 360 px (buttons stacked, Remove first, in the destructive colour) and the drawer after a removal at 360 and 1280 px, light and dark. "Removed" sits under the linked list: the removed parent, "Removed October 22, 2026 by Catherine L. Jongco", and "Allow again", 44 px tall on a phone. A throwaway Playwright spec, deleted afterwards.
+
+Targeted runs while building:
+
+```bash
+npx tsc --noEmit                                   # clean
+npx vitest run src/features src/data src/services  # 92 files, 659 passed (incl. prisma-link-blocks.pg.test.ts and the push outbox tests with FOR SHARE)
+npm run build && npx playwright test e2e/parent.spec.ts   # 4 passed
+npx playwright test e2e/students.spec.ts e2e/parent-api.spec.ts e2e/isolation.spec.ts e2e/a11y.spec.ts   # 153 passed
+```
+
+**Architect's code review:** nothing blocking. Taken: the two Server Actions now check their id with Zod (`z.string().min(1).max(64)`), and the recipe's known limits say that a parent allowed back sees the child's whole feed again. It also confirmed by reading that fan-out, removal and a tap can't deadlock: fan-out never asks for the student's lock, and `FOR NO KEY UPDATE` lives alongside a tap's `FOR KEY SHARE`.

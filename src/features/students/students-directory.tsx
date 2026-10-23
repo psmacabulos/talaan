@@ -14,7 +14,7 @@ import { StudentsCardList } from "./students-card-list";
 import { StudentsPagination } from "./students-pagination";
 import { StudentsTable } from "./students-table";
 import { StudentsToolbar } from "./students-toolbar";
-import type { LinkedGuardian } from "@/features/parents/types";
+import type { LinkedGuardian, RemovedGuardian } from "@/features/parents/types";
 import type { Card, Student } from "./types";
 
 /**
@@ -38,6 +38,7 @@ export function StudentsDirectory({
   showGradeFilter,
   canEdit,
   guardiansByStudent,
+  removedByStudent,
 }: {
   title: string;
   description: string;
@@ -55,6 +56,8 @@ export function StudentsDirectory({
    * never copied into its state, so a `refresh()` shows the current list.
    */
   guardiansByStudent: Record<string, LinkedGuardian[]>;
+  /** The parents the school removed from each student on this page (Step 55.4), looked up the same way. */
+  removedByStudent: Record<string, RemovedGuardian[]>;
 }) {
   const [drawer, setDrawer] = useState<{ open: boolean; student?: Student; cards: Card[] }>({
     open: false,
@@ -109,6 +112,7 @@ export function StudentsDirectory({
         student={drawer.student}
         cards={drawer.cards}
         guardians={drawer.student ? (guardiansByStudent[drawer.student.id] ?? []) : []}
+        removedGuardians={drawer.student ? (removedByStudent[drawer.student.id] ?? []) : []}
         today={day.date}
         onOpenChange={(open) => setDrawer((current) => ({ ...current, open }))}
         onSuccess={() => setDrawer({ open: false, cards: [] })}

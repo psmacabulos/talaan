@@ -20,13 +20,16 @@ import { countLinkTry, linkAttemptKey, TOO_MANY_LINK_TRIES_MESSAGE } from "./lin
 export const NO_MATCHING_CHILD_MESSAGE =
   "We couldn't find a student with that LRN, last name and birth date at that school.";
 
+/** The school removed this parent from this child (Step 55.4). */
+export const LINK_BLOCKED_MESSAGE = "This child can't be linked to your account. Contact your child's school.";
+
 export type LinkChildFieldErrors = Partial<Record<keyof LinkChildInput, string>>;
 
 export type LinkChildResult =
   /** `noticesMade`: how many of the child's other guardians were told (Step 55.2); wake the push worker if any. */
   | { ok: true; student: Student; noticesMade: number }
   | { ok: false; code: "invalid_input"; fieldErrors: LinkChildFieldErrors }
-  | { ok: false; code: "no_match" | "already_linked" | "too_many_tries"; formError: string };
+  | { ok: false; code: "no_match" | "already_linked" | "too_many_tries" | "link_blocked"; formError: string };
 
 export type LinkChildDeps = {
   schools: Pick<SchoolRepository, "getById">;
@@ -113,7 +116,10 @@ export async function linkChildToParent(
   if (existingLinks.some((link) => link.studentId === student.id)) return alreadyLinked(student);
 
   // The same form sent twice at once passes the check above both times; the
-  // repository keeps one link and answers null for the other.
+  // repository keeps one link and answers "already linked" for the other.
+  // A parent the school removed from this child is refused there, inside
+  // the link's own transaction (Step 55.4); only someone whose details
+  // matched ever sees that answer.
   const saved = await deps.links.createWithNotices({
     id: crypto.randomUUID(),
     schoolId: school.id,
@@ -121,5 +127,12 @@ export async function linkChildToParent(
     studentId: student.id,
     linkedAt: new Date(now).toISOString(),
   });
-  return saved ? { ok: true, student, noticesMade: saved.noticesMade } : alreadyLinked(student);
+  switch (saved.outcome) {
+    case "linked":
+      return { ok: true, student, noticesMade: saved.noticesMade };
+    case "already_linked":
+      return alreadyLinked(student);
+    case "blocked":
+      return { ok: false, code: "link_blocked", formError: LINK_BLOCKED_MESSAGE };
+  }
 }

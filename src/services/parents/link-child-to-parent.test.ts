@@ -8,7 +8,12 @@ import type { School } from "@/features/schools/types";
 import type { Student } from "@/features/students/types";
 import { TOO_MANY_TRIES_MESSAGE } from "@/features/auth/messages";
 import { createLoginThrottle } from "@/services/auth/login-throttle";
-import { linkChildToParent, NO_MATCHING_CHILD_MESSAGE, type LinkChildDeps } from "./link-child-to-parent";
+import {
+  LINK_BLOCKED_MESSAGE,
+  linkChildToParent,
+  NO_MATCHING_CHILD_MESSAGE,
+  type LinkChildDeps,
+} from "./link-child-to-parent";
 import { LINK_TRIES_PER_CHILD, linkAttemptKey, TOO_MANY_LINK_TRIES_MESSAGE } from "./link-attempts";
 
 const schoolA: School = {
@@ -131,7 +136,7 @@ describe("linkChildToParent", () => {
     const d = deps();
     const racing: LinkChildDeps = {
       ...d,
-      links: { listByParent: async () => [], createWithNotices: async () => null },
+      links: { listByParent: async () => [], createWithNotices: async () => ({ outcome: "already_linked" }) },
     };
     await expect(linkChildToParent("parent-a", details, racing)).resolves.toMatchObject({ code: "already_linked" });
   });
@@ -177,6 +182,32 @@ describe("linkChildToParent tells the child's other guardians (Step 55.2)", () =
     const d = deps();
     await linkChildToParent("parent-a", details, d, NOW);
     await expect(d.links.listByParent("parent-a")).resolves.toMatchObject([{ linkedAt: new Date(NOW).toISOString() }]);
+  });
+});
+
+describe("linkChildToParent and a parent the school removed (Step 55.4)", () => {
+  it("refuses them with the right details, and says to contact the school", async () => {
+    const d = deps();
+    const blocked: LinkChildDeps = {
+      ...d,
+      links: { listByParent: async () => [], createWithNotices: async () => ({ outcome: "blocked" }) },
+    };
+    await expect(linkChildToParent("parent-a", details, blocked, NOW)).resolves.toEqual({
+      ok: false,
+      code: "link_blocked",
+      formError: LINK_BLOCKED_MESSAGE,
+    });
+  });
+
+  it("answers no match, not blocked, for wrong details: a block reveals nothing to a guesser", async () => {
+    const d = deps();
+    const blocked: LinkChildDeps = {
+      ...d,
+      links: { listByParent: async () => [], createWithNotices: async () => ({ outcome: "blocked" }) },
+    };
+    await expect(linkChildToParent("parent-a", wrongBirthDate, blocked, NOW)).resolves.toMatchObject({
+      code: "no_match",
+    });
   });
 });
 

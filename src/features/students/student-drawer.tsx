@@ -2,7 +2,7 @@
 
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { StudentForm } from "./student-form";
-import type { LinkedGuardian } from "@/features/parents/types";
+import type { LinkedGuardian, RemovedGuardian } from "@/features/parents/types";
 import type { Card, Student } from "./types";
 
 /**
@@ -16,6 +16,7 @@ export function StudentDrawer({
   student,
   cards,
   guardians,
+  removedGuardians,
   today,
   onOpenChange,
   onSuccess,
@@ -26,6 +27,8 @@ export function StudentDrawer({
   cards: Card[];
   /** The parent accounts linked to that student (Step 55.3); empty for a new student. */
   guardians: LinkedGuardian[];
+  /** The parents the school removed from that student (Step 55.4); empty for a new student. */
+  removedGuardians: RemovedGuardian[];
   /** The page's today on the school's clock, for the form's age preview. */
   today: string;
   onOpenChange: (open: boolean) => void;
@@ -51,6 +54,7 @@ export function StudentDrawer({
             student={student}
             cards={cards}
             guardians={guardians}
+            removedGuardians={removedGuardians}
             today={today}
             onSuccess={onSuccess}
             onCancel={() => onOpenChange(false)}

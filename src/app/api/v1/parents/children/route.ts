@@ -20,10 +20,20 @@ export async function POST(request: Request) {
 
   const result = await linkChildToParent(caller.parentId, read.body);
   if (!result.ok) {
-    if (result.code === "invalid_input")
-      return apiError("invalid_input", API_MESSAGES.invalidInput, result.fieldErrors);
-    if (result.code === "too_many_tries") return apiError("too_many_tries", result.formError);
-    return apiError(result.code === "no_match" ? "not_found" : "conflict", result.formError);
+    // No default: a new code that isn't answered here is a compile error,
+    // never a wrong status (Step 55.4).
+    switch (result.code) {
+      case "invalid_input":
+        return apiError("invalid_input", API_MESSAGES.invalidInput, result.fieldErrors);
+      case "too_many_tries":
+        return apiError("too_many_tries", result.formError);
+      case "no_match":
+        return apiError("not_found", result.formError);
+      case "already_linked":
+        return apiError("conflict", result.formError);
+      case "link_blocked":
+        return apiError("link_blocked", result.formError);
+    }
   }
   // The child's other guardians are told (Step 55.2); send their pushes now.
   if (result.noticesMade > 0) wakePushWorker();

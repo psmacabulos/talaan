@@ -40,3 +40,13 @@ export type RecentLink = {
   parent: ParentName;
   student: Pick<Student, "id" | "firstName" | "lastName">;
 };
+
+/** A parent the school removed from a child (Step 55.4), for the drawer's "Removed" list. */
+export type RemovedGuardian = {
+  blockId: string;
+  studentId: string;
+  removedAt: string;
+  parent: ParentName;
+  /** Null once that staff member is removed: "by a former staff member". */
+  removedBy: { firstName: string; lastName: string } | null;
+};

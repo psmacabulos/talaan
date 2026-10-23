@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { Notification, ParentStudentLink } from "@/features/parents/types";
+import type { Staff } from "@/features/staff/types";
 import type { Student } from "@/features/students/types";
-import { createMockParentStudentLinkRepository } from "./parent-student-link-repository";
+import { createMockParentStudentLinkRepository, type LinkBlockRecord } from "./parent-student-link-repository";
 
 const link1: ParentStudentLink = {
   id: "link-1",
@@ -65,21 +66,23 @@ describe("createMockParentStudentLinkRepository", () => {
 
   it("creates a new link and it shows up for both sides", async () => {
     const repo = createMockParentStudentLinkRepository([], { latencyMs: 0, notifications: [] });
-    await expect(repo.createWithNotices(link1)).resolves.toEqual({ link: link1, noticesMade: 0 });
+    await expect(repo.createWithNotices(link1)).resolves.toEqual({ outcome: "linked", link: link1, noticesMade: 0 });
     await expect(repo.listByParent("parent-a")).resolves.toEqual([link1]);
     await expect(repo.listByStudent("student-a")).resolves.toEqual([link1]);
   });
 
-  it("returns null, and keeps the first, for an id that already exists", async () => {
+  it("answers already_linked, and keeps the first, for an id that already exists", async () => {
     const repo = createMockParentStudentLinkRepository([link1], { latencyMs: 0, notifications: [] });
-    await expect(repo.createWithNotices({ ...link1, studentId: "student-different" })).resolves.toBeNull();
+    await expect(repo.createWithNotices({ ...link1, studentId: "student-different" })).resolves.toEqual({
+      outcome: "already_linked",
+    });
     await expect(repo.listByParent("parent-a")).resolves.toEqual([link1]);
   });
 
-  it("returns null for a second link between the same parent and student, and tells nobody", async () => {
+  it("answers already_linked for a second link between the same parent and student, and tells nobody", async () => {
     const notifications: Notification[] = [];
     const repo = createMockParentStudentLinkRepository([link1, link3], { latencyMs: 0, notifications });
-    await expect(repo.createWithNotices({ ...link1, id: "link-twin" })).resolves.toBeNull();
+    await expect(repo.createWithNotices({ ...link1, id: "link-twin" })).resolves.toEqual({ outcome: "already_linked" });
     await expect(repo.listByParent(link1.parentId)).resolves.toEqual([link1]);
     expect(notifications).toEqual([]);
   });
@@ -90,7 +93,7 @@ describe("createMockParentStudentLinkRepository", () => {
     const repo = createMockParentStudentLinkRepository([link1, link3, elsewhere], { latencyMs: 0, notifications });
     const link = { ...link1, id: "link-new", parentId: "parent-new" };
 
-    await expect(repo.createWithNotices(link)).resolves.toEqual({ link, noticesMade: 2 });
+    await expect(repo.createWithNotices(link)).resolves.toEqual({ outcome: "linked", link, noticesMade: 2 });
     expect(notifications.map(({ recipientParentId }) => recipientParentId)).toEqual(["parent-a", "parent-b"]);
     expect(notifications[0]).toMatchObject({
       schoolId: "school-a",
@@ -156,4 +159,55 @@ describe("createMockParentStudentLinkRepository", () => {
       });
     });
   });
+
+  describe("removing a link and allowing again (Step 55.4)", () => {
+    const parents = [{ id: "parent-a", firstName: "Ana", lastName: "Santos", mobile: "09170000001", email: "a@x.com" }];
+    const staff: Staff[] = [
+      {
+        id: "staff-1",
+        schoolId: "school-a",
+        firstName: "Catherine",
+        lastName: "Jongco",
+        email: "c@x.com",
+        role: "principal",
+        status: "active",
+      },
+    ];
+
+    it("removes a link at its school, blocks that parent from the child, and keeps them out", async () => {
+      const blocks: LinkBlockRecord[] = [];
+      const repo = createMockParentStudentLinkRepository([link1, link2], {
+        latencyMs: 0,
+        notifications: [],
+        blocks,
+        parents,
+        staff,
+      });
+
+      await expect(repo.removeInSchool("school-b", "link-1", "staff-1")).resolves.toBeNull();
+      await expect(repo.removeInSchool("school-a", "link-1", "staff-1")).resolves.toEqual({
+        parentId: "parent-a",
+        studentId: "student-a",
+      });
+      await expect(repo.listByParent("parent-a")).resolves.toEqual([link2]);
+      // A second remove finds nothing left.
+      await expect(repo.removeInSchool("school-a", "link-1", "staff-1")).resolves.toBeNull();
+
+      await expect(repo.createWithNotices({ ...link1, id: "link-again" })).resolves.toEqual({ outcome: "blocked" });
+      const [removed] = await repo.listBlocksInSchool("school-a", ["student-a"]);
+      expect(removed).toMatchObject({
+        studentId: "student-a",
+        parent: { firstName: "Ana", lastName: "Santos" },
+        removedBy: { firstName: "Catherine", lastName: "Jongco" },
+      });
+      await expect(repo.listBlocksInSchool("school-b", ["student-a"])).resolves.toEqual([]);
+
+      await expect(repo.allowAgainInSchool("school-b", removed.blockId)).resolves.toBe(false);
+      await expect(repo.allowAgainInSchool("school-a", removed.blockId)).resolves.toBe(true);
+      await expect(repo.createWithNotices({ ...link1, id: "link-again" })).resolves.toMatchObject({
+        outcome: "linked",
+      });
+    });
+  });
 });
+

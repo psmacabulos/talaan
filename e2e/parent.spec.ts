@@ -174,6 +174,68 @@ test.describe("Parent flow (mobile only)", () => {
     ).toBeVisible();
   });
 
+  test("the principal removes a wrong link, the parent can't link again until allowed (Step 55.4)", async ({
+    page,
+    context,
+    baseURL,
+    request,
+  }) => {
+    // Carmen Sison again (see the test above): this parent has a name of its own.
+    const child = findBalangaStudentByFullName("Carmen Sison")!;
+    const email = testEmail("removed-parent");
+    await signUpNewParent(page, email, "Removable");
+    await linkChild(page, BALANGA, child);
+    await expect(page).toHaveURL("/parent");
+
+    // The principal's sign-in is another cookie: the parent stays signed in too.
+    await signInAs(context, "principal", baseURL!);
+    const openCarmen = async () => {
+      await page.goto("/students");
+      await page.getByLabel("Search students").fill("Carmen Sison");
+      await page.getByRole("button", { name: "Edit Carmen Sison" }).click();
+      return page.getByRole("dialog").getByRole("region", { name: "Parent accounts" });
+    };
+    let accounts = await openCarmen();
+    await accounts.getByRole("button", { name: "Remove Removable Parent" }).click();
+    const confirm = page.getByRole("dialog", { name: "Remove Removable Parent from Carmen's parent accounts?" });
+    await confirm.getByRole("button", { name: "Remove" }).click();
+    await expect(page.getByText("Removable Parent was removed from Carmen's parent accounts.")).toBeVisible();
+    // Its button left with its row, so focus lands on the section, still in the drawer.
+    await expect(accounts.getByRole("heading", { name: "Parent accounts" })).toBeFocused();
+    await expect(accounts.getByRole("button", { name: "Allow Removable Parent again" })).toBeVisible();
+
+    // The parent no longer sees Carmen, and can't link her again.
+    await page.goto("/parent");
+    await expect(page.locator("main").getByText(child.lastName)).toHaveCount(0);
+    await page.goto("/parent/link-child");
+    await linkChild(page, BALANGA, child);
+    await expect(
+      page.getByText("This child can't be linked to your account. Contact your child's school."),
+    ).toBeVisible();
+
+    // The parent app gets 403 link_blocked (Step 55.4).
+    const address = { "X-Forwarded-For": "203.0.113.240" };
+    const login = await request.post("/api/v1/parents/login", {
+      headers: address,
+      data: { email, password: "testpass123" },
+    });
+    const { token } = await login.json();
+    const relink = await request.post("/api/v1/parents/children", {
+      headers: { ...address, Authorization: `Bearer ${token}` },
+      data: { schoolId: "school-balanga", lrn: child.lrn, lastName: child.lastName, birthDate: child.birthDate },
+    });
+    expect(relink.status()).toBe(403);
+    expect((await relink.json()).error.code).toBe("link_blocked");
+
+    // Allow again, and the parent can link Carmen.
+    accounts = await openCarmen();
+    await accounts.getByRole("button", { name: "Allow Removable Parent again" }).click();
+    await expect(page.getByText("Removable Parent can link Carmen again.")).toBeVisible();
+    await page.goto("/parent/link-child");
+    await linkChild(page, BALANGA, child);
+    await expect(page).toHaveURL("/parent");
+  });
+
   test("one parent links children at two schools and sees both (Step 53)", async ({ page }) => {
     const balangaChild = seedStudents.find((s) => s.schoolId === "school-balanga" && s.lrn)!;
     const oceanviewChild = seedStudents.find((s) => s.schoolId === "school-oceanview" && s.lrn)!;

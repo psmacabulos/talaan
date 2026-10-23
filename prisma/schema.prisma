@@ -38,6 +38,7 @@ model School {
   notifications      Notification[]
   devices            Device[]
   linkAttempts       LinkAttempt[]
+  linkBlocks         LinkBlock[]
 }
 
 enum Role {
@@ -71,6 +72,8 @@ model Staff {
   updatedAt          DateTime    @updatedAt
 
   recordedTaps Tap[]
+  // The parent links this staff member removed (Step 55.4).
+  removedLinks LinkBlock[]
 
   @@index([schoolId])
 }
@@ -99,6 +102,7 @@ model Student {
   taps          Tap[]
   parentLinks   ParentStudentLink[]
   notifications Notification[]
+  linkBlocks    LinkBlock[]
 
   // Serves both "every student at a school" and the link-a-child lookup.
   @@index([schoolId, lrn])
@@ -197,6 +201,7 @@ model Parent {
   // Step 55.2's link notices: the ones for this parent, and the ones about them.
   noticesFor   Notification[]      @relation("NotificationRecipient")
   noticesAbout Notification[]      @relation("NotificationAbout")
+  linkBlocks   LinkBlock[]
 }
 
 // The parent app's sign-in (Step 53.3): one row per signed-in phone. The
@@ -302,6 +307,31 @@ model LinkAttempt {
   @@index([keyHash, createdAt])
   // The cleanup of rows older than 24 hours.
   @@index([createdAt])
+}
+
+// A parent the school removed from a child (Step 55.4): they can't link that
+// child again until the school allows it, which deletes this row. Who
+// removed them, and when, is kept until then.
+model LinkBlock {
+  id               String   @id @default(uuid())
+  schoolId         String
+  school           School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  parentId         String
+  // Goes with the parent's account if it's ever deleted (Step 60).
+  parent           Parent   @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  studentId        String
+  student          Student  @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  removedAt        DateTime @default(now())
+  // Empty once that staff member is removed: "by a former staff member".
+  removedByStaffId String?
+  removedBy        Staff?   @relation(fields: [removedByStaffId], references: [id], onDelete: SetNull)
+
+  // One block per parent and child; also what linking looks up.
+  @@unique([parentId, studentId])
+  // The drawer's "Removed" list for the page's students.
+  @@index([schoolId, studentId])
+  // Postgres doesn't index a foreign key by itself: removing a staff member would read every row.
+  @@index([removedByStaffId])
 }
 
 model ParentStudentLink {

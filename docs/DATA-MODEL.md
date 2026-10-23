@@ -128,6 +128,8 @@ One honest caveat, visible if you look closely at the diagram: `TAP.cardSerial` 
 
 **Step 55.3** lets the school read `PARENT_STUDENT_LINK` from its side: a child's linked parents (name and mobile, never the email) in the student drawer, and the school's newest links on the dashboard. Its school index became `(schoolId, linkedAt)`, which serves both "this school's links" and "this school's links since a date".
 
+**Step 55.4** adds `LINK_BLOCK`: a parent the school removed from a child (`parentId`, `studentId`, unique together), when, and by which staff member (`removedByStaffId`, emptied if that staff member is removed). Linking refuses a blocked pair; "Allow again" deletes the row, so the history goes with it (a lasting audit log is Step 60).
+
 ## The shape of it, in one picture: which files define what
 
 ```mermaid

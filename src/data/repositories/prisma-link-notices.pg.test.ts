@@ -76,10 +76,11 @@ describeWithDatabase("link notices on Postgres (Step 55.2; needs E2E_DATABASE_UR
         links.createWithNotices(linkFor(PARENTS[0])),
         links.createWithNotices(linkFor(PARENTS[1])),
       ]);
-      expect(results.map((result) => result?.noticesMade).sort()).toEqual([0, 1]);
+      const linked = results.map((result) => (result.outcome === "linked" ? result : null));
+      expect(linked.map((result) => result?.noticesMade).sort()).toEqual([0, 1]);
 
       // Whoever saved second told whoever saved first.
-      const second = results.find((result) => result?.noticesMade === 1)!.link.parentId;
+      const second = linked.find((result) => result?.noticesMade === 1)!.link.parentId;
       const first = second === PARENTS[0] ? PARENTS[1] : PARENTS[0];
       const notices = await db.notification.findMany({ where: { studentId: child.id, kind: "guardian_linked" } });
       expect(notices).toHaveLength(1);
@@ -97,7 +98,7 @@ describeWithDatabase("link notices on Postgres (Step 55.2; needs E2E_DATABASE_UR
       links.createWithNotices(linkFor(PARENTS[3])),
       links.createWithNotices(linkFor(PARENTS[3])),
     ]);
-    expect(results.filter((result) => result === null)).toHaveLength(1);
+    expect(results.map((result) => result.outcome).sort()).toEqual(["already_linked", "linked"]);
 
     await expect(db.parentStudentLink.count({ where: { parentId: PARENTS[3], studentId: child.id } })).resolves.toBe(1);
     const notices = await db.notification.findMany({ where: { studentId: child.id, kind: "guardian_linked" } });
@@ -144,7 +145,7 @@ describeWithDatabase("link notices on Postgres (Step 55.2; needs E2E_DATABASE_UR
     release();
     await first;
 
-    await expect(second).resolves.toMatchObject({ noticesMade: 1 });
+    await expect(second).resolves.toMatchObject({ outcome: "linked", noticesMade: 1 });
     const notices = await db.notification.findMany({ where: { studentId: child.id, kind: "guardian_linked" } });
     expect(notices).toMatchObject([{ recipientParentId: PARENTS[0], aboutParentId: PARENTS[1] }]);
   });

@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SheetFooter } from "@/components/ui/sheet";
 import { createStudent, updateStudent } from "./actions";
 import { ageInYears } from "./age";
-import type { LinkedGuardian } from "@/features/parents/types";
+import type { LinkedGuardian, RemovedGuardian } from "@/features/parents/types";
 import { CardBox } from "./card-box";
 import { LinkedParents } from "./linked-parents";
 import { PhotoBox } from "./photo-box";
@@ -67,6 +67,7 @@ export function StudentForm({
   student,
   cards,
   guardians,
+  removedGuardians,
   today,
   onSuccess,
   onCancel,
@@ -76,6 +77,8 @@ export function StudentForm({
   cards?: Card[];
   /** The parent accounts linked to the student (Step 55.3); none for a new student. */
   guardians?: LinkedGuardian[];
+  /** The parents the school removed from the student (Step 55.4); none for a new student. */
+  removedGuardians?: RemovedGuardian[];
   /** The page's today on the school's clock, for the age preview. */
   today: string;
   onSuccess: () => void;
@@ -304,7 +307,7 @@ export function StudentForm({
           </div>
         </fieldset>
 
-        {student ? <LinkedParents childFirstName={student.firstName} guardians={guardians ?? []} /> : null}
+        {student ? <LinkedParents childFirstName={student.firstName} guardians={guardians ?? []} removed={removedGuardians ?? []} /> : null}
 
         <PhotoBox
           name={{ firstName: firstName ?? "", lastName: lastName ?? "" }}

@@ -34,7 +34,9 @@ export function createPrismaPushOutboxRepository(db: PrismaClient = prisma): Pus
           // Every push address of every parent linked to the child at the
           // notification's school, whose sign-in isn't revoked (Step 54) and
           // was used in the last 30 days (Step 54.1). A link notice goes to
-          // its one recipient only (Step 55.2).
+          // its one recipient only (Step 55.2). FOR SHARE OF l: a link being
+          // removed waits until these deliveries are written, so the
+          // removal's cleanup finds them (Step 55.4).
           const targets = await tx.$queryRaw<{ notificationId: string; pushTokenId: string }[]>`
             SELECT n."id" AS "notificationId", p."id" AS "pushTokenId"
             FROM "Notification" AS n
@@ -43,7 +45,8 @@ export function createPrismaPushOutboxRepository(db: PrismaClient = prisma): Pus
             JOIN "ParentToken" AS t ON t."parentId" = l."parentId" AND t."revokedAt" IS NULL
               AND t."lastUsedAt" >= now() - make_interval(secs => ${signInUnusedMs / 1000})
             JOIN "PushToken" AS p ON p."parentTokenId" = t."id"
-            WHERE n."id" IN (${Prisma.join(fresh)})`;
+            WHERE n."id" IN (${Prisma.join(fresh)})
+            FOR SHARE OF l`;
           const made = await tx.pushDelivery.createMany({
             data: targets.map(({ notificationId, pushTokenId }) => ({ notificationId, pushTokenId })),
             skipDuplicates: true,
