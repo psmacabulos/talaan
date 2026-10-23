@@ -46,7 +46,7 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-029](#p-029--2026-10-21--the-monitor-test-lost-count-when-an-old-tap-dropped-off-the-list) | 2026-10-21 | The monitor test lost count when an old tap dropped off the list | Other: tests | Playwright, `/gate/display` | Resolved |
 | [P-030](#p-030--2026-10-22--two-browser-tests-linked-the-same-child-at-once) | 2026-10-22 | Two browser tests linked the same child at once | Other: tests | Playwright, parent portal | Resolved |
 | [P-031](#p-031--2026-10-22--the-dev-server-refused-the-new-notification-kind) | 2026-10-22 | The dev server refused the new notification kind | Other: setup | Prisma, `npm run dev` | Resolved |
-| [P-032](#p-032--2026-10-22--the-sign-in-photo-loads-late-on-wide-screens) | 2026-10-22 | The sign-in photo loads late on wide screens | Performance | Next.js `Image`, sign-in | Open: fix after Step 55.4 is committed |
+| [P-032](#p-032--2026-10-22--the-sign-in-photo-loads-late-on-wide-screens) | 2026-10-22 | The sign-in photo loads late on wide screens | Performance | Next.js `Image`, sign-in | Fixed: owner to confirm the warning is gone |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -697,5 +697,6 @@ sequenceDiagram
 - **Impact (performance):** a later Largest Contentful Paint on desktop sign-in; the target is Lighthouse 90+ on login (CLAUDE.md). Not measured yet.
 - **Options weighed:** (1) **`loading="eager"`**, as Next.js suggests: the photo starts at once; on a phone it's hidden, and its `sizes` (`0px` below 1280 px) makes the browser pick the smallest copy, so the extra download there should be tiny (to check). (2) `preload`: adds a `<link>` in the page's head, so even phones fetch it early; more than needed. (3) Leave it: it's a dev-only hint, but the score target is real.
 - **Solution:** (1), as its own commit once Step 55.4 is committed (one change per commit). Then check the phone's network panel for the photo's size, and the desktop LCP.
-- **Status:** Open: fix after Step 55.4 is committed.
+- **Measured after the fix** (production build, Playwright, a throwaway spec): a phone (360 px) now downloads the hidden photo's smallest copy, `w=256`, **8.7 KB** (it downloaded nothing before, since a lazy image that's hidden is never fetched); a 1280 px screen downloads `w=640`, **27.4 KB**, from the start. On a local server the largest paint is under 60 ms either way, so the gain only shows on a real network: Lighthouse on the live `/login` is the measure.
+- **Status:** Fixed (`loading="eager"`, 2026-10-23); `e2e/login.spec.ts` passes. The owner confirms the dev warning is gone.
 

@@ -95,6 +95,10 @@ function SignInPhoto() {
           src="/brand/sign-in-photo.jpg"
           alt=""
           fill
+          // The largest thing on a wide sign-in page, so it starts loading at
+          // once (P-032). Hidden below 1280px, where `sizes` asks for the
+          // smallest copy.
+          loading="eager"
           sizes="(min-width: 1280px) 40vw, 0px"
           className="object-cover"
         />
