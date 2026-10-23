@@ -11,6 +11,13 @@ export interface TapWrite {
   /** The gate that sent the tap: its `lastSeenAt` becomes `seenAt` in the same write. Null for a tap recorded by hand. */
   deviceId: string | null;
   seenAt: string;
+  /**
+   * The card's "already tapped" window (Step 56). When set, the card is
+   * locked for the write, and a tap of the same card in this window means
+   * nothing is written: two reads arriving together can't both be stored.
+   * Null: no check (a tap with no card).
+   */
+  duplicateWindow: { from: string; to: string } | null;
 }
 
 /**
@@ -19,6 +26,10 @@ export interface TapWrite {
  * only writes it, so every database call stays in `src/data/`.
  */
 export interface TapWriter {
-  /** "exists" when a tap with this id is already stored (a retry that raced the first try); nothing is written then. */
-  record(write: TapWrite): Promise<"created" | "exists">;
+  /**
+   * "exists" when a tap with this id is already stored (a retry that raced
+   * the first try); "duplicate" when the same card has a tap in
+   * `duplicateWindow`. Nothing is written in either case.
+   */
+  record(write: TapWrite): Promise<"created" | "exists" | "duplicate">;
 }

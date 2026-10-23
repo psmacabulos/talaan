@@ -54,6 +54,14 @@ function setup({
   const writer: TapWriter = {
     async record(write) {
       if (taps.some((existing) => existing.id === write.tap.id)) return "exists";
+      const window = write.duplicateWindow;
+      const inWindow = (existing: Tap) =>
+        window !== null &&
+        existing.schoolId === write.tap.schoolId &&
+        existing.cardSerial === write.tap.cardSerial &&
+        existing.tappedAt > window.from &&
+        existing.tappedAt < window.to;
+      if (taps.some(inWindow)) return "duplicate";
       taps.push(write.tap);
       writes.push(write);
       return "created";
@@ -230,6 +238,45 @@ describe("recordTap", () => {
       },
     };
     expect(await recordTap(sent, deps)).toMatchObject({ outcome: "recorded", replayed: true });
+  });
+
+  it("asks the writer to check the card's 2 minutes either side again, under its lock (Step 56)", async () => {
+    const { deps, writes } = setup();
+    const sent = input();
+    await recordTap(sent, deps);
+    const at = Date.parse(sent.clientTappedAt);
+    expect(writes[0].duplicateWindow).toEqual({
+      from: new Date(at - 2 * MINUTE).toISOString(),
+      to: new Date(at + 2 * MINUTE).toISOString(),
+    });
+  });
+
+  it("answers Already tapped when another read of the card was stored while this one was on its way (Step 56)", async () => {
+    const { deps, taps, writes } = setup();
+    const first = input();
+    await recordTap(first, deps);
+    // The quick check finds nothing, as if the first read hadn't been stored yet; the writer then does.
+    const realFind = deps.taps.findByCardBetween;
+    let quickCheck = true;
+    deps.taps = {
+      ...deps.taps,
+      async findByCardBetween(...args) {
+        if (quickCheck) {
+          quickCheck = false;
+          return null;
+        }
+        return realFind(...args);
+      },
+    };
+
+    const second = await recordTap(input(50), deps);
+    expect(second).toMatchObject({
+      outcome: "duplicate",
+      previousTap: { id: first.clientTapId },
+      student: { id: juan.id },
+    });
+    expect(taps).toHaveLength(1);
+    expect(writes).toHaveLength(1);
   });
 
   it("uses the server's time when the gate's clock is far ahead", async () => {

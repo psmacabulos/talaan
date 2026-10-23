@@ -120,6 +120,12 @@ async function replay(tap: Tap, deps: RecordTapDeps): Promise<RecordTapResult> {
   return { outcome: "recorded", tap, student: tapStudent, direction, notified, replayed: true };
 }
 
+/** "Already tapped": the card's earlier tap, and whose it was. */
+async function duplicateOf(previousTap: Tap, schoolId: string, deps: RecordTapDeps): Promise<RecordTapResult> {
+  const student = previousTap.studentId ? await deps.students.getInSchool(schoolId, previousTap.studentId) : null;
+  return { outcome: "duplicate", previousTap, student: toTapStudent(student) };
+}
+
 /** What a matched card makes of a tap. A retired card, like no card at all, is just an unknown card now. */
 function tapKindFor(card: Card | null): "valid" | "lost" | "unknown" {
   if (card?.status === "active") return "valid";
@@ -138,7 +144,8 @@ function tapKindFor(card: Card | null): "valid" | "lost" | "unknown" {
  * 4. the same card within 2 minutes, before or after, is a duplicate;
  * 5. write the tap with its alert (lost card) or parent notification
  *    (active card, per the school's setting), and the gate's last-seen
- *    time, in one transaction.
+ *    time, in one transaction, which checks step 4 again under a lock on
+ *    the card, so two reads arriving together store one tap (Step 56).
  * The route (Step 46) and the `tap:record` script both call this; neither
  * makes any of these decisions itself.
  */
@@ -174,18 +181,20 @@ export async function recordTap(input: RecordTapInput, deps: RecordTapDeps = DEF
   const cardSerial = card.serial;
 
   const at = Date.parse(tappedAt);
+  const duplicateWindow = {
+    from: new Date(at - DEBOUNCE_MS).toISOString(),
+    to: new Date(at + DEBOUNCE_MS).toISOString(),
+  };
+  // The quick check: most repeats are answered here, without a transaction.
+  // Two reads arriving together can both pass it; the writer checks again
+  // under a lock on this card (Step 56).
   const previousTap = await deps.taps.findByCardBetween(
     device.schoolId,
     cardSerial,
-    new Date(at - DEBOUNCE_MS).toISOString(),
-    new Date(at + DEBOUNCE_MS).toISOString(),
+    duplicateWindow.from,
+    duplicateWindow.to,
   );
-  if (previousTap) {
-    const student = previousTap.studentId
-      ? await deps.students.getInSchool(device.schoolId, previousTap.studentId)
-      : null;
-    return { outcome: "duplicate", previousTap, student: toTapStudent(student) };
-  }
+  if (previousTap) return duplicateOf(previousTap, device.schoolId, deps);
 
   // A lost card's tap keeps its owner, so the alert can name them (recipe
   // decision 4).
@@ -242,7 +251,19 @@ export async function recordTap(input: RecordTapInput, deps: RecordTapDeps = DEF
     notification,
     deviceId: device.id,
     seenAt: input.receivedAt,
+    duplicateWindow,
   });
+  if (written === "duplicate") {
+    // Another read of this card was stored while this one was on its way.
+    const winner = await deps.taps.findByCardBetween(
+      device.schoolId,
+      cardSerial,
+      duplicateWindow.from,
+      duplicateWindow.to,
+    );
+    if (!winner) throw new Error("recordTap: the writer saw an earlier tap of this card, but it can't be read");
+    return duplicateOf(winner, device.schoolId, deps);
+  }
   if (written === "exists") {
     const winner = await deps.taps.getById(tap.id);
     if (winner && winner.schoolId === device.schoolId) return replay(winner, deps);

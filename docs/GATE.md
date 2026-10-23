@@ -37,11 +37,12 @@ Both start with `authenticateGate()` (`src/services/devices/authenticate-gate.ts
 |---|---|
 | `gate-client.ts` | Everything kept on the tablet (token, roster with its ETag in `localStorage`, photos in Cache Storage `talaan-gate-photos`) and the three calls (heartbeat, roster, taps). `forgetGate()` wipes it all. |
 | `scan-buffer.ts` | Key presses become scans, with no input field (which would open Android's keyboard). Enter ends a scan, and a gap over 100 ms starts over, so a person's slow typing never becomes a card. |
+| `repeat-filter.ts` | The same card read again within 5 seconds of its **last** read isn't sent (Step 56): a card held on a reader that re-reads it every second is sent once. The screen keeps showing that card. A read whose send fails is forgotten (`forget`), so the same card read again is tried at once. The server's 2-minute rule is still the real guard. |
 | `roster-match.ts` | Who a scan probably is, from the tablet's roster, by the server's rule (exact, else the first 4 bytes, never a guess), so the photo shows before the server answers. |
 | `gate-display.ts` | What the screen says for each state: checking, each outcome, or not sent. |
 | `tap-card.tsx` | How each state looks (2026-10-12): `TapCard`, the newest tap (portrait, badge, name, then a TIME IN / TIME OUT stamp or what to do next), and `TapListItem`, one row of Recent. Shared with the guardhouse monitor, so both screens look alike. Time out is blue (`--status-out`). |
 
-A scan gets its own UUID and is sent at once. Its entry updates when its own answer arrives, so three quick taps are three requests in flight together. Any `401` from any call wipes the tablet and returns to setup.
+A scan gets its own UUID and is sent at once (unless it repeats the last card within 5 seconds). Its entry updates when its own answer arrives, so three quick taps are three requests in flight together. Any `401` from any call wipes the tablet and returns to setup.
 
 ```mermaid
 stateDiagram-v2
@@ -115,7 +116,7 @@ if (previousTap) return { outcome: "duplicate", previousTap, student };
 2. **The same tap id again:** this is a resend, for example after a dropped connection. The answer is the same as the first time, worked out from the stored tap, with `replayed: true`. Nothing new is written. The tap id is made by the gate, which is what makes a resend safe.
 3. **The time:** the gate's own clock, so an offline tap keeps when it happened. If that clock is more than 5 minutes ahead or more than 7 days behind the server, the server's time is used instead (`chooseTapTime`).
 4. **The card:** `matchCard`. The tap stores the **card's own serial**, so a 4-byte read of a 7-byte card is stored under one serial every time. **No active or lost card of this school** (retired, none at all, or another school's) is an **unknown card**: answered `unknown_card` and **never stored** (changed 2026-10-13). It's nobody's attendance, and because nothing is stored, the same card tapped again is unknown again, never "already tapped". The guard's monitor still sees it every time.
-5. **Debounce:** the same card within 2 minutes, **before or after**, is one pass through the gate. It's answered as `duplicate` with the earlier tap, and nothing is stored. "Before or after" matters once offline taps can arrive out of order.
+5. **Debounce:** the same card within 2 minutes, **before or after**, is one pass through the gate. It's answered as `duplicate` with the earlier tap, and nothing is stored. "Before or after" matters once offline taps can arrive out of order. This first check is the quick one; step 7 checks again under a lock, since two reads arriving together can both pass it (Step 56).
 6. **What to write:**
 
 | Card | Tap's `studentId` | Also written | Outcome |
@@ -125,6 +126,22 @@ if (previousTap) return { outcome: "duplicate", previousTap, student };
 | retired, none, or another school's | — | **no tap stored** (step 4) | `unknown_card` |
 
 7. **One transaction** (`TapWriter.record`): the tap, then the alert or notification, then the gate's `lastSeenAt`. If any part fails, none is kept. If the tap id turns out to be taken (two copies of one tap racing), the writer answers `"exists"` and `recordTap` gives the replay answer.
+
+   **One read, one tap (Step 56).** Before writing anything, the transaction takes a lock on this card at this school, `pg_advisory_xact_lock(hashtextextended('tap-card|<school>|<serial>', 0))`, which Postgres frees when the transaction ends. Under it: this tap id already stored → `"exists"`; a tap of the card in the 2-minute window → `"duplicate"` (nothing written, and `recordTap` answers "Already tapped" with that tap); otherwise write. A second read of the same card waits a few milliseconds for the first to commit, then sees its tap. Reads of other cards never wait.
+
+   ```mermaid
+   sequenceDiagram
+       participant A as Read 1 (card X)
+       participant B as Read 2 (card X), 50 ms later
+       participant DB as Postgres
+       A->>DB: quick check: none
+       B->>DB: quick check: none
+       A->>DB: lock card X · check · insert · commit (lock freed)
+       B->>DB: lock card X (waits for A)
+       B->>DB: check: A's tap → "duplicate", nothing written
+   ```
+
+   It relies on Postgres's default isolation, Read Committed, where each statement sees what was committed before it started; the transaction must keep that default. A time in recorded by hand (Step 55) takes the same lock when the student has a card, with the whole school day as its window, so a gate read landing in between can't make a time in and a time out. The test that proves it, `src/services/taps/record-tap.pg.test.ts`, holds a second transaction mid-write and checks that the writer waits: without the lock it fails every time.
 
 The direction comes from `deriveTapKind` (1st tap of the day is time in, 2nd time out, and so on, as in `docs/ATTENDANCE-MODEL.md`). Who gets notified is `shouldNotifyParents`, shared with Phase 1's `notifyParentsForTap` (`docs/NOTIFICATIONS.md`), so the gate and the demo buttons can't disagree.
 
@@ -170,7 +187,7 @@ Since 2026-10-12 a click on Disconnect or Cancel no longer swallows later taps (
 
 **Try the gate without the tablet.** Create a gate device with `npm run device:create -- --school school-balanga --kind gate --label "Main gate tablet"` and copy the token. Run `npm run tap:record -- --token tal_dev_…`, click the terminal, and tap stickers on the USB reader. Each line printed is what the gate screen will show.
 
-**Change the debounce window.** It's `DEBOUNCE_MS` in `src/services/taps/record-tap.ts`. The tests in `record-tap.test.ts` use 1:59 (duplicate) and 2:01 (a new tap). Move them with it.
+**Change the debounce window.** It's `DEBOUNCE_MS` in `src/services/taps/record-tap.ts`, and the same window goes to the writer's locked check. The tests in `record-tap.test.ts` use 1:59 (duplicate) and 2:01 (a new tap). Move them with it. The gate's own 5-second filter is `REPEAT_WINDOW_MS` in `src/features/gate/repeat-filter.ts`; `e2e/gate.spec.ts` waits past it before a second read.
 
 **Change who gets notified.** Change `shouldNotifyParents` in `notify-parents.ts`. Both the gate and the demo buttons follow it, and its table test lists every case.
 

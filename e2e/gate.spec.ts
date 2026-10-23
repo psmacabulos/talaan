@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { REPEAT_WINDOW_MS } from "../src/features/gate/repeat-filter";
 import { signInAs } from "./sessions";
 import { activeCardSerialFor, readerDigitsFor, TEST_GATE_TOKEN } from "./test-data";
 
@@ -30,10 +31,24 @@ test.describe("Gate (Step 47)", () => {
       new RegExp(`^${studentName}: Time out `),
     );
 
+    // Read again at once, as a card held on the reader is: the gate sends
+    // nothing and keeps the answer on screen (Step 56).
+    let sent = 0;
+    page.on("request", (request) => {
+      if (request.url().endsWith("/api/v1/gate/taps")) sent += 1;
+    });
+    await page.keyboard.type(digits);
+    await page.keyboard.press("Enter");
+    await expect(panel.getByText("Attendance recorded", { exact: true })).toBeVisible();
+
+    // Past the gate's 5 seconds, the server's 2-minute rule answers.
+    await page.waitForTimeout(REPEAT_WINDOW_MS + 200);
+    expect(sent).toBe(0);
     await page.keyboard.type(digits);
     await page.keyboard.press("Enter");
     await expect(panel.getByText("Already tapped", { exact: true })).toBeVisible();
     await expect(panel.getByText("First tapped at", { exact: true })).toBeVisible();
+    expect(sent).toBe(1);
   });
 
   test("an unknown card says so every time, and a bad token goes back to setup", async ({ page }) => {
@@ -44,6 +59,8 @@ test.describe("Gate (Step 47)", () => {
     // Linked to nobody. Tapped twice: an unknown card is never stored, so
     // it's never "Already tapped" (owner review, 2026-10-13).
     for (let tap = 0; tap < 2; tap++) {
+      // The gate itself drops the same card within 5 seconds (Step 56), so the second read waits past that.
+      if (tap > 0) await page.waitForTimeout(REPEAT_WINDOW_MS + 200);
       const answer = page.waitForResponse((response) => response.url().endsWith("/api/v1/gate/taps"));
       await page.keyboard.type("0000000123");
       await page.keyboard.press("Enter");

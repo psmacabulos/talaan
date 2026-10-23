@@ -51,6 +51,7 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-034](#p-034--2026-10-23--the-app-would-have-been-told-a-code-was-sent-when-nothing-went) | 2026-10-23 | The app would have been told a code was sent when nothing went | Other: correctness | Parent API, email (plan review) | Resolved |
 | [P-035](#p-035--2026-10-23--the-parent-sign-in-page-would-have-frozen-the-email-setting-at-build) | 2026-10-23 | The parent sign-in page would have frozen the email setting at build | Other: correctness | Next.js, parent portal | Resolved |
 | [P-036](#p-036--2026-10-23--the-demo-reset-never-emptied-the-parents) | 2026-10-23 | The demo reset never emptied the parents | Other: tests | Playwright, demo data | Resolved |
+| [P-037](#p-037--2026-10-23--the-race-test-passed-without-the-lock) | 2026-10-23 | The race test passed without the lock | Other: tests | Postgres, Vitest | Resolved |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -761,3 +762,31 @@ sequenceDiagram
 - **Options weighed:** (1) make the seed overwrite each demo parent's hash (`update: { passwordHash }`): fixes the symptom, but test parents keep piling up; (2) **empty `Parent` too: `TRUNCATE "School", "Parent" CASCADE`**, which is what the reset's comment always promised ("Empties every table").
 - **Solution:** (2). Every other table links back to a school or a parent, so the two together empty everything. After a reset the test database holds the 6 demo parents, all with the fixed hash.
 - **Status:** Resolved. `npx playwright test e2e/isolation.spec.ts e2e/parent.spec.ts e2e/parent-api.spec.ts e2e/login.spec.ts`: 59 passed, 13 skipped (the usual per-width skips). `npm run db:reset` on your own database now removes parent accounts you made by hand too, as it always did for everything else.
+
+## One read, one tap (Step 56, 2026-10-23)
+
+### P-037 · 2026-10-23 · The race test passed without the lock
+- **Where:** `src/services/taps/record-tap.pg.test.ts`, while building Step 56, run on purpose with the lock line deleted from `prisma-tap-writer.ts` (the architect's plan review warned of this).
+- **Symptom:** three runs without the lock:
+  ```
+  run 1:  × gives two reads that both passed the quick check one tap and one Already tapped
+          × stores one of a gate read and a time in by hand for the same card at once
+          Tests  2 failed | 3 passed (5)
+  run 2:  × stores one of a gate read and a time in by hand for the same card at once
+          Tests  1 failed | 4 passed (5)
+  run 3:  (the same as run 2)
+  ```
+  "Stores one of two writes of one card sent at the same moment" **passed all three times without the fix.**
+- **Cause:** `Promise.all` starts two requests together, but nothing makes both reach the check before either writes. The first often commits before the second even checks, so the second sees the tap and the test passes for the wrong reason. A race test that leaves the timing to chance tests the timing, not the fix.
+  ```mermaid
+  sequenceDiagram
+      participant A as Request 1
+      participant B as Request 2
+      participant DB as Postgres
+      A->>DB: check · insert · commit
+      B->>DB: check (sees A's tap): "duplicate", with or without the lock
+  ```
+- **Options weighed:** (1) run it many times in a loop (slower, and still chance); (2) a hook inside the writer for tests to pause it (test-only code in the real writer); (3) **hold the first request open from the test itself**: a separate transaction takes the card's lock, inserts a tap and doesn't commit, then the real writer is called and must still be waiting 300 ms later, and must answer `"duplicate"` after the commit.
+- **Solution:** (3). The lock's key is shared through `tapCardLockKey()`. Without the lock, the writer doesn't wait, doesn't see the uncommitted tap, and stores a second one: the test failed 3 out of 3 runs. With the lock it passes. The two chance-based tests stay as extra checks of the whole service.
+- **Lesson:** to test a race, force both sides into the gap and show the test fails without the fix.
+- **Status:** Resolved.

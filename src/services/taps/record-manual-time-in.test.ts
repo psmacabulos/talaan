@@ -55,7 +55,7 @@ function fakeDeps(
     taps?: Tap[];
     card?: Card | null;
     preference?: NotificationPreference;
-    written?: "created" | "exists";
+    written?: "created" | "exists" | "duplicate";
   } = {},
 ) {
   const writes: TapWrite[] = [];
@@ -145,6 +145,22 @@ describe("recordManualTimeIn (Step 55)", () => {
   it("answers 'already tapped' when another click got there first", async () => {
     const { deps } = fakeDeps({ written: "exists" });
     await expect(recordManualTimeIn(input, deps)).resolves.toMatchObject({ outcome: "already_tapped" });
+  });
+
+  it("locks the card for the whole school day, so a gate read landing in between can't also be stored (Step 56)", async () => {
+    const { deps, writes } = fakeDeps();
+    await recordManualTimeIn(input, deps);
+    // Midnight to midnight at the school (UTC+8).
+    expect(writes[0].duplicateWindow).toEqual({ from: "2026-06-18T16:00:00.000Z", to: "2026-06-19T16:00:00.000Z" });
+
+    const { deps: depsDuplicate } = fakeDeps({ written: "duplicate" });
+    await expect(recordManualTimeIn(input, depsDuplicate)).resolves.toMatchObject({ outcome: "already_tapped" });
+  });
+
+  it("checks no window for a student with no card: no gate read can race it", async () => {
+    const { deps, writes } = fakeDeps({ card: null });
+    await recordManualTimeIn(input, deps);
+    expect(writes[0].duplicateWindow).toBeNull();
   });
 
   it("sends no notification when the school's setting is off", async () => {

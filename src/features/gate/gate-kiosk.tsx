@@ -20,6 +20,7 @@ import {
   type StoredRoster,
 } from "./gate-client";
 import { describeScan, type GateScan, type TapKind } from "./gate-display";
+import { createRepeatFilter } from "./repeat-filter";
 import { findRosterStudent } from "./roster-match";
 import { createScanBuffer } from "./scan-buffer";
 import { NoPhotoPortrait, TAP_CARD_PORTRAIT, TapCard, TapListItem } from "./tap-card";
@@ -93,6 +94,8 @@ export function GateKiosk() {
   /** The roster whose photos this page has loaded; null until the first load. */
   const photosLoadedFor = useRef<StoredRoster | null>(null);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // One per page: the same card read again within 5 seconds isn't sent (Step 56).
+  const [repeatFilter] = useState(createRepeatFilter);
 
   const disconnect = useCallback(async (error: string | null) => {
     tokenRef.current = null;
@@ -181,6 +184,16 @@ export function GateKiosk() {
     (raw: string) => {
       const token = tokenRef.current;
       if (!token) return;
+      const keepShowing = () => {
+        setShowCurrent(true);
+        if (idleTimer.current) clearTimeout(idleTimer.current);
+        idleTimer.current = setTimeout(() => setShowCurrent(false), IDLE_AFTER_MS);
+      };
+      // A card held on the reader, read again: keep its answer on screen, send nothing.
+      if (repeatFilter.isRepeat(raw, Date.now())) {
+        keepShowing();
+        return;
+      }
       const scan: GateScan = {
         id: crypto.randomUUID(),
         raw,
@@ -189,9 +202,7 @@ export function GateKiosk() {
         state: { kind: "checking" },
       };
       setScans((current) => [scan, ...current].slice(0, 20));
-      setShowCurrent(true);
-      if (idleTimer.current) clearTimeout(idleTimer.current);
-      idleTimer.current = setTimeout(() => setShowCurrent(false), IDLE_AFTER_MS);
+      keepShowing();
 
       const settle = (state: GateScan["state"]) =>
         setScans((current) => current.map((existing) => (existing.id === scan.id ? { ...existing, state } : existing)));
@@ -201,11 +212,13 @@ export function GateKiosk() {
           if (error instanceof GateUnauthorizedError) {
             await disconnect("This gate was disconnected. Ask the office for a new token.");
           } else {
+            // Not sent: the same card read again is tried at once.
+            repeatFilter.forget(raw);
             settle({ kind: "failed" });
           }
         });
     },
-    [disconnect],
+    [disconnect, repeatFilter],
   );
 
   // While ready: the reader's keystrokes, a roster check every 5 minutes, a live clock, and the screen kept on.

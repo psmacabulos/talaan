@@ -17,7 +17,7 @@ import type { Tap } from "@/features/attendance/types";
 import type { TapNotification } from "@/features/parents/types";
 import type { Staff } from "@/features/staff/types";
 import type { Student } from "@/features/students/types";
-import { schoolDateOf } from "@/lib/school-time";
+import { nextDate, schoolDateOf, schoolTimeToIso } from "@/lib/school-time";
 import { toTapStudent, type TapStudent } from "./record-tap";
 
 /** The `stationId` of a tap recorded by hand: it never claims a gate read it. */
@@ -134,7 +134,20 @@ export async function recordManualTimeIn(
       }
     : null;
 
-  const written = await deps.writer.record({ tap, alert: null, notification, deviceId: null, seenAt: input.now });
-  if (written === "exists") return { outcome: "already_tapped", student: tapStudent };
+  // With a card, the write locks it and checks the whole school day again
+  // (Step 56), so a gate read of the same card landing in between can't make
+  // a time in and a time out. With no card, no gate read can race it.
+  const duplicateWindow = card
+    ? { from: schoolTimeToIso(date, "00:00"), to: schoolTimeToIso(nextDate(date), "00:00") }
+    : null;
+  const written = await deps.writer.record({
+    tap,
+    alert: null,
+    notification,
+    deviceId: null,
+    seenAt: input.now,
+    duplicateWindow,
+  });
+  if (written !== "created") return { outcome: "already_tapped", student: tapStudent };
   return { outcome: "recorded", tap, student: tapStudent, direction: "time_in", notified, replayed: false };
 }

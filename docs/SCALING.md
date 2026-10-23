@@ -53,7 +53,7 @@ The one thing to take from the diagram: **every request shares the same 10 datab
 | 54 | Push notifications reach the phone (2.3) | for the demo, alongside the parent app |
 | 55 | Safe for real parents (1.1, 1.2) | before real parents sign up |
 | 55.5 | Forgot password by email (not from this review; owner decision, 2026-10-13: parents recover it from the app) | before real parents sign up |
-| 56 | One read, one tap (1.3) | before real use at the gate |
+| 56 | One read, one tap (1.3) | done (2026-10-23) |
 | 57 | Lost cards and alerts (1.4, 1.5) | before real use at the gate |
 | 58 | The gate keeps taps while offline (1.6) | before real use at the gate |
 | 59 | Know when something breaks (1.7) | before real use |
@@ -129,6 +129,8 @@ const written = await deps.writer.record({
 If the reader reads one card twice within a fraction of a second, both requests check before either has written. Both find nothing, and both are stored with different ids. The student gets a time in and a time out together, and the parent gets "arrived" and "left" in the same second. This is called a **race**: two requests racing each other between the check and the write.
 
 **Fix:** the check and the write happen as one step per card (a short Postgres lock on that school's card, held only while checking and writing), and the gate also ignores the same card read again within a few seconds.
+
+**Done in Step 56** (`docs/backend/step-56-one-read-one-tap.md`, `docs/GATE.md` "One read, one tap"): an advisory lock per school and card inside the tap's transaction, the same lock for a time in recorded by hand, and a 5-second repeat filter on the gate.
 
 ### 1.4 A lost card's tap counts as its owner arriving (Step 57)
 

@@ -2738,3 +2738,25 @@ npm run build && npx playwright test e2e/isolation.spec.ts e2e/parent.spec.ts e2
 # 59 passed, 13 skipped (the per-width skips)
 ```
 
+## Step 56: one read, one tap (2026-10-23)
+
+**Recipe first.** `docs/backend/step-56-one-read-one-tap.md`, approved the same day. The architect's plan review had one blocking point: a race test can pass without the fix, so it has to force both requests into the gap and be shown to fail without the lock. Also from that review: "Record time in" takes the same lock, and the lock comes before any row in the transaction. Loading the student's whole tap history, and the pool size, stay in Step 61.
+
+**The code.** The tap's transaction now starts with `SELECT pg_advisory_xact_lock(hashtextextended('tap-card|<school>|<serial>', 0))` through `tx.$executeRaw` (a `void` result, which `$queryRaw` can't read back), then checks the tap id and the 2-minute window under it. Two private error classes end the transaction without writing and become `"exists"` and `"duplicate"`. `recordTap` keeps its quick check and answers the writer's `"duplicate"` the same way. `recordManualTimeIn` passes the school day (midnight to midnight, UTC+8) as its window when the student has a card. On the gate, `createRepeatFilter` drops the same card within 5 seconds of its last read.
+
+**The test that passed without the fix** (`docs/PROBLEMS-LOG.md`, P-037). The first version raced two writes with `Promise.all`. I deleted the lock line (`sed -i '' '/pg_advisory_xact_lock/d'`) and ran the file three times: that test passed every time, and the barrier test failed only once. The fix: the test opens its own transaction, takes the card's lock with the writer's own `tapCardLockKey()`, inserts a tap and stays open. The real writer must still be waiting 300 ms later and answer `"duplicate"` after the commit. Without the lock it failed 3 out of 3; with it, it passes. The lock line was put back from a copy in the scratchpad, and `grep -c pg_advisory_xact_lock` confirmed it.
+
+**Two gate browser tests read one card twice in a row.** With the new filter the second read is never sent, so both now wait `REPEAT_WINDOW_MS + 200`. The "duplicate" test also counts the gate's requests: none for an immediate repeat, one after the wait.
+
+Targeted runs while building:
+
+```bash
+npx tsc --noEmit                                              # clean
+npx vitest run src/services/taps src/features/gate            # 17 files, 95 passed (5 against Postgres)
+npm run build && npx playwright test e2e/gate.spec.ts e2e/gate-monitor.spec.ts e2e/attendance.spec.ts e2e/isolation.spec.ts
+                                                              # 29 passed, 1 skipped
+npx eslint <the changed files>                                # clean
+```
+
+**Architect's code review:** nothing blocking; it confirmed the held-transaction test's reasoning (no shared row, so without the lock the writer returns at once, and the result doesn't depend on the 300 ms). Taken: `forget()` on a failed send, `try … finally` around the held transaction, and an honest test header. Not taken: comparing USB and Web NFC reads of one card (the server's lock covers it).
+

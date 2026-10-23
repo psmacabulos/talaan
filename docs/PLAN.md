@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: █████████████████░░░ 87%**  (297 of 340 tasks, 78 of 89 steps approved)
+**Overall progress: ██████████████████░░ 89%**  (301 of 340 tasks, 79 of 89 steps approved)
 
-**Next up:** Step 55.6, Parents reset a forgotten password (ready for your review)
+**Next up:** Step 56, One read, one tap (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -85,8 +85,8 @@
 | 55.3 | The school sees each link | ██████████ 100% | Approved |
 | 55.4 | A principal removes a wrong link | ██████████ 100% | Approved |
 | 55.5 | Email, and staff reset their own password | ██████████ 100% | Approved |
-| 55.6 | Parents reset a forgotten password | ███████░░░  67% | Ready for your review |
-| 56 | One read, one tap | ░░░░░░░░░░   0% | Not started |
+| 55.6 | Parents reset a forgotten password | ██████████ 100% | Approved |
+| 56 | One read, one tap | ████████░░  75% | Ready for your review |
 | 57 | Lost cards and alerts | ░░░░░░░░░░   0% | Not started |
 | 58 | The gate keeps taps while offline | ░░░░░░░░░░   0% | Not started |
 | 59 | Know when something breaks | ░░░░░░░░░░   0% | Not started |
@@ -858,13 +858,13 @@ Cut from Step 55.5 on 2026-10-23. Not needed for the demo. Due before real paren
 - [x] A reset signs the parent out everywhere else: every phone's sign-in (and its push address), and every web portal session.
 Done when: a parent who forgot their password signs in again from the app without anyone's help, and every check passes.
 Commit: `feat(parents): reset a forgotten password with an emailed code`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 56: One read, one tap
-Plan: `docs/SCALING.md` 1.3. Due before real use at the gate.
-- [ ] The 2-minute check and the write happen as one step per card (a short lock), so two reads of one card arriving together can't both be stored.
-- [ ] The gate ignores the same card read again within a few seconds, before sending it.
-- [ ] Tests: two reads of one card sent at the same moment give one tap and one "Already tapped".
+Plan: `docs/SCALING.md` 1.3. Due before real use at the gate. Recipe first: `docs/backend/step-56-one-read-one-tap.md`, approved 2026-10-23.
+- [x] The 2-minute check and the write happen as one step per card (a short lock), so two reads of one card arriving together can't both be stored.
+- [x] The gate ignores the same card read again within a few seconds, before sending it.
+- [x] Tests: two reads of one card sent at the same moment give one tap and one "Already tapped".
 Done when: a card held on the reader can never make a time in and a time out together, and every check passes.
 Commit: `fix(gate): record one tap per card read, even when two arrive together`
 - [ ] Owner review: I checked it and said "approved"
@@ -883,6 +883,7 @@ Plan: `docs/SCALING.md` 1.6, from the plan's after-demo list. Due before real us
 - [ ] A tap read while the internet is down is kept on the tablet, with the id it already gets, and sent when the connection returns. The screen says it's saved and waiting.
 - [ ] Photos load from the tablet's own copy when the server can't be reached at start-up.
 - [ ] Tests: taps made offline arrive once each, and parents are notified only after a tap reaches the server.
+- Note from Step 56's architect review: time in or time out is worked out before the per-card lock, from the student's other taps. Sending a queue of old taps all at once could store two of one student's taps with the same direction. Send the queue one tap at a time, or work out the direction inside the lock.
 Done when: unplugging the network during taps loses none of them, and every check passes.
 Commit: `feat(gate): keep taps while offline and send them when back`
 - [ ] Owner review: I checked it and said "approved"
