@@ -2,7 +2,16 @@
 
 Every command this project needs, grouped by what you're doing, with what each one is for and which files are behind it, for troubleshooting. Run them from the project folder (`~/Documents/talaan`).
 
-**Kept up to date:** whenever a step adds or changes a command, this page changes in the same commit.
+**Kept up to date:** whenever a step adds or changes a command, this page changes in the same commit. Last checked against every `package.json` script on 2026-10-23.
+
+**Where else to look:**
+
+| Looking for | Where |
+|---|---|
+| What a log line means | `email:` lines: `docs/EMAIL.md` ("What the log says, and what people see"). `push:` lines: `docs/PUSH.md`, mentioned along the way (no table yet). |
+| The parent API's error codes and HTTP status numbers (`400`, `401`, `429`, `503`, …) | `docs/PARENT-API.md` ("Errors") |
+| A problem we already hit, and its fix | `docs/PROBLEMS-LOG.md` |
+| Why something was decided | the step's recipe in `docs/backend/`, its "Decisions" and "Known limits" |
 
 ## Contents
 1. [Starting work for the day](#1-starting-work-for-the-day)
@@ -85,6 +94,15 @@ npm run test:e2e
 | `npm run test:a11y` | Builds, then runs the accessibility audit on every screen. | `e2e/a11y.spec.ts` |
 
 The database must be running (section 5) for `build` and the browser tests. CI on GitHub runs the same checks on every push (`.github/workflows/ci.yml`).
+
+**Other scripts:**
+
+| Command | What it does |
+|---|---|
+| `npm run progress` | Rebuilds the progress block at the top of `docs/PLAN.md` from its checkboxes. Run after ticking a box. (`scripts/progress.mjs`) |
+| `npm run format` | Rewrites every file in the project's code style (Prettier). It changes files, so run it before the checks, not after. |
+| `npm start` | Runs the already-built app (after `npm run build`), the way Heroku does. Locally you'll rarely need it: `npm run dev` is for working. |
+| `postinstall` | Not one you type: it runs `prisma generate` by itself after every `npm install` or `npm ci`. |
 
 ---
 
@@ -331,4 +349,9 @@ The usual order: the checks (section 2), then `git add -A`, then `git commit -m 
 | "Too many tries. Wait 15 minutes and try again." | 5 wrong passwords for that email in 15 minutes. Wait, or restart `npm run dev` (the count is kept in the server's memory). |
 | Signed out after a restart, or on every page | The `SESSION_SECRET` in `.env` changed, or the cookie is more than 30 days old. Sign in again. |
 | `prisma migrate dev` asks to reset | Answer **N**, and send the message. Nothing is lost while you haven't answered yes. |
+| The live server won't start after a deploy, and the log says `EMAIL_SENDER must be "smtp" … or "log"` | Every live server needs it from Step 55.5 on: `heroku config:set EMAIL_SENDER=log --app bantayaral` (section 7c). `EMAIL_SENDER="smtp" needs …` names the other settings still missing. |
+| "Forgot your password?" isn't on the live sign-in page | The server is on `EMAIL_SENDER=log`, so it can't email anyone and doesn't offer to. Expected until Resend is set up (`docs/EMAIL.md`, Settings). |
+| A reset email never arrives | `heroku logs --app bantayaral --num 500 \| grep "email:"`, then look the line up in `docs/EMAIL.md`'s log-line table. No line at all: nothing was sent on purpose (unknown or invited email, or a limit). Locally, the email is in the `npm run dev` terminal, never a mailbox. |
+| "Too many requests. Wait an hour and try again." | 3 reset requests for one email, or 20 from one network, in an hour. Locally, restart `npm run dev` (the counts live in memory). |
+| "We can't send emails right now. Try again tomorrow…" | The app's 80 emails a day are used up. A restart clears the count, but Resend's own 100 a day still holds. |
 | `heroku pg:psql …` says "The local psql command could not be located" | This Mac has no `psql`, but the Docker database does. Run the same query through it: `docker exec -it talaan-postgres psql "$(heroku config:get DATABASE_URL --app bantayaral)" -c '<the SQL>'` (start it first with `docker start talaan-postgres`). Or install `psql` for good: `brew install libpq && brew link --force libpq`. |

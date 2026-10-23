@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: █████████████████░░░ 86%**  (294 of 340 tasks, 77 of 89 steps approved)
+**Overall progress: █████████████████░░░ 87%**  (295 of 340 tasks, 78 of 89 steps approved)
 
-**Next up:** Step 55.5, Email, and staff reset their own password (ready for your review)
+**Next up:** Step 55.6, Parents reset a forgotten password (not started)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -84,7 +84,7 @@
 | 55.2 | Other guardians are told of each new link | ██████████ 100% | Approved |
 | 55.3 | The school sees each link | ██████████ 100% | Approved |
 | 55.4 | A principal removes a wrong link | ██████████ 100% | Approved |
-| 55.5 | Email, and staff reset their own password | ████████░░  75% | Ready for your review |
+| 55.5 | Email, and staff reset their own password | ██████████ 100% | Approved |
 | 55.6 | Parents reset a forgotten password | ░░░░░░░░░░   0% | Not started |
 | 56 | One read, one tap | ░░░░░░░░░░   0% | Not started |
 | 57 | Lost cards and alerts | ░░░░░░░░░░   0% | Not started |
@@ -850,7 +850,7 @@ Plan: owner decision, 2026-10-13: people recover a forgotten password themselves
 - [x] Decided in the recipe: staff invitations stay a copy link, not an email.
 Done when: a teacher who forgot their password signs in again without anyone's help, and every check passes.
 Commit: `feat(auth): let staff reset a forgotten password by email`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 55.6: Parents reset a forgotten password
 Cut from Step 55.5 on 2026-10-23. Not needed for the demo. Due before real parents sign up. Uses Step 55.5's email service and daily limit. Recipe first.

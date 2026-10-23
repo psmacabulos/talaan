@@ -82,6 +82,38 @@ export async function sendCappedEmail(message: EmailMessage, what: string, deps:
 
 The count lives in memory, like the sign-in limits, so a restart clears it. Resend's own 100 still holds after a restart.
 
+## What the log says, and what people see
+
+**Where to look when reviewing email.** Every email line in the server's log starts with `email:` and never holds an address or a link, so `heroku logs --app bantayaral --num 500 | grep "email:"` finds them all (locally, read the `npm run dev` terminal). The parent API's error codes and HTTP status numbers live in `docs/PARENT-API.md` ("Errors"); this page is about email only.
+
+**Log lines** (from `src/lib/email/email-sender.ts`, `src/services/auth/capped-email.ts` and `src/services/auth/staff-password-reset.ts`):
+
+| Line | Meaning | What to do |
+|---|---|---|
+| `email: 1 message to the log sender, not sent: <subject>` | A live server is on `EMAIL_SENDER=log`: the email was **not** sent, only noted. | Expected until Resend is set up. Then set `EMAIL_SENDER=smtp` (Settings below). |
+| `email (log sender, not sent) to … Subject: …` and the whole email | The same, off a live server: development or the browser tests. The link is in it, to open by hand. | Nothing. This is how you test locally. |
+| `email: <what> failed: EAUTH` | Resend refused the API key. | A new key with sending access for `mail.bantayaral.com`, in `SMTP_PASSWORD`. |
+| `email: <what> failed: ETIMEDOUT` (or `ECONNECTION`) | The connection to `smtp.resend.com` hung or was refused. | Usually the port: try `SMTP_PORT=587`. |
+| `email: <what> failed: unknown` | The send failed with no error code. | Look at the lines just above it in the log. |
+| `email: reset email failed: lookup` | The database lookup before a staff reset email failed. | Check `/api/v1/health`: the database is likely down. |
+| `email: the daily limit is now reached; no more emails until it clears` | That was email 80 of the last 24 hours. | Wait. If it happens on a normal day, someone is asking for many resets. |
+| `email: <what> not sent, the daily limit is reached` | An email was skipped because of the daily limit. | The same. |
+
+`<what>` names the email: `reset email` or `password changed email` (Step 55.6 adds parent codes).
+
+**No line at all** after a "Forgot your password?" means nothing was sent on purpose: an unknown or invited email, or a limit. The page said which, for a limit.
+
+**What a person sees** (`src/features/auth/messages.ts`):
+
+| When | The message |
+|---|---|
+| Any request that passed the limits, known email or not | "If that email belongs to a staff account, we've sent a link to it. It works for 1 hour." |
+| Over 3 for one email, or 20 from one network, in an hour | "Too many requests. Wait an hour and try again." |
+| The daily limit is reached | "We can't send emails right now. Try again tomorrow, or ask your principal for a reset link." |
+| A live server on `log` (`canEmailPeople()` is false) | No reset form: the old "Ask your principal for a password reset link…" note. |
+
+**A live server won't start** without `EMAIL_SENDER`: `checkProductionEnv` (`src/lib/env.ts`) stops it, and the log names the setting (`EMAIL_SENDER must be "smtp" … or "log" …`, or `EMAIL_SENDER="smtp" needs SMTP_HOST, …`). Values are never printed.
+
 ## "Forgot your password?" for staff
 
 1. The sign-in page's **Forgot your password?** goes to `/forgot-password`.

@@ -239,6 +239,9 @@ Usual causes:
 - **One quote missing**, for example `--label "Main gate tablet` without the closing `"`.
 - **A copied line that isn't a command**, such as a line from `package.json` (`"device:create": "tsx scripts/create-device.ts",`). That's what the command *is called*. Type `npm run device:create -- …` instead.
 
+### Is a step committed yet? (owner question, 2026-10-23)
+`git status` answers it. A step's code is committed when it no longer lists the step's files. What usually stays behind is one small docs change: when you say "approved", the "Owner review" box in `docs/PLAN.md` is ticked and `npm run progress` rewrites the progress block, *after* the step's commit. So Step 55.5's code and recipe are in `53858d9`, and only that tick (`M docs/PLAN.md`) is left. It's docs-only, so it can go in its own small commit (`docs(plan): approve step 55.5`) or ride along with the next step's. `git log --oneline -- <file>` shows which commit last touched one file.
+
 ## Keeping local and CI in sync
 
 ### A page stuck on "Rendering…" after big changes: restart `npm run dev` (2026-10-12)
@@ -1435,3 +1438,6 @@ They let one $7 Basic dyno keep up as data grows. Measured on a scratch database
 
 ### Why does the architect use so many tokens, and how can it use fewer? (owner question, 2026-10-16)
 Each review round started a new architect, which had to re-read the files the last one already read: about 40,000–60,000 tokens and 15–38 file reads a round, about 530,000 in one session. The fix keeps the same reviews: one architect per step, continued between rounds with `SendMessage` so it remembers what it read. The relevant lines go in the message, marked "verified", so it doesn't have to open files to check them. Its instructions get a reading budget (search before reading, never re-read). Round 2 is skipped when round 1 finds nothing blocking. A new architect starts each step, so every step still gets a fresh look.
+
+### Where do I look for what a log line or an error number means? (owner question, 2026-10-23)
+`docs/COMMANDS.md` now starts with a "Where else to look" table, so it's the one place to begin. In short: `email:` log lines, and the messages people see, are in `docs/EMAIL.md` ("What the log says, and what people see"). The parent API's error codes and status numbers (`400`, `401`, `429`, `503`) are in `docs/PARENT-API.md` ("Errors"). Symptoms you might hit, with what to try, are in `docs/COMMANDS.md` section 9. Each step's recipe adds its own lines to those same tables, and its "Where it's documented" section says which ones it added.
