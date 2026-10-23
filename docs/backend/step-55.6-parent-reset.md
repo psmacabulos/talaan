@@ -1,6 +1,6 @@
 # Step 55.6: Parents reset a forgotten password
 
-> **Written before the code, on 2026-10-23, for the owner's approval.** Cut from Step 55.5, whose email service and daily email limit this step reuses. The systems-architect reviewed the plan once; its points are included below (one blocking, now fixed). If building changes anything, this file is updated to match before the review report. Topic docs to update while building: `docs/PARENT-API.md`, `docs/AUTH.md`, `docs/EMAIL.md`, `docs/COMMANDS.md`, and the app's starter kit (`mobile/starter/docs/PLAN.md`, `SERVER.md`).
+> **Written before the code, on 2026-10-23, and approved by the owner the same day as one step.** Updated after building where the real code differs; see "Changed while building". Cut from Step 55.5, whose email service and daily email limit this step reuses. The systems-architect reviewed the plan once; its points are included below (one blocking, now fixed). If building changes anything, this file is updated to match before the review report. Topic docs to update while building: `docs/PARENT-API.md`, `docs/AUTH.md`, `docs/EMAIL.md`, `docs/COMMANDS.md`, and the app's starter kit (`mobile/starter/docs/PLAN.md`, `SERVER.md`).
 
 ## Why
 
@@ -146,7 +146,7 @@ An in-memory version for unit tests, as `createMockParentTokenRepository` does. 
 - `makeResetCode()`: `String(randomInt(0, 1_000_000)).padStart(6, "0")`.
 - `hashResetCode(id, code, secret)`: the HMAC of decision 2.
 - `resetCodeMatches(stored, id, typed, secret)`: `timingSafeEqual` of the two hashes.
-- `resetCodeSchema`: trimmed, exactly 6 digits, "Enter the 6-digit code from the email".
+- `resetCodeSchema` (trimmed, exactly 6 digits, "Enter the 6-digit code from the email") lives in `src/features/parents/auth-schemas.ts` instead, since the web form needs it and this file uses `node:crypto`, which can't go to the browser.
 
 ### 4. Asking for a code (`src/services/parents/parent-password-reset.ts`)
 
@@ -161,6 +161,7 @@ The same shape as `startStaffPasswordReset` (Step 55.5), and the same result typ
 3. `accepted`, with `send` for `after()`:
    - `parents.findByEmail(email)`; none → nothing is sent;
    - `resets.countRecent(parent.id, 24 hours ago)` ≥ 5 → nothing is sent, and the log says `email: parent reset code not sent, 5 codes for this parent today` (no email address);
+   - the daily email limit is checked again (architect's code review: a code stored but never sent would use up one of the day's 5);
    - make the code, `resets.create(...)`, and send it through `sendCappedEmail` with `what` = `parent reset code` (so the daily limit counts it, and its failures read `email: parent reset code failed: EAUTH`);
    - catch everything and log only `email: parent reset code failed: lookup`.
 
@@ -181,9 +182,11 @@ export async function confirmParentPasswordReset(input: unknown, deps: ConfirmRe
 2. The network is locked (`parentAddressThrottle`) → `too_many_tries`.
 3. Find the parent, then `resets.newest(parent.id, …)`. Either missing → `invalid_code`.
 4. `resets.spendTry(...)` false → `invalid_code`.
-5. The code doesn't match → count a failure against the network, then `invalid_code`.
+5. The code doesn't match → `invalid_code`.
 6. `hashPassword(password)`, then `resets.complete(...)`. False → `invalid_code` (the other request won).
-7. `parentSignInThrottle.recordSuccess(parentThrottleKey(email))`, and return the parent. The caller signs in this phone or browser and sends "Your password was changed" in `after()`.
+7. `parentSignInThrottle.recordSuccess(parentThrottleKey(email))`, and return the parent with `notify`, which sends "Your password was changed". The caller signs in this phone or browser and passes `notify` to `after()`.
+
+Every `invalid_code`, whichever step gave it, counts one against the network (`parentAddressKey`, shared with sign-in), so trying codes for many unknown emails is limited too.
 
 ### 6. The API (`src/app/api/v1/parents/password-reset/route.ts` and `…/confirm/route.ts`)
 
@@ -199,7 +202,7 @@ export async function confirmParentPasswordReset(input: unknown, deps: ConfirmRe
 - The parent cookie becomes `{ parentId, pv }`.
 - `resolveParentSession` uses `getForSession` and refuses a cookie whose `pv` doesn't match, the same as staff.
 - `setParentSession(parentId)` looks up the hash itself, so its callers (sign-up, sign-in, reset) don't change.
-- Seed parents get the fixed `SEED_STAFF_PASSWORD_HASH` (it's the same demo password), renamed `SEED_PASSWORD_HASH` and moved to `src/data/seed/seed-password.ts`, so `e2e/sessions.ts` can make a parent cookie with the right `pv`, as it does for staff.
+- Seed parents get the fixed demo hash (`SEED_PARENT_PASSWORD_HASH`, the same value as `SEED_STAFF_PASSWORD_HASH`, since it's the same demo password, in `src/data/seed/staff-password.ts`), so `e2e/sessions.ts` can make a parent cookie with the right `pv`, as it does for staff.
 
 ### 8. The web page
 
@@ -209,8 +212,9 @@ export async function confirmParentPasswordReset(input: unknown, deps: ConfirmRe
   2. The answer (with `aria-live`), the email it went to, then "6-digit code" (`inputMode="numeric"`, `autoComplete="one-time-code"`), "New password", "Confirm new password", and "Set new password". Below: "Didn't get it? Check your spam folder, or send a new code" (the button waits 30 seconds after each send) and "Use a different email".
 
   The email is kept in the component, never in the address bar (Step 55.5: the address bar lands in Heroku's logs). Focus moves to each stage's first field.
-- **Actions** in `src/features/parents/auth-actions.ts`: `requestParentPasswordReset({ email })` and `resetParentPassword({ email, code, password, confirmPassword })`. The second signs the browser in and goes to `/parent`.
+- **Actions** in `src/features/parents/auth-actions.ts`: `requestParentPasswordReset({ email })` and `resetParentPassword(email, { code, password, confirmPassword })`. The second signs the browser in and goes to `/parent`.
 - **`/parent/login`** gets "Forgot your password?" under the password field, only when `canEmailPeople()` is true.
+- **Both pages call `await connection()`** first, so they're rendered per request and read `EMAIL_SENDER` as it is now, not as it was at build (`docs/PROBLEMS-LOG.md`, P-035).
 
 ### 9. The app's starter kit
 
@@ -230,11 +234,13 @@ export async function confirmParentPasswordReset(input: unknown, deps: ConfirmRe
 - `prisma-parent-password-reset.pg.test.ts` (real Postgres): `spendTry` never goes past 5 with 20 tries at once; two `complete` calls at once, only one wins; the cascade removes push addresses.
 - `parent-session.test.ts`: a cookie with an old `pv` is refused.
 - `forgot-password-form.test.tsx`: the two stages, inline errors, input kept after `invalid_code`.
-- **e2e**: from `/parent/login` to the forgot page, the same answer for a seeded parent and a made-up email; axe-clean in light and dark.
+- `password.test.ts`: the parents' fixed seed hash is still the hash of their demo password.
+- **e2e** (`e2e/login.spec.ts`): from `/parent/login` to the forgot page, the same answer for a seeded parent and a made-up email, and a wrong code keeps what was typed; `e2e/a11y.spec.ts`: the page is axe-clean in light and dark.
+- **e2e, the API** (`e2e/parent-api.spec.ts`): `202 {}` for a real and a made-up email; then a whole reset for a new account. A browser test can't read an email, so `e2e/known-reset-code.ts` stores a code the test knows, hashed with the test server's secret exactly as the server would. A wrong code gets `400 invalid_code`, the right one `200` with a new token, the old token then gets `401`, the code can't be used twice, and only the new password signs in.
 
 ## Verify it worked
 
-1. `npx prisma migrate dev` (if the build didn't), then restart `npm run dev`.
+1. `npx prisma migrate deploy` (it was applied to your database while building, so it should say "No pending migrations"), then **stop and restart `npm run dev`**: a running server keeps the old Prisma Client, which doesn't know the new table (`docs/PROBLEMS-LOG.md`, P-031).
 2. Sign in on the web as the demo parent (`parent-one@balanga.example`, `Talaan123!`). Keep that window open.
 3. In a private window, open http://localhost:3000/parent/login → **Forgot your password?** → the same email → **Send code**. The `npm run dev` terminal shows the email with the code.
 4. Type a wrong code with a new password: "That code isn't right…", and what you typed stays.
@@ -283,6 +289,24 @@ Suggested commit: `feat(parents): reset a forgotten password with an emailed cod
 - **Old reset rows of parents who never ask again stay** (at most 5 per parent, hashes and times only). The architect suggested adding them to the push worker's hourly cleanup; left out to keep that worker about pushes. Step 60's privacy cleanup is the place.
 - **The in-memory limits clear on restart**; the database's 5 codes a day doesn't.
 - **Shared mobile networks** can hit the network limit together (decision 10).
+
+## Changed while building
+
+- **No rename of the seed hash.** The plan renamed `SEED_STAFF_PASSWORD_HASH` and moved its file; that touched about 10 files for no change in behaviour. Instead `staff-password.ts` exports `SEED_PARENT_PASSWORD_HASH`, the same value.
+- **`resetCodeSchema` moved to `auth-schemas.ts`**, so the browser form doesn't pull in `node:crypto`.
+- **Both parent pages render per request** (`await connection()`), found while building (`docs/PROBLEMS-LOG.md`, P-035).
+- **Every failed code counts against the network**, not only a wrong one, so unknown emails count too.
+- **`confirmParentPasswordReset` returns `notify`** for the caller's `after()`, the same shape as the request's `send`.
+- **The Postgres test uses a parent of its own**, created and removed by the test, so the demo parent's password and sign-ins are never touched.
+- **The API browser test does a whole reset**, with a code the test stores itself (Tests, above).
+- **The browser-test database needed the migration** before the Postgres test could run, as in Steps 55 and 55.2: Playwright's setup migrates it only when it runs. The command is now in `docs/COMMANDS.md` section 3.
+- **`npm run db:reset` now empties parents too** (owner's review, `docs/PROBLEMS-LOG.md` P-036). It emptied only `School` and what links to it, so parents, which belong to no school since Step 53, survived with their old hash, and the browser tests' parent cookie (with the new hash's fingerprint) was refused. `prisma/reset-demo.ts` now runs `TRUNCATE "School", "Parent" CASCADE`.
+- **The architect's code review** found nothing blocking. Taken:
+  - the daily limit is checked again before a code is stored;
+  - `docs/PARENT-API.md` says what to do after a `5xx` from confirm (the password may already have changed: go to sign-in);
+  - the sign-in racing a reset is written down in `docs/AUTH.md`.
+
+  Not taken: `id` as a second sort key in `newest` (ids are random, so it wouldn't pick the newer of two codes made in the same millisecond either), and a cleanup job for old rows (Known limits).
 
 ## What's next
 

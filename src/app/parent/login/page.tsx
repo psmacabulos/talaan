@@ -1,10 +1,14 @@
+import { connection } from "next/server";
 import { LoginArtPanel } from "@/features/auth/login-art-panel";
 import { LoginMobileHeader } from "@/features/auth/login-mobile-header";
 import { ParentLoginForm } from "@/features/parents/login-form";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { canEmailPeople } from "@/lib/email/email-sender";
 
 /** Step 22's parent sign-in — a separate flow from the staff login at `/`. */
-export default function ParentLoginPage() {
+export default async function ParentLoginPage() {
+  // Per request, not at build, for "Forgot your password?": EMAIL_SENDER can change with a restart (Step 55.6).
+  await connection();
   return (
     <main className="relative grid min-h-screen flex-1 lg:grid-cols-[1.25fr_1fr] xl:grid-cols-[1.6fr_1fr]">
       {/* Light/dark before sign-in too (Step 27.5), in the form column's
@@ -23,7 +27,7 @@ export default function ParentLoginPage() {
             <p className="text-sm text-muted-foreground">Sign in to see your child&apos;s attendance.</p>
           </div>
 
-          <ParentLoginForm />
+          <ParentLoginForm canResetByEmail={canEmailPeople()} />
         </div>
       </section>
     </main>

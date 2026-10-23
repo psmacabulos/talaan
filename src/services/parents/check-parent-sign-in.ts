@@ -2,7 +2,7 @@ import type { ParentRepository } from "@/data/repositories";
 import { TOO_MANY_TRIES_MESSAGE, WRONG_SIGN_IN_MESSAGE } from "@/features/auth/messages";
 import { parentLoginSchema } from "@/features/parents/auth-schemas";
 import type { Parent } from "@/features/parents/types";
-import { parentThrottleKey, type LoginThrottle } from "@/services/auth/login-throttle";
+import { parentAddressKey, parentThrottleKey, type LoginThrottle } from "@/services/auth/login-throttle";
 
 export const INVALID_SIGN_IN_INPUT_MESSAGE = "Enter a valid email and password.";
 
@@ -39,7 +39,7 @@ export async function checkParentSignIn(input: unknown, deps: ParentSignInDeps):
 
   const { email, password } = parsed.data;
   const key = parentThrottleKey(email);
-  const addressKey = deps.address ? `parent-address:${deps.address}` : null;
+  const addressKey = deps.address ? parentAddressKey(deps.address) : null;
   const tooMany: ParentSignInResult = { ok: false, code: "too_many_tries", formError: TOO_MANY_TRIES_MESSAGE };
   if (deps.throttle.isLocked(key, deps.now)) return tooMany;
   if (addressKey && deps.addressThrottle.isLocked(addressKey, deps.now)) return tooMany;

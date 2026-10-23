@@ -13,8 +13,13 @@ import { DEFAULT_LATENCY_MS, simulateLatency } from "./latency";
  */
 export const SEED_PARENT_PASSWORD = "Talaan123!";
 
+/** A parent with their stored password hash, only for the session cookie's `pv` (Step 55.6). */
+export type ParentWithPasswordHash = { parent: Parent; passwordHash: string };
+
 export interface ParentRepository {
   getById(id: string): Promise<Parent | null>;
+  /** The parent and their password hash, so a cookie made before a password change stops working (Step 55.6). */
+  getForSession(id: string): Promise<ParentWithPasswordHash | null>;
   /** Any case and surrounding spaces: emails are stored trimmed and in lower case (Step 53.1), and so is what's looked up. */
   findByEmail(email: string): Promise<Parent | null>;
   /**
@@ -52,6 +57,12 @@ export function createMockParentRepository(
     async getById(id) {
       await simulateLatency(latencyMs);
       return data.find((parent) => parent.id === id) ?? null;
+    },
+    async getForSession(id) {
+      await simulateLatency(latencyMs);
+      const parent = data.find((candidate) => candidate.id === id);
+      // Stands in for a hash: it changes whenever the password does.
+      return parent ? { parent, passwordHash: `mock:${passwordsByParentId.get(parent.id) ?? ""}` } : null;
     },
     async findByEmail(email) {
       await simulateLatency(latencyMs);

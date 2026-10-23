@@ -10,8 +10,7 @@ import {
   seedStudents,
   seedTaps,
 } from "@/data/seed";
-import { SEED_PARENT_PASSWORD } from "@/data/repositories/parent-repository";
-import { SEED_STAFF_PASSWORD_HASH } from "@/data/seed/staff-password";
+import { SEED_PARENT_PASSWORD_HASH, SEED_STAFF_PASSWORD_HASH } from "@/data/seed/staff-password";
 import { toAlertData } from "@/data/repositories/prisma-alert-repository";
 import { toCardData } from "@/data/repositories/prisma-card-repository";
 import { toNotificationData } from "@/data/repositories/prisma-notification-repository";
@@ -21,7 +20,6 @@ import { toSchoolData } from "@/data/repositories/prisma-school-repository";
 import { toStaffData } from "@/data/repositories/prisma-staff-repository";
 import { toStudentData } from "@/data/repositories/prisma-student-repository";
 import { toTapData } from "@/data/repositories/prisma-tap-repository";
-import { hashPassword } from "@/lib/password";
 
 /**
  * Copies Phase 1's demo data into the database, keeping the same readable
@@ -82,14 +80,14 @@ export async function insertDemoData(db: PrismaClient) {
     skipDuplicates: true,
   });
 
-  // Every demo parent signs in with the same demo password, stored hashed
-  // like any real one. One hash for all six keeps the seed quick.
-  const demoPasswordHash = await hashPassword(SEED_PARENT_PASSWORD);
+  // Every demo parent signs in with the same demo password, stored as its
+  // fixed hash (Step 55.6), so the browser tests can make a parent cookie
+  // with the matching password fingerprint.
   for (const parent of seedParents) {
     await db.parent.upsert({
       where: { id: parent.id },
       update: {},
-      create: { id: parent.id, ...toParentData(parent), passwordHash: demoPasswordHash },
+      create: { id: parent.id, ...toParentData(parent), passwordHash: SEED_PARENT_PASSWORD_HASH },
     });
   }
 

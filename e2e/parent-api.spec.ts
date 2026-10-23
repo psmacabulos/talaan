@@ -279,4 +279,58 @@ test.describe("Parent API (Steps 53.3 and 53.4)", () => {
     expect(error.code).toBe("invalid_input");
     expect(Object.keys(error.fields).sort()).toEqual(["email", "firstName", "mobile", "password"]);
   });
+
+  test("a reset code sets a new password and signs every other phone out (Step 55.6)", async ({ request }) => {
+    const address = freshAddress();
+    // The same answer, 202 {}, for a parent's email and a made-up one.
+    for (const email of ["parent-two@crimsonridge.example", testEmail("reset-nobody")]) {
+      const asked = await request.post("/api/v1/parents/password-reset", { headers: address, data: { email } });
+      expect(asked.status()).toBe(202);
+      expect(await asked.json()).toEqual({});
+    }
+
+    const email = testEmail("reset");
+    const signedUp = await signUp(request, email, address);
+    expect(signedUp.status()).toBe(201);
+    const { token: oldToken } = await signedUp.json();
+
+    // A code the test knows, stored as the server would: the emailed one can't be read here.
+    execFileSync("npx", ["tsx", "e2e/known-reset-code.ts", email, "246810"], {
+      env: { ...process.env, DATABASE_URL: e2eDatabaseUrl() },
+    });
+    const confirm = (code: string) =>
+      request.post("/api/v1/parents/password-reset/confirm", {
+        headers: address,
+        data: { email, code, password: "a-new-password-1", deviceLabel: "Playwright" },
+      });
+
+    const wrong = await confirm("135790");
+    expect(wrong.status()).toBe(400);
+    expect((await wrong.json()).error.code).toBe("invalid_code");
+
+    const reset = await confirm("246810");
+    expect(reset.status()).toBe(200);
+    const { token: newToken, parent } = await reset.json();
+    expect(newToken).toMatch(/^tal_par_/);
+    expect(parent.email).toBe(email);
+
+    const me = (token: string) => request.get("/api/v1/parents/me", { headers: { Authorization: `Bearer ${token}` } });
+    expect((await me(oldToken)).status()).toBe(401);
+    expect((await me(newToken)).status()).toBe(200);
+    expect((await confirm("246810")).status()).toBe(400);
+
+    const signIn = (password: string) =>
+      request.post("/api/v1/parents/login", { headers: address, data: { email, password } });
+    expect((await signIn("testpass123")).status()).toBe(401);
+    expect((await signIn("a-new-password-1")).status()).toBe(200);
+  });
+
+  test("asking for a reset code without an email is a 400 naming the field", async ({ request }) => {
+    const response = await request.post("/api/v1/parents/password-reset", { headers: freshAddress(), data: {} });
+    expect(response.status()).toBe(400);
+    expect((await response.json()).error).toMatchObject({
+      code: "invalid_input",
+      fields: { email: expect.any(String) },
+    });
+  });
 });

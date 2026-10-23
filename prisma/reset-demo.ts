@@ -13,8 +13,10 @@ async function main() {
     throw new Error("Refusing to reset: DATABASE_URL isn't a database on localhost.");
   }
 
-  // Every table links back to School, so CASCADE empties them all.
-  await prisma.$executeRaw`TRUNCATE "School" CASCADE`;
+  // Every table links back to School or Parent, so CASCADE empties them all.
+  // A parent belongs to no school since Step 53, so "School" alone left every
+  // parent behind, with its old password (Step 55.6, P-036).
+  await prisma.$executeRaw`TRUNCATE "School", "Parent" CASCADE`;
   await insertDemoData(prisma);
 
   console.log("Reset the demo data.");

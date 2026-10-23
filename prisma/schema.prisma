@@ -185,23 +185,25 @@ model Alert {
 // A parent belongs to no school (Step 53): each linked child carries its own,
 // on ParentStudentLink, so one account covers children at any school.
 model Parent {
-  id           String              @id @default(uuid())
-  firstName    String
-  lastName     String
-  mobile       String
+  id             String                @id @default(uuid())
+  firstName      String
+  lastName       String
+  mobile         String
   // One account per email. Signup already checks this and shows a friendly
   // message; the database guarantees it even if two signups race.
-  email        String              @unique
+  email          String                @unique
   // Never the password itself: see src/lib/password.ts.
-  passwordHash String
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
-  links        ParentStudentLink[]
-  tokens       ParentToken[]
+  passwordHash   String
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  links          ParentStudentLink[]
+  tokens         ParentToken[]
   // Step 55.2's link notices: the ones for this parent, and the ones about them.
-  noticesFor   Notification[]      @relation("NotificationRecipient")
-  noticesAbout Notification[]      @relation("NotificationAbout")
-  linkBlocks   LinkBlock[]
+  noticesFor     Notification[]        @relation("NotificationRecipient")
+  noticesAbout   Notification[]        @relation("NotificationAbout")
+  linkBlocks     LinkBlock[]
+  // Step 55.6's "forgot your password" codes.
+  passwordResets ParentPasswordReset[]
 }
 
 // The parent app's sign-in (Step 53.3): one row per signed-in phone. The
@@ -223,6 +225,26 @@ model ParentToken {
   pushToken  PushToken?
 
   @@index([parentId])
+}
+
+// A "forgot your password" code for a parent (Step 55.6). Never the code
+// itself: an HMAC of it with the server's secret, since a million codes
+// could otherwise all be tried against a copy of this table in a second.
+// Deleted when the reset succeeds, and the parent's rows older than a day
+// are deleted the next time they ask.
+model ParentPasswordReset {
+  id        String    @id @default(uuid())
+  parentId  String
+  parent    Parent    @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  codeHash  String
+  expiresAt DateTime
+  // Spent before the code is checked, so at most 5 checks per code.
+  tries     Int       @default(0)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  // "This parent's newest code" and "codes in the last 24 hours".
+  @@index([parentId, createdAt])
 }
 
 enum PushPlatform {

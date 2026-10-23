@@ -36,7 +36,7 @@ Commit: `feat(api): add the API client with one error handler`
 - [ ] `deviceLabel` from the phone's model
 - [ ] Sign out calls `POST /logout`, then clears everything locally
 - [ ] `/me` called on every app start and every return to the foreground
-- [ ] No "Forgot password?" link yet (Talaan Step 55.5)
+- [ ] No "Forgot password?" link yet: the server has it (Talaan Step 55.6), but the screens are their own step after the demo (below)
 Done when: a new parent can sign up, sign out and sign in again, and a sign-in survives closing the app.
 Commit: `feat(auth): add sign up, sign in and sign out`
 - [ ] Owner review: I checked it and said "approved"
@@ -103,7 +103,9 @@ Commit: `chore(release): add the demo build`
 ## After the demo
 
 Each becomes its own step when it's due:
-- **Forgot password, from the app,** once Talaan's Step 55.5 adds it. Parents recover their own password, never by asking the school.
+- **Forgot password, from the app.** The server is ready (Talaan Step 55.6, `docs/TALAAN-API.md`, "`POST /password-reset`"). Parents recover their own password, never by asking the school. Two screens:
+  1. **Email** → `POST /password-reset`. Show the same answer for every `202`, whatever the email.
+  2. **Code and new password** → `POST /password-reset/confirm`. Keep only the email between the two screens, in the screen's state (not SecureStore). The code field: number pad, `textContentType="oneTimeCode"` and `autoComplete="one-time-code"`; trim it and check it's 6 digits. "Send a new code" waits 30 seconds after each send. A `200` is a sign-in: store the token as login does, then register the push address again (the reset removed it). `400 invalid_code` keeps what was typed; `503 unavailable` shows its message.
 - **Deleting your own account,** with Talaan's Step 60. Both app stores require it before publishing an app that makes accounts.
 - **iOS,** once the owner decides on the Apple Developer account.
 - **Publishing to Google Play:** a privacy policy page (for example on `bantayaral.com`) and the store listing.

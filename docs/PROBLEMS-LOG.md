@@ -48,6 +48,9 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-031](#p-031--2026-10-22--the-dev-server-refused-the-new-notification-kind) | 2026-10-22 | The dev server refused the new notification kind | Other: setup | Prisma, `npm run dev` | Resolved |
 | [P-032](#p-032--2026-10-22--the-sign-in-photo-loads-late-on-wide-screens) | 2026-10-22 | The sign-in photo loads late on wide screens | Performance | Next.js `Image`, sign-in | Fixed: owner to confirm the warning is gone |
 | [P-033](#p-033--2026-10-23--a-1-issue-badge-after-sending-a-reset-link) | 2026-10-23 | A "1 Issue" badge after sending a reset link | Other: development | `npm run dev`, `/forgot-password` | Not reproduced: watch |
+| [P-034](#p-034--2026-10-23--the-app-would-have-been-told-a-code-was-sent-when-nothing-went) | 2026-10-23 | The app would have been told a code was sent when nothing went | Other: correctness | Parent API, email (plan review) | Resolved |
+| [P-035](#p-035--2026-10-23--the-parent-sign-in-page-would-have-frozen-the-email-setting-at-build) | 2026-10-23 | The parent sign-in page would have frozen the email setting at build | Other: correctness | Next.js, parent portal | Resolved |
+| [P-036](#p-036--2026-10-23--the-demo-reset-never-emptied-the-parents) | 2026-10-23 | The demo reset never emptied the parents | Other: tests | Playwright, demo data | Resolved |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -708,3 +711,53 @@ sequenceDiagram
 - **Options weighed:** (1) chase it now: nothing to chase without the text; (2) note it and watch for it during the owner's review with a freshly started dev server.
 - **Solution:** (2). If the badge comes back, click it and copy the error into this entry.
 - **Status:** Not reproduced. The owner restarts `npm run dev` for the review (the new package) and watches for it.
+
+## Parents reset a forgotten password (Step 55.6, 2026-10-23)
+
+### P-034 · 2026-10-23 · The app would have been told a code was sent when nothing went
+- **Where:** Step 55.6's plan, found by the systems-architect's review before any code.
+- **Symptom:** none yet; it would have been: the live server on `EMAIL_SENDER=log` answers the app's `POST /password-reset` with `202 {}`, the app says "we've sent a 6-digit code", and no email ever arrives.
+- **Cause:** the log sender reports success (`src/lib/email/email-sender.ts`, `return { ok: true }`) though it only writes to the log. Step 55.5 hid the staff link with `canEmailPeople()` on the page, but the app has no page on the server to hide anything on.
+  ```mermaid
+  sequenceDiagram
+      participant App as Parent app
+      participant API as Server (EMAIL_SENDER=log)
+      participant Log as Heroku log
+      App->>API: POST /password-reset
+      API->>Log: "email: 1 message to the log sender, not sent"
+      API-->>App: 202 {} (planned) → 503 unavailable (fixed)
+  ```
+- **Options weighed:** (1) let the app ask the server first whether email works (a new address, and a promise the server can't keep a second later); (2) **the reset service itself answers `unavailable` when `canEmailPeople()` is false, and the API says `503`.**
+- **Solution:** (2). `startParentPasswordReset` checks `canEmail` before anything else; `docs/PARENT-API.md`, `docs/EMAIL.md` and `docs/COMMANDS.md` section 9 say what `503` means.
+- **Status:** Resolved before the code was written; `parent-password-reset.test.ts` checks it.
+
+### P-035 · 2026-10-23 · The parent sign-in page would have frozen the email setting at build
+- **Where:** `src/app/parent/login/page.tsx` and the new `src/app/parent/forgot-password/page.tsx`, while building.
+- **Symptom:** none seen; found while reading the pages. Both read `canEmailPeople()` (from `EMAIL_SENDER`) but nothing else per request, so Next.js would prerender them once, at `npm run build`.
+- **Cause:** a page with no cookies, headers or other request-time call is built as a static page. Heroku builds once per deploy; `heroku config:set EMAIL_SENDER=smtp` only restarts the dyno. So after switching email on, "Forgot your password?" would stay hidden until the next deploy, and the reverse after switching it off. The staff pages don't have the problem: they read the sign-in cookie.
+- **Options weighed:** (1) `export const dynamic = "force-dynamic"`; (2) **`await connection()` from `next/server`**, this Next.js version's documented way to say "render per request" (`node_modules/next/dist/docs/01-app/03-api-reference/04-functions/connection.md`).
+- **Solution:** (2), at the top of both pages. They're light (no database), so rendering per request costs next to nothing.
+- **Status:** Resolved in Step 55.6.
+
+### P-036 · 2026-10-23 · The demo reset never emptied the parents
+- **Where:** the owner's `npm run test:e2e` while reviewing Step 55.6.
+- **Symptom:** 3 failed, all signed in as the demo parent with a ready-made cookie (`signInAs(…, "parent")`), and all landing on "Parent sign in":
+  ```
+  [mobile]  e2e/isolation.spec.ts:64  … picking Balanga with an Oceanview student's details finds no match
+            Error: locator.click: Test timeout of 30000ms exceeded. waiting for getByLabel('Your child\'s school')
+  [mobile]  e2e/parent.spec.ts:138    … a child's other guardian is told when a new parent links them (Step 55.2)
+            Locator: locator('main').getByText('An account named Noticed Parent linked to Carmen Sison.')  Error: element(s) not found
+  [desktop] e2e/isolation.spec.ts:64  (the same as mobile)
+  ```
+- **Cause:** `prisma/reset-demo.ts` emptied the database with `TRUNCATE "School" CASCADE`, on the rule that every table links back to a school. Since Step 53 a parent belongs to no school, so the six demo parents (made 2026-10-13) and every parent a test had signed up (231 rows) survived every reset. The seed's `upsert` with `update: {}` then left each demo parent's old hash alone. Step 55.6 gave the test cookie the fingerprint of the new fixed demo hash, which the database didn't have, so the cookie was refused.
+  ```mermaid
+  flowchart LR
+      R["db:reset: TRUNCATE School CASCADE"] --> S["schools, students, links… emptied"]
+      R -. "no link to School since Step 53" .-> P["Parent rows kept, old hash"]
+      C["test cookie: pv of the fixed hash"] --> X{"pv matches?"}
+      P --> X
+      X -->|no| L["signed out → /parent/login"]
+  ```
+- **Options weighed:** (1) make the seed overwrite each demo parent's hash (`update: { passwordHash }`): fixes the symptom, but test parents keep piling up; (2) **empty `Parent` too: `TRUNCATE "School", "Parent" CASCADE`**, which is what the reset's comment always promised ("Empties every table").
+- **Solution:** (2). Every other table links back to a school or a parent, so the two together empty everything. After a reset the test database holds the 6 demo parents, all with the fixed hash.
+- **Status:** Resolved. `npx playwright test e2e/isolation.spec.ts e2e/parent.spec.ts e2e/parent-api.spec.ts e2e/login.spec.ts`: 59 passed, 13 skipped (the usual per-width skips). `npm run db:reset` on your own database now removes parent accounts you made by hand too, as it always did for everything else.

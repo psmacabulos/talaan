@@ -272,3 +272,43 @@ test.describe("Forgot your password (Step 55.5)", () => {
     await expect(page).toHaveURL("/");
   });
 });
+
+test.describe("A parent's forgot password (Step 55.6)", () => {
+  const SENT = "If that email belongs to a parent account, we've sent a 6-digit code to it. It works for 15 minutes.";
+
+  test("answers the same for a parent's email and a made-up one, then asks for the code", async ({
+    page,
+  }, testInfo) => {
+    // One real account per project, so the 3-an-hour limit per email is never reached, even with a retry.
+    const parentEmail =
+      testInfo.project.name === "mobile" ? "parent-one@oceanview.example" : "parent-two@oceanview.example";
+    const madeUp = `nobody-${testInfo.project.name}-${Date.now()}@talaan.example`;
+
+    await page.goto("/parent/login");
+    await page.getByRole("link", { name: "Forgot your password?" }).click();
+    await expect(page).toHaveURL("/parent/forgot-password");
+    await expect(page.getByRole("heading", { name: "Reset your password" })).toBeVisible();
+
+    for (const email of [parentEmail, madeUp]) {
+      await page.getByLabel("Email").fill(email);
+      await page.getByRole("button", { name: "Send code" }).click();
+      await expect(page.getByText(SENT)).toBeVisible();
+      await expect(page.getByText(email, { exact: true })).toBeVisible();
+      await expect(page.getByLabel("6-digit code")).toBeFocused();
+      await page.getByRole("button", { name: "Use a different email" }).click();
+    }
+
+    // A wrong code gets the one answer for every failed code, and what was typed stays.
+    await page.getByLabel("Email").fill(madeUp);
+    await page.getByRole("button", { name: "Send code" }).click();
+    await page.getByLabel("6-digit code").fill("123456");
+    await page.getByLabel("New password", { exact: true }).fill("a-new-password-1");
+    await page.getByLabel("Confirm new password").fill("a-new-password-1");
+    await page.getByRole("button", { name: "Set new password" }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "That code isn't right, or it has expired." })).toBeVisible();
+    await expect(page.getByLabel("6-digit code")).toHaveValue("123456");
+
+    await page.getByRole("link", { name: "Back to sign in" }).click();
+    await expect(page).toHaveURL("/parent/login");
+  });
+});

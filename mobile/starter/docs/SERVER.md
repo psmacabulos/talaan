@@ -26,6 +26,7 @@ Things to know about it:
 - **Its data isn't reset.** A test parent stays until it's removed in Talaan.
 - **Talaan's owner deploys it,** from the `talaan` repository. If an answer from it doesn't match `docs/TALAAN-API.md`, ask the owner whether the deploy is current before changing anything here.
 - **The sign-in limits apply:** 5 wrong passwords for one email in 15 minutes, 30 from one network, 100 sign-ups from one network in an hour. Testing from one home Wi-Fi counts as one network.
+- **Password reset codes** (Talaan Step 55.6): 3 per email an hour, 5 per parent a day, and wrong codes count with wrong passwords against the network's 30. The live server answers `503 unavailable` until it's set up to send email; on Talaan on the Mac, the code appears in the `npm run dev` terminal. A reset signs every other phone out, so resetting the shared demo parent signs out anyone else using it: use your own test account.
 
 ## Demo accounts and data
 

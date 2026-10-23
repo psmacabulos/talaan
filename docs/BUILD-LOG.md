@@ -2686,3 +2686,55 @@ npm run build && npx playwright test e2e/login.spec.ts e2e/a11y.spec.ts   # 168 
 - "Your password was changed" points to "Forgot your password?" rather than "ask your principal", which a super admin can't do.
 
 Two went into the recipe's known limits: the daily limit is a rolling 24 hours, and two submits of one link at once can both succeed (as in Step 50.5).
+
+## Step 55.6: parents reset a forgotten password (2026-10-23)
+
+**Recipe first, approved as one step.** The owner chose to keep the app's API and the web portal's page together rather than split the page out as 55.7. The architect's plan review had one blocking point, now decision 7: a live server on `EMAIL_SENDER=log` would have answered the app's request with `202` while sending nothing, since the log sender reports success (`docs/PROBLEMS-LOG.md`, P-034). The service now answers `unavailable` (`503`) instead.
+
+**The table.**
+
+```bash
+npx prisma migrate dev --name parent_password_resets   # one CREATE TABLE, one index, one foreign key
+```
+
+`npx prisma format` re-aligned the `Parent` model's columns (one new relation field, `passwordResets`), which shows as 13 changed lines with nothing else changed.
+
+**The Prisma Client wasn't regenerated.** The first `npx tsc --noEmit` failed with `Property 'parentPasswordReset' does not exist on type 'PrismaClient'`. In Prisma 7, `migrate dev` no longer runs `generate` by itself. `npx prisma generate`, then `tsc` was clean. Restarting `npm run dev` is still needed afterwards (P-031).
+
+**The browser-test database needed the migration** before the new Postgres test could run, as in Steps 55 and 55.2. The same `node -e` with `dotenv` as before ran `npx prisma migrate deploy` against `E2E_DATABASE_URL` without reading `.env`. The command is now in `docs/COMMANDS.md` section 3, so it's no longer only in this log.
+
+**A schema the browser couldn't load.** `resetCodeSchema` first lived in `src/services/parents/reset-code.ts`, beside the HMAC. `auth-schemas.ts` imports into the client form, and that file imports `node:crypto`, which can't go to a browser. The schema moved to `auth-schemas.ts`, and the service imports it from there, the way it already imports `emailSchema`.
+
+**Pages frozen at build.** `/parent/login` and the new `/parent/forgot-password` read `canEmailPeople()` and nothing else per request, so Next.js would have prerendered them at `npm run build`, and switching `EMAIL_SENDER` on Heroku (a restart, not a build) wouldn't have shown or hidden "Forgot your password?". Both now start with `await connection()` (P-035). The staff pages already read the sign-in cookie, so they were never static.
+
+**No rename.** The plan renamed `SEED_STAFF_PASSWORD_HASH` to share it with parents. That touched about 10 files for no behaviour change, so `staff-password.ts` exports `SEED_PARENT_PASSWORD_HASH`, the same value, instead. `prisma/demo-data.ts` now seeds parents with that fixed hash rather than hashing at seed time, which is what lets `e2e/sessions.ts` give a parent cookie the right `pv`.
+
+**A whole reset in a browser test.** A test can't read an emailed code, but it knows the test server's secret. `e2e/known-reset-code.ts` (run with `tsx`, like `push-delivery.ts`) stores a code the test chose, hashed exactly as the server would. The API test then checks the whole flow: wrong code `400 invalid_code`, right code `200` with a new token, the old token `401`, the code refused a second time, the old password refused and the new one accepted.
+
+**Formatting.** Prettier flagged 9 changed files. Seven were clean before this step (or new) and were formatted. `e2e/login.spec.ts` and `src/features/auth/messages.ts` were already unformatted at `HEAD`, so they were left alone, rather than reformatting lines this step didn't write.
+
+Targeted runs while building:
+
+```bash
+npx tsc --noEmit                                         # clean
+npx vitest run src/services/parents src/lib src/features/parents src/features/auth src/services/auth \
+  src/data/repositories/prisma-parent-password-reset.pg.test.ts src/data/repositories/parent-repository.test.ts
+                                                         # 40 files, 311 passed
+npx vitest run src/data/repositories/prisma-parent-password-reset.pg.test.ts --reporter=verbose
+                                                         # 4 passed, run against Postgres, not skipped
+npx eslint <the changed files>                           # clean
+```
+
+The browser tests weren't run here; they're in the owner's routine.
+
+**Visual check.** `/parent/login` and `/parent/forgot-password`, both stages, at 360 and 1280 px, light and dark, against the owner's running dev server with a made-up email (so the new table, which that server's older Prisma Client doesn't know, was never touched). No console errors; focus on the code field after sending; no sideways scroll; at 360 px the two lower buttons stack.
+
+**Architect's code review:** nothing blocking. It confirmed the transaction (a second request with the same code waits for the first to commit, then matches nothing and rolls back), that `spendTry` can't pass 5 under concurrent tries, that scrypt only runs after a code matches, and that wrong codes and passwords really share one per-network count. Taken: the daily limit is checked again before a code is stored; `docs/PARENT-API.md` says what to do after a `5xx` from confirm; the sign-in racing a reset is written down in `docs/AUTH.md`. Not taken: a second sort key on `newest` (random ids wouldn't order two codes in one millisecond either) and a cleanup job for old rows (the recipe's known limits).
+
+**Review round 1: the owner's `test:e2e`, 3 failed.** All three signed in as the demo parent with a ready-made cookie and landed on "Parent sign in". The cookie's `pv` didn't match because the test database's demo parents still had their hash from 2026-10-13: `db:reset` ran `TRUNCATE "School" CASCADE`, and parents haven't linked to a school since Step 53, so they (and 231 test-made parents) survived every reset (`docs/PROBLEMS-LOG.md`, P-036). Checked on the test database with a query comparing only the hash's first characters, never printing it. Fixed in `prisma/reset-demo.ts` with `TRUNCATE "School", "Parent" CASCADE`; after a reset, 6 parents, all with the fixed hash.
+
+```bash
+npm run build && npx playwright test e2e/isolation.spec.ts e2e/parent.spec.ts e2e/parent-api.spec.ts e2e/login.spec.ts
+# 59 passed, 13 skipped (the per-width skips)
+```
+

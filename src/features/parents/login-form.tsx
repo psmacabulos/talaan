@@ -17,8 +17,10 @@ import type { ParentLoginInput } from "./types";
  * Step 22's parent sign-in — a real credential check against the mock
  * `ParentRepository` (unlike the staff login form, which always signs in as
  * a fixed demo persona). A successful submission redirects server-side.
+ * "Forgot your password?" (Step 55.6) shows only when email can reach the
+ * parent (`canResetByEmail`), so it never promises a code that won't come.
  */
-export function ParentLoginForm() {
+export function ParentLoginForm({ canResetByEmail }: { canResetByEmail: boolean }) {
   const [isPending, startTransition] = useTransition();
   const {
     register,
@@ -75,6 +77,14 @@ export function ParentLoginForm() {
           <p id="parent-login-password-error" className="text-sm text-destructive">
             {errors.password.message}
           </p>
+        )}
+        {canResetByEmail && (
+          <Link
+            href="/parent/forgot-password"
+            className="w-fit rounded-sm text-sm text-link underline underline-offset-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            Forgot your password?
+          </Link>
         )}
       </div>
 

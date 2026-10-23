@@ -28,3 +28,14 @@ export const RESET_TOO_MANY_MESSAGE = "Too many requests. Wait an hour and try a
 /** The app's 80 emails a day are used up (`dailyEmailCap`). */
 export const EMAIL_UNAVAILABLE_MESSAGE =
   "We can't send emails right now. Try again tomorrow, or ask your principal for a reset link.";
+
+/** Step 55.6's answer to every parent's "Forgot your password?", whether or not the email has an account. */
+export const PARENT_RESET_SENT_MESSAGE =
+  "If that email belongs to a parent account, we've sent a 6-digit code to it. It works for 15 minutes.";
+
+/** A wrong, expired, used-up or replaced code, or an email with no account: one answer for all. */
+export const RESET_CODE_INVALID_MESSAGE =
+  "That code isn't right, or it has expired. Check the newest email, or ask for a new code.";
+
+/** A parent's reset when no email can go: a live server still on "log", or the day's 80 used up. */
+export const PARENT_EMAIL_UNAVAILABLE_MESSAGE = "We can't send emails right now. Try again later.";

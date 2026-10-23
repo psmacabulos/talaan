@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: █████████████████░░░ 87%**  (295 of 340 tasks, 78 of 89 steps approved)
+**Overall progress: █████████████████░░░ 87%**  (297 of 340 tasks, 78 of 89 steps approved)
 
-**Next up:** Step 55.6, Parents reset a forgotten password (not started)
+**Next up:** Step 55.6, Parents reset a forgotten password (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -85,7 +85,7 @@
 | 55.3 | The school sees each link | ██████████ 100% | Approved |
 | 55.4 | A principal removes a wrong link | ██████████ 100% | Approved |
 | 55.5 | Email, and staff reset their own password | ██████████ 100% | Approved |
-| 55.6 | Parents reset a forgotten password | ░░░░░░░░░░   0% | Not started |
+| 55.6 | Parents reset a forgotten password | ███████░░░  67% | Ready for your review |
 | 56 | One read, one tap | ░░░░░░░░░░   0% | Not started |
 | 57 | Lost cards and alerts | ░░░░░░░░░░   0% | Not started |
 | 58 | The gate keeps taps while offline | ░░░░░░░░░░   0% | Not started |
@@ -853,9 +853,9 @@ Commit: `feat(auth): let staff reset a forgotten password by email`
 - [x] Owner review: I checked it and said "approved"
 
 ### Step 55.6: Parents reset a forgotten password
-Cut from Step 55.5 on 2026-10-23. Not needed for the demo. Due before real parents sign up. Uses Step 55.5's email service and daily limit. Recipe first.
-- [ ] Parents reset a forgotten password from the app and the web portal with a short-lived, one-time 6-digit code sent by email, stored only as a hash, with a limit on wrong tries. New API addresses for it, added to `docs/PARENT-API.md` and the app's starter kit (`mobile/starter/`).
-- [ ] A reset signs the parent out everywhere else: every phone's sign-in (and its push address), and every web portal session.
+Cut from Step 55.5 on 2026-10-23. Not needed for the demo. Due before real parents sign up. Uses Step 55.5's email service and daily limit. Recipe first: `docs/backend/step-55.6-parent-reset.md`, approved as one step on 2026-10-23.
+- [x] Parents reset a forgotten password from the app and the web portal with a short-lived, one-time 6-digit code sent by email, stored only as a hash, with a limit on wrong tries. New API addresses for it, added to `docs/PARENT-API.md` and the app's starter kit (`mobile/starter/`).
+- [x] A reset signs the parent out everywhere else: every phone's sign-in (and its push address), and every web portal session.
 Done when: a parent who forgot their password signs in again from the app without anyone's help, and every check passes.
 Commit: `feat(parents): reset a forgotten password with an emailed code`
 - [ ] Owner review: I checked it and said "approved"

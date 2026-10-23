@@ -23,7 +23,7 @@ Every command this project needs, grouped by what you're doing, with what each o
 7. [The gate, the monitor and the USB reader](#7-the-gate-the-monitor-and-the-usb-reader)
    - [Staff accounts and set-password links](#7b-staff-accounts-and-set-password-links-step-505)
    - [The live server (Heroku)](#7c-the-live-server-heroku-step-52)
-   - [The parent API](#7d-the-parent-api-steps-533-and-534)
+   - [The parent API](#7d-the-parent-api-steps-533-534-and-556)
 8. [Git: saving your work](#8-git-saving-your-work)
 9. [When something is stuck](#9-when-something-is-stuck)
 
@@ -42,7 +42,7 @@ npm run dev                    # 4. the app, at http://localhost:3000
 |---|---|
 | `docker start talaan-postgres` | Starts the local Postgres database. Docker Desktop must be open first. Safe to run if it's already running. |
 | `npx prisma migrate deploy` | Applies any database change (migration) your database doesn't have yet. It never deletes data and never asks questions. It answers "No pending migrations" when there's nothing to do. |
-| `npm run db:reset` | Empties the database and refills it with the demo data. **It also deletes gate and monitor devices**, so make new ones afterwards (section 7). It refuses to run on anything but your own laptop. |
+| `npm run db:reset` | Empties the database and refills it with the demo data. **It also deletes gate and monitor devices**, so make new ones afterwards (section 7), and every parent account you made (since Step 55.6; before, parents survived a reset, P-036). It refuses to run on anything but your own laptop. |
 | `npm run dev` | Runs the app with live reload. Stop it with `Ctrl+C`. After installing a package or a database change, stop it and start it again. |
 
 **Files:** `.env` (your settings: `DATABASE_URL`, `SESSION_SECRET`, and optionally `DEMO_NOW`; see `.env.example` for every setting), `prisma/reset-demo.ts`, `prisma/demo-data.ts`, `src/data/seed/` (the demo students, cards and taps).
@@ -108,7 +108,15 @@ The database must be running (section 5) for `build` and the browser tests. CI o
 
 ## 3. Unit tests (Vitest)
 
-Fast tests of single functions and components, with no browser and no database. One exception: `prisma-isolation.test.ts` (Step 51) checks the real database queries against the browser tests' database, and is skipped when `E2E_DATABASE_URL` isn't in `.env`.
+Fast tests of single functions and components, with no browser and no database. The exceptions are `prisma-isolation.test.ts` (Step 51) and every `*.pg.test.ts` (from Step 55): they check real Postgres behaviour (locks, transactions, cascades) against the browser tests' database, and are skipped when `E2E_DATABASE_URL` isn't in `.env`.
+
+**After a step adds a migration,** that database doesn't have it until the browser tests' setup runs, so one of those tests fails with `column … does not exist` or `table … does not exist`. Run `npm run test:e2e` once (its setup migrates the test database), or apply just the migration:
+
+```bash
+node -e 'require("dotenv").config({quiet:true}); process.env.DATABASE_URL=process.env.E2E_DATABASE_URL; require("child_process").execSync("npx prisma migrate deploy",{stdio:"inherit",env:process.env})'
+```
+
+It reads `.env` itself and prints nothing secret. Then `npm test` again.
 
 | Command | What it does |
 |---|---|
@@ -282,7 +290,7 @@ In the app, a principal gets the same links without the terminal: the dialog aft
 
 ---
 
-## 7d. The parent API (Steps 53.3 and 53.4)
+## 7d. The parent API (Steps 53.3, 53.4 and 55.6)
 
 What the Expo app calls. The full contract, with every answer, is `docs/PARENT-API.md`. With `npm run dev` running, sign in as a demo parent:
 
@@ -303,6 +311,8 @@ The answer has a `token` starting with `tal_par_`. Put it in a variable, then:
 | `curl -s -X POST http://localhost:3000/api/v1/parents/notifications/read-all -H "Authorization: Bearer $TOKEN" -o /dev/null -w "%{http_code}\n"` | `204`; every one of the parent's notifications is read (one: `…/notifications/<id>/read`) |
 | `curl -s -X POST http://localhost:3000/api/v1/parents/push-tokens -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"token":"ExponentPushToken[test]","platform":"android"}' -o /dev/null -w "%{http_code}\n"` | `204`; the phone's push address is saved |
 | `curl -s -X POST http://localhost:3000/api/v1/parents/logout -H "Authorization: Bearer $TOKEN" -o /dev/null -w "%{http_code}\n"` | `204`; the phone's push address is removed and the token stops working |
+| `curl -s -X POST http://localhost:3000/api/v1/parents/password-reset -H 'Content-Type: application/json' -d '{"email":"parent-one@balanga.example"}' -w " %{http_code}\n"` | `{} 202`, the same for any email (Step 55.6). The `npm run dev` terminal shows the email with its 6-digit code. |
+| `curl -s -X POST http://localhost:3000/api/v1/parents/password-reset/confirm -H 'Content-Type: application/json' -d '{"email":"parent-one@balanga.example","code":"<6 digits>","password":"Talaan123!"}'` | `{ token, parent }`: signed in with the new password, and every other phone's token stops working. Setting `Talaan123!` keeps the demo password. A wrong code: `400 invalid_code`. |
 
 After registering a push token, open **Attendance** as a principal and press **Record time in** on that parent's child's row (Step 55): the dev server's terminal shows `push: 1 message(s) to the log sender, none sent` and `push: sent 1, …` (Step 54, `docs/PUSH.md`). Restart `npm run dev` after pulling Step 54, so the push worker starts. About 15 to 20 minutes after a push, a quiet 5-minute check logs `push: receipts ok 1, …` and deletes that push's row (Step 54.1).
 
@@ -354,4 +364,8 @@ The usual order: the checks (section 2), then `git add -A`, then `git commit -m 
 | A reset email never arrives | `heroku logs --app bantayaral --num 500 \| grep "email:"`, then look the line up in `docs/EMAIL.md`'s log-line table. No line at all: nothing was sent on purpose (unknown or invited email, or a limit). Locally, the email is in the `npm run dev` terminal, never a mailbox. |
 | "Too many requests. Wait an hour and try again." | 3 reset requests for one email, or 20 from one network, in an hour. Locally, restart `npm run dev` (the counts live in memory). |
 | "We can't send emails right now. Try again tomorrow…" | The app's 80 emails a day are used up. A restart clears the count, but Resend's own 100 a day still holds. |
+| The parent app gets `503 unavailable` asking for a reset code, or the web says "We can't send emails right now. Try again later." | The server can't email anyone: still on `EMAIL_SENDER=log`, or the day's 80 are used up. The server refuses rather than say "sent" for an email that would never go (Step 55.6). |
+| "That code isn't right, or it has expired." (`400 invalid_code`) | Only the newest code works, for 15 minutes and 5 tries. Ask for a new one. Locally, the code is in the `npm run dev` terminal. |
+| A parent asked again and no new code came | 5 codes a day per parent, counted in the database, so a restart doesn't clear it. The log says `email: parent reset code not sent, 5 codes for this parent today`. Wait a day, or locally `npm run db:reset`. |
+| Every parent was signed out of the web portal after a deploy | Expected once, at Step 55.6: parent cookies now carry the password fingerprint, and older ones don't. Phones aren't affected. |
 | `heroku pg:psql …` says "The local psql command could not be located" | This Mac has no `psql`, but the Docker database does. Run the same query through it: `docker exec -it talaan-postgres psql "$(heroku config:get DATABASE_URL --app bantayaral)" -c '<the SQL>'` (start it first with `docker start talaan-postgres`). Or install `psql` for good: `brew install libpq && brew link --force libpq`. |

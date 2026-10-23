@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { SEED_STAFF_PASSWORD, SEED_STAFF_PASSWORD_HASH } from "@/data/seed/staff-password";
+import { SEED_PARENT_PASSWORD } from "@/data/repositories/parent-repository";
+import { SEED_PARENT_PASSWORD_HASH, SEED_STAFF_PASSWORD, SEED_STAFF_PASSWORD_HASH } from "@/data/seed/staff-password";
 import { hashPassword, passwordMatches, passwordVersion } from "./password";
 
 describe("hashPassword / passwordMatches", () => {
@@ -42,5 +43,9 @@ describe("passwordVersion", () => {
 describe("SEED_STAFF_PASSWORD_HASH", () => {
   it("is still the hash of SEED_STAFF_PASSWORD", async () => {
     await expect(passwordMatches(SEED_STAFF_PASSWORD, SEED_STAFF_PASSWORD_HASH)).resolves.toBe(true);
+  });
+
+  it("is also the demo parents' hash, of their own demo password (Step 55.6)", async () => {
+    await expect(passwordMatches(SEED_PARENT_PASSWORD, SEED_PARENT_PASSWORD_HASH)).resolves.toBe(true);
   });
 });

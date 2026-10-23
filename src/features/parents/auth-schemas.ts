@@ -37,3 +37,25 @@ export const linkChildSchema = z.object({
   lastName: z.string().trim().min(1, "Enter your child's last name"),
   birthDate: z.iso.date("Enter your child's birth date"),
 });
+
+/** A reset code's 6 digits (Step 55.6), trimmed, so a code copied with a space around it still works. */
+export const resetCodeSchema = z
+  .string({ error: "Enter the 6-digit code from the email" })
+  .trim()
+  .regex(/^\d{6}$/, "Enter the 6-digit code from the email");
+
+/**
+ * The web portal's second "Forgot your password?" screen (Step 55.6): the
+ * emailed code and a new password, typed twice. The email comes from the
+ * first screen, kept in the form, never in the address bar.
+ */
+export const parentResetPasswordSchema = z
+  .object({
+    code: resetCodeSchema,
+    password: passwordSchema,
+    confirmPassword: z.string().min(1, "Confirm your password"),
+  })
+  .refine((value) => value.password === value.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });

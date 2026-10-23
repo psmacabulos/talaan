@@ -40,16 +40,27 @@ export function readStaffSessionCookie(raw: string | undefined, secret: string, 
 /** The parent web portal's session (Step 50.1). The Expo app uses a bearer token instead (Step 53). */
 export const PARENT_SESSION_COOKIE = "talaan_parent_session";
 
-const parentSessionCookieSchema = z.object({ parentId: z.string().min(1) });
+/**
+ * What the parent cookie says: who, and their password fingerprint (`pv`,
+ * Step 55.6), so a reset signs out every other browser, as for staff. A
+ * cookie from before Step 55.6 has no `pv`, so it no longer fits.
+ */
+const parentSessionCookieSchema = z.object({ parentId: z.string().min(1), pv: z.string().min(1) });
+
+export type ParentSessionCookie = z.infer<typeof parentSessionCookieSchema>;
 
 /** Signed with its own purpose, so a staff cookie never works as a parent one, or the other way round. Also 30 days. */
-export function makeParentSessionCookie(parentId: string, secret: string, now: Date): string {
+export function makeParentSessionCookie(contents: ParentSessionCookie, secret: string, now: Date): string {
   const exp = Math.floor(now.getTime() / 1000) + SESSION_MAX_AGE_SECONDS;
-  return signValue({ parentId, exp }, "parent-session", secret);
+  return signValue({ ...contents, exp }, "parent-session", secret);
 }
 
-/** The parent id, or null when the cookie is missing, forged, expired or the wrong shape. */
-export function readParentSessionCookie(raw: string | undefined, secret: string, now: Date): string | null {
+/** The cookie's contents, or null when it's missing, forged, expired or the wrong shape. */
+export function readParentSessionCookie(
+  raw: string | undefined,
+  secret: string,
+  now: Date,
+): ParentSessionCookie | null {
   const parsed = parentSessionCookieSchema.safeParse(readSignedValue(raw, "parent-session", secret, now));
-  return parsed.success ? parsed.data.parentId : null;
+  return parsed.success ? parsed.data : null;
 }

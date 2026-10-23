@@ -15,6 +15,7 @@ const SCREENS: Screen[] = [
   { name: "forgot password", path: "/forgot-password", as: "anonymous" },
   { name: "parent login", path: "/parent/login", as: "anonymous" },
   { name: "parent signup", path: "/parent/signup", as: "anonymous" },
+  { name: "parent forgot password", path: "/parent/forgot-password", as: "anonymous" },
   { name: "dashboard (principal)", path: "/dashboard", as: "principal" },
   { name: "attendance (principal)", path: "/attendance", as: "principal" },
   { name: "students (principal)", path: "/students", as: "principal" },

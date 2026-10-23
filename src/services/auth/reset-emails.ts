@@ -21,7 +21,25 @@ export function resetLinkEmail(person: Person, link: string): EmailMessage {
   };
 }
 
-/** Sent after a reset (not a first password), so someone who didn't do it knows at once. */
+/** A parent's "forgot your password" code (Step 55.6). Not in the subject, so it doesn't show on a locked phone. */
+export function parentResetCodeEmail(person: Person, code: string, minutes: number): EmailMessage {
+  return {
+    to: person.email,
+    subject: `Your ${PRODUCT_NAME} password reset code`,
+    text: [
+      `Hi ${person.firstName},`,
+      "",
+      `Someone asked to reset the password for your ${PRODUCT_NAME} parent account, ${person.email}.`,
+      "Your code is:",
+      "",
+      code,
+      "",
+      `It works for ${minutes} minutes. If you didn't ask for it, you can ignore this email. Your password stays the same.`,
+    ].join("\n"),
+  };
+}
+
+/** Sent after a reset (not a first password), so someone who didn't do it knows at once. Parents get it too (Step 55.6). */
 export function passwordChangedEmail(person: Person): EmailMessage {
   return {
     to: person.email,

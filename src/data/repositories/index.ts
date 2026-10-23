@@ -34,3 +34,11 @@ export { createMockPushOutboxRepository, type PushOutboxRepository } from "./pus
 export { pushOutboxRepository, createPrismaPushOutboxRepository } from "./prisma-push-outbox-repository";
 export { type LinkAttemptRepository } from "./link-attempt-repository";
 export { linkAttemptRepository, createPrismaLinkAttemptRepository } from "./prisma-link-attempt-repository";
+export {
+  createMockParentPasswordResetRepository,
+  type ParentPasswordResetRepository,
+} from "./parent-password-reset-repository";
+export {
+  parentPasswordResetRepository,
+  createPrismaParentPasswordResetRepository,
+} from "./prisma-parent-password-reset-repository";

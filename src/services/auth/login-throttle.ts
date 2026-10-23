@@ -125,7 +125,10 @@ export const parentLinkThrottle = createLoginThrottle({ maxFailures: 5, windowMs
 /** 3 "Forgot your password?" emails asked for one staff email in an hour (Step 55.5), keyed by `staffResetKey`. */
 export const staffResetEmailThrottle = createLoginThrottle({ maxFailures: 3, windowMs: ONE_HOUR });
 
-/** 20 reset requests from one network in an hour, whatever the emails (Step 55.5). */
+/** 3 reset codes asked for one parent email in an hour (Step 55.6), keyed by `parentResetKey`. The database also allows 5 a day. */
+export const parentResetEmailThrottle = createLoginThrottle({ maxFailures: 3, windowMs: ONE_HOUR });
+
+/** 20 reset requests from one network in an hour, whatever the emails (Step 55.5; parents' too, Step 55.6). */
 export const resetAddressThrottle = createLoginThrottle({ maxFailures: 20, windowMs: ONE_HOUR });
 
 /**
@@ -150,4 +153,14 @@ export function parentThrottleKey(email: string): string {
 /** "Forgot your password?"'s key for a staff email, never shared with the sign-in count. */
 export function staffResetKey(email: string): string {
   return `staff-reset:${email.trim().toLowerCase()}`;
+}
+
+/** A parent's reset-code key (Step 55.6), never shared with their sign-in count or a staff email's. */
+export function parentResetKey(email: string): string {
+  return `parent-reset:${email.trim().toLowerCase()}`;
+}
+
+/** `parentAddressThrottle`'s key for a network: wrong parent passwords and wrong reset codes (Step 55.6) count together. */
+export function parentAddressKey(address: string): string {
+  return `parent-address:${address}`;
 }

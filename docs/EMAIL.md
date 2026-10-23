@@ -1,8 +1,8 @@
 # How the app sends email
 
-Since Step 55.5 the app sends email, for one job so far: **"Forgot your password?"** for staff. Step 55.6 adds parents' reset codes through the same pieces. Parents still get attendance news as pushes, never email (`docs/PUSH.md`).
+Since Step 55.5 the app sends email, for one job: **"Forgot your password?"**. Staff get a link (Step 55.5); parents get a 6-digit code (Step 55.6), through the same pieces. Parents still get attendance news as pushes, never email (`docs/PUSH.md`).
 
-Recipe: `docs/backend/step-55.5-email-staff-reset.md`. The decisions and their reasons are there; this page is how it works.
+Recipes: `docs/backend/step-55.5-email-staff-reset.md` and `docs/backend/step-55.6-parent-reset.md`. The decisions and their reasons are there; this page is how it works.
 
 ## The pieces
 
@@ -22,6 +22,7 @@ flowchart LR
 | The interface, both senders, `canEmailPeople` | `src/lib/email/email-sender.ts` |
 | The daily limit, shared by every email | `src/services/auth/capped-email.ts` |
 | Staff "Forgot your password?" | `src/services/auth/staff-password-reset.ts` |
+| Parents' reset codes (Step 55.6) | `src/services/parents/parent-password-reset.ts`, `src/services/parents/reset-code.ts` |
 | The emails' text | `src/services/auth/reset-emails.ts` |
 | The limits | `src/services/auth/login-throttle.ts` |
 | Settings and their start-up check | `src/lib/env.ts` (`appUrl`, `checkProductionEnv`) |
@@ -95,11 +96,12 @@ The count lives in memory, like the sign-in limits, so a restart clears it. Rese
 | `email: <what> failed: EAUTH` | Resend refused the API key. | A new key with sending access for `mail.bantayaral.com`, in `SMTP_PASSWORD`. |
 | `email: <what> failed: ETIMEDOUT` (or `ECONNECTION`) | The connection to `smtp.resend.com` hung or was refused. | Usually the port: try `SMTP_PORT=587`. |
 | `email: <what> failed: unknown` | The send failed with no error code. | Look at the lines just above it in the log. |
-| `email: reset email failed: lookup` | The database lookup before a staff reset email failed. | Check `/api/v1/health`: the database is likely down. |
+| `email: reset email failed: lookup` (staff) or `email: parent reset code failed: lookup` (parents) | The database lookup before a reset email failed. | Check `/api/v1/health`: the database is likely down. |
+| `email: parent reset code not sent, 5 codes for this parent today` | One parent asked for a 6th code in 24 hours (Step 55.6). Counted in the database, so a restart doesn't clear it. | Nothing, unless it happens often: someone may be asking for codes for that parent. |
 | `email: the daily limit is now reached; no more emails until it clears` | That was email 80 of the last 24 hours. | Wait. If it happens on a normal day, someone is asking for many resets. |
 | `email: <what> not sent, the daily limit is reached` | An email was skipped because of the daily limit. | The same. |
 
-`<what>` names the email: `reset email` or `password changed email` (Step 55.6 adds parent codes).
+`<what>` names the email: `reset email` (staff link), `parent reset code`, or `password changed email` (both).
 
 **No line at all** after a "Forgot your password?" means nothing was sent on purpose: an unknown or invited email, or a limit. The page said which, for a limit.
 
@@ -111,6 +113,10 @@ The count lives in memory, like the sign-in limits, so a restart clears it. Rese
 | Over 3 for one email, or 20 from one network, in an hour | "Too many requests. Wait an hour and try again." |
 | The daily limit is reached | "We can't send emails right now. Try again tomorrow, or ask your principal for a reset link." |
 | A live server on `log` (`canEmailPeople()` is false) | No reset form: the old "Ask your principal for a password reset link…" note. |
+| **Parents** (Step 55.6), any request that passed the limits | "If that email belongs to a parent account, we've sent a 6-digit code to it. It works for 15 minutes." The app gets `202 {}`. |
+| Parents, over 3 for one email or 20 from one network in an hour | "Too many requests. Wait an hour and try again." (`429 too_many_tries`) |
+| Parents, the daily limit reached **or** a live server on `log` | "We can't send emails right now. Try again later." (`503 unavailable`). The web hides the reset form; the app can't know ahead, so the server refuses instead of answering `202` for an email that would never go. |
+| Parents, a wrong, expired, used-up or replaced code | "That code isn't right, or it has expired. Check the newest email, or ask for a new code." (`400 invalid_code`) |
 
 **A live server won't start** without `EMAIL_SENDER`: `checkProductionEnv` (`src/lib/env.ts`) stops it, and the log names the setting (`EMAIL_SENDER must be "smtp" … or "log" …`, or `EMAIL_SENDER="smtp" needs SMTP_HOST, …`). Values are never printed.
 
@@ -126,6 +132,15 @@ The count lives in memory, like the sign-in limits, so a restart clears it. Rese
 5. In `after()`: `findForSignIn(email)`. An unknown email gets nothing, and so does an **invited** account (no password yet): its email was typed by a principal and never checked, so staff invitations stay a link the principal sends.
 6. The email holds Step 50.5's set-password link, made with `makeSetPasswordToken(…, RESET_EMAIL_LINK_SECONDS)`: 1 hour instead of 7 days, otherwise the same token and the same `/set-password` page. Setting the password changes the password fingerprint, so the link works once and every other browser is signed out (`docs/AUTH.md`).
 7. After the new password is set, `setPasswordWithLink` clears that email's sign-in lockout and, for a reset (the account was already active), sends "Your Bantay Aral password was changed".
+
+## "Forgot your password?" for parents (Step 55.6)
+
+Parents are usually on a phone, and a link would open the phone's browser rather than the app, so they get a **6-digit code** instead, typed into the app or the web portal (`/parent/forgot-password`).
+
+1. `startParentPasswordReset` answers `unavailable` when `canEmailPeople()` is false or the daily limit is reached, then applies the limits (3 per email an hour, `parent-reset:<email>`; 20 per network, shared with staff resets). The answer is the same for every email.
+2. In `after()`: `findByEmail`. An unknown email gets nothing. Then `countRecent` deletes that parent's rows older than a day and counts the rest: past 5, nothing is sent. Otherwise a new `ParentPasswordReset` row holds the code's HMAC (never the code), valid 15 minutes, and the email goes through `sendCappedEmail` as `parent reset code`.
+3. `confirmParentPasswordReset` (code + new password): finds the parent's **newest** code, **spends a try first** (one `UPDATE … WHERE tries < 5`), then compares, so guesses sent together still get 5 checks at most. A right code: one transaction marks it used, stores the new hash, deletes every phone's sign-in (push addresses go with them) and the parent's codes. The web cookie's password fingerprint (`docs/AUTH.md`) signs out every other browser.
+4. The caller signs in the phone or browser that did it and sends "Your Bantay Aral password was changed".
 
 ### Why links in emails use `APP_URL`
 

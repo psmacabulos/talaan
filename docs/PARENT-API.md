@@ -1,6 +1,6 @@
 # The parent API
 
-The contract between this backend and the Bantay Aral parent app (Expo, its own repository). Every address the app may call is here, with a `curl` example and a real answer from the local server. The app's repository keeps a copy of this file as `docs/TALAAN-API.md` (`mobile/README.md`, "How to start the new repository"). **When this file and the app's starter kit (`mobile/starter/`) disagree, this file wins.** Built in Steps 53.3 (sign-in) and 53.4 (notifications, push tokens, photos).
+The contract between this backend and the Bantay Aral parent app (Expo, its own repository). Every address the app may call is here, with a `curl` example and a real answer from the local server. The app's repository keeps a copy of this file as `docs/TALAAN-API.md` (`mobile/README.md`, "How to start the new repository"). **When this file and the app's starter kit (`mobile/starter/`) disagree, this file wins.** Built in Steps 53.3 (sign-in) and 53.4 (notifications, push tokens, photos); Step 55.6 added the password reset.
 
 Rules for changing it: a new field may be added at any time, since the app ignores fields it doesn't know. Renaming or removing a field, or changing what a status code means, needs a new version (`/api/v2/…`), because phones already in parents' hands still call the old one.
 
@@ -51,6 +51,8 @@ TOKEN=tal_par_…   # from the answer
 | `GET /api/v1/parents/schools` | no | | `200 { schools: [{ id, name }] }` |
 | `POST /api/v1/parents/signup` | no | `{ firstName, lastName, mobile, email, password, deviceLabel? }` | `201 { token, parent }` |
 | `POST /api/v1/parents/login` | no | `{ email, password, deviceLabel? }` | `200 { token, parent }` |
+| `POST /api/v1/parents/password-reset` | no | `{ email }` | `202 {}` |
+| `POST /api/v1/parents/password-reset/confirm` | no | `{ email, code, password, deviceLabel? }` | `200 { token, parent }` |
 | `POST /api/v1/parents/logout` | yes | | `204` |
 | `GET /api/v1/parents/me` | yes | | `200 { parent, children: [ChildToday] }` |
 | `POST /api/v1/parents/children` | yes | `{ schoolId, lrn, lastName, birthDate }` | `201 { child: ChildToday }` |
@@ -107,6 +109,31 @@ curl -s http://localhost:3000/api/v1/parents/schools
 ```
 
 Sign-up asks for no school: one account covers children at any number of schools, and each child is linked with its own. There's no `confirmPassword`; the app checks that itself if it asks twice. A sign-up sent again after a lost answer gets `409 conflict` ("email taken"): the app treats that as "sign in instead". `deviceLabel` is a name the parent could recognise later, such as the phone's model.
+
+### `POST /password-reset` and `POST /password-reset/confirm` (Step 55.6)
+
+A parent who forgot their password gets a 6-digit code by email, then sends it with a new password. Two screens in the app:
+
+1. **Email.** `POST /password-reset { email }`. The answer is `202 {}` for **any** email that passes the limits, whether or not it has an account, so show the same text every time: "If that email belongs to a parent account, we've sent a 6-digit code to it. It works for 15 minutes." The email arrives within a minute, subject "Your Bantay Aral password reset code", the code in the body (never the subject).
+2. **Code and new password.** `POST /password-reset/confirm { email, code, password, deviceLabel? }`. The answer is the same as login, `200 { token, parent }`: store the token, then **register the push address again**, because the reset removed it.
+
+```bash
+curl -s -X POST http://localhost:3000/api/v1/parents/password-reset -H 'Content-Type: application/json' \
+  -d '{"email":"parent-one@balanga.example"}' -w " %{http_code}\n"
+# {} 202   ← and the npm run dev terminal shows the email, with the code
+
+curl -s -X POST http://localhost:3000/api/v1/parents/password-reset/confirm -H 'Content-Type: application/json' \
+  -d '{"email":"parent-one@balanga.example","code":"<the 6 digits>","password":"Talaan123!","deviceLabel":"curl"}'
+# {"token":"tal_par_…","parent":{…}}
+```
+
+- **Keep only the email between the two screens**, in the screen's state, not SecureStore. A code field: `keyboardType="number-pad"`, `textContentType="oneTimeCode"` (iOS) and `autoComplete="one-time-code"` (Android), so the keyboard can offer the code from the email. Trim it and check it's 6 digits before sending.
+- **A code works for 15 minutes, once, and for 5 tries.** Only the newest code works: asking again makes the older one useless. Offer "Send a new code", waiting 30 seconds after each send.
+- **Every failed code gets one answer**, `400 invalid_code`: wrong, expired, used up, replaced by a newer one, or an email with no account. Show its message and keep what was typed.
+- **A reset signs the parent out everywhere else:** every other phone's token stops working (its next request gets `401`) and its push address is removed; every web portal session ends. The parent gets "Your Bantay Aral password was changed" by email.
+- **Limits:** 3 codes per email and 20 requests per network in an hour (`429 too_many_tries`), at most 5 codes per parent a day (past that, nothing more is sent, with the same `202`), and wrong codes count with wrong passwords against the network's 30 in 15 minutes.
+- **A `5xx` after confirm** (the server failed after the code was accepted): the password may already be the new one, and the code is used. Go to sign-in with the new password.
+- **`503 unavailable`** means no email can go right now: the app's 80 emails a day are used up, or the server isn't set up to send email yet. The server says so rather than answering `202` for an email that would never arrive (a server on `EMAIL_SENDER=log` only notes emails in its log; `docs/EMAIL.md`). Show the message: "We can't send emails right now. Try again later."
 
 ### `GET /me`
 
@@ -221,7 +248,9 @@ Every error has one shape:
 | `invalid_input` | 400 | a field failed the server's checks; `fields` has a message per field | show each message under its field |
 | `unauthorized` | 401 | no token, or not a working one | sign out, go to sign-in |
 | `wrong_credentials` | 401 | wrong email or password (`"That email or password isn't right."`) | show the message, keep the email |
-| `too_many_tries` | 429 | 5 wrong passwords for one email in 15 minutes, 30 from one network in 15 minutes, 100 sign-ups from one network in an hour, 5 wrong "link a child" tries by one parent in 15 minutes, or 10 tries for one child in 24 hours | show the message; the form stays usable |
+| `too_many_tries` | 429 | 5 wrong passwords for one email in 15 minutes, 30 wrong passwords or reset codes from one network in 15 minutes, 100 sign-ups from one network in an hour, 5 wrong "link a child" tries by one parent in 15 minutes, 10 tries for one child in 24 hours, or 3 reset codes for one email (20 requests from one network) in an hour | show the message; the form stays usable |
+| `invalid_code` | 400 | a reset code that's wrong, expired, used up or replaced, or an email with no account (Step 55.6): "That code isn't right, or it has expired. Check the newest email, or ask for a new code." Never `401`, which means "signed out". | show the message, keep what was typed |
+| `unavailable` | 503 | no email can go right now (Step 55.6): the day's 80 are used up, or the server isn't set up to send email yet (`EMAIL_SENDER=log`) | show the message; try again later |
 | `not_found` | 404 | not theirs, or doesn't exist (never "forbidden") | "That's no longer available", then refresh |
 | `conflict` | 409 | email taken, child already linked | show the message |
 | `link_blocked` | 403 | linking a child the school removed this parent from (Step 55.4): "This child can't be linked to your account. Contact your child's school." | show the message |
@@ -243,6 +272,7 @@ The LRN, the birth date, the guardian's name and mobile, the card serial, and an
 | The answers and the error shape | `src/features/parents/api-responses.ts` |
 | Tokens | `src/services/parents/parent-token.ts` |
 | Push addresses, and signing a phone out | `src/services/parents/push-tokens.ts` |
+| The password reset: codes, limits, signing out everywhere | `src/services/parents/parent-password-reset.ts`, `reset-code.ts` |
 | Sign-up, sign-in, link a child, the day, the feed | `src/services/parents/*.ts`, shared with the web portal |
 | Photos | `src/services/photos/photo-viewer.ts` |
 | Browser test, API only | `e2e/parent-api.spec.ts` |

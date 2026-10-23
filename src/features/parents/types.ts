@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import type { notificationKindSchema, notificationSchema, parentSchema, parentStudentLinkSchema } from "./schemas";
-import type { linkChildSchema, parentLoginSchema, parentSignupSchema } from "./auth-schemas";
+import type { linkChildSchema, parentLoginSchema, parentResetPasswordSchema, parentSignupSchema } from "./auth-schemas";
 import type { Student } from "../students/types";
 
 export type Parent = z.infer<typeof parentSchema>;
@@ -24,6 +24,8 @@ export type FeedNotification = Notification & { aboutParent: ParentName | null }
 export type ParentSignupInput = z.infer<typeof parentSignupSchema>;
 export type ParentLoginInput = z.infer<typeof parentLoginSchema>;
 export type LinkChildInput = z.infer<typeof linkChildSchema>;
+/** Step 55.6's code-and-new-password screen. */
+export type ParentResetPasswordInput = z.infer<typeof parentResetPasswordSchema>;
 
 /** A parent account linked to a child, as the school sees it (Step 55.3). Never the parent's email. */
 export type LinkedGuardian = {

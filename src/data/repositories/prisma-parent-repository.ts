@@ -7,7 +7,7 @@ import { decoyPasswordHash, hashPassword, passwordMatches } from "@/lib/password
 import type { ParentRepository } from "./parent-repository";
 import { isUniqueViolation } from "./prisma-errors";
 
-/** A database row → the app's own `Parent`. The password hash never leaves this file. */
+/** A database row → the app's own `Parent`. The password hash leaves this file only through `getForSession`, for the cookie's fingerprint. */
 export function toParent(row: ParentRow): Parent {
   return parentSchema.parse({
     id: row.id,
@@ -42,6 +42,10 @@ export function createPrismaParentRepository(db: PrismaClient = prisma): ParentR
     async getById(id) {
       const row = await db.parent.findUnique({ where: { id } });
       return row ? toParent(row) : null;
+    },
+    async getForSession(id) {
+      const row = await db.parent.findUnique({ where: { id } });
+      return row ? { parent: toParent(row), passwordHash: row.passwordHash } : null;
     },
     async findByEmail(email) {
       const row = await findRowByEmail(email);

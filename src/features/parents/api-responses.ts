@@ -22,7 +22,9 @@ export type ApiErrorCode =
   | "too_many_tries"
   | "not_found"
   | "conflict"
-  | "link_blocked";
+  | "link_blocked"
+  | "invalid_code"
+  | "unavailable";
 
 const STATUS: Record<ApiErrorCode, number> = {
   invalid_input: 400,
@@ -34,6 +36,12 @@ const STATUS: Record<ApiErrorCode, number> = {
   // The school removed this parent from this child (Step 55.4). Only ever
   // answered after the details matched, so it reveals nothing new.
   link_blocked: 403,
+  // A reset code that's wrong, expired, used up or replaced (Step 55.6).
+  // Never 401: the app treats every 401 as "signed out".
+  invalid_code: 400,
+  // No email can go right now: the day's limit, or a live server not yet
+  // sending email (Step 55.6), so the app never says "sent" when nothing was.
+  unavailable: 503,
 };
 
 /** The plain messages for errors that have no more specific one. */
