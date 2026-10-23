@@ -31,9 +31,9 @@ const tap = (id: string, time: string, studentId: string | null = "s1"): Tap => 
 describe("monitorEventsFromTaps", () => {
   it("lists the newest first, with time in and out by order, a lost card, and an unknown card", () => {
     const events = monitorEventsFromTaps(
-      [tap("a", "07:50"), tap("b", "12:00"), tap("c", "12:30", null), tap("d", "13:00")],
+      [tap("a", "07:50"), tap("b", "12:00"), tap("c", "12:30", null), tap("d", "13:00", null)],
       [juan],
-      new Set(["d"]),
+      new Map([["d", "s1"]]),
     );
     expect(events.map((event) => [event.id, event.outcome, event.direction])).toEqual([
       ["d", "lost_card", null],
@@ -41,6 +41,8 @@ describe("monitorEventsFromTaps", () => {
       ["b", "recorded", "time_out"],
       ["a", "recorded", "time_in"],
     ]);
+    // A lost card's tap has no student; the alert names the owner.
+    expect(events[0].student?.id).toBe("s1");
     expect(events[2].student).toEqual({
       id: "s1",
       firstName: "Juan",
@@ -53,7 +55,19 @@ describe("monitorEventsFromTaps", () => {
 
   it("keeps only the latest 12", () => {
     const many = Array.from({ length: 20 }, (_, i) => tap(`t${i}`, `08:${String(i).padStart(2, "0")}`));
-    expect(monitorEventsFromTaps(many, [juan], new Set())).toHaveLength(12);
+    expect(monitorEventsFromTaps(many, [juan], new Map())).toHaveLength(12);
+  });
+
+  it("doesn't let a lost card's tap shift its owner's time in to a time out (Step 57)", () => {
+    const events = monitorEventsFromTaps(
+      [tap("lost", "07:10", null), tap("own", "07:30")],
+      [juan],
+      new Map([["lost", "s1"]]),
+    );
+    expect(events.map((event) => [event.id, event.outcome, event.direction])).toEqual([
+      ["own", "recorded", "time_in"],
+      ["lost", "lost_card", null],
+    ]);
   });
 });
 

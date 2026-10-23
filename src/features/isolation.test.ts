@@ -43,18 +43,24 @@ vi.mock("@/data/repositories", async () => {
     notificationRepository: createMockNotificationRepository(copy(seed.seedNotifications), options),
     parentStudentLinkRepository: createMockParentStudentLinkRepository(copy(seed.seedParentStudentLinks), options),
     schoolRepository: createMockSchoolRepository(copy(seed.seedSchools), options),
-    alertRepository: createMockAlertRepository(copy(seed.seedAlerts), options),
+    alertRepository: createMockAlertRepository(copy(seed.seedAlerts), copy(seed.seedTaps), options),
     // Never reached: every write below is refused before it (Step 55's recordTimeIn).
     tapWriter: { record: async () => "created" as const },
   };
 });
 
-const { studentRepository, staffRepository, tapRepository, notificationRepository, parentStudentLinkRepository } =
-  await import("@/data/repositories");
+const {
+  studentRepository,
+  staffRepository,
+  tapRepository,
+  notificationRepository,
+  parentStudentLinkRepository,
+  alertRepository,
+} = await import("@/data/repositories");
 const { updateStudent } = await import("@/features/students/actions");
 const { checkCardSerial } = await import("@/features/students/card-actions");
 const { removeStaff, createSignInLink } = await import("@/features/staff/actions");
-const { recordTimeIn } = await import("@/features/attendance/actions");
+const { recordTimeIn, markAlertHandled } = await import("@/features/attendance/actions");
 const { markNotificationRead } = await import("@/features/parents/notification-actions");
 const { removeParentLink, allowParentLinkAgain } = await import("@/features/students/parent-link-actions");
 
@@ -127,6 +133,16 @@ describe("Oceanview can't reach Balanga's data (Step 51)", () => {
       error: "That student isn't in a class you can record.",
     });
     await expect(tapRepository.listByStudent(BALANGA, balangaStudent.id)).resolves.toEqual(before);
+  });
+
+  it("can't mark a Balanga alert handled (Step 57)", async () => {
+    signInAsOceanview();
+    const [balangaAlert] = (await alertRepository.listOpen(BALANGA, 1)).alerts;
+    await expect(markAlertHandled(balangaAlert.id)).resolves.toEqual({
+      ok: false,
+      error: "That alert is no longer open.",
+    });
+    await expect(alertRepository.listOpen(BALANGA, 1)).resolves.toMatchObject({ alerts: [{ id: balangaAlert.id }] });
   });
 
   it("a parent can't mark another school's notification read", async () => {

@@ -33,7 +33,10 @@ export async function publishStoredTap(
   students: Pick<StudentRepository, "getInSchool"> = studentRepository,
 ): Promise<void> {
   if (!("tap" in result) || result.replayed) return;
-  const student = result.tap.studentId ? await students.getInSchool(result.tap.schoolId, result.tap.studentId) : null;
+  // From the answer, not the tap: a lost card's tap has no student, but its
+  // owner's photo still goes to the monitor (Step 57).
+  const studentId = "student" in result ? result.student?.id : undefined;
+  const student = studentId ? await students.getInSchool(result.tap.schoolId, studentId) : null;
   const event = toGateTapEvent(result, student?.photoKey ? photoPath(student.photoKey) : null);
   if (event) publishTap(result.tap.schoolId, event);
 }

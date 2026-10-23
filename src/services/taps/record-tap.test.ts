@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { createMockAlertRepository } from "@/data/repositories/alert-repository";
 import { createMockCardRepository } from "@/data/repositories/card-repository";
 import { createMockSchoolRepository } from "@/data/repositories/school-repository";
 import { createMockStudentRepository } from "@/data/repositories/student-repository";
 import { createMockTapRepository } from "@/data/repositories/tap-repository";
 import type { TapWrite, TapWriter } from "@/data/repositories/tap-writer";
-import type { Tap } from "@/features/attendance/types";
+import type { Alert, Tap } from "@/features/attendance/types";
 import type { NotificationPreference, School } from "@/features/schools/types";
 import type { Card, Student } from "@/features/students/types";
 import { schoolTimeToIso } from "@/lib/school-time";
@@ -50,6 +51,7 @@ function setup({
   preference = "time_in_and_time_out" as NotificationPreference,
 } = {}) {
   const taps: Tap[] = [];
+  const alerts: Alert[] = [];
   const writes: TapWrite[] = [];
   const writer: TapWriter = {
     async record(write) {
@@ -63,6 +65,7 @@ function setup({
         existing.tappedAt < window.to;
       if (taps.some(inWindow)) return "duplicate";
       taps.push(write.tap);
+      if (write.alert) alerts.push(write.alert);
       writes.push(write);
       return "created";
     },
@@ -72,6 +75,7 @@ function setup({
     taps: createMockTapRepository(taps, { latencyMs: 0 }),
     students: createMockStudentRepository([juan], { latencyMs: 0 }),
     schools: createMockSchoolRepository([school(preference)], { latencyMs: 0 }),
+    alerts: createMockAlertRepository(alerts, taps, { latencyMs: 0 }),
     writer,
   };
   return { deps, taps, writes };
@@ -160,14 +164,30 @@ describe("recordTap", () => {
     expect(writes).toHaveLength(1);
   });
 
-  it("stores a lost card's tap with its owner, raises an alert, and notifies nobody", async () => {
+  it("stores a lost card's tap with no student, raises an alert naming the owner, and notifies nobody", async () => {
     const { deps, writes } = setup({ cards: [card("53:2E:98:0C:14:00:01", "lost")] });
     const result = await recordTap(input(), deps);
 
+    // The gate still says whose card it was.
     expect(result).toMatchObject({ outcome: "lost_card", student: { id: juan.id }, replayed: false });
-    expect(writes[0].tap.studentId).toBe(juan.id);
-    expect(writes[0].alert).toMatchObject({ type: "lost_card_tapped", tapId: writes[0].tap.id, acknowledged: false });
+    expect(writes[0].tap.studentId).toBeNull();
+    expect(writes[0].alert).toMatchObject({
+      type: "lost_card_tapped",
+      tapId: writes[0].tap.id,
+      studentId: juan.id,
+      acknowledged: false,
+    });
     expect(writes[0].notification).toBeNull();
+  });
+
+  it("keeps the owner's next real tap a time in after their lost card is tapped (Step 57)", async () => {
+    const { deps } = setup({
+      cards: [card("53:2E:98:0C:14:00:01", "lost"), card("04:A3:5F:2B:91:C0:80", "active")],
+    });
+    await recordTap(input(), deps);
+    const ownTap = await recordTap(input(2 * MINUTE + 1000, { rawSerial: "04:A3:5F:2B:91:C0:80" }), deps);
+
+    expect(ownTap).toMatchObject({ outcome: "recorded", direction: "time_in", student: { id: juan.id } });
   });
 
   // Not stored (owner review, 2026-10-13): it's nobody's attendance. The
@@ -206,11 +226,24 @@ describe("recordTap", () => {
     expect(writes).toHaveLength(1);
   });
 
-  it("answers a resent lost-card tap as a lost card", async () => {
+  it("answers a resent lost-card tap as a lost card, naming the owner from its alert", async () => {
     const { deps } = setup({ cards: [card("53:2E:98:0C:14:00:01", "lost")] });
     const sent = input();
     await recordTap(sent, deps);
-    expect(await recordTap(sent, deps)).toMatchObject({ outcome: "lost_card", replayed: true });
+    expect(await recordTap(sent, deps)).toMatchObject({
+      outcome: "lost_card",
+      student: { id: juan.id },
+      replayed: true,
+    });
+  });
+
+  it("answers a resent normal tap as recorded, even if its card was reported lost since", async () => {
+    const activeCard = card("53:2E:98:0C:14:00:01", "active");
+    const { deps } = setup({ cards: [activeCard] });
+    const sent = input();
+    await recordTap(sent, deps);
+    activeCard.status = "lost";
+    expect(await recordTap(sent, deps)).toMatchObject({ outcome: "recorded", direction: "time_in", replayed: true });
   });
 
   it("gives the replay answer when the same tap was written a moment earlier by a racing request", async () => {

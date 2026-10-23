@@ -87,6 +87,8 @@ export function deriveTapKind(tap: Tap, allStudentTaps: Tap[]): NotificationKind
   const at = Date.parse(tap.tappedAt);
   const priorSameDay = allStudentTaps.filter(
     (other) =>
+      // A tap with no student (a lost card's, Step 57) is nobody's to count.
+      other.studentId !== null &&
       other.studentId === tap.studentId &&
       other.id !== tap.id &&
       schoolDateOf(other.tappedAt) === day &&

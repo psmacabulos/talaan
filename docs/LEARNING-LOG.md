@@ -1204,7 +1204,19 @@ The card is a separate thing, in its own `Card` table. Each card row has its own
 1. Their current card row is marked `lost`. Its serial stays on record, so if it's tapped later the station raises a lost-card alert.
 2. A new card row is created with the new serial and the **same** `studentId`. "One active card per student" is enforced by the database from Step 39.
 
-So the student's `id` stays put and only the card changes. Old taps keep both the serial that was read and the `studentId` it belonged to at that moment, so history stays right after a replacement.
+So the student's `id` stays put and only the card changes. Old taps keep both the serial that was read and the `studentId` it belonged to at that moment, so history stays right after a replacement. (Since Step 57, a lost card's tap keeps no `studentId`: its alert names the owner instead, so it never counts as their attendance.)
+
+### If a lost card is found and given back, can it be turned on again? (owner question, Step 57)
+**Not today.** A card marked lost stays lost for good. Linking its serial again is refused with "This card was reported lost or retired, so it can't be linked again. Use a different card." (`src/features/students/card-changes.ts`). Each physical card has one row, forever, and its serial is unique, so the same card can't be added as a new row either.
+
+**Why it was built that way:** the serial is burned into the chip and can't be changed, so "lost" is what lets the gate raise an alert whenever that card shows up again.
+
+**Turning it back on can be done safely:**
+- Only the same student.
+- Only a principal or super admin.
+- Only while the student has no active card. If they already have a replacement, the old card stays lost, because a student has one active card at a time.
+
+Since Step 57, history stays right afterwards: the taps made while it was lost are recognised by their alerts, not by the card's status, so they still don't count. The one real risk: anyone who had the card could have copied its serial onto another card, since the card holds nothing but that number. That copy would work again too. Decision: pending (2026-10-23). Once made, it's written up in [`docs/GATE.md`](GATE.md).
 
 ### What is a migration, and what happens when the database has to change later? (owner question, Step 34)
 A migration is one small, named, committed change to the database's *shape* (its tables and columns), like a git commit for the database. `migrate dev` writes one on your laptop. `migrate deploy` runs the ones a database hasn't run yet. Changing only screens or the contents of a JSON column (like removing the custom color picker) is a code change, not a migration, but existing rows may need a data fix. Full lesson, with worked examples on this project's `School` model: [`docs/DATABASE-MIGRATIONS.md`](DATABASE-MIGRATIONS.md).

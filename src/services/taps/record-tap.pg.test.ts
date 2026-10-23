@@ -3,6 +3,7 @@ import "dotenv/config";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaPg } from "@prisma/adapter-pg";
 import {
+  createPrismaAlertRepository,
   createPrismaCardRepository,
   createPrismaSchoolRepository,
   createPrismaStudentRepository,
@@ -166,6 +167,7 @@ describeWithDatabase("one read, one tap on Postgres (Step 56; needs E2E_DATABASE
       taps: heldTaps,
       students: createPrismaStudentRepository(db),
       schools: createPrismaSchoolRepository(db),
+      alerts: createPrismaAlertRepository(db),
       writer,
     };
     const read = () =>

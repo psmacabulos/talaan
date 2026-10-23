@@ -2760,3 +2760,61 @@ npx eslint <the changed files>                                # clean
 
 **Architect's code review:** nothing blocking; it confirmed the held-transaction test's reasoning (no shared row, so without the lock the writer returns at once, and the result doesn't depend on the 300 ms). Taken: `forget()` on a failed send, `try … finally` around the held transaction, and an honest test header. Not taken: comparing USB and Web NFC reads of one card (the server's lock covers it).
 
+
+## Step 57: lost cards and alerts (2026-10-23)
+
+**Two decisions first.** The step began with a question only the owner could answer: does a lost card's tap count as its owner's attendance? The owner chose no, and chose a plain yes or no for "handled" (no who or when). Then the recipe, `docs/backend/step-57-lost-cards-and-alerts.md`, approved the same day.
+
+**What the old behaviour did to the demo.** The seed has student-0001 tapping in at 7:56 AM and their old, lost card tapped at 8:05. Both taps carried student-0001's id, so `deriveTapKind` made the 8:05 one their **time out**: the demo's own scenario showed the bug.
+
+**Plan review.** The architect agreed with storing the tap with no student, rather than keeping it and leaving alerted taps out of every count. Four gaps it found were checked against the code and taken:
+- `publishStoredTap` looked up the monitor's photo through `result.tap.studentId`.
+- `monitorEventsFromTaps` returned "unknown card" before it checked for an alert.
+- `replay()` judged by the card's status now. That was also a latent bug: a normal tap whose card was reported lost later replayed as a lost card.
+- The seed and its test.
+
+Its index on `Alert.studentId` wasn't taken: nothing deletes a student.
+
+**The migration.** Generated, then edited by hand before applying:
+
+```bash
+npx prisma migrate dev --name lost_card_taps_have_no_student --create-only   # column, index, foreign key
+# appended: two UPDATEs, each guarded so a second run changes nothing
+npx prisma migrate dev && npx prisma generate
+```
+
+The `(schoolId)` index on `Alert` became `(schoolId, acknowledged, createdAt)`, to match "open alerts, newest first".
+
+**The code.**
+- **Lost card's tap:** `recordTap` stores it with `studentId: null` and puts `card.studentId` on the alert.
+- **Resends:** `replay()` asks `alerts.listForTaps` for the stored tap's alert first.
+- **Alert repository:** `listBySchool` became three methods:
+  - `listOpen(schoolId, limit)`: `$transaction([findMany include tap, count])`;
+  - `listForTaps(schoolId, tapIds)`;
+  - `acknowledge(schoolId, alertId)`: `updateMany` by id and school, so it's safe to repeat.
+- **Mark handled:** the rules sit in `src/services/alerts/mark-alert-handled.ts`, like `recordManualTimeIn`, so they're tested without a session. The server action stays thin.
+- **The gate monitor and the dashboard's live feed:** both now ask only about the taps they show (12 and 7).
+
+**Two problems while testing** (`docs/PROBLEMS-LOG.md`):
+- **P-038:** the new Postgres test met a test database without the new column. Fixed with the "Postgres tests" command in `docs/COMMANDS.md` (`migrate deploy` against `E2E_DATABASE_URL`).
+- **P-039:** the test's taps had ids that aren't UUIDs, which `tapSchema` rejects on read.
+
+Targeted runs while building:
+
+```bash
+npx tsc --noEmit                                                                     # clean
+npx vitest run src/features/attendance src/features/gate src/services/taps src/services/alerts src/data src/features/isolation.test.ts
+                                                                                     # 54 files, 366 passed
+npx vitest run src/data/repositories/prisma-alert-repository.pg.test.ts src/services/taps/record-tap.pg.test.ts
+                                                                                     # 8 passed, against Postgres
+```
+
+Not run: lint, `check:tokens`, the full `npm test`, the build and the browser tests. Those are the owner's.
+
+**Architect's code review:** nothing blocking, and no school-scoping gap.
+- **Taken:** the dashboard names the owner from the tap when an alert has none. That only happens for an alert the old code writes during the deploy, since the migration runs before the new code starts.
+- **Deploy advice:** deploy outside gate hours, then run the live check from the recipe.
+- **Not taken:** the mock `listOpen` counts an alert whose tap is missing. That can't happen in Postgres (the foreign key), so it's harmless.
+- **Noted, outside this step:** the teacher dashboard's one query per student is Step 62's.
+
+**The owner's browser test run** failed one parent API test with 429 instead of 401 (`docs/PROBLEMS-LOG.md`, P-040). It's not from Step 57: the file's fake addresses came from a counter that each Playwright worker starts again at 10, so two tests could share an address, and one of them locks its address on purpose. `freshAddress()` now picks a random IPv6 /64 in the documentation range.

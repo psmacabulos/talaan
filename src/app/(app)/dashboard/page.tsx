@@ -14,8 +14,8 @@ import { requireSession } from "@/lib/session";
 import { AttendanceHero } from "@/features/attendance/attendance-hero";
 import { ClassRoll } from "@/features/attendance/class-roll";
 import { GradeBreakdown } from "@/features/attendance/grade-breakdown";
-import { LiveTapFeed } from "@/features/attendance/live-tap-feed";
-import { NeedsAttention } from "@/features/attendance/needs-attention";
+import { LiveTapFeed, recentFeedTaps } from "@/features/attendance/live-tap-feed";
+import { ALERTS_SHOWN, NeedsAttention } from "@/features/attendance/needs-attention";
 import { NoSchoolSelected } from "@/features/attendance/no-school-selected";
 import { attendanceByGrade, countByStatus, DEFAULT_ATTENDANCE_TIMES, schoolToday } from "@/features/attendance/status";
 import { deriveCardStatus } from "@/features/students/card-status";
@@ -137,14 +137,17 @@ export default async function DashboardPage() {
 
   const schoolId = session.schoolId;
   const linksSince = new Date(Date.parse(now) - NEW_LINKS_DAYS * 24 * 60 * 60_000).toISOString();
-  const [alerts, newLinks] = await Promise.all([
-    alertRepository.listBySchool(schoolId),
+  // Open alerts come with their taps in one query (Step 57). The live feed
+  // asks only about its own few taps' alerts, so a lost card shows whose it was.
+  const [openAlerts, newLinks, feedAlerts] = await Promise.all([
+    alertRepository.listOpen(schoolId, ALERTS_SHOWN),
     parentStudentLinkRepository.listRecentInSchool(schoolId, linksSince, NEW_LINKS_SHOWN),
+    alertRepository.listForTaps(
+      schoolId,
+      recentFeedTaps(taps).map((tap) => tap.id),
+    ),
   ]);
-  const openAlerts = alerts.filter((alert) => !alert.acknowledged);
-  const alertTaps = (
-    await Promise.all(openAlerts.map((alert) => tapRepository.getInSchool(schoolId, alert.tapId)))
-  ).filter((tap) => tap !== null);
+  const lostCardOwners = new Map(feedAlerts.map((alert) => [alert.tapId, alert.studentId]));
 
   return (
     <div className="flex flex-col gap-6">
@@ -177,11 +180,11 @@ export default async function DashboardPage() {
             title="Needs attention"
             aside={
               <span className="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
-                {openAlerts.length} open
+                {openAlerts.total} open
               </span>
             }
           >
-            <NeedsAttention alerts={openAlerts} alertTaps={alertTaps} students={students} today={day.date} />
+            <NeedsAttention alerts={openAlerts.alerts} students={students} today={day.date} />
           </DashboardCard>
 
           <DashboardCard
@@ -209,7 +212,7 @@ export default async function DashboardPage() {
               </a>
             }
           >
-            <LiveTapFeed taps={taps} students={students} />
+            <LiveTapFeed taps={taps} students={students} lostCardOwners={lostCardOwners} />
           </DashboardCard>
         </div>
       </div>

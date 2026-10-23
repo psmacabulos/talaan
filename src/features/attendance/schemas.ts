@@ -32,6 +32,8 @@ export const alertSchema = z.object({
   id: z.string().min(1),
   schoolId: z.string().min(1),
   tapId: z.string().min(1),
+  /** Whose lost card it was (Step 57): the tap itself has no student, so it isn't their attendance. */
+  studentId: z.string().min(1).nullable(),
   type: alertTypeSchema,
   createdAt: z.iso.datetime(),
   acknowledged: z.boolean(),

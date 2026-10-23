@@ -1,9 +1,11 @@
 import {
+  alertRepository,
   cardRepository,
   schoolRepository,
   studentRepository,
   tapRepository,
   tapWriter,
+  type AlertRepository,
   type CardRepository,
   type SchoolRepository,
   type StudentRepository,
@@ -59,11 +61,13 @@ export type RecordTapResult =
   | { outcome: "invalid_serial" };
 
 export type RecordTapDeps = {
-  cards: Pick<CardRepository, "listBySerialPrefix" | "getBySerial">;
+  cards: Pick<CardRepository, "listBySerialPrefix">;
   // getById stays unscoped on purpose: the replay check compares the stored tap's school with the device's (Step 51).
   taps: Pick<TapRepository, "getById" | "findByCardBetween" | "listByStudent">;
   students: Pick<StudentRepository, "getInSchool">;
   schools: Pick<SchoolRepository, "getById">;
+  // A resend of a lost card's tap is answered from its alert (Step 57).
+  alerts: Pick<AlertRepository, "listForTaps">;
   writer: TapWriter;
 };
 
@@ -72,6 +76,7 @@ const DEFAULT_DEPS: RecordTapDeps = {
   taps: tapRepository,
   students: studentRepository,
   schools: schoolRepository,
+  alerts: alertRepository,
   writer: tapWriter,
 };
 
@@ -95,8 +100,8 @@ async function directionOf(tap: Tap, studentId: string, deps: RecordTapDeps) {
 /**
  * The answer for a tap that's already stored: a resend after a dropped
  * connection gets what the first try got, and nothing new is written. A
- * tap stored with a student whose card (by the stored serial) is lost was
- * a lost-card tap; one with a student otherwise was a normal one.
+ * tap with an alert was a lost card's, whatever the card's status is now
+ * (Step 57); one with a student otherwise was a normal one.
  */
 async function replay(tap: Tap, deps: RecordTapDeps): Promise<RecordTapResult> {
   // A tap recorded by hand for a student with no card has no serial to
@@ -104,17 +109,18 @@ async function replay(tap: Tap, deps: RecordTapDeps): Promise<RecordTapResult> {
   const { cardSerial } = tap;
   if (cardSerial === null) return { outcome: "invalid_serial" };
   const cardTap = { ...tap, cardSerial };
+
+  const [alert] = await deps.alerts.listForTaps(tap.schoolId, [tap.id]);
+  if (alert) {
+    // The tap's own student only for an alert written before Step 57's
+    // migration ran: the owner was on the tap then.
+    const ownerId = alert.studentId ?? tap.studentId;
+    const owner = ownerId ? await deps.students.getInSchool(tap.schoolId, ownerId) : null;
+    return { outcome: "lost_card", tap: cardTap, student: toTapStudent(owner), replayed: true };
+  }
   if (!tap.studentId) return { outcome: "unknown_card", tap: cardTap, replayed: true };
 
-  const [student, card] = await Promise.all([
-    deps.students.getInSchool(tap.schoolId, tap.studentId),
-    deps.cards.getBySerial(cardSerial),
-  ]);
-  if (card?.status === "lost" && card.studentId === tap.studentId) {
-    return { outcome: "lost_card", tap: cardTap, student: toTapStudent(student), replayed: true };
-  }
-
-  const tapStudent = toTapStudent(student);
+  const tapStudent = toTapStudent(await deps.students.getInSchool(tap.schoolId, tap.studentId));
   if (!tapStudent) return { outcome: "unknown_card", tap: cardTap, replayed: true };
   const { direction, notified } = await directionOf(tap, tap.studentId, deps);
   return { outcome: "recorded", tap, student: tapStudent, direction, notified, replayed: true };
@@ -196,22 +202,22 @@ export async function recordTap(input: RecordTapInput, deps: RecordTapDeps = DEF
   );
   if (previousTap) return duplicateOf(previousTap, device.schoolId, deps);
 
-  // A lost card's tap keeps its owner, so the alert can name them (recipe
-  // decision 4).
-  const studentId = card.studentId;
+  // A lost card's tap has no student: it isn't its owner's time in or out,
+  // and doesn't shift their next tap to a time out. Its alert names the
+  // owner instead (Step 57, replacing Step 45's decision 4).
   const tap: CardTap = {
     ...tapSchema.parse({
       id: input.clientTapId,
       schoolId: device.schoolId,
       stationId: device.id,
       cardSerial,
-      studentId,
+      studentId: kind === "lost" ? null : card.studentId,
       tappedAt,
     }),
     cardSerial,
   };
 
-  const student = studentId ? await deps.students.getInSchool(device.schoolId, studentId) : null;
+  const student = await deps.students.getInSchool(device.schoolId, card.studentId);
   let alert: Alert | null = null;
   let notification: TapNotification | null = null;
   let result: RecordTapResult;
@@ -235,6 +241,7 @@ export async function recordTap(input: RecordTapInput, deps: RecordTapDeps = DEF
       id: crypto.randomUUID(),
       schoolId: tap.schoolId,
       tapId: tap.id,
+      studentId: card.studentId,
       type: "lost_card_tapped",
       createdAt: input.receivedAt,
       acknowledged: false,

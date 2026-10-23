@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████████░░ 89%**  (301 of 340 tasks, 79 of 89 steps approved)
+**Overall progress: ██████████████████░░ 90%**  (305 of 340 tasks, 80 of 89 steps approved)
 
-**Next up:** Step 56, One read, one tap (ready for your review)
+**Next up:** Step 57, Lost cards and alerts (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -86,8 +86,8 @@
 | 55.4 | A principal removes a wrong link | ██████████ 100% | Approved |
 | 55.5 | Email, and staff reset their own password | ██████████ 100% | Approved |
 | 55.6 | Parents reset a forgotten password | ██████████ 100% | Approved |
-| 56 | One read, one tap | ████████░░  75% | Ready for your review |
-| 57 | Lost cards and alerts | ░░░░░░░░░░   0% | Not started |
+| 56 | One read, one tap | ██████████ 100% | Approved |
+| 57 | Lost cards and alerts | ████████░░  75% | Ready for your review |
 | 58 | The gate keeps taps while offline | ░░░░░░░░░░   0% | Not started |
 | 59 | Know when something breaks | ░░░░░░░░░░   0% | Not started |
 | 60 | Privacy for real student data | ░░░░░░░░░░   0% | Not started |
@@ -867,13 +867,13 @@ Plan: `docs/SCALING.md` 1.3. Due before real use at the gate. Recipe first: `doc
 - [x] Tests: two reads of one card sent at the same moment give one tap and one "Already tapped".
 Done when: a card held on the reader can never make a time in and a time out together, and every check passes.
 Commit: `fix(gate): record one tap per card read, even when two arrive together`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 57: Lost cards and alerts
-Plan: `docs/SCALING.md` 1.4 and 1.5. Due before real use at the gate.
-- [ ] Decided with the owner: whether a lost card's tap counts as its owner's attendance. Either way, it no longer turns the owner's next real tap into a "time out".
-- [ ] A principal can mark a "Needs attention" alert handled.
-- [ ] The dashboard loads open alerts with their taps in one query.
+Plan: `docs/SCALING.md` 1.4 and 1.5. Due before real use at the gate. Recipe first: `docs/backend/step-57-lost-cards-and-alerts.md`. Owner decided 2026-10-23: a lost card's tap doesn't count as its owner's attendance, and "handled" is a plain yes or no.
+- [x] Decided with the owner: whether a lost card's tap counts as its owner's attendance. Either way, it no longer turns the owner's next real tap into a "time out".
+- [x] A principal can mark a "Needs attention" alert handled.
+- [x] The dashboard loads open alerts with their taps in one query.
 Done when: a lost card tapped by someone else leaves its owner's day untouched, a handled alert disappears, and every check passes.
 Commit: `feat(alerts): let staff resolve lost-card alerts without shifting time in`
 - [ ] Owner review: I checked it and said "approved"

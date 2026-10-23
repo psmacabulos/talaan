@@ -157,6 +157,10 @@ describe("seed data shape", () => {
 
     const matchingAlert = seedAlerts.find((alert) => alert.tapId === lostCardTap?.id);
     expect(matchingAlert?.type).toBe("lost_card_tapped");
+    // Step 57: the tap isn't the owner's attendance; the alert names them.
+    const lostCard = seedCards.find((c) => c.serial === lostCardTap?.cardSerial);
+    expect(lostCardTap?.studentId).toBeNull();
+    expect(matchingAlert?.studentId).toBe(lostCard?.studentId);
   });
 
   it("links every parent to a real student, at that student's school", () => {

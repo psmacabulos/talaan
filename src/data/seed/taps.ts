@@ -63,14 +63,14 @@ const scenarioTaps: Tap[] = [
     tappedAt: schoolTimeToIso(SEED_DATE, "08:16"),
   },
   // The lost-card scenario: someone taps student-0001's OLD, already-lost
-  // card. `studentId` is still that student — a lost card doesn't erase who
-  // it used to belong to, which is exactly why the alert below is useful.
+  // card. The tap has no student, so it isn't their time in; the alert
+  // below names them instead (Step 57).
   {
     id: "00000000-0000-4000-8000-000000000008",
     schoolId: "school-balanga",
     stationId: STATION_ID,
     cardSerial: cardSerialAt(0),
-    studentId: seedStudents[0].id,
+    studentId: null,
     tappedAt: schoolTimeToIso(SEED_DATE, "08:05"),
   },
 ];
@@ -150,6 +150,7 @@ export const seedAlerts: Alert[] = [
     id: "alert-0001",
     schoolId: "school-balanga",
     tapId: "00000000-0000-4000-8000-000000000008",
+    studentId: seedStudents[0].id,
     type: "lost_card_tapped",
     createdAt: schoolTimeToIso(SEED_DATE, "08:05"),
     acknowledged: false,

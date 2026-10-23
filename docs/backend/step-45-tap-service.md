@@ -45,6 +45,8 @@ flowchart TD
 2. **Which time a tap gets.** The gate's own clock (`clientTappedAt`), so an offline tap keeps the time it really happened. The exception is a time that can't be right: more than **5 minutes in the future** or more than **7 days old** by the server's clock. In those cases the server's time is used instead, because the tablet's clock is wrong.
 3. **No database change.** `Tap.stationId` holds the gate's `Device.id`. Simulated taps keep `"station-main-gate"`. A real `deviceId` foreign key can be added later if a report ever needs to join taps to devices.
 4. **A lost card's tap is stored with its owner's `studentId`, as Phase 1 does.** The alert can then name the student, and the guard's photo check (Step 47) catches someone else using the card. One side effect: the tap counts as that student arriving. If you'd rather it didn't, say so. The alternative is storing `studentId: null` and finding the owner through the card.
+
+   > **Changed in Step 57 (2026-10-23).** The owner chose the alternative: a lost card's tap is stored with `studentId: null`, and the alert carries the owner (`Alert.studentId`). It also turned the owner's next real tap into a "time out". See `docs/backend/step-57-lost-cards-and-alerts.md`.
 5. **Retired cards, another school's card, and an unclear match all count as unknown cards.** "Unclear" means two of this school's cards share the same first 4 bytes and the reader sent only 4. Each case is stored with `studentId: null`, so the office can see that an unlinked card was tapped. None of them raises an alert.
 
 ## Steps

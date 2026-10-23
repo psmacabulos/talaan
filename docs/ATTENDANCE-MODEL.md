@@ -202,7 +202,7 @@ Every `Tap` the screens above read is written in one of two places, both through
 
 | Where | Code | What it writes |
 |---|---|---|
-| The real gate, `/gate` (Step 47), a tablet with the USB reader | `recordTap()` in `src/services/taps/record-tap.ts`, behind `POST /api/v1/gate/taps` | A tap for an active card (time in or out from the day's order), a tap and an alert for a lost card, nothing for an unknown card |
+| The real gate, `/gate` (Step 47), a tablet with the USB reader | `recordTap()` in `src/services/taps/record-tap.ts`, behind `POST /api/v1/gate/taps` | A tap for an active card (time in or out from the day's order), a tap with no student and an alert naming the owner for a lost card (Step 57: it's nobody's attendance), nothing for an unknown card |
 | A time in recorded by hand on the attendance page (Step 55) | `recordManualTimeIn()` in `src/services/taps/record-manual-time-in.ts` | A tap with `source: manual` and who recorded it |
 
 The seed data (`src/data/seed/taps.ts`) writes the demo morning's taps directly.

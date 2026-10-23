@@ -122,8 +122,10 @@ if (previousTap) return { outcome: "duplicate", previousTap, student };
 | Card | Tap's `studentId` | Also written | Outcome |
 |---|---|---|---|
 | active | the student | a notification, if `shouldNotifyParents(setting, direction)` | `recorded`, with `direction` (time in/out) and `notified` |
-| lost | the owner, so the alert can name them | a `lost_card_tapped` alert | `lost_card` |
+| lost | **none** (Step 57), so it's nobody's time in or out | a `lost_card_tapped` alert whose `studentId` is the owner | `lost_card`, naming the owner |
 | retired, none, or another school's | — | **no tap stored** (step 4) | `unknown_card` |
+
+   **Why a lost card's tap has no student (Step 57).** It used to keep the owner's `studentId`, so the alert could name them. Every attendance count reads that field, so the tap counted as the owner arriving, and turned their real arrival into a "time out" (and a "left school" push). Now the owner is on the alert, and every count leaves the tap out on its own. If it really was the owner, staff use **Record time in** (Step 55). A gate's resend of a stored tap is answered from its alert: an alert means `lost_card`, whatever the card's status is now. Staff mark an alert handled from the dashboard's "Needs attention" (principals and super admins); the dashboard loads at most 10 open alerts with their taps in one query, and the monitor and the live feed ask only about the few taps they show (`alertRepository.listForTaps`). Recipe: `docs/backend/step-57-lost-cards-and-alerts.md`.
 
 7. **One transaction** (`TapWriter.record`): the tap, then the alert or notification, then the gate's `lastSeenAt`. If any part fails, none is kept. If the tap id turns out to be taken (two copies of one tap racing), the writer answers `"exists"` and `recordTap` gives the replay answer.
 

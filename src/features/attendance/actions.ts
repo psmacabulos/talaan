@@ -6,6 +6,7 @@ import { SIGNED_OUT_MESSAGE } from "@/features/auth/messages";
 import { getNow } from "@/lib/clock";
 import { formatSchoolTime } from "@/lib/school-time";
 import { getSession } from "@/lib/session";
+import { markAlertHandled as handleAlert } from "@/services/alerts/mark-alert-handled";
 import { wakePushWorker } from "@/services/push/push-worker";
 import { publishStoredTap } from "@/services/taps/publish-tap";
 import { recordManualTimeIn } from "@/services/taps/record-manual-time-in";
@@ -58,4 +59,26 @@ export async function recordTimeIn(studentId: string): Promise<RecordTimeInResul
   }
   refresh();
   return { ok: true, studentName, time: formatSchoolTime(result.tap.tappedAt) };
+}
+
+export type MarkAlertHandledActionResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * "Mark handled" on a dashboard alert (Step 57). `markAlertHandled` holds
+ * the rules (principals and super admins only, this school's alerts only);
+ * `refresh()` then takes the alert off the page.
+ */
+export async function markAlertHandled(alertId: string): Promise<MarkAlertHandledActionResult> {
+  const session = await getSession();
+  if (!session) return { ok: false, error: SIGNED_OUT_MESSAGE };
+  if (!session.schoolId) return { ok: false, error: "Pick a school first." };
+
+  const staff = await staffRepository.getById(session.userId);
+  if (!staff) return { ok: false, error: SIGNED_OUT_MESSAGE };
+
+  const result = await handleAlert({ schoolId: session.schoolId, alertId, role: staff.role });
+  if (result === "not_allowed") return { ok: false, error: "Only a principal can mark alerts handled." };
+  if (result === "not_found") return { ok: false, error: "That alert is no longer open." };
+  refresh();
+  return { ok: true };
 }

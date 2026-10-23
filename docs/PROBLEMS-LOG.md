@@ -52,6 +52,9 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-035](#p-035--2026-10-23--the-parent-sign-in-page-would-have-frozen-the-email-setting-at-build) | 2026-10-23 | The parent sign-in page would have frozen the email setting at build | Other: correctness | Next.js, parent portal | Resolved |
 | [P-036](#p-036--2026-10-23--the-demo-reset-never-emptied-the-parents) | 2026-10-23 | The demo reset never emptied the parents | Other: tests | Playwright, demo data | Resolved |
 | [P-037](#p-037--2026-10-23--the-race-test-passed-without-the-lock) | 2026-10-23 | The race test passed without the lock | Other: tests | Postgres, Vitest | Resolved |
+| [P-038](#p-038--2026-10-23--the-new-postgres-test-found-no-studentid-column) | 2026-10-23 | The new Postgres test found no `studentId` column | Other: setup | Prisma, Vitest, test database | Resolved |
+| [P-039](#p-039--2026-10-23--the-alert-test-made-taps-the-app-cant-read) | 2026-10-23 | The alert test made taps the app can't read | Other: tests | Vitest, Zod | Resolved |
+| [P-040](#p-040--2026-10-23--a-parent-api-test-was-told-too-many-tries) | 2026-10-23 | A parent API test was told "too many tries" | Other: tests | Playwright, sign-in limits | Fixed: owner to re-run |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -790,3 +793,52 @@ sequenceDiagram
 - **Solution:** (3). The lock's key is shared through `tapCardLockKey()`. Without the lock, the writer doesn't wait, doesn't see the uncommitted tap, and stores a second one: the test failed 3 out of 3 runs. With the lock it passes. The two chance-based tests stay as extra checks of the whole service.
 - **Lesson:** to test a race, force both sides into the gap and show the test fails without the fix.
 - **Status:** Resolved.
+
+## Lost cards and alerts (Step 57, 2026-10-23)
+
+### P-038 · 2026-10-23 · The new Postgres test found no `studentId` column
+- **Where:** `src/data/repositories/prisma-alert-repository.pg.test.ts`, the first run while building Step 57.
+- **Symptom:**
+  ```
+  PrismaClientKnownRequestError:
+  Invalid `db.alert.create()` invocation
+  The column `studentId of relation Alert` does not exist in the current database.
+  ```
+- **Cause:** there are two local databases. `npx prisma migrate dev` updates the development one (`DATABASE_URL`). The `*.pg.test.ts` files use the browser tests' database (`E2E_DATABASE_URL`), which only `npm run test:e2e`'s set-up brings up to date. In the routine, `npm test` runs **before** `npm run test:e2e`, so after any step with a migration, the Postgres tests meet the old tables first.
+  ```mermaid
+  flowchart LR
+      M["npx prisma migrate dev"] --> D[("talaan (dev)")]
+      T["npm test (*.pg.test.ts)"] --> E[("test database")]
+      P["npm run test:e2e set-up"] -->|migrate deploy| E
+  ```
+- **Options weighed:** (1) migrate the test database by hand after each new migration (the existing command in `docs/COMMANDS.md`, "Postgres tests"); (2) have Vitest migrate it before the Postgres tests run (a set-up file: slower `npm test`, and a new moving part); (3) run `test:e2e` before `test` (the browser tests take minutes; the quick checks should come first).
+- **Solution:** (1) for this step: the test database is already migrated, so your `npm test` finds the new column. (2) is worth doing if this happens again.
+- **Status:** Resolved (the test database was migrated while building).
+
+### P-039 · 2026-10-23 · The alert test made taps the app can't read
+- **Where:** the same new test, its second run.
+- **Symptom:** `ZodError: … "format": "uuid" … "path": ["id"], "message": "Invalid UUID"` from `toTap`, in `listOpen`.
+- **Cause:** the test made its taps' ids as `tap-<uuid>`. The database takes any text, but the app checks every tap it reads (`tapSchema`), and a tap's id must be a UUID, since the gate makes it.
+- **Options weighed:** loosen `tapSchema` (no: a real tap's id is always a UUID) or give the test's taps real UUIDs.
+- **Solution:** each test tap gets its own `crypto.randomUUID()`. 3 of 3 pass.
+- **Status:** Resolved.
+
+### P-040 · 2026-10-23 · A parent API test was told "too many tries"
+- **Where:** `e2e/parent-api.spec.ts`, "a reset code sets a new password and signs every other phone out (Step 55.6)", in the owner's `npm run test:e2e` for Step 57. Step 57 doesn't touch parent sign-in.
+- **Symptom:**
+  ```
+  Expected: 401
+  Received: 429
+  > 324 |     expect((await signIn("testpass123")).status()).toBe(401);
+  1 failed · 17 skipped · 94 passed
+  ```
+- **Cause:** each test fakes its own address in `X-Forwarded-For`, from a counter at the top of the file (`203.0.113.10`, `.11`, …). Playwright runs tests in parallel (`fullyParallel: true`), and **every worker loads the file on its own, with its own counter starting at 10**. So two tests in two workers can draw the same address. One of them, "30 wrong passwords from one address lock it", locks its address for 15 minutes on purpose; the reset test that drew the same address then hits the lock on its first sign-in. Locally, `reuseExistingServer` adds a second way: a server left running remembers the last run's lock, and the counter hands out the same addresses again.
+  ```mermaid
+  flowchart LR
+      W1["worker 1: lock test<br/>address .11"] -->|30 wrong passwords| L["server: .11 locked 15 min"]
+      W2["worker 2: reset test<br/>address .11 (its own counter)"] -->|sign in| L
+      L -->|429| W2
+  ```
+- **Options weighed:** (1) run the file's tests one after another (`test.describe.configure({ mode: "serial" })`: slower, and doesn't fix a reused server); (2) add the worker's number to the address (fixes workers, not the reused server); (3) **a random address** from IPv6's documentation range, `2001:db8::/32`, varied in the /64 part that the limits count by: about 4 billion choices, so neither workers nor old locks collide.
+- **Solution:** (3), in `freshAddress()`. The limits treat these exactly like real IPv6 addresses (`clientAddressKey` keys IPv6 by its /64), so the tests still check the limits for real.
+- **Status:** Fixed; owner to re-run `npm run test:e2e`.

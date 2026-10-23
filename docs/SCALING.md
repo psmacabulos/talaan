@@ -138,11 +138,15 @@ A lost card's tap is stored with its owner's `studentId`, so the alert can name 
 
 **Fix:** decide with the owner whether a lost card's tap is the owner's attendance. Either way, it must not count toward their time in and time out. Two ways to build it: leave such taps out of the counting (they have an alert), or store them with no student and find the owner through the card.
 
+**Done in Step 57** (`docs/backend/step-57-lost-cards-and-alerts.md`): the owner decided it doesn't count. The tap is stored with no student and the alert names the owner, so every count leaves it out without knowing about alerts. Existing lost-card taps were moved by the same migration.
+
 ### 1.5 Alerts can't be cleared (Step 57)
 
 Nothing marks an alert handled. The dashboard loads every alert the school ever had, keeps the open ones (all of them), then looks up each one's tap separately (`src/app/(app)/dashboard/page.tsx`). "Needs attention" only grows, and so does the number of queries behind it.
 
 **Fix:** a principal can mark an alert handled, and the dashboard loads open alerts with their taps in one query.
+
+**Done in Step 57:** **Mark handled** on each alert (principals and super admins), at most 10 open alerts shown with their taps (2 queries, whatever the number), and the gate monitor asks only about the 12 taps it shows.
 
 ### 1.6 Taps are lost while the internet is down (Step 58)
 

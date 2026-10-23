@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { alertRepository, schoolRepository, studentRepository, tapRepository } from "@/data/repositories";
 import { GateMonitor } from "@/features/gate/gate-monitor";
-import { monitorEventsFromTaps } from "@/features/gate/monitor-events";
+import { monitorEventsFromTaps, newestMonitorTaps } from "@/features/gate/monitor-events";
 import { resolveMonitorViewer } from "@/features/gate/monitor-viewer";
 import { getNow } from "@/lib/clock";
 import { schoolDateOf } from "@/lib/school-time";
@@ -34,18 +34,20 @@ export default async function GateDisplayPage({ searchParams }: PageProps<"/gate
   }
 
   const { schoolId } = viewer;
-  const [school, students, taps, alerts] = await Promise.all([
+  const [school, students, taps] = await Promise.all([
     schoolRepository.getById(schoolId),
     studentRepository.listBySchool(schoolId),
     tapRepository.listBySchoolOnDate(schoolId, schoolDateOf(getNow())),
-    alertRepository.listBySchool(schoolId),
   ]);
-  const lostCardTapIds = new Set(alerts.map((alert) => alert.tapId));
+  // Only the shown taps' alerts, not every alert the school ever had (Step 57).
+  const shownTapIds = newestMonitorTaps(taps).map((tap) => tap.id);
+  const alerts = await alertRepository.listForTaps(schoolId, shownTapIds);
+  const lostCardOwners = new Map(alerts.map((alert) => [alert.tapId, alert.studentId]));
 
   return (
     <GateMonitor
       schoolName={school?.name ?? "Your school"}
-      loaded={monitorEventsFromTaps(taps, students, lostCardTapIds)}
+      loaded={monitorEventsFromTaps(taps, students, lostCardOwners)}
     />
   );
 }

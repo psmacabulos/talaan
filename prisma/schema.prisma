@@ -103,6 +103,7 @@ model Student {
   parentLinks   ParentStudentLink[]
   notifications Notification[]
   linkBlocks    LinkBlock[]
+  alerts        Alert[]
 
   // Serves both "every student at a school" and the link-a-child lookup.
   @@index([schoolId, lrn])
@@ -143,7 +144,9 @@ model Tap {
   // (Step 55); with a card, its serial is kept, so the gate's 2-minute
   // check also sees the recorded tap.
   cardSerial   String?
-  // Who the card belonged to at the moment of the tap. Null for an unknown card.
+  // Whose attendance this tap is: who the card belonged to at the moment of
+  // the tap. Null for a lost card's tap, so it never counts as its owner's
+  // time in or out; its alert names the owner (Step 57).
   studentId    String?
   student      Student?  @relation(fields: [studentId], references: [id], onDelete: Restrict)
   tappedAt     DateTime
@@ -175,11 +178,16 @@ model Alert {
   // @unique makes this one-to-one: a tap raises at most one alert.
   tapId        String    @unique
   tap          Tap       @relation(fields: [tapId], references: [id], onDelete: Restrict)
+  // Step 57: whose lost card it was. The tap itself has no student, so it
+  // never counts as their attendance. Null for an alert about no student.
+  studentId    String?
+  student      Student?  @relation(fields: [studentId], references: [id], onDelete: Restrict)
   type         AlertType
   createdAt    DateTime  @default(now())
   acknowledged Boolean   @default(false)
 
-  @@index([schoolId])
+  // "This school's open alerts, newest first" (the dashboard).
+  @@index([schoolId, acknowledged, createdAt])
 }
 
 // A parent belongs to no school (Step 53): each linked child carries its own,

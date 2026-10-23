@@ -8,8 +8,8 @@ import { activeCardSerialFor, readerDigitsFor, TEST_GATE_TOKEN, testEmail } from
  * The parent app's API (Steps 53.3 and 53.4), called the way the Expo app will:
  * JSON, a Bearer token, no browser. Desktop project only, since nothing
  * here depends on the screen. Each test sends its own documentation-range
- * address (203.0.113.x) in X-Forwarded-For, so the per-address limits are
- * tested for real without the tests sharing a count.
+ * address in X-Forwarded-For, so the per-address limits are tested for real
+ * without the tests sharing a count.
  */
 
 /**
@@ -30,9 +30,16 @@ function pushDelivery(notificationId: string, token: string): { status: string; 
   return JSON.parse(output.trim().split("\n").at(-1)!);
 }
 
-let addressCounter = 10;
+/**
+ * A random IPv6 /64 in the documentation range (2001:db8::/32), the unit
+ * the limits count by. Random, not a counter: each Playwright worker loads
+ * this file on its own, so counters in two workers handed out the same
+ * address, and a reused server still remembers a lock from the last run for
+ * 15 minutes (docs/PROBLEMS-LOG.md, P-040).
+ */
 function freshAddress() {
-  return { "X-Forwarded-For": `203.0.113.${addressCounter++}` };
+  const group = () => crypto.getRandomValues(new Uint16Array(1))[0].toString(16);
+  return { "X-Forwarded-For": `2001:db8:${group()}:${group()}::1` };
 }
 
 async function signUp(request: APIRequestContext, email: string, headers: Record<string, string>) {
