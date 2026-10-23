@@ -9,7 +9,8 @@ export type GateScan = {
   scannedAt: string;
   /** Who the gate's own roster says it is, shown before the server answers. */
   rosterStudent: RosterStudent | null;
-  state: { kind: "checking" } | { kind: "answered"; response: GateTapResponse } | { kind: "failed" };
+  /** "saved": not sent yet, kept on the tablet and sent when the connection allows (Step 58). */
+  state: { kind: "checking" } | { kind: "saved" } | { kind: "answered"; response: GateTapResponse };
 };
 
 /** The fixed status colours (never themed): green, amber, red, grey. Amber is also "stop and check". */
@@ -21,7 +22,7 @@ export type GateTone = "present" | "late" | "absent" | "idle";
  * colour too: green and blue.
  */
 export type TapKind =
-  "checking" | "time_in" | "time_out" | "duplicate" | "lost_card" | "unknown_card" | "invalid_serial" | "not_sent";
+  "checking" | "saved" | "time_in" | "time_out" | "duplicate" | "lost_card" | "unknown_card" | "invalid_serial";
 
 export type GateDisplay = {
   tone: GateTone;
@@ -44,6 +45,12 @@ export type GateDisplay = {
 
 /** What the person at the gate is told about an unknown card. */
 export const UNKNOWN_CARD_GATE_DETAIL = "Please ask the gate attendant for assistance.";
+
+/** A tap kept on the tablet until the connection is back (Step 58). */
+export const SAVED_MESSAGE = "Saved. It will be sent when the connection is back.";
+
+/** The same, for a card this gate's roster doesn't know. */
+export const SAVED_UNLISTED_MESSAGE = "Saved. Not on this gate's list.";
 
 /** What the guard is told about one, on the monitor. */
 export const UNKNOWN_CARD_MONITOR_DETAIL = "Check this person before letting them in.";
@@ -72,17 +79,31 @@ export function describeScan(scan: GateScan): GateDisplay {
       detail: null,
     };
   }
-  if (scan.state.kind === "failed") {
-    return {
-      tone: "idle",
-      kind: "not_sent",
-      ...guessed,
-      message: "Not sent: no connection.",
-      short: "Not sent",
-      at,
-      stampAt: null,
-      detail: "No connection. The tap wasn't recorded; tap again.",
-    };
+  if (scan.state.kind === "saved") {
+    // Grey, not green: nothing is confirmed until the server answers. A
+    // card the roster doesn't know (unknown, or lost: the roster leaves
+    // lost cards out) gets no welcome, only a word to the attendant.
+    return scan.rosterStudent
+      ? {
+          tone: "idle",
+          kind: "saved",
+          ...guessed,
+          message: SAVED_MESSAGE,
+          short: "Saved",
+          at,
+          stampAt: null,
+          detail: SAVED_MESSAGE,
+        }
+      : {
+          tone: "idle",
+          kind: "saved",
+          ...guessed,
+          message: `${SAVED_UNLISTED_MESSAGE} ${UNKNOWN_CARD_GATE_DETAIL}`,
+          short: "Saved",
+          at,
+          stampAt: null,
+          detail: `${SAVED_UNLISTED_MESSAGE} ${UNKNOWN_CARD_GATE_DETAIL}`,
+        };
   }
 
   const response = scan.state.response;

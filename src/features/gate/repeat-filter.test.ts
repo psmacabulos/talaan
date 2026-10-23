@@ -23,14 +23,4 @@ describe("createRepeatFilter (Step 56)", () => {
     expect(filter.isRepeat("0213292883", 500)).toBe(false);
     expect(filter.isRepeat("0211299923", 1_000)).toBe(false);
   });
-
-  it("tries a card again at once after its send failed", () => {
-    const filter = createRepeatFilter();
-    expect(filter.isRepeat("0211299923", 0)).toBe(false);
-    filter.forget("0211299923");
-    expect(filter.isRepeat("0211299923", 500)).toBe(false);
-    // Forgetting another card changes nothing.
-    filter.forget("0213292883");
-    expect(filter.isRepeat("0211299923", 900)).toBe(true);
-  });
 });

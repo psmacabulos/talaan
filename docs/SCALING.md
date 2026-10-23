@@ -154,6 +154,8 @@ A tap read while the tablet is offline shows "Not sent: no connection" and asks 
 
 **Fix:** keep offline taps on the tablet, with the id they already get, and send them when the connection returns. Parents are notified only once a tap reaches the server.
 
+**Done in Step 58** (`docs/backend/step-58-offline-gate.md`, `docs/GATE.md` "Offline"): every tap is saved on the tablet before it's sent, a waiting line is sent one tap at a time in order, taps survive Disconnect, and the gate starts from its own copies when the server can't answer. Opening the page with no internet at all needs a service worker, proposed as Step 58.1.
+
 ### 1.7 Nobody hears when something breaks (Step 59)
 
 Errors only reach `heroku logs`, which nobody reads at 7 AM. If the tap address starts failing, the first sign is a guard's phone call.

@@ -686,6 +686,19 @@ Next.js merges what Express usually splits into two things (Routes + Controller)
 ### What does the Prisma-backed repository do, and why are there two "School" types? (owner question, Step 35)
 The repository is the front desk every page asks for schools. Step 35 builds a second desk that keeps the same four promises (`list`, `getById`, `update`, `create`) but stores schools in Postgres instead of an array, then switches `index.ts` to export it. The two types describe one school in two languages: `SchoolRow` is the database row (with `address`, `createdAt`, `updatedAt`, `null` for "no logo" and an unchecked JSON theme), and `School` is the app's own shape. `toSchool` translates and checks on the way in, and `toSchoolData` translates on the way out. Each is named after what it returns. A row isn't text or a JSON string: Prisma already hands back a normal JavaScript object. It's just the wrong shape. Return it directly and typecheck fails with `Types of property 'theme' are incompatible. Type 'JsonValue' is not assignable to …`, because the interface promises a `School`. Diagrams, the swap, one save traced end to end, and the file explained block by block: [Inside the School Repository](https://claude.ai/artifact/25nLSGGcJMnxNqNnhCQPNa).
 
+### Why can't the gate page open with no internet after a restart? (owner question, Step 58)
+A web page lives on the server. Each time the browser opens `/gate`, it asks the server for the page and its code (the HTML, JavaScript and styles). Once the page is open, it keeps running in the browser's memory. That's why Step 58's waiting line works: the page is already there when the internet drops, and it keeps saving taps.
+
+But if the tablet restarts (a power cut, the kiosk app closing) while the internet is down, the browser asks the server for the page and gets nothing. It shows its own "no internet" screen, and nothing of ours runs. The taps already waiting are safe in storage, but new taps can't be read until the page opens.
+
+The fix is a **service worker**: a small script the browser installs from our site and keeps. It sits between the page and the network, and when the network is gone it hands back a saved copy of `/gate`. The steps would be:
+1. write the script, which saves the page and its files when the gate is set up;
+2. register it from `/gate` only (staff screens should always be fresh);
+3. on each deploy, make it replace its saved copy, or the tablet keeps running old code. This is the tricky part;
+4. a browser test that reloads `/gate` with the network off.
+
+It's proposed as Step 58.1, not built. Until then, keep the gate tablet on, plugged in, and the kiosk app open.
+
 ## App shell and navigation (Step 10)
 
 ### Why passing an icon into a "use client" component crashed the app
@@ -1047,6 +1060,17 @@ Your prompt changes to `talaan=#`. Type `\q` (or press Ctrl+D) to leave. Other h
 
 If it says the container isn't running (common after a Mac restart): open Docker Desktop, then `docker start talaan-postgres`, and try again. Every recipe that uses `psql` repeats this command where it's needed.
 
+### Can I install `psql` on the Mac itself? (owner question, 2026-10-23)
+Yes, and it's what `heroku pg:psql` needs ("The local psql command could not be located"). Homebrew's `libpq` package is Postgres's client tools without a database server:
+
+```bash
+brew install libpq
+brew link --force libpq
+psql --version
+```
+
+`libpq` is "keg-only": Homebrew installs it but doesn't put `psql` on your PATH, because it would clash with a full Postgres install. `brew link --force` puts it there anyway, which is fine since this Mac runs Postgres only in Docker. It's version 18, the same as the live database. Afterwards `heroku pg:psql --app bantayaral` works, and so does `psql "postgresql://postgres:devpassword@localhost:5432/talaan"` for the local database. The Docker way above keeps working too.
+
 ### Where does `-v talaan-pgdata:/var/lib/postgresql` actually put the data? Should it live next to the repo instead? (owner question)
 `/var/lib/postgresql` is **not a folder on your Mac**. It's a path *inside the container*, which runs its own small Linux system. The `-v` flag reads as `<where it's kept>:<where Postgres sees it inside the container>`. The left side, `talaan-pgdata`, is a **named volume**: a storage area that Docker creates and looks after for you. On a Mac, Docker runs every container inside a hidden Linux virtual machine, so the volume ends up inside that VM's disk image (somewhere under `~/Library/Containers/com.docker.docker/`). You never browse it in Finder, and you don't need to.
 
@@ -1216,7 +1240,9 @@ So the student's `id` stays put and only the card changes. Old taps keep both th
 - Only a principal or super admin.
 - Only while the student has no active card. If they already have a replacement, the old card stays lost, because a student has one active card at a time.
 
-Since Step 57, history stays right afterwards: the taps made while it was lost are recognised by their alerts, not by the card's status, so they still don't count. The one real risk: anyone who had the card could have copied its serial onto another card, since the card holds nothing but that number. That copy would work again too. Decision: pending (2026-10-23). Once made, it's written up in [`docs/GATE.md`](GATE.md).
+Since Step 57, history stays right afterwards: the taps made while it was lost are recognised by their alerts, not by the card's status, so they still don't count. The one real risk: anyone who had the card could have copied its serial onto another card, since the card holds nothing but that number. That copy would work again too.
+
+**Once a new card is issued, the old one stays lost for good** (owner question, 2026-10-23). Turning the old one back on would mean switching off the new one the student already carries, for no gain. The office can still mark a card lost *without* linking a new one yet ("Card lost? Replace it", then Save with no new card), and that's the window in which a found card can be turned back on. **Decided (2026-10-23): a lost card stays lost.** "Card found" is an optional step for when there's time; its recipe is written and waiting. See [`docs/GATE.md`](GATE.md), "Lost cards stay lost".
 
 ### What is a migration, and what happens when the database has to change later? (owner question, Step 34)
 A migration is one small, named, committed change to the database's *shape* (its tables and columns), like a git commit for the database. `migrate dev` writes one on your laptop. `migrate deploy` runs the ones a database hasn't run yet. Changing only screens or the contents of a JSON column (like removing the custom color picker) is a code change, not a migration, but existing rows may need a data fix. Full lesson, with worked examples on this project's `School` model: [`docs/DATABASE-MIGRATIONS.md`](DATABASE-MIGRATIONS.md).

@@ -88,7 +88,19 @@ describe("describeScan", () => {
     expect(describeScan(answered({ outcome: "invalid_serial" }))).toMatchObject({ name: null, short: "Couldn't read" });
   });
 
-  it("says plainly when a scan couldn't be sent", () => {
-    expect(describeScan(scan({ kind: "failed" }))).toMatchObject({ tone: "idle", message: "Not sent: no connection." });
+  it("says a scan is saved on the tablet, in grey, until it's sent (Step 58)", () => {
+    expect(describeScan(scan({ kind: "saved" }))).toMatchObject({
+      tone: "idle",
+      kind: "saved",
+      name: "Juan Cruz",
+      detail: "Saved. It will be sent when the connection is back.",
+    });
+  });
+
+  it("gives a saved card the roster doesn't know no welcome, only a word to the attendant", () => {
+    expect(describeScan({ ...scan({ kind: "saved" }), rosterStudent: null })).toMatchObject({
+      name: null,
+      detail: "Saved. Not on this gate's list. Please ask the gate attendant for assistance.",
+    });
   });
 });

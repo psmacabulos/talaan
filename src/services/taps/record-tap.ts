@@ -18,6 +18,7 @@ import { deriveTapKind } from "@/features/attendance/status";
 import type { Alert, Tap } from "@/features/attendance/types";
 import type { NotificationKind, TapNotification } from "@/features/parents/types";
 import { firstFourBytes, normalizeCardSerial } from "@/features/students/card-serial";
+import { schoolDateOf } from "@/lib/school-time";
 import type { Card, Student } from "@/features/students/types";
 import { matchCard } from "./match-card";
 import { chooseTapTime } from "./tap-time";
@@ -86,14 +87,27 @@ export function toTapStudent(student: Student | null): TapStudent | null {
   return { id, firstName, lastName, gradeLevel, section };
 }
 
-/** Time in or time out, and whether the school sends it to parents. */
+/**
+ * Time in or time out, and whether the school sends it to parents. A tap
+ * that arrives after a later tap of the same student that day (one a gate
+ * kept while offline, Step 58) is stored with its real time, but sends no
+ * push: the parent already heard about the later one, and "arrived at
+ * 7:05" an hour after "arrived at 8:30" would only confuse.
+ */
 async function directionOf(tap: Tap, studentId: string, deps: RecordTapDeps) {
   const [studentTaps, school] = await Promise.all([
     deps.taps.listByStudent(tap.schoolId, studentId),
     deps.schools.getById(tap.schoolId),
   ]);
   const direction = deriveTapKind(tap, studentTaps);
-  const notified = school ? shouldNotifyParents(school.notificationPreference, direction) : false;
+  const day = schoolDateOf(tap.tappedAt);
+  const laterSameDay = studentTaps.some(
+    (other) =>
+      other.id !== tap.id &&
+      schoolDateOf(other.tappedAt) === day &&
+      Date.parse(other.tappedAt) > Date.parse(tap.tappedAt),
+  );
+  const notified = !laterSameDay && school ? shouldNotifyParents(school.notificationPreference, direction) : false;
   return { direction, notified };
 }
 

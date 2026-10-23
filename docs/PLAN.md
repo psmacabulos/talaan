@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████████░░ 90%**  (305 of 340 tasks, 80 of 89 steps approved)
+**Overall progress: ██████████████████░░ 91%**  (309 of 340 tasks, 81 of 89 steps approved)
 
-**Next up:** Step 57, Lost cards and alerts (ready for your review)
+**Next up:** Step 58, The gate keeps taps while offline (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -87,8 +87,8 @@
 | 55.5 | Email, and staff reset their own password | ██████████ 100% | Approved |
 | 55.6 | Parents reset a forgotten password | ██████████ 100% | Approved |
 | 56 | One read, one tap | ██████████ 100% | Approved |
-| 57 | Lost cards and alerts | ████████░░  75% | Ready for your review |
-| 58 | The gate keeps taps while offline | ░░░░░░░░░░   0% | Not started |
+| 57 | Lost cards and alerts | ██████████ 100% | Approved |
+| 58 | The gate keeps taps while offline | ████████░░  75% | Ready for your review |
 | 59 | Know when something breaks | ░░░░░░░░░░   0% | Not started |
 | 60 | Privacy for real student data | ░░░░░░░░░░   0% | Not started |
 | 61 | Queries that don't grow | ░░░░░░░░░░   0% | Not started |
@@ -419,7 +419,7 @@ Read this first in a new conversation, together with `CLAUDE.md`.
   - Every new or changed command goes into `docs/COMMANDS.md` in the same change.
   - Every owner question gets a `docs/LEARNING-LOG.md` entry.
 - **Known small gaps, after the demo:**
-  - the gate's photos don't load from the tablet's cache when the server can't be reached at start-up (offline work, now part of Step 58);
+  - ~~the gate's photos don't load from the tablet's cache when the server can't be reached at start-up~~ (done in Step 58);
   - under the pinned demo clock, a duplicate's Recent entry shows the tablet's real time.
 
 ### Step 30: Install Docker Desktop and run a local Postgres database
@@ -876,14 +876,14 @@ Plan: `docs/SCALING.md` 1.4 and 1.5. Due before real use at the gate. Recipe fir
 - [x] The dashboard loads open alerts with their taps in one query.
 Done when: a lost card tapped by someone else leaves its owner's day untouched, a handled alert disappears, and every check passes.
 Commit: `feat(alerts): let staff resolve lost-card alerts without shifting time in`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 58: The gate keeps taps while offline
-Plan: `docs/SCALING.md` 1.6, from the plan's after-demo list. Due before real use at the gate.
-- [ ] A tap read while the internet is down is kept on the tablet, with the id it already gets, and sent when the connection returns. The screen says it's saved and waiting.
-- [ ] Photos load from the tablet's own copy when the server can't be reached at start-up.
-- [ ] Tests: taps made offline arrive once each, and parents are notified only after a tap reaches the server.
-- Note from Step 56's architect review: time in or time out is worked out before the per-card lock, from the student's other taps. Sending a queue of old taps all at once could store two of one student's taps with the same direction. Send the queue one tap at a time, or work out the direction inside the lock.
+Plan: `docs/SCALING.md` 1.6, from the plan's after-demo list. Due before real use at the gate. Recipe first: `docs/backend/step-58-offline-gate.md`.
+- [x] A tap read while the internet is down is kept on the tablet, with the id it already gets, and sent when the connection returns. The screen says it's saved and waiting.
+- [x] Photos load from the tablet's own copy when the server can't be reached at start-up.
+- [x] Tests: taps made offline arrive once each, and parents are notified only after a tap reaches the server.
+- Note from Step 56's architect review: time in or time out is worked out before the per-card lock, from the student's other taps. Sending a queue of old taps all at once could store two of one student's taps with the same direction. Send the queue one tap at a time, or work out the direction inside the lock. **Done:** the waiting line is sent one tap at a time, oldest first, and a tap that arrives after a later one of the same student sends no push (owner, 2026-10-23).
 Done when: unplugging the network during taps loses none of them, and every check passes.
 Commit: `feat(gate): keep taps while offline and send them when back`
 - [ ] Owner review: I checked it and said "approved"
@@ -960,6 +960,8 @@ Each has a trigger in `docs/SCALING.md` section 5. When one happens, it becomes 
 - Postgres row-level security, when a second real school joins (`docs/SCHOOL-ISOLATION.md`).
 - Servers closer to the Philippines, if pages feel slow or a school asks where the data is kept.
 - Web Push in the browser, gate online/offline on the dashboard, an admin screen for devices.
+- **Proposed: the gate page opens with no internet at all (would be Step 58.1).** After a power cut or a browser restart during an outage, the tablet shows the browser's own "no internet" page instead of `/gate`, since the page itself has to come from the server. A service worker (a small script the browser keeps) would serve a saved copy. Its risk: an old copy of the page staying after a deploy. Not written yet; Step 58 covers the internet dropping while the page is open.
+- **Optional, when there's time: a found card back in use (would be Step 57.1).** Decided 2026-10-23: for now a lost card stays lost and can't be turned back on. The recipe is written and waiting: `docs/backend/step-57.1-card-found.md`. It only ever helps before a new card is issued.
 
 ## Phase 3: parent app (starts after Step 53, in its own repository)
 **Where Talaan pauses (decided 2026-10-13):** once Step 53 is approved and live on Heroku, the parent app takes over, in its own repository. Its setup step (M1) can start earlier, any time. The starter kit in `mobile/` (since 2026-10-19; before that `docs/PARENT-APP-BRIEF.md`) is everything it needs to begin: what Talaan is, the parent API, the design rules, its own step plan (M1–M8) and the working rules, copied into the new repository as they are, so nothing has to be explained again. Heroku runs Talaan through Step 54.1 (deployed by the owner, 2026-10-19), so the app develops against the live server (`mobile/starter/docs/SERVER.md`). Talaan's Step 54 (push) is finished alongside the app. The demo is Steps 52–54 here plus the app's M1–M8. Steps 55–64 follow the demo.

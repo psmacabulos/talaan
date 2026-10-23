@@ -8,14 +8,18 @@ import { Label } from "@/components/ui/label";
 import { StudentAvatar } from "@/features/students/student-display";
 import { formatSchoolDate, formatSchoolTime } from "@/lib/school-time";
 import {
+  askToKeepStorage,
   checkIn,
   forgetGate,
   GateUnauthorizedError,
+  photosFromCache,
+  readStoredDevice,
   readStoredRoster,
   readToken,
   refreshRoster,
   saveToken,
   sendTap,
+  storage,
   syncPhotos,
   type StoredRoster,
 } from "./gate-client";
@@ -24,10 +28,16 @@ import { createRepeatFilter } from "./repeat-filter";
 import { findRosterStudent } from "./roster-match";
 import { createScanBuffer } from "./scan-buffer";
 import { NoPhotoPortrait, TAP_CARD_PORTRAIT, TapCard, TapListItem } from "./tap-card";
+import { readQueue, writeQueue } from "./tap-queue";
+import { createTapSender, type QueueSummary, type TapSender } from "./tap-sender";
 
 /** After this long with no new tap, the big panel tidies back to "Tap your card". It never holds up a tap. */
 const IDLE_AFTER_MS = 5_000;
 const ROSTER_EVERY_MS = 5 * 60_000;
+/** While taps wait, or the server couldn't be reached at start-up, try again this often (Step 58). */
+const RETRY_EVERY_MS = 30_000;
+/** Taps the server kept refusing are tried again this often (Step 58). */
+const STUCK_EVERY_MS = 10 * 60_000;
 /** A tablet clock this far off gets a warning; the server corrects badly wrong times anyway (Step 45). */
 const CLOCK_WARNING_MS = 2 * 60_000;
 const RECENT_COUNT = 6;
@@ -57,11 +67,18 @@ function subscribeToWindowFocus(onChange: () => void): () => void {
 
 type Phase = { kind: "starting" } | { kind: "setup"; error: string | null } | { kind: "ready"; label: string };
 
+/** "1 tap", "3 taps". */
+function taps(count: number): string {
+  return count === 1 ? "1 tap" : `${count} taps`;
+}
+
 /**
  * The gate tablet's screen (Step 47, docs/GATE.md). Signed in by its own
- * device token, never a staff login. Every card read is sent the moment
- * it's read, without waiting for any earlier one; the photo and name show
- * at once from the tablet's own roster while the server decides.
+ * device token, never a staff login. Every card read is saved on the
+ * tablet, then sent (Step 58): at once when nothing else is waiting,
+ * without waiting for any earlier tap, or in its turn when the connection
+ * was lost. The photo and name show at once from the tablet's own roster
+ * while the server decides.
  */
 export function GateKiosk() {
   const [phase, setPhase] = useState<Phase>({ kind: "starting" });
@@ -88,19 +105,36 @@ export function GateKiosk() {
   );
   const [nfcOn, setNfcOn] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+  const [queueSummary, setQueueSummary] = useState<QueueSummary | null>(null);
+  /** False after a start-up the server couldn't answer, until a check-in works (Step 58). */
+  const [serverReached, setServerReached] = useState(true);
 
   const tokenRef = useRef<string | null>(null);
   const rosterRef = useRef<StoredRoster | null>(null);
   /** The roster whose photos this page has loaded; null until the first load. */
   const photosLoadedFor = useRef<StoredRoster | null>(null);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const senderRef = useRef<TapSender | null>(null);
+  const checkInTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   // One per page: the same card read again within 5 seconds isn't sent (Step 56).
   const [repeatFilter] = useState(createRepeatFilter);
+
+  /** A scan's new state, whenever its answer comes: even a tap saved an hour ago, still in the Recent list. */
+  const settleScan = useCallback((id: string, state: GateScan["state"]) => {
+    setScans((current) => current.map((existing) => (existing.id === id ? { ...existing, state } : existing)));
+  }, []);
 
   const disconnect = useCallback(async (error: string | null) => {
     tokenRef.current = null;
     rosterRef.current = null;
     photosLoadedFor.current = null;
+    // The waiting taps stay on the tablet: forgetGate() keeps them (Step 58).
+    senderRef.current?.stop();
+    senderRef.current = null;
+    if (checkInTimer.current) clearInterval(checkInTimer.current);
+    checkInTimer.current = null;
+    setQueueSummary(null);
+    setServerReached(true);
     await forgetGate();
     setPhotoUrls((current) => {
       current.forEach((url) => URL.revokeObjectURL(url));
@@ -139,27 +173,107 @@ export function GateKiosk() {
     [disconnect],
   );
 
+  /** The tablet's waiting line for this school, sending with this token (Step 58). */
+  const startSender = useCallback(
+    (token: string, schoolId: string) => {
+      const sender = createTapSender({
+        schoolId,
+        load: () => readQueue(storage()),
+        save: (queue) => writeQueue(storage(), queue),
+        send: (tap) => sendTap(token, { clientTapId: tap.id, cardSerial: tap.raw, clientTappedAt: tap.scannedAt }),
+        onAnswer: (id, response) => settleScan(id, { kind: "answered", response }),
+        onUnsent: (id) => settleScan(id, { kind: "saved" }),
+        onUnauthorized: () => void disconnect("This gate was disconnected. Ask the office for a new token."),
+        onChange: setQueueSummary,
+      });
+      senderRef.current = sender;
+      setQueueSummary(sender.summary());
+      return sender;
+    },
+    [disconnect, settleScan],
+  );
+
+  /** A check-in worked: the clock warning, then a fresh roster, and anything waiting goes out. */
+  const checkedIn = useCallback(
+    async (token: string, serverTime: string) => {
+      const offBy = Date.now() - Date.parse(serverTime);
+      setClockOffMinutes(Math.abs(offBy) > CLOCK_WARNING_MS ? Math.round(offBy / 60_000) : null);
+      setServerReached(true);
+      await loadRoster(token);
+      senderRef.current?.kick();
+    },
+    [loadRoster],
+  );
+
   const connect = useCallback(
     async (token: string) => {
+      askToKeepStorage();
       try {
-        const { label, serverTime } = await checkIn(token);
+        const { label, schoolId, serverTime } = await checkIn(token);
         tokenRef.current = token;
         saveToken(token);
-        const offBy = Date.now() - Date.parse(serverTime);
-        setClockOffMinutes(Math.abs(offBy) > CLOCK_WARNING_MS ? Math.round(offBy / 60_000) : null);
         rosterRef.current = readStoredRoster();
         setRoster(rosterRef.current);
+        startSender(token, schoolId);
         setPhase({ kind: "ready", label });
-        await loadRoster(token);
+        await checkedIn(token, serverTime);
       } catch (error) {
         if (error instanceof GateUnauthorizedError) {
           await disconnect("That token doesn't work. Ask the office for a new one.");
-        } else {
-          setPhase({ kind: "setup", error: "Couldn't reach the server. Check the connection and try again." });
+          return;
         }
+        // The server can't answer, but this tablet has been set up before
+        // with this same token: start from its own copies, and keep checking
+        // in (Step 58). A different token never borrows the saved school.
+        const device = readToken() === token ? readStoredDevice() : null;
+        if (!device) {
+          setPhase({ kind: "setup", error: "Couldn't reach the server. Check the connection and try again." });
+          return;
+        }
+        tokenRef.current = token;
+        const stored = readStoredRoster();
+        rosterRef.current = stored;
+        setRoster(stored);
+        startSender(token, device.schoolId);
+        setServerReached(false);
+        setPhase({ kind: "ready", label: device.label });
+        if (stored) {
+          const urls = await photosFromCache(stored.roster);
+          setPhotoUrls((current) => {
+            current.forEach((url) => URL.revokeObjectURL(url));
+            return urls;
+          });
+        }
+        if (checkInTimer.current) clearInterval(checkInTimer.current);
+        checkInTimer.current = setInterval(() => {
+          checkIn(token).then(
+            ({ schoolId, serverTime }) => {
+              if (checkInTimer.current) clearInterval(checkInTimer.current);
+              checkInTimer.current = null;
+              // The server's word on the school wins over the saved one.
+              if (senderRef.current?.schoolId !== schoolId) {
+                senderRef.current?.stop();
+                startSender(token, schoolId);
+              }
+              void checkedIn(token, serverTime);
+            },
+            (retryError) => {
+              if (retryError instanceof GateUnauthorizedError)
+                void disconnect("This gate was disconnected. Ask the office for a new token.");
+            },
+          );
+        }, RETRY_EVERY_MS);
       }
     },
-    [disconnect, loadRoster],
+    [checkedIn, disconnect, startSender],
+  );
+
+  // The start-up check-in retry (Step 58) ends with the page.
+  useEffect(
+    () => () => {
+      if (checkInTimer.current) clearInterval(checkInTimer.current);
+    },
+    [],
   );
 
   // First visit: a ?token= link connects once and then leaves the address bar.
@@ -182,8 +296,8 @@ export function GateKiosk() {
 
   const handleScan = useCallback(
     (raw: string) => {
-      const token = tokenRef.current;
-      if (!token) return;
+      const sender = senderRef.current;
+      if (!tokenRef.current || !sender) return;
       const keepShowing = () => {
         setShowCurrent(true);
         if (idleTimer.current) clearTimeout(idleTimer.current);
@@ -194,31 +308,21 @@ export function GateKiosk() {
         keepShowing();
         return;
       }
+      const id = crypto.randomUUID();
+      const scannedAt = new Date().toISOString();
+      // Saved first, then sent now or in its turn (Step 58). In its turn means "Saved" at once.
+      const sending = sender.add({ id, raw, scannedAt, schoolId: sender.schoolId, tries: 0 });
       const scan: GateScan = {
-        id: crypto.randomUUID(),
+        id,
         raw,
-        scannedAt: new Date().toISOString(),
+        scannedAt,
         rosterStudent: findRosterStudent(raw, rosterRef.current?.roster ?? null),
-        state: { kind: "checking" },
+        state: sending === "waiting" ? { kind: "saved" } : { kind: "checking" },
       };
       setScans((current) => [scan, ...current].slice(0, 20));
       keepShowing();
-
-      const settle = (state: GateScan["state"]) =>
-        setScans((current) => current.map((existing) => (existing.id === scan.id ? { ...existing, state } : existing)));
-      sendTap(token, { clientTapId: scan.id, cardSerial: raw, clientTappedAt: scan.scannedAt })
-        .then((response) => settle({ kind: "answered", response }))
-        .catch(async (error) => {
-          if (error instanceof GateUnauthorizedError) {
-            await disconnect("This gate was disconnected. Ask the office for a new token.");
-          } else {
-            // Not sent: the same card read again is tried at once.
-            repeatFilter.forget(raw);
-            settle({ kind: "failed" });
-          }
-        });
     },
-    [disconnect, repeatFilter],
+    [repeatFilter],
   );
 
   // While ready: the reader's keystrokes, a roster check every 5 minutes, a live clock, and the screen kept on.
@@ -238,6 +342,12 @@ export function GateKiosk() {
     };
     window.addEventListener("keydown", onKey);
     const rosterTimer = setInterval(() => tokenRef.current && void loadRoster(tokenRef.current), ROSTER_EVERY_MS);
+    // Waiting taps go out when the browser says it's back online, and every
+    // 30 seconds anyway: "online" isn't always told (Step 58).
+    const sendWaiting = () => senderRef.current?.kick();
+    window.addEventListener("online", sendWaiting);
+    const retryTimer = setInterval(sendWaiting, RETRY_EVERY_MS);
+    const stuckTimer = setInterval(() => void senderRef.current?.retryStuck(), STUCK_EVERY_MS);
     const clockTimer = setInterval(() => setNow(new Date().toISOString()), 15_000);
 
     let wakeLock: WakeLockSentinel | null = null;
@@ -254,6 +364,9 @@ export function GateKiosk() {
     return () => {
       window.removeEventListener("keydown", onKey);
       clearInterval(rosterTimer);
+      window.removeEventListener("online", sendWaiting);
+      clearInterval(retryTimer);
+      clearInterval(stuckTimer);
       clearInterval(clockTimer);
       document.removeEventListener("visibilitychange", keepAwake);
       void wakeLock?.release();
@@ -328,6 +441,20 @@ export function GateKiosk() {
     );
   }
 
+  const queueNotices = [
+    !serverReached ? "Can't reach the server. Taps are saved on this tablet and sent when it's back." : null,
+    queueSummary && queueSummary.waiting > 0
+      ? `${taps(queueSummary.waiting)} saved on this tablet, waiting to send.`
+      : null,
+    queueSummary && queueSummary.stuck > 0
+      ? `${taps(queueSummary.stuck)} couldn't be sent. Keep this tablet on and tell the office.`
+      : null,
+    queueSummary && queueSummary.otherSchool > 0
+      ? `${taps(queueSummary.otherSchool)} from another school ${queueSummary.otherSchool === 1 ? "is" : "are"} saved on this tablet.`
+      : null,
+    queueSummary?.storageFull ? "This tablet's storage is full. Tell the office." : null,
+  ].filter((notice) => notice !== null);
+
   const current = showCurrent ? scans[0] : undefined;
   const display = current ? describeScan(current) : null;
   const studentIdOf = (scan: GateScan) => {
@@ -379,6 +506,18 @@ export function GateKiosk() {
         <p role="status" className="bg-status-late-bg px-4 py-3 text-base font-medium text-status-late sm:px-6">
           Taps from the reader can&apos;t reach this page. Click or tap anywhere on it.
         </p>
+      ) : null}
+
+      {/* The waiting line (Step 58): taps kept on this tablet until the server has them. */}
+      {queueNotices.length > 0 ? (
+        <div
+          role="status"
+          className="flex flex-col gap-1 bg-status-late-bg px-4 py-3 text-base text-status-late sm:px-6"
+        >
+          {queueNotices.map((notice) => (
+            <p key={notice}>{notice}</p>
+          ))}
+        </div>
       ) : null}
 
       {clockOffMinutes !== null ? (

@@ -165,9 +165,10 @@ The seeded lost-card tap gets `studentId: null`, its alert `studentId: seedStude
    - On `/attendance`, that student (the first seeded student) has no time in from the lost card.
    - Click **Mark handled**: a toast, and the alert is gone; "0 open".
 3. At the gate, with the reader: report a card lost (Students → the student → "Card lost? Replace it"), then tap the old card at `/gate`. The gate and `/gate/display` show the lost-card warning with the owner's name and photo. Then tap their new card: it's a **time in**, not a time out.
-4. On the live database, after deploying (architect): no lost-card tap still has a student. In `heroku pg:psql`:
-   ```sql
-   SELECT count(*) FROM "Tap" t JOIN "Alert" a ON a."tapId" = t.id WHERE t."studentId" IS NOT NULL;
+4. On the live database, after deploying (architect): no lost-card tap still has a student. This Mac has no `psql`, so through the Docker database's (`docs/COMMANDS.md`):
+   ```bash
+   docker start talaan-postgres
+   docker exec -it talaan-postgres psql "$(heroku config:get DATABASE_URL --app bantayaral)" -c 'SELECT count(*) FROM "Tap" t JOIN "Alert" a ON a."tapId" = t.id WHERE t."studentId" IS NOT NULL;'
    ```
    should print `0`.
 

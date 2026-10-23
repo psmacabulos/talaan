@@ -190,6 +190,18 @@ describe("recordTap", () => {
     expect(ownTap).toMatchObject({ outcome: "recorded", direction: "time_in", student: { id: juan.id } });
   });
 
+  it("records a tap that arrives after a later one of the same day, but sends no push (Step 58)", async () => {
+    const { deps, writes } = setup();
+    // The 8:30 tap reached the server first; the 7:56 one was waiting on an offline gate.
+    const later = await recordTap(input(34 * MINUTE), deps);
+    expect(later).toMatchObject({ outcome: "recorded", direction: "time_in", notified: true });
+
+    const late = await recordTap(input(), deps);
+    expect(late).toMatchObject({ outcome: "recorded", direction: "time_in", notified: false });
+    expect(writes[1].tap.tappedAt).toBe(input().clientTappedAt);
+    expect(writes[1].notification).toBeNull();
+  });
+
   // Not stored (owner review, 2026-10-13): it's nobody's attendance. The
   // answer carries the card's own serial when one matched (the retired
   // card), and what the reader sent otherwise.

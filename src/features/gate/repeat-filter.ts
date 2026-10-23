@@ -6,7 +6,9 @@ export const REPEAT_WINDOW_MS = 5_000;
  * before it's sent. Measured from the *last* read, so a card held on a
  * reader that reads it every second is sent once, however long it stays.
  * A different card in between makes the next read of the first one new.
- * Only saves requests: the server's 2-minute rule is the real guard.
+ * Only saves requests: the server's 2-minute rule is the real guard. A
+ * read that couldn't be sent is saved on the tablet (Step 58), so it
+ * counts as handled too: holding the card on the reader saves it once.
  */
 export function createRepeatFilter(windowMs = REPEAT_WINDOW_MS) {
   let last: { raw: string; at: number } | null = null;
@@ -17,10 +19,6 @@ export function createRepeatFilter(windowMs = REPEAT_WINDOW_MS) {
       const repeat = last !== null && last.raw === raw && at - last.at < windowMs;
       last = { raw, at };
       return repeat;
-    },
-    /** A read whose send failed: the same card read again is tried at once, not dropped for 5 seconds. */
-    forget(raw: string) {
-      if (last?.raw === raw) last = null;
     },
   };
 }

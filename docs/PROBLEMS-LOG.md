@@ -40,7 +40,7 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-023](#p-023--2026-10-16--saving-a-push-address-as-the-phone-signed-out-answered-500) | 2026-10-16 | Saving a push address as the phone signed out answered 500 | Other: correctness | Parent API, database | Resolved |
 | [P-024](#p-024--2026-10-16--a-browser-test-couldnt-load-the-prisma-client) | 2026-10-16 | A browser test couldn't load the Prisma Client | Other: tests | Playwright, Prisma | Resolved |
 | [P-025](#p-025--2026-10-16--two-type-errors-in-step-54s-tests) | 2026-10-16 | Two type errors in Step 54's tests | Other: tests | TypeScript | Resolved |
-| [P-026](#p-026--2026-10-19--the-live-server-answered-internal-server-error-after-step-54s-deploy) | 2026-10-19 | The live server answered "Internal Server Error" after Step 54's deploy | Other: reliability | Heroku, settings | Open: owner sets `PUSH_SENDER` |
+| [P-026](#p-026--2026-10-19--the-live-server-answered-internal-server-error-after-step-54s-deploy) | 2026-10-19 | The live server answered "Internal Server Error" after Step 54's deploy | Other: reliability | Heroku, settings | Resolved (prevention: P-041) |
 | [P-027](#p-027--2026-10-20--the-new-browser-test-found-its-student-already-tapped) | 2026-10-20 | The new browser test found its student already tapped | Other: tests | Playwright | Resolved |
 | [P-028](#p-028--2026-10-21--a--as-a-last-name-linked-any-child-and-_-matched-staff-emails) | 2026-10-21 | A "%" as a last name linked any child, and "_" matched staff emails | Security | Child linking, staff sign-in | Resolved (deploy pending) |
 | [P-029](#p-029--2026-10-21--the-monitor-test-lost-count-when-an-old-tap-dropped-off-the-list) | 2026-10-21 | The monitor test lost count when an old tap dropped off the list | Other: tests | Playwright, `/gate/display` | Resolved |
@@ -55,6 +55,8 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-038](#p-038--2026-10-23--the-new-postgres-test-found-no-studentid-column) | 2026-10-23 | The new Postgres test found no `studentId` column | Other: setup | Prisma, Vitest, test database | Resolved |
 | [P-039](#p-039--2026-10-23--the-alert-test-made-taps-the-app-cant-read) | 2026-10-23 | The alert test made taps the app can't read | Other: tests | Vitest, Zod | Resolved |
 | [P-040](#p-040--2026-10-23--a-parent-api-test-was-told-too-many-tries) | 2026-10-23 | A parent API test was told "too many tries" | Other: tests | Playwright, sign-in limits | Fixed: owner to re-run |
+| [P-041](#p-041--2026-10-23--the-live-server-stopped-again-email_sender-wasnt-set) | 2026-10-23 | The live server stopped again: `EMAIL_SENDER` wasn't set | Other: reliability | Heroku, settings | Open: owner sets `EMAIL_SENDER` |
+| [P-042](#p-042--2026-10-23--three-ways-the-new-offline-gate-could-still-lose-taps) | 2026-10-23 | Three ways the new offline gate could still lose taps | Other: correctness | `/gate`, code review | Resolved |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -594,7 +596,7 @@ sequenceDiagram
   3. **Prevent it next time: check the settings in Heroku's release phase.** The Procfile's `release:` line already runs the migrations before a new version goes live. Running the same settings check there first means a missing setting fails the *release*, and Heroku keeps the old version running instead of serving 500s. A small code change with its own commit, decided by the owner. It also covers most of P-010.
 - **Solution:** option 1, typed by the owner. Option 3 proposed.
 - **Check:** `heroku config --app bantayaral` lists `PUSH_SENDER`; `https://bantayaral.com/api/v1/health` answers; the log has no "can't start with these settings" line after the restart.
-- **Status:** Open: the owner sets `PUSH_SENDER`.
+- **Status:** Resolved: `PUSH_SENDER` was set and the server ran through Step 54.1. Option 3 wasn't built, and the same thing happened again with `EMAIL_SENDER` (P-041).
 
 ### P-027 · 2026-10-20 · The new browser test found its student already tapped
 - **Where:** the owner's `npm run test:e2e`, Step 55's new test in `e2e/attendance.spec.ts`, desktop project only.
@@ -842,3 +844,57 @@ sequenceDiagram
 - **Options weighed:** (1) run the file's tests one after another (`test.describe.configure({ mode: "serial" })`: slower, and doesn't fix a reused server); (2) add the worker's number to the address (fixes workers, not the reused server); (3) **a random address** from IPv6's documentation range, `2001:db8::/32`, varied in the /64 part that the limits count by: about 4 billion choices, so neither workers nor old locks collide.
 - **Solution:** (3), in `freshAddress()`. The limits treat these exactly like real IPv6 addresses (`clientAddressKey` keys IPv6 by its /64), so the tests still check the limits for real.
 - **Status:** Fixed; owner to re-run `npm run test:e2e`.
+
+## The live server (2026-10-23)
+
+### P-041 · 2026-10-23 · The live server stopped again: `EMAIL_SENDER` wasn't set
+- **Where:** Heroku, the first deploy since Step 54.1, carrying Steps 55 to 56 (07:55 UTC, 3:55 PM in the Philippines, after the gate's morning). Step 57 was committed but not yet pushed.
+- **Symptom:** `heroku logs --app bantayaral`:
+  ```
+  app[web.1]: Error: An error occurred while loading instrumentation hook: The server can't start with these settings:
+  app[web.1]: - EMAIL_SENDER must be "smtp" (send emails) or "log" (only log them, until email is set up).
+  ```
+  As in P-010, the dyno stays `up` but answers every request with 500.
+- **Cause:** Step 55.5 made `EMAIL_SENDER` a required setting on a live server (`checkProductionEnv`, `src/lib/env.ts`). `docs/DEPLOY.md` says to set it before pushing Step 55.5, but nothing makes a deploy wait for it. It's P-026 again, with a different setting.
+  ```mermaid
+  flowchart LR
+      Push["git push (Steps 55–56)"] --> Release["release phase:<br/>prisma migrate deploy ✓"]
+      Release --> Web["web dyno starts"]
+      Web --> Check{"EMAIL_SENDER set?"}
+      Check -- "no" --> E500["every request: 500"]
+  ```
+- **Options weighed:**
+  1. **Set it now:** `heroku config:set EMAIL_SENDER=log --app bantayaral`. Heroku restarts the dyno, and the check passes. Emails are only logged (subjects only) until Resend is set up, and the sign-in page keeps "Ask your principal".
+  2. **Roll back** to the last working release. Brings the site back but leaves Steps 55–56's migrations ahead of the code. Worse.
+  3. **Prevent a third time** (P-026's option 3): run the same settings check in Heroku's **release phase**, before `prisma migrate deploy` (`Procfile`: `release: <check settings> && npx prisma migrate deploy`). When a release command fails, Heroku doesn't switch to the new version, so the old one keeps serving, the migrations don't run, and the release log says which setting is missing. A small script reusing `checkProductionEnv`, no new package.
+- **Solution:** option 1 now, typed by the owner. Option 3 recommended, as a small change of its own.
+- **Check:** `heroku config --app bantayaral` lists `EMAIL_SENDER`; `https://bantayaral.herokuapp.com/api/v1/health` answers `{"ok":true,"database":"ok"}`; no "can't start with these settings" line after the restart. Once Step 57 is pushed too, its live check prints `0` (before that it printed `5`, on 2026-10-23: Step 57's migration hadn't run yet, which was expected). `heroku pg:psql` needs a `psql` this Mac doesn't have ("The local psql command could not be located"), so through the Docker database's:
+  ```bash
+  docker exec -it talaan-postgres psql "$(heroku config:get DATABASE_URL --app bantayaral)" -c 'SELECT count(*) FROM "Tap" t JOIN "Alert" a ON a."tapId" = t.id WHERE t."studentId" IS NOT NULL;'
+  ```
+- **Status:** Open: the owner sets `EMAIL_SENDER`.
+
+## The gate keeps taps while offline (Step 58, 2026-10-23)
+
+### P-042 · 2026-10-23 · Three ways the new offline gate could still lose taps
+- **Where:** `src/features/gate/gate-client.ts`, `tap-sender.ts`, `gate-kiosk.tsx`, found by the architect's code review of Step 58 before the owner's checks. Read from the code, not seen running.
+- **Symptom:** none yet; three paths that would delete or overwrite saved taps:
+  1. `sendTap` called any 4xx other than 401/403 "refused", and the sender then **deleted the tap**, showing "Couldn't read the card". A school's web filter or login portal answering the POST with 404, 405 or 407 would delete every tap sent through it.
+  2. Each sender kept its own copy of the line and **saved the whole copy** on every change. After Disconnect and a quick reconnect, a send still on its way from the old sender (up to 10 s) saved the old line over the new sender's taps.
+  3. A new `?token=` link replaced the token but **kept the saved gate** (label and school). With the server unreachable, the gate started with the old school's id, so the old school's taps went out under the new token and came back "unknown card".
+  ```mermaid
+  sequenceDiagram
+      participant Old as Old sender
+      participant New as New sender
+      participant LS as localStorage
+      Old->>LS: save [a]
+      Note over Old: Disconnect; "a" still on its way
+      New->>LS: save [a, b]
+      Old-->>Old: "a" answered
+      Old->>LS: save [] (its own copy): "b" lost
+  ```
+- **Cause:** the first build treated "the server refused it" as final, though a 4xx can come from something between the tablet and the server. The sender treated its in-memory copy as the truth, though another sender can share the same storage. And the saved gate was keyed to nothing.
+- **Options weighed:** for 1, keep deleting only on this app's own 400 (it still can't tell a proxy's 400 from ours) or **never delete on an error answer** (a tap the server truly refuses ends up stuck, retried every 10 minutes: harmless). For 2, **re-read storage on every change**, or ignore answers once stopped (both done). For 3, **forget the saved gate when the token changes**, and trust the server's school once a check-in works.
+- **Solution:** all three as bolded above, each with a test (`gate-client.test.ts`, `tap-sender.test.ts`). The same review also led to 502, 503 and 504 not counting toward "stuck" (Heroku answers 503 while restarting), a new tap waiting while the line is being sent, and a fallback for tablets without `AbortSignal.timeout`.
+- **Lesson:** a waiting line on a device has to treat the device's storage as the only truth, and "refused" as a guess.
+- **Status:** Resolved.

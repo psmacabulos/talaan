@@ -2818,3 +2818,55 @@ Not run: lint, `check:tokens`, the full `npm test`, the build and the browser te
 - **Noted, outside this step:** the teacher dashboard's one query per student is Step 62's.
 
 **The owner's browser test run** failed one parent API test with 429 instead of 401 (`docs/PROBLEMS-LOG.md`, P-040). It's not from Step 57: the file's fake addresses came from a counter that each Playwright worker starts again at 10, so two tests could share an address, and one of them locks its address on purpose. `freshAddress()` now picks a random IPv6 /64 in the documentation range.
+
+## Step 58: the gate keeps taps while offline (2026-10-23)
+
+**Recipe first.** `docs/backend/step-58-offline-gate.md`, approved the same day. The owner approved the late-tap rule (no push for a tap that arrives after a later one of the same student) and kept the service worker out (proposed as Step 58.1). The architect's plan review had three blocking points, all taken:
+- Disconnect and a revoked token used to wipe taps the server never got.
+- One tap the server keeps refusing could block the whole line.
+- Sending in order from one tablet can't stop a second device's later tap from arriving first, hence the server rule.
+
+**One flaw I caught in my own draft:** counting every failed send toward "stuck" would have marked the oldest tap stuck within minutes of a plain outage. Only error answers from the server count.
+
+**The code.**
+- `tap-queue.ts` holds the line: plain functions over `localStorage`.
+- `tap-sender.ts` holds the rules:
+  - save first;
+  - send at once when nothing older is waiting its turn;
+  - otherwise one at a time, oldest first;
+  - stop at the first failure.
+- `gate-client.ts`: `sendTap` gets `AbortSignal.timeout(10_000)` and four error classes.
+- `gate-kiosk.tsx`: hands each scan to the sender. It sends the line on the `online` event and every 30 s, retries stuck taps every 10 minutes, and starts from its own copies when the heartbeat fails. The "Not sent" state went away: every unsent tap is now "Saved".
+
+**Found while building:** the strip would have flashed "1 tap saved on this tablet" on every normal tap, since a tap is saved before it's sent. A tap that goes at once is now marked "on its way" before it's saved, and the count skips taps on their way. A test pins it.
+
+**Choosing the browser test's students** took a script: Balanga students with an active card and a seed tap, whose names and ids appear in no other test. Untapped students are what the station tests pick (P-022), so these three had to have tapped already: Arnel Villanueva, Cristina Aquino, Noel Fernandez.
+
+Runs while building:
+
+```bash
+npx tsc --noEmit                                         # clean
+npx vitest run src/features/gate src/services/taps       # 19 files, 116 passed
+npm run build && npx playwright test e2e/gate.spec.ts    # 10 passed, 2 skipped (desktop-only tests on mobile)
+npx playwright test e2e/gate-monitor.spec.ts             # 8 passed
+```
+
+**Architect's code review: three blocking paths, all fixed** (`docs/PROBLEMS-LOG.md`, P-042):
+- a proxy's 4xx deleted taps;
+- an old sender's late answer saved its old line over the new one;
+- an offline start trusted a previous token's school.
+
+Also from it:
+- 502, 503 and 504 count like no connection;
+- a new tap waits while the line is being sent;
+- a fallback for tablets without `AbortSignal.timeout`.
+
+`GateRejectedError` is gone, and `gate-client.test.ts` is new. Re-run after the fixes:
+
+```bash
+npx tsc --noEmit                                                      # clean
+npx vitest run src/features/gate src/services/taps                    # 20 files, 124 passed
+npm run build && npx playwright test e2e/gate.spec.ts e2e/gate-monitor.spec.ts   # 18 passed, 2 skipped
+npx eslint src/features/gate src/services/taps e2e/gate.spec.ts e2e/tap-rows.ts e2e/parent-api.spec.ts   # clean
+npm run check:tokens                                                  # clean
+```

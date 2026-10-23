@@ -1,7 +1,18 @@
+import { execFileSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
 import { REPEAT_WINDOW_MS } from "../src/features/gate/repeat-filter";
+import { e2eDatabaseUrl } from "./database";
 import { signInAs } from "./sessions";
 import { activeCardSerialFor, readerDigitsFor, TEST_GATE_TOKEN } from "./test-data";
+
+/** How many of these taps are stored, and the notifications they made, read from the test database (Step 58). */
+function tapRows(ids: string[]): { taps: number; notifications: number } {
+  const output = execFileSync("npx", ["tsx", "e2e/tap-rows.ts", ...ids], {
+    env: { ...process.env, DATABASE_URL: e2eDatabaseUrl() },
+    encoding: "utf8",
+  });
+  return JSON.parse(output.trim().split("\n").at(-1)!);
+}
 
 test.describe("Gate (Step 47)", () => {
   test("a card read by the USB reader shows the student, then a second read is a duplicate", async ({
@@ -119,6 +130,59 @@ test.describe("Gate (Step 47)", () => {
     await page.keyboard.type(readerDigitsFor(activeCardSerialFor(studentName)));
     await page.keyboard.press("Enter");
     await expect(page.getByRole("main").locator("section img").first()).toHaveAttribute("src", /^blob:/);
+
+    // Started while the server can't answer (Step 58): the gate opens from
+    // its own copies, and the photo comes from the tablet's cache.
+    await page.route("**/api/v1/devices/heartbeat", (route) => route.fulfill({ status: 503 }));
+    await page.reload();
+    await expect(page.getByText("Connected as Test gate")).toBeVisible();
+    await expect(
+      page.getByText("Can't reach the server. Taps are saved on this tablet and sent when it's back."),
+    ).toBeVisible();
+    await page.keyboard.type(readerDigitsFor(activeCardSerialFor(studentName)));
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("main").locator("section img").first()).toHaveAttribute("src", /^blob:/);
+  });
+
+  test("taps read with no connection are saved, then each reaches the server once (Step 58)", async ({
+    page,
+    context,
+  }, testInfo) => {
+    // One tablet is enough: the waiting line doesn't depend on the screen's width.
+    test.skip(testInfo.project.name !== "desktop", "Runs once, on the desktop project");
+    // Students with a tap on the demo morning (so the station tests, which
+    // tap untapped students, leave them alone) whom no other test uses.
+    const students = ["Arnel Villanueva", "Cristina Aquino", "Noel Fernandez"];
+    await page.goto(`/gate?token=${TEST_GATE_TOKEN}`);
+    await expect(page.getByText("Tap your card")).toBeVisible();
+
+    await context.setOffline(true);
+    for (const name of students) {
+      await page.keyboard.type(readerDigitsFor(activeCardSerialFor(name)));
+      await page.keyboard.press("Enter");
+    }
+    const strip = page.getByText("3 taps saved on this tablet, waiting to send.");
+    await expect(strip).toBeVisible();
+    await expect(page.getByRole("main").getByText("Saved on this tablet", { exact: true }).first()).toBeVisible();
+
+    // Kept in the tablet's storage, with the ids they got when read, and
+    // nothing has reached the server: no tap, no parent notification.
+    const ids: string[] = await page.evaluate(() =>
+      JSON.parse(window.localStorage.getItem("talaan.gate.queue") ?? '{"waiting":[]}').waiting.map(
+        (tap: { id: string }) => tap.id,
+      ),
+    );
+    expect(ids).toHaveLength(3);
+    expect(tapRows(ids)).toEqual({ taps: 0, notifications: 0 });
+
+    // Back online: the line empties, oldest first, and each tap is stored
+    // exactly once, with its notification made only now.
+    await context.setOffline(false);
+    await page.evaluate(() => window.dispatchEvent(new Event("online")));
+    await expect(strip).toBeHidden();
+    // The strip hides once the last tap is on its way; its answer comes a moment later.
+    await expect.poll(() => page.evaluate(() => window.localStorage.getItem("talaan.gate.queue"))).toBeNull();
+    expect(tapRows(ids)).toEqual({ taps: 3, notifications: 3 });
   });
 
   test("three cards read back to back all land, none waiting for another", async ({ page }, testInfo) => {

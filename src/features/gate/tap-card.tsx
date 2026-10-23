@@ -88,8 +88,8 @@ const KIND: Record<
     badgeClass: "bg-status-idle-bg text-status-idle",
     listClass: "text-muted-foreground",
   },
-  not_sent: {
-    badge: "Not sent",
+  saved: {
+    badge: "Saved on this tablet",
     icon: WifiOff,
     badgeClass: "bg-status-idle-bg text-status-idle",
     listClass: "text-muted-foreground",
