@@ -86,3 +86,18 @@ export function checkProductionEnv(env: NodeJS.ProcessEnv): string[] {
   }
   return problems;
 }
+
+/**
+ * Heroku's release phase (Step 59, `scripts/check-settings.ts`): what to
+ * print, and the exit code. A non-zero code fails the release, so Heroku
+ * keeps the old version serving and the migrations don't run, instead of
+ * a new version answering every request with a 500 (P-026, P-041).
+ */
+export function releaseCheck(env: NodeJS.ProcessEnv): { exitCode: 0 | 1; lines: string[] } {
+  const problems = checkProductionEnv(env);
+  if (problems.length === 0) return { exitCode: 0, lines: ["Settings OK."] };
+  return {
+    exitCode: 1,
+    lines: ["This release is refused: the server can't start with these settings:", ...problems.map((p) => `- ${p}`)],
+  };
+}

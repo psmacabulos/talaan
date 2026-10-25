@@ -3,10 +3,13 @@
 import { useEffect } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { reportBrowserError } from "@/lib/browser-error-reporting";
 
 export default function AppError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   useEffect(() => {
     console.error(error);
+    // A caught error never reaches Sentry by itself (Step 59).
+    reportBrowserError(error);
   }, [error]);
 
   return (

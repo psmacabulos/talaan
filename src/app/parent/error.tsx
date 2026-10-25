@@ -3,11 +3,14 @@
 import { useEffect } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { reportBrowserError } from "@/lib/browser-error-reporting";
 
 /** Covers every page under `/parent` (public and protected alike), the same way `(app)/error.tsx` covers the whole staff area. */
 export default function ParentError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   useEffect(() => {
     console.error(error);
+    // A caught error never reaches Sentry by itself (Step 59).
+    reportBrowserError(error);
   }, [error]);
 
   return (

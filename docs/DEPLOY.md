@@ -11,7 +11,7 @@ Heroku gets the code from **GitHub**, not from your laptop. It's connected to th
 ```mermaid
 flowchart LR
     GH["GitHub main<br/>(you push)"] -->|CI passes| H["Heroku build<br/>npm ci, prisma generate, next build"]
-    H --> R["release phase<br/>prisma migrate deploy"]
+    H --> R["release phase<br/>settings check, then prisma migrate deploy"]
     R --> Web["web dyno<br/>next start, then the settings check"]
     Web --> PG[("Heroku Postgres<br/>Essential-0, version 18")]
     Web --> R2[("Cloudflare R2<br/>talaan-photos (private)")]
@@ -22,7 +22,7 @@ flowchart LR
 
 1. **You push to `main`.** GitHub runs CI (`.github/workflows/ci.yml`). Heroku is set to deploy automatically from `main`, but only after CI passes, so a red build never reaches a school.
 2. **Build.** Heroku reads `"engines": { "node": "24.x" }` in `package.json` and installs the same Node as CI and your laptop. Then `npm ci`, whose `postinstall` runs `prisma generate`, then `npm run build`. Afterwards Heroku deletes the development packages, which is why `prisma`, `tsx` and `dotenv` are regular `dependencies`: the release phase and the `heroku run` scripts need them.
-3. **Release.** The `Procfile`'s `release:` line runs `npx prisma migrate deploy` once, before the new version takes any traffic. If it fails, Heroku keeps the old version running. A migration is never rolled back by Heroku; see `docs/DATABASE-MIGRATIONS.md`.
+3. **Release.** The `Procfile`'s `release:` line first checks the settings (`scripts/check-settings.ts`, Step 59), then runs `npx prisma migrate deploy` once, before the new version takes any traffic. If either fails, Heroku keeps the old version running: a missing setting is refused here, with its name in the release log (`heroku releases:output --app bantayaral`), instead of a live site answering 500 (P-026, P-041). Heroku also runs the release phase on `heroku config:set`, so removing a required setting is refused the same way; set related settings in one command. A migration is never rolled back by Heroku; see `docs/DATABASE-MIGRATIONS.md`.
 4. **Start.** The `web:` line runs `npm start` (`next start`), which listens on the `PORT` Heroku gives it. Before answering any request, `src/instrumentation.ts` runs `checkProductionEnv` (`src/lib/env.ts`). A missing or dangerous setting stops the start, and the logs list each problem by the setting's name, never its value:
 
    ```
@@ -76,6 +76,7 @@ Set with `heroku config:set NAME=value --app bantayaral`. Type secrets yourself;
 | `SMTP_PASSWORD` | you: a Resend API key, Sending access, `mail.bantayaral.com` only | The same. |
 | `EMAIL_FROM` | you: `Bantay Aral <no-reply@mail.bantayaral.com>` | The same. The address must be on the domain Resend verified. |
 | `APP_URL` | you: `https://bantayaral.herokuapp.com` | The same. Links in emails use it, never the request's own address. Must start with `https://`. |
+| `NEXT_PUBLIC_SENTRY_DSN` | you: Sentry, the project's Client Keys | Step 59 (`docs/ERROR-TRACKING.md`). Optional: unset, no error reports are sent. Not a secret. The build copies it into the code, so **set it before a deploy**, and deploy again after changing it. |
 | `S3_ENDPOINT` | you | `https://<account-id>.r2.cloudflarestorage.com` |
 | `S3_BUCKET` | you: `talaan-photos` | The private bucket. |
 | `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | you | An R2 API token with Object Read & Write on `talaan-photos` only. |

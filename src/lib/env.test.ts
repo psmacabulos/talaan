@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appUrl, checkProductionEnv, isLiveServer } from "./env";
+import { appUrl, checkProductionEnv, isLiveServer, releaseCheck } from "./env";
 
 const GOOD: NodeJS.ProcessEnv = {
   NODE_ENV: "production",
@@ -68,9 +68,7 @@ describe("checkProductionEnv", () => {
   });
 
   it("asks whether emails really go out, and for every SMTP setting when they do (Step 55.5)", () => {
-    expect(
-      checkProductionEnv({ ...GOOD, EMAIL_SENDER: "log", SMTP_HOST: undefined, APP_URL: undefined }),
-    ).toEqual([]);
+    expect(checkProductionEnv({ ...GOOD, EMAIL_SENDER: "log", SMTP_HOST: undefined, APP_URL: undefined })).toEqual([]);
     expect(checkProductionEnv({ ...GOOD, EMAIL_SENDER: undefined })).toEqual([
       expect.stringMatching(/^EMAIL_SENDER must be/),
     ]);
@@ -110,7 +108,23 @@ describe("isLiveServer", () => {
 
 describe("appUrl", () => {
   it("is APP_URL without a trailing slash, or the development address", () => {
-    expect(appUrl({ NODE_ENV: "production", APP_URL: "https://bantayaral.herokuapp.com/" })).toBe("https://bantayaral.herokuapp.com");
+    expect(appUrl({ NODE_ENV: "production", APP_URL: "https://bantayaral.herokuapp.com/" })).toBe(
+      "https://bantayaral.herokuapp.com",
+    );
     expect(appUrl({ NODE_ENV: "development" })).toBe("http://localhost:3000");
+  });
+});
+
+describe("releaseCheck (Step 59: Heroku's release phase)", () => {
+  it("lets a complete setup through", () => {
+    expect(releaseCheck(GOOD)).toEqual({ exitCode: 0, lines: ["Settings OK."] });
+  });
+
+  it("refuses a release missing a setting, naming it and never a value", () => {
+    const { exitCode, lines } = releaseCheck({ ...GOOD, EMAIL_SENDER: undefined, SMTP_PASSWORD: "re_secret" });
+    expect(exitCode).toBe(1);
+    expect(lines[0]).toMatch(/^This release is refused/);
+    expect(lines.slice(1)).toEqual([expect.stringMatching(/^- EMAIL_SENDER must be/)]);
+    expect(lines.join("\n")).not.toContain("re_secret");
   });
 });

@@ -2870,3 +2870,61 @@ npm run build && npx playwright test e2e/gate.spec.ts e2e/gate-monitor.spec.ts  
 npx eslint src/features/gate src/services/taps e2e/gate.spec.ts e2e/tap-rows.ts e2e/parent-api.spec.ts   # clean
 npm run check:tokens                                                  # clean
 ```
+
+## Step 59: know when something breaks (2026-10-23)
+
+**Decisions first.**
+- The owner chose Sentry's free plan over building an email reporter.
+- They split the old Step 59 in three: 59 here, 59.1 error pages, 59.2 a practice restore.
+- Facts checked on the day: Sentry's Developer plan is 5,000 errors a month with one uptime monitor. UptimeRobot's and Better Stack's free plans are for personal use only.
+
+The architect's plan review found three paths to personal data:
+- click breadcrumbs (button labels, photo descriptions);
+- Prisma error messages that quote the data;
+- an offline gate flooding the quota.
+
+All three went into the recipe, `docs/backend/step-59-error-tracking.md`, approved the same day.
+
+**The install:**
+
+```bash
+npm install --save-exact @sentry/nextjs@11.8.0
+```
+
+`package.json` gained one line. A script compared every lock entry: 60 packages added, none changed or removed (the lock's "317 deletions" were reordering). `npm audit --omit=dev` then showed the Next.js findings in P-044. They were already there before Sentry, and two are critical.
+
+**Reading the installed types, not the guides:**
+- `sendDefaultPii` no longer exists in v11.
+- `dataCollection` has a `stackFrameVariables` category that defaults to on.
+- `withSentryConfig` lives in `@sentry/nextjs/config`. The guides' import failed with `withSentryConfig is not a function` (P-043).
+
+**Measuring the browser cost took three tries.**
+- Adding up the gzip size of every chunk in `.next/static` wasn't fair, since chunks move between builds.
+- Adding up the script tags in a page's HTML was worse. It counted a 39 KB fallback modern browsers never load. It even showed the build with Sentry as smaller than the one without.
+- What worked: a Playwright script that loads `/login` and `/gate` and gzips every `.js` response. The same script ran on each build: none 148.3 KB, plain 224.4, trimmed 180.3, and trimmed plus loaded after `load` 148.9 at the `load` event.
+
+**Proving the scrub.**
+- A 20-line HTTP server on port 3299 stood in for Sentry, with the build's DSN pointed at it.
+- Playwright loaded `/login?q=Juan+Dela+Cruz`, typed an email, and threw an error from a `setTimeout`.
+- The event arrived with `"request":{"url":"http://localhost:3199/login"}` and `"infer_ip":"never"`, and with no breadcrumbs, email or query.
+- A `tsx` script reported a fake `PrismaClientValidationError` through the server side. Its message arrived replaced by its type. The only "Juan" left was in the source-code lines around the frame: the test script's own code.
+
+Runs while building:
+
+```bash
+npx tsc --noEmit                                     # clean
+npx vitest run src/lib                               # 16 files, 141 passed
+npx eslint <the changed files>                       # clean
+npm run build && npx playwright test e2e/login.spec.ts e2e/gate.spec.ts   # 48 passed, 2 skipped (no DSN: reports off)
+env -i PATH="$PATH" npx tsx scripts/check-settings.ts                    # refused, each setting named, exit 1
+```
+
+**Architect's code review:** ready after a small fix.
+- I checked its main worry, a query in `contexts.nextjs.request_path`, in Sentry's own `captureRequestError.js`. The path already goes through `filterCollectedUrl` with `urlQueryParams: false`, so the scrub of it is only a second guard.
+- Taken:
+  - error pages skip `digest` errors, so there's no double report, and the server report carries the `digest` tag;
+  - reports start only when `NODE_ENV` is production;
+  - a `.catch` on the lazy load;
+  - `server_name` dropped.
+- The server path was then checked end to end, with a throwaway route (deleted afterwards) against the fake Sentry.
+- One stale-file snag: `tsc` complained about the deleted route's generated type in `.next/types` until the next `npm run build` rewrote them.

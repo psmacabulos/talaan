@@ -8,15 +8,25 @@
  *
  * Then it starts the push worker (Step 54), everywhere: in development, the
  * browser tests and the live server alike.
+ *
+ * Error reports start first (Step 59), so a bad setting is reported too:
+ * Next.js catches the throw below itself, so the report is sent, and
+ * waited for, before it.
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
+
+  const { flushReports, reportError, startErrorReporting } = await import("@/lib/error-reporting");
+  startErrorReporting(process.env.NEXT_PUBLIC_SENTRY_DSN);
 
   const { checkProductionEnv, isLiveServer } = await import("@/lib/env");
   if (isLiveServer()) {
     const problems = checkProductionEnv(process.env);
     if (problems.length > 0) {
-      throw new Error(`The server can't start with these settings:\n- ${problems.join("\n- ")}`);
+      const error = new Error(`The server can't start with these settings:\n- ${problems.join("\n- ")}`);
+      reportError(error);
+      await flushReports(2_000);
+      throw error;
     }
   }
 
@@ -25,3 +35,6 @@ export async function register() {
   const { startDefaultPushWorker } = await import("@/services/push/start");
   startDefaultPushWorker();
 }
+
+/** Every server error in a page, a Server Action or an API route goes to the error reports (Step 59). */
+export { reportRequestError as onRequestError } from "@/lib/error-reporting";

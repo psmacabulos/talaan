@@ -162,6 +162,8 @@ Errors only reach `heroku logs`, which nobody reads at 7 AM. If the tap address 
 
 **Fix:** error tracking for the server and the browser, an uptime check on `GET /api/v1/health` that messages the owner, and one practice restore of a database backup, written up in `docs/DEPLOY.md`. Free plans exist (Sentry and UptimeRobot are common examples). Check their current limits, and what an error report stores, since it can include students' names.
 
+**Done in Step 59** (`docs/ERROR-TRACKING.md`): server and browser errors go to Sentry's free plan with every personal-data category off, its uptime monitor watches `/api/v1/health`, and a deploy missing a setting is refused at Heroku's release phase. Friendly error pages are Step 59.1; the practice restore is Step 59.2.
+
 ### 1.8 Privacy for real student data (Step 60)
 
 Already on the plan's later list: consent records, export and delete per school, and an audit log of who changed what. One more piece belongs here: a parent deleting their own account from the app, which both app stores require before publishing an app that creates accounts. Schools will ask how Talaan handles students' data under the Data Privacy Act. This step is the technical half. The wording of a privacy notice comes from the school; this page isn't legal advice.

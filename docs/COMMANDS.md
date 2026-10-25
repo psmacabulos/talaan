@@ -281,12 +281,16 @@ In the app, a principal gets the same links without the terminal: the dialog aft
 | `dig TXT resend._domainkey.mail.bantayaral.com +short` | Whether Resend's DKIM record is live yet. Empty while it's still spreading. |
 | `heroku pg:psql --app bantayaral` | A `psql` prompt on the live database. `\q` quits. |
 | `heroku pg:backups:capture --app bantayaral` | A backup right now. `heroku pg:backups --app bantayaral` lists them. |
+| `heroku releases:output --app bantayaral` | What the last release phase printed: "Settings OK.", or which settings refused it (Step 59). |
+| `heroku releases:retry --app bantayaral` | Runs the release phase again after fixing a setting, without a new push. |
+| `npx tsx scripts/check-settings.ts` | The release phase's settings check, run by hand. On your laptop it lists everything a live server would need (that's expected). |
+| `heroku config:set NEXT_PUBLIC_SENTRY_DSN="https://…" --app bantayaral` | Turns error reports on (Step 59, `docs/ERROR-TRACKING.md`). Deploy afterwards: the build copies it into the code. |
 | `curl https://bantayaral.herokuapp.com/api/v1/health` | `{"ok":true,"database":"ok"}` when the site and its database are fine. |
 | `dig www.bantayaral.com CNAME +short` | Where a domain name points. Prints the DNS target once a new record is live; prints nothing while it's still spreading. |
 
 **`heroku run` with an `npm run … -- …` script:** put `--app bantayaral` right after `heroku run`, then the whole script in double quotes, with single quotes inside for a label that has spaces. Without the quotes, the Heroku CLI mangles the command and the server answers `/bin/bash: line 1: run: command not found` (P-011 in `docs/PROBLEMS-LOG.md`).
 
-**Files:** `Procfile`, `package.json` (`engines`), `src/instrumentation.ts`, `src/lib/env.ts`, `src/app/api/v1/health/route.ts`. Full guide: `docs/DEPLOY.md`.
+**Files:** `Procfile`, `package.json` (`engines`), `src/instrumentation.ts`, `src/lib/env.ts`, `scripts/check-settings.ts`, `src/app/api/v1/health/route.ts`. Full guide: `docs/DEPLOY.md`.
 
 ---
 

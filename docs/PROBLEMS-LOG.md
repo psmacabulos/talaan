@@ -55,8 +55,10 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-038](#p-038--2026-10-23--the-new-postgres-test-found-no-studentid-column) | 2026-10-23 | The new Postgres test found no `studentId` column | Other: setup | Prisma, Vitest, test database | Resolved |
 | [P-039](#p-039--2026-10-23--the-alert-test-made-taps-the-app-cant-read) | 2026-10-23 | The alert test made taps the app can't read | Other: tests | Vitest, Zod | Resolved |
 | [P-040](#p-040--2026-10-23--a-parent-api-test-was-told-too-many-tries) | 2026-10-23 | A parent API test was told "too many tries" | Other: tests | Playwright, sign-in limits | Fixed: owner to re-run |
-| [P-041](#p-041--2026-10-23--the-live-server-stopped-again-email_sender-wasnt-set) | 2026-10-23 | The live server stopped again: `EMAIL_SENDER` wasn't set | Other: reliability | Heroku, settings | Open: owner sets `EMAIL_SENDER` |
+| [P-041](#p-041--2026-10-23--the-live-server-stopped-again-email_sender-wasnt-set) | 2026-10-23 | The live server stopped again: `EMAIL_SENDER` wasn't set | Other: reliability | Heroku, settings | Prevented from Step 59; owner sets `EMAIL_SENDER` |
 | [P-042](#p-042--2026-10-23--three-ways-the-new-offline-gate-could-still-lose-taps) | 2026-10-23 | Three ways the new offline gate could still lose taps | Other: correctness | `/gate`, code review | Resolved |
+| [P-043](#p-043--2026-10-23--withsentryconfig-is-not-a-function) | 2026-10-23 | `withSentryConfig is not a function` | Other: setup | Sentry, `next.config.ts` | Resolved |
+| [P-044](#p-044--2026-10-23--the-live-sites-nextjs-has-two-critical-security-holes) | 2026-10-23 | The live site's Next.js has two critical security holes | Security | Next.js 16.3.8 | Open: upgrade to 16.4.2 after Step 59 |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -867,7 +869,7 @@ sequenceDiagram
   1. **Set it now:** `heroku config:set EMAIL_SENDER=log --app bantayaral`. Heroku restarts the dyno, and the check passes. Emails are only logged (subjects only) until Resend is set up, and the sign-in page keeps "Ask your principal".
   2. **Roll back** to the last working release. Brings the site back but leaves Steps 55–56's migrations ahead of the code. Worse.
   3. **Prevent a third time** (P-026's option 3): run the same settings check in Heroku's **release phase**, before `prisma migrate deploy` (`Procfile`: `release: <check settings> && npx prisma migrate deploy`). When a release command fails, Heroku doesn't switch to the new version, so the old one keeps serving, the migrations don't run, and the release log says which setting is missing. A small script reusing `checkProductionEnv`, no new package.
-- **Solution:** option 1 now, typed by the owner. Option 3 recommended, as a small change of its own.
+- **Solution:** option 1 now, typed by the owner. Option 3 built in Step 59 (`scripts/check-settings.ts`, the `Procfile`'s `release:` line): from that deploy on, a missing setting refuses the release and the old version keeps serving.
 - **Check:** `heroku config --app bantayaral` lists `EMAIL_SENDER`; `https://bantayaral.herokuapp.com/api/v1/health` answers `{"ok":true,"database":"ok"}`; no "can't start with these settings" line after the restart. Once Step 57 is pushed too, its live check prints `0` (before that it printed `5`, on 2026-10-23: Step 57's migration hadn't run yet, which was expected). `heroku pg:psql` needs a `psql` this Mac doesn't have ("The local psql command could not be located"), so through the Docker database's:
   ```bash
   docker exec -it talaan-postgres psql "$(heroku config:get DATABASE_URL --app bantayaral)" -c 'SELECT count(*) FROM "Tap" t JOIN "Alert" a ON a."tapId" = t.id WHERE t."studentId" IS NOT NULL;'
@@ -898,3 +900,33 @@ sequenceDiagram
 - **Solution:** all three as bolded above, each with a test (`gate-client.test.ts`, `tap-sender.test.ts`). The same review also led to 502, 503 and 504 not counting toward "stuck" (Heroku answers 503 while restarting), a new tap waiting while the line is being sent, and a fallback for tablets without `AbortSignal.timeout`.
 - **Lesson:** a waiting line on a device has to treat the device's storage as the only truth, and "refused" as a guess.
 - **Status:** Resolved.
+
+## Know when something breaks (Step 59, 2026-10-23)
+
+### P-043 · 2026-10-23 · `withSentryConfig is not a function`
+- **Where:** `next.config.ts`, the first build with Sentry's build step, while measuring its bundle trimming.
+- **Symptom:**
+  ```
+  ⨯ Failed to load next.config.ts
+  TypeError: (0 , _nextjs.withSentryConfig) is not a function
+      at Object.<anonymous> (next.config.compiled.js:13:47)
+  ```
+- **Cause:** in `@sentry/nextjs` 11, the build helper lives in its own entry point, `@sentry/nextjs/config` (`package.json` `exports`: `.`, `./config`, …). The guides' `import { withSentryConfig } from "@sentry/nextjs"` loads the server SDK instead, which has no such function.
+- **Options weighed:** none needed once the `exports` map showed it.
+- **Solution:** `import { withSentryConfig } from "@sentry/nextjs/config"`. The build passes.
+- **Status:** Resolved.
+
+### P-044 · 2026-10-23 · The live site's Next.js has two critical security holes
+- **Where:** `npm audit --omit=dev`, run while adding Sentry (Step 59). Not caused by it: the same findings are there without Sentry.
+- **Symptom:**
+  ```
+  next  >=16.0.0 <=16.4.0
+  critical  Unauthenticated Remote Code Execution in Image Optimization API when SVG files are used  GHSA-2464-fhr4-w9xw
+  critical  Unauthenticated Remote Code Execution in `use cache` functions returning typed arrays    GHSA-673q-mjm6-r5xr
+  high      Denial of Service in App Router using Server Actions                                    GHSA-p3m5-59mp-jv5r
+  ```
+  The live site runs 16.3.8, and uses Next.js's image resizing (student photos, the sign-in photo) and Server Actions throughout.
+- **Cause:** bugs in Next.js itself, fixed in 16.4.1 and later (16.4.2 is current).
+- **Options weighed:** (1) **upgrade Next.js to 16.4.2** as its own commit, with the full routine, then deploy; (2) wait for the next step's deploy (leaves the live site open meanwhile); (3) `npm audit fix --force` (would also move other packages at once, harder to review). The other findings (`sharp`, Prisma's `deepmerge-ts` and `mysql2`, and Sentry's bundled `vite` and `source-map-js`) are high, not critical, and mostly build-time; they go in the same upgrade where a plain `npm audit fix` covers them.
+- **Solution:** option 1, proposed to the owner right after Step 59 as a separate fix.
+- **Status:** Open: upgrade to 16.4.2 after Step 59.

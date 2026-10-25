@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████████░░ 91%**  (309 of 340 tasks, 81 of 89 steps approved)
+**Overall progress: ██████████████████░░ 91%**  (312 of 343 tasks, 82 of 91 steps approved)
 
-**Next up:** Step 58, The gate keeps taps while offline (ready for your review)
+**Next up:** Step 59, Know when something breaks (in progress)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -88,8 +88,10 @@
 | 55.6 | Parents reset a forgotten password | ██████████ 100% | Approved |
 | 56 | One read, one tap | ██████████ 100% | Approved |
 | 57 | Lost cards and alerts | ██████████ 100% | Approved |
-| 58 | The gate keeps taps while offline | ████████░░  75% | Ready for your review |
-| 59 | Know when something breaks | ░░░░░░░░░░   0% | Not started |
+| 58 | The gate keeps taps while offline | ██████████ 100% | Approved |
+| 59 | Know when something breaks | █████░░░░░  50% | In progress |
+| 59.1 | Friendly error pages | ░░░░░░░░░░   0% | Not started |
+| 59.2 | A practice restore | ░░░░░░░░░░   0% | Not started |
 | 60 | Privacy for real student data | ░░░░░░░░░░   0% | Not started |
 | 61 | Queries that don't grow | ░░░░░░░░░░   0% | Not started |
 | 61.1 | The roster answers "nothing changed" cheaply | ░░░░░░░░░░   0% | Not started |
@@ -886,17 +888,30 @@ Plan: `docs/SCALING.md` 1.6, from the plan's after-demo list. Due before real us
 - Note from Step 56's architect review: time in or time out is worked out before the per-card lock, from the student's other taps. Sending a queue of old taps all at once could store two of one student's taps with the same direction. Send the queue one tap at a time, or work out the direction inside the lock. **Done:** the waiting line is sent one tap at a time, oldest first, and a tap that arrives after a later one of the same student sends no push (owner, 2026-10-23).
 Done when: unplugging the network during taps loses none of them, and every check passes.
 Commit: `feat(gate): keep taps while offline and send them when back`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 59: Know when something breaks
-Plan: `docs/SCALING.md` 1.7, from the plan's after-demo list. Due before real use.
-- [ ] Error tracking for the server and the browser. Its cost, and what an error report stores, checked and agreed first, since a report can include students' names.
-- [ ] An uptime check on `GET /api/v1/health` that messages the owner.
-- [ ] One practice restore of a database backup, written up in `docs/DEPLOY.md`.
-- [ ] Friendly error pages wherever a person can land (added 2026-10-15, owner request): the staff screens, the parent pages, sign-in, set-password, `/gate` and `/gate/display`, and a `global-error.tsx` for when the whole layout fails. Today only the staff and parent screens have one, and it says "let us know" with no way to do it. Each page says what happened in plain words, shows a short reference code, and has a **Report this problem** button that sends the owner the code, the page and the time, never a student's name. How the report reaches the owner (email, or the error tracker above) is decided along with the error tracker. On `/gate` the guard sees a short message only; the report goes out by itself.
+Plan: `docs/SCALING.md` 1.7, from the plan's after-demo list. Due before real use. Split in three on 2026-10-23 (owner): 59 errors and uptime, 59.1 error pages, 59.2 a practice restore. Owner chose Sentry's free plan (2026-10-23). Recipe first: `docs/backend/step-59-error-tracking.md`.
+- [x] Error tracking for the server and the browser, through Sentry's free plan. Its cost, and what an error report stores, checked and agreed first, since a report can include students' names.
+- [ ] An uptime check on `GET /api/v1/health` that messages the owner (Sentry's included uptime monitor). Nothing to build: the owner sets it up in Sentry (`docs/ERROR-TRACKING.md`, "Setting it up"); ticked once it has emailed a "down".
+- [x] A deploy with a missing setting stops before it goes live, and the old version keeps serving (`docs/PROBLEMS-LOG.md`, P-041 option 3).
+Done when: a deliberate error reaches the owner within minutes, a stopped app sets off the uptime check, a deploy missing a setting is refused, and every check passes.
+Commit: `chore(ops): report errors and downtime, and refuse a deploy missing a setting`
+- [ ] Owner review: I checked it and said "approved"
+
+### Step 59.1: Friendly error pages
+Cut from Step 59 on 2026-10-23.
+- [ ] Friendly error pages wherever a person can land (added 2026-10-15, owner request): the staff screens, the parent pages, sign-in, set-password, `/gate` and `/gate/display`, and a `global-error.tsx` for when the whole layout fails. Today only the staff and parent screens have one, and it says "let us know" with no way to do it. Each page says what happened in plain words, shows a short reference code, and has a **Report this problem** button that sends the owner the code, the page and the time, never a student's name (through Sentry, chosen in Step 59). On `/gate` the guard sees a short message only; the report goes out by itself.
 - [ ] A plain "Bantay Aral is down for a moment" page for when the server can't answer at all (a crashed or starting dyno), set with Heroku's `ERROR_PAGE_URL` and `MAINTENANCE_PAGE_URL` and hosted for free, so nobody sees Heroku's own error screen. It goes with P-010's option 2 (stop the server on a bad setting) in `docs/PROBLEMS-LOG.md`, since Heroku shows this page only when the server isn't running.
-Done when: a deliberate error reaches the owner within minutes, a stopped app sets off the uptime check, the restore steps have been followed once for real, and a deliberate error on each kind of page shows the friendly page and its report reaches the owner.
-Commit: `chore(ops): add error tracking, an uptime check and a tested backup restore`
+Done when: a deliberate error on each kind of page shows the friendly page and its report reaches the owner, a stopped server shows the "down for a moment" page, and every check passes.
+Commit: `feat(errors): friendly error pages with a way to report the problem`
+- [ ] Owner review: I checked it and said "approved"
+
+### Step 59.2: A practice restore
+Cut from Step 59 on 2026-10-23. Essential-0 has no point-in-time rollback: a backup is a `pg:backups` copy, and restoring one onto the live database replaces everything. So the practice restore goes into a database on the owner's Mac.
+- [ ] One practice restore of a live backup into a local database, compared with the live one, written up in `docs/DEPLOY.md` with the commands for a real restore.
+Done when: the restore steps have been followed once for real, and the counts match.
+Commit: `docs(ops): a tested backup restore`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 60: Privacy for real student data
