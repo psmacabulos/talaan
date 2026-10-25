@@ -58,7 +58,7 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-041](#p-041--2026-10-23--the-live-server-stopped-again-email_sender-wasnt-set) | 2026-10-23 | The live server stopped again: `EMAIL_SENDER` wasn't set | Other: reliability | Heroku, settings | Prevented from Step 59; owner sets `EMAIL_SENDER` |
 | [P-042](#p-042--2026-10-23--three-ways-the-new-offline-gate-could-still-lose-taps) | 2026-10-23 | Three ways the new offline gate could still lose taps | Other: correctness | `/gate`, code review | Resolved |
 | [P-043](#p-043--2026-10-23--withsentryconfig-is-not-a-function) | 2026-10-23 | `withSentryConfig is not a function` | Other: setup | Sentry, `next.config.ts` | Resolved |
-| [P-044](#p-044--2026-10-23--the-live-sites-nextjs-has-two-critical-security-holes) | 2026-10-23 | The live site's Next.js has two critical security holes | Security | Next.js 16.3.8 | Open: upgrade to 16.4.2 after Step 59 |
+| [P-044](#p-044--2026-10-23--the-live-sites-nextjs-has-two-critical-security-holes) | 2026-10-23 | The live site's Next.js has two critical security holes | Security | Next.js 16.3.8 | Fixed locally (16.4.3); deploy pending |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -928,5 +928,5 @@ sequenceDiagram
   The live site runs 16.3.8, and uses Next.js's image resizing (student photos, the sign-in photo) and Server Actions throughout.
 - **Cause:** bugs in Next.js itself, fixed in 16.4.1 and later (16.4.2 is current).
 - **Options weighed:** (1) **upgrade Next.js to 16.4.2** as its own commit, with the full routine, then deploy; (2) wait for the next step's deploy (leaves the live site open meanwhile); (3) `npm audit fix --force` (would also move other packages at once, harder to review). The other findings (`sharp`, Prisma's `deepmerge-ts` and `mysql2`, and Sentry's bundled `vite` and `source-map-js`) are high, not critical, and mostly build-time; they go in the same upgrade where a plain `npm audit fix` covers them.
-- **Solution:** option 1, proposed to the owner right after Step 59 as a separate fix.
-- **Status:** Open: upgrade to 16.4.2 after Step 59.
+- **Solution:** option 1. On 2026-10-25 the owner ran `npm install --save-exact next@16.4.3 eslint-config-next@16.4.3` (16.4.3 had come out by then). `npm audit --omit=dev` then showed only one finding left, a moderate one in `nodemailer` 10.0.16 (`addressparser`: a crafted address with quotes, `;` or `>` could add a recipient; GHSA-8c8m-p3m8-cjg8, GHSA-m943-m63m-w62w, GHSA-85x2-q946-cp5h). Low risk here, since the only address passed in is an email already checked as a plain email format, but fixed in the same commit with `npm install --save-exact nodemailer@10.2.1`. npm's "outside the stated dependency range" only meant the exact pin.
+- **Status:** Fixed locally (Next.js 16.4.3, nodemailer 10.2.1); live once the owner deploys the upgrade commit.

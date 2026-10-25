@@ -103,6 +103,8 @@ The database must be running (section 5) for `build` and the browser tests. CI o
 | `npm run format` | Rewrites every file in the project's code style (Prettier). It changes files, so run it before the checks, not after. |
 | `npm start` | Runs the already-built app (after `npm run build`), the way Heroku does. Locally you'll rarely need it: `npm run dev` is for working. |
 | `postinstall` | Not one you type: it runs `prisma generate` by itself after every `npm install` or `npm ci`. |
+| `npm install --save-exact next@<version> eslint-config-next@<version>` | Updates Next.js and its lint rules together, pinned to one exact version (`docs/LEARNING-LOG.md`, "How do I update Next.js?"). Then restart `npm run dev` and run the full routine. |
+| `npm audit --omit=dev` | Known security problems in the packages the live site runs. |
 
 ---
 

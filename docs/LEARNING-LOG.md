@@ -318,6 +318,22 @@ Playwright's test browser is a separate ~95 MB download kept in your user folder
 
 ---
 
+### How do I update Next.js? (owner question, 2026-10-25)
+Next.js is a package like any other, so it's updated with npm. Two packages move together, `next` and `eslint-config-next` (the lint rules made for that version), always to the same exact version:
+
+```bash
+npm view next version                                          # the newest version
+npm install --save-exact next@16.4.3 eslint-config-next@16.4.3
+```
+
+`--save-exact` writes `16.4.3` into `package.json` instead of `^16.4.3`, so every install (yours, CI's, Heroku's) gets exactly that version; this project pins `next` that way. `package-lock.json` changes too; both are committed. Then:
+1. read what the new version changed: `node_modules/next/dist/docs/` (AGENTS.md says to, since this Next.js differs from older guides), and the release notes on GitHub;
+2. stop and restart `npm run dev` (the entry above);
+3. run the full routine (`docs/LEARNING-LOG.md`, the checks before a commit), and `npm audit --omit=dev` to see the security findings are gone;
+4. commit on its own, so it can be rolled back alone, then push.
+
+A patch or minor version (16.3 → 16.4) shouldn't break anything; a major one (16 → 17) needs its upgrade guide read first. See `docs/PROBLEMS-LOG.md`, P-044, for why this one is urgent.
+
 ## Colors and theming
 
 ### Why colors are stored as OKLCH instead of hex
