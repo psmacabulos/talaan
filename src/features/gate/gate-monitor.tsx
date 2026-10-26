@@ -76,7 +76,8 @@ export function GateMonitor({ schoolName, loaded }: { schoolName: string; loaded
   const [newest, ...earlier] = events;
 
   return (
-    <main className="flex min-h-dvh flex-col bg-background text-foreground">
+    // Exactly the screen's height, never scrolled: only the Earlier list scrolls, and the photo shrinks (P-051).
+    <main className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-4 py-3 sm:px-6">
         <div>
           <h1 className="font-heading text-lg font-semibold">Gate monitor</h1>
@@ -93,8 +94,8 @@ export function GateMonitor({ schoolName, loaded }: { schoolName: string; loaded
       </header>
 
       {newest ? (
-        <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6">
-          <section aria-live="polite" aria-label="Newest tap" className="flex justify-center">
+        <div className="flex min-h-0 flex-1 flex-col gap-6 p-4 sm:p-6 short:gap-3">
+          <section aria-live="polite" aria-label="Newest tap" className="flex min-h-0 flex-col items-center">
             <TapCard
               key={newest.id}
               kind={kindOf(newest)}
@@ -107,14 +108,15 @@ export function GateMonitor({ schoolName, loaded }: { schoolName: string; loaded
           </section>
 
           {earlier.length > 0 ? (
-            <section aria-labelledby="monitor-earlier">
+            // At least one row of it always shows; the newest tap's photo shrinks to make room.
+            <section aria-labelledby="monitor-earlier" className="flex min-h-24 flex-1 flex-col">
               <h2
                 id="monitor-earlier"
                 className="mb-3 text-xs font-medium tracking-wide text-muted-foreground uppercase"
               >
                 Earlier
               </h2>
-              <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <ul className="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {earlier.map((event) => (
                   <TapListItem
                     key={event.id}

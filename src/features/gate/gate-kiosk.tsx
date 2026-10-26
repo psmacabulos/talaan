@@ -470,7 +470,8 @@ export function GateKiosk() {
   };
 
   return (
-    <main className="flex min-h-dvh flex-col bg-background text-foreground">
+    // Exactly the screen's height, never scrolled: only the Recent list scrolls, and the photo shrinks (P-051).
+    <main className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-4 py-3 sm:px-6">
         <div>
           <h1 className="font-heading text-lg font-semibold">Gate</h1>
@@ -526,8 +527,8 @@ export function GateKiosk() {
         </p>
       ) : null}
 
-      <div className="grid flex-1 md:grid-cols-[minmax(0,1fr)_20rem]">
-        <section className="flex flex-col items-center justify-center gap-6 p-6 text-center">
+      <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] md:grid-cols-[minmax(0,1fr)_20rem]">
+        <section className="flex min-h-0 flex-col items-center justify-center gap-6 p-6 text-center short:p-4">
           {current && display ? (
             <TapCard
               key={current.id}
@@ -561,7 +562,7 @@ export function GateKiosk() {
 
         <aside
           aria-labelledby="gate-recent"
-          className="hidden flex-col gap-3 overflow-y-auto border-l border-border bg-card p-5 md:flex"
+          className="hidden min-h-0 flex-col gap-3 overflow-y-auto border-l border-border bg-card p-5 md:flex"
         >
           <h2 id="gate-recent" className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
             Recent

@@ -2967,3 +2967,18 @@ npx vitest run src/lib/error-reporting src/features/errors   # passed after it
 ```
 
 The browser tests (`npm run test:e2e`) and `npm run build` are the owner's to run.
+
+## Fix: the gate and monitor fit the screen (P-051, 2026-10-26)
+
+**What the owner saw.** On the tablet in landscape, `/gate` scrolled. After a tap only the photo was on screen, and the Time in/Time out stamp was below the fold.
+
+**Why.** Both pages were `min-h-dvh`, so they could grow past the screen. The tap card needs about 640 px on its own (a fixed 240 × 300 px photo, the badge, the name and the stamp), plus about 120 px of header and padding. The Recent list already had `overflow-y-auto`, but with nothing capping the page's height it never had a reason to scroll.
+
+**What changed.** Not a plan step: the owner approved the plan in chat and asked for the code straight away, so this entry and `docs/GATE.md` ("The page fits the screen") stand in for a recipe.
+- `gate-kiosk.tsx` and `gate-monitor.tsx`: `h-dvh overflow-hidden`, and `min-h-0` on every box down to the card. The gate's grid got `grid-rows-[minmax(0,1fr)]`. Without it, the grid's one automatic row grows to fit the Recent list and pushes past the screen again.
+- `tap-card.tsx`: the portrait sits in a box with `flex: 0 1 min(18.75rem, 70vw)`, and `TAP_CARD_PORTRAIT` places the photo absolutely at the box's full height, with its width from `aspect-[4/5]`. The first idea was `h-full` on a normal child, but a percentage height inside a flex item only resolves in some cases, and the initials fallback (a `<span>`) has no natural size to fall back on. An absolutely placed child's percentage height always resolves.
+- `globals.css`: a `short` custom variant (height under 44rem) for tighter padding and gaps. Whether `short:p-4` beats `sm:p-8` depends on the order Tailwind writes them in. A scratch script compiled the classes with the project's own Tailwind 4.3.3 (`compile()` from `node_modules/tailwindcss/dist/lib.mjs`): the `short` block comes after `sm`, so it wins.
+- The monitor's Earlier list scrolls in its own box, with `min-h-24` so one row always shows.
+- Recent on the gate stays at 6 taps, the owner's choice: a new tap pushes out the oldest.
+
+**Not checked by me.** I didn't open it in a browser or on the tablet. Lint, typecheck, tests and the build are the owner's to run.

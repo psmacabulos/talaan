@@ -130,14 +130,23 @@ export function NoPhotoPortrait({ kind, className }: { kind: TapKind; className?
   );
 }
 
-/** The large portrait's classes, shared so the gate and the monitor match. */
-export const TAP_CARD_PORTRAIT = "w-[min(56vw,15rem)] rounded-2xl border border-border object-top text-6xl";
+/**
+ * The large portrait's classes, shared so the gate and the monitor match.
+ * It fills the height of TapCard's portrait box and takes its width from
+ * the 4:5 shape, so it shrinks with the box on a short screen (P-051).
+ */
+export const TAP_CARD_PORTRAIT =
+  "absolute top-0 left-1/2 h-full w-auto -translate-x-1/2 rounded-2xl border border-border object-top text-6xl";
 
 /**
  * The big card for the newest tap. `key` it by the tap's id where it's
  * used: a new tap then fades in (200 ms, none with reduced motion), while
  * the same tap's answer arriving updates it in place. Nothing waits for the
  * fade, so the next card read is never held up.
+ *
+ * In a page that fits the screen, only the portrait gives way when there
+ * isn't enough height: it's 300 px tall at most and shrinks from there,
+ * while the badge, the name and the time always show in full (P-051).
  */
 export function TapCard({
   kind,
@@ -158,7 +167,7 @@ export function TapCard({
   const Icon = style.icon;
 
   return (
-    <div className="flex w-full max-w-md animate-in flex-col items-center gap-5 rounded-3xl border border-border bg-card p-6 text-center shadow-[var(--shadow-card)] duration-200 fade-in-0 motion-reduce:animate-none sm:p-8">
+    <div className="flex min-h-0 w-full max-w-md animate-in flex-col items-center gap-5 rounded-3xl border border-border bg-card p-6 text-center shadow-[var(--shadow-card)] duration-200 fade-in-0 motion-reduce:animate-none sm:p-8 short:gap-3 short:p-4">
       {style.warning ? (
         <>
           <UnknownCardIcon />
@@ -171,7 +180,8 @@ export function TapCard({
         </>
       ) : (
         <>
-          {portrait}
+          {/* 300 px tall, or 70vw on a narrow phone, and allowed to shrink. */}
+          <div className="relative min-h-0 w-full flex-[0_1_min(18.75rem,70vw)]">{portrait}</div>
           <span
             className={cn(
               "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium",
@@ -197,9 +207,9 @@ export function TapCard({
       ) : null}
 
       {/* Always the same height, so the card doesn't jump as an answer arrives. */}
-      <div className="flex min-h-[5.5rem] w-full flex-col justify-center border-t border-border pt-5">
+      <div className="flex min-h-[5.5rem] w-full flex-col justify-center border-t border-border pt-5 short:min-h-18 short:pt-3">
         {style.stamp && stampAt ? (
-          <div className={cn("rounded-xl px-4 py-3", style.stamp.className)}>
+          <div className={cn("rounded-xl px-4 py-3 short:py-2", style.stamp.className)}>
             {style.stamp.icon ? (
               <p className="inline-flex items-center gap-1.5 text-sm font-medium">
                 <style.stamp.icon className="size-4" aria-hidden="true" />

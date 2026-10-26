@@ -55,6 +55,22 @@ stateDiagram-v2
     Ready --> Ready: scan → saved → checking → answer, or stays saved until the connection is back
 ```
 
+**The page fits the screen (P-051, 2026-10-26).** The gate and the monitor are both exactly the screen's height (`h-dvh`), and the page itself never scrolls. Only the side list scrolls: Recent on the gate, Earlier on the monitor. When height runs short, only the photo gives way. It sits in a box that's 300 px tall (or `70vw` on a narrow phone) and is allowed to shrink, and the photo fills the box's height, its width following from the 4:5 shape. The badge, the name and the Time in/Time out stamp never shrink. Below 44rem (704 px) of height, the `short:` variant (`src/app/globals.css`) also tightens the card's padding and gaps.
+
+```mermaid
+flowchart TB
+    subgraph Screen["h-dvh, overflow hidden"]
+        H["Header and notice bars: natural height"]
+        subgraph Row["the rest: min-h-0, flex-1"]
+            subgraph Card["TapCard: min-h-0"]
+                P["Photo box: 300 px, may shrink"]
+                T["Badge, name, stamp: never shrink"]
+            end
+            L["Recent / Earlier: scrolls by itself"]
+        end
+    end
+```
+
 ## Offline (Step 58)
 
 When the school's internet drops, taps aren't lost: the gate keeps them and sends them later. Recipe: `docs/backend/step-58-offline-gate.md`.
@@ -228,6 +244,8 @@ Since 2026-10-12 a click on Disconnect or Cancel no longer swallows later taps (
 - Check that the student has a photo: their row in Students shows it.
 - A photo added after the gate page opened appears within 5 minutes (`ROSTER_EVERY_MS`), or straight away after a reload.
 - Before 2026-10-12, a reload showed initials for everyone (`photosLoadedFor` in `gate-kiosk.tsx` fixed it).
+
+**The gate or monitor scrolls on some screen.** Something in the chain from the page to the photo has lost its `min-h-0`, and without it a flex or grid child refuses to be shorter than its content. The chain on the gate: `<main>` (`h-dvh`), the grid (`min-h-0 flex-1 grid-rows-[minmax(0,1fr)]`), the section, `TapCard`, and the photo box in `tap-card.tsx`. To check a screen size without the tablet, open the page in Chrome's device toolbar at the tablet's size, for example 1280 × 650.
 
 **Change how a state looks** (a colour, a word on the badge, the stamp's label). Edit the `KIND` table in `src/features/gate/tap-card.tsx`. Both the gate and the monitor follow it.
 

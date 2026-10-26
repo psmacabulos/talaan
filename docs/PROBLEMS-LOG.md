@@ -65,6 +65,7 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-048](#p-048--2026-10-25--sendfeedback-doesnt-exist-in-the-server-build) | 2026-10-25 | `sendFeedback` doesn't exist in the server build | Other: build | Sentry, Turbopack | Resolved |
 | [P-049](#p-049--2026-10-25--processexit-warned-in-the-edge-build) | 2026-10-25 | `process.exit` warned in the Edge build | Other: build | `src/instrumentation.ts`, Turbopack | Resolved |
 | [P-050](#p-050--2026-10-25--a-script-tag-warning-on-the-error-page-in-development) | 2026-10-25 | A "script tag" warning on the error page, in development | Other: development | `npm run dev`, next-themes | Known: development only, watch |
+| [P-051](#p-051--2026-10-26--the-gate-page-is-taller-than-a-landscape-tablet) | 2026-10-26 | The gate page is taller than a landscape tablet | Other: layout | `/gate`, `/gate/display` | Fixed, waiting for the owner's check on the tablet |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -1011,6 +1012,21 @@ sequenceDiagram
 - **Effect:** none seen. Light and dark are right in the screenshots at 360 and 1280 px, and the browser tests' production build doesn't print it.
 - **Options weighed:** none yet. Watch it: if a flash of the wrong theme shows on the live error page, revisit.
 - **Status:** Known: development only, watch.
+
+### P-051 · 2026-10-26 · The gate page is taller than a landscape tablet
+- **Where:** `/gate` on the tablet, held in landscape (the owner's report).
+- **Symptom:** the page scrolls. After a tap only the photo is on screen; the badge, the name and the "Time in" or "Time out" stamp are below the fold.
+- **Cause:** the page is sized with `min-h-dvh` (`src/features/gate/gate-kiosk.tsx`, the `<main>`), so it may grow past the screen instead of fitting it. The tap card then needs about 640 px on its own: a fixed 240 × 300 px portrait (`TAP_CARD_PORTRAIT` in `tap-card.tsx`), the badge, the name, and the stamp area. The header and the section's padding add about 120 px more. A landscape tablet's browser leaves roughly 550–750 px of height. The Recent list can't scroll on its own either: with nothing holding the page's height, it just makes the page taller.
+- **Options weighed:**
+  1. Fix the page to the screen's height (`h-dvh`), let only the Recent list scroll, and let the photo shrink to whatever height is left after the text. The text never shrinks, so the stamp is always visible.
+  2. A side-by-side card in landscape (photo left, name and time right). Uses a wide screen better, but it's a redesign of a card the monitor shares.
+  3. Smaller fixed sizes. Still breaks on a shorter screen or when a notice bar shows.
+- **Solution:** option 1, approved by the owner on 2026-10-26, for the guardhouse monitor too, since it shares the card and had the same `min-h-dvh` page (a TV browser often leaves about 540 px). Recent keeps its 6 newest taps, a new one pushing out the oldest.
+  - The page is `h-dvh overflow-hidden`. Every box between it and the photo has `min-h-0`, so it may be shorter than its content, and the gate's grid has one `minmax(0,1fr)` row.
+  - In `TapCard` the photo sits in a box with `flex: 0 1 min(18.75rem, 70vw)`: 300 px, may shrink, never grows. The photo is absolutely placed in it at full height, so its width follows from the 4:5 shape. An absolutely placed box's percentage height always resolves; a flex child's might not.
+  - A new `short:` variant (height under 44rem) tightens the card's padding and gaps. A test compile with the project's Tailwind (4.3.3) confirmed `short:p-4` comes after `sm:p-8` in the CSS, so it wins on a short screen.
+  - The monitor's Earlier list scrolls inside its own box and always keeps at least one row (`min-h-24`) on screen.
+- **Status:** Fixed, waiting for the owner's check on the tablet.
 
 | Date | Owner question (answered in `docs/LEARNING-LOG.md`) |
 |---|---|
