@@ -1,9 +1,9 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████████░░ 91%**  (313 of 343 tasks, 83 of 91 steps approved)
+**Overall progress: ██████████████████░░ 92%**  (315 of 343 tasks, 83 of 91 steps approved)
 
-**Next up:** Step 59.1, Friendly error pages (not started)
+**Next up:** Step 59.1, One error page, with a way to report the problem (ready for your review)
 
 | Step | What | Progress | Status |
 |---|---|---|---|
@@ -90,7 +90,7 @@
 | 57 | Lost cards and alerts | ██████████ 100% | Approved |
 | 58 | The gate keeps taps while offline | ██████████ 100% | Approved |
 | 59 | Know when something breaks | ████████░░  75% | Approved |
-| 59.1 | Friendly error pages | ░░░░░░░░░░   0% | Not started |
+| 59.1 | One error page, with a way to report the problem | ███████░░░  67% | Ready for your review |
 | 59.2 | A practice restore | ░░░░░░░░░░   0% | Not started |
 | 60 | Privacy for real student data | ░░░░░░░░░░   0% | Not started |
 | 61 | Queries that don't grow | ░░░░░░░░░░   0% | Not started |
@@ -899,12 +899,12 @@ Done when: a deliberate error reaches the owner within minutes, a stopped app se
 Commit: `chore(ops): report errors and downtime, and refuse a deploy missing a setting`
 - [x] Owner review: I checked it and said "approved"
 
-### Step 59.1: Friendly error pages
-Cut from Step 59 on 2026-10-23.
-- [ ] Friendly error pages wherever a person can land (added 2026-10-15, owner request): the staff screens, the parent pages, sign-in, set-password, `/gate` and `/gate/display`, and a `global-error.tsx` for when the whole layout fails. Today only the staff and parent screens have one, and it says "let us know" with no way to do it. Each page says what happened in plain words, shows a short reference code, and has a **Report this problem** button that sends the owner the code, the page and the time, never a student's name (through Sentry, chosen in Step 59). On `/gate` the guard sees a short message only; the report goes out by itself.
-- [ ] A plain "Bantay Aral is down for a moment" page for when the server can't answer at all (a crashed or starting dyno), set with Heroku's `ERROR_PAGE_URL` and `MAINTENANCE_PAGE_URL` and hosted for free, so nobody sees Heroku's own error screen. It goes with P-010's option 2 (stop the server on a bad setting) in `docs/PROBLEMS-LOG.md`, since Heroku shows this page only when the server isn't running.
-Done when: a deliberate error on each kind of page shows the friendly page and its report reaches the owner, a stopped server shows the "down for a moment" page, and every check passes.
-Commit: `feat(errors): friendly error pages with a way to report the problem`
+### Step 59.1: One error page, with a way to report the problem
+Cut from Step 59 on 2026-10-23. Narrowed by the owner on 2026-10-25: one error page for every kind of problem, following the owner's reference design. Recipe first: `docs/backend/step-59.1-error-page.md`.
+- [x] One shared error page (`ErrorScreen`) for every page a person can land on, through a root `error.tsx` and a `global-error.tsx`; the staff and parent error pages are replaced. It says what happened in plain words, shows a short reference code, and has **Try again** and **Report this problem**, which sends an optional note, the page and the code to Sentry (never a name or contact details).
+- [x] A plain HTML and CSS copy of the same page, "Bantay Aral is down for a moment", for when the server isn't running, hosted free on a public R2 bucket and set with Heroku's `ERROR_PAGE_URL` and `MAINTENANCE_PAGE_URL`. A live server with a bad setting now stops (P-010's option 2), so Heroku shows it.
+Done when: a deliberate error shows the page and its report reaches the owner, maintenance mode on the live site shows the "down" page, and every check passes.
+Commit: `feat(errors): add one error page with a way to report the problem`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 59.2: A practice restore

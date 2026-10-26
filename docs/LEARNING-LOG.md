@@ -1479,6 +1479,18 @@ For now, yes, and only someone with your Heroku login can do it. That's normal w
 ### P-010: what "a bad setting" means, and what's being decided (owner question, 2026-10-15)
 "Settings" here are the server's config vars on Heroku (`heroku config`): `DATABASE_URL`, `SESSION_SECRET`, the `S3_…` photo keys and the rest. When the server starts, `src/instrumentation.ts` checks them. If one is missing or unsafe, every page answers with an error (500) and `heroku logs` names the setting, which is what happened in P-007. Nothing half-works either way. The only question is how it **looks**: today `heroku ps` still says the server is `up`, so you only notice from the logs or the health check. The alternative makes the server stop on purpose, so Heroku shows it as `crashed`. That's a few lines of code. Details in `docs/PROBLEMS-LOG.md`, P-010.
 
+### If the server itself is broken, how can Heroku show our error page? (owner question, 2026-10-25)
+It can't use the app's own error page, because that page is part of the app. When the app isn't running, nothing from it can be shown. So there are two error pages, for two different situations:
+
+| What went wrong | Who answers | What the person sees |
+|---|---|---|
+| The app is running, but one page failed | The app | `src/app/error.tsx`: "Something went wrong", a reference code, Try again, Report this problem |
+| The app isn't answering at all: crashed, starting up, or in maintenance mode | Heroku's router, which sits in front of every app | Whatever page `ERROR_PAGE_URL` (or `MAINTENANCE_PAGE_URL`) points at |
+
+The second one is the trick. You put a plain HTML page somewhere **outside** Heroku (ours, `static/down/index.html`, goes in a public Cloudflare R2 bucket, free) and give Heroku its address with `heroku config:set`. When the router has nothing to forward a request to, it shows that page inside a frame instead of its own grey "Application error". It's plain HTML and CSS because it has to work with no server at all, so it can't have a Report button. Sentry's uptime check is what tells you instead.
+
+One catch: Heroku only does this when the app gives **no** answer. A server that's running but broken answers every request with its own bare 500, so Heroku never steps in. That was P-010. So Step 59.1 also makes a server with a bad setting stop completely, and from then on Heroku shows the page. Full details: `docs/backend/step-59.1-error-page.md`, decisions 8 and 9.
+
 ## Planning and review
 
 ### Why did the architect find things the plan missed? (owner question, 2026-10-16)

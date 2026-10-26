@@ -75,6 +75,12 @@ Used by:
 
 A school's own logo (Step 25) still shows inside that school's pages.
 
+## The error page and `Textarea` (Step 59.1)
+
+- **`ErrorScreen`** (`src/features/errors/error-screen.tsx`) is the one error page, used for every kind of problem by `src/app/error.tsx` and `src/app/global-error.tsx`. It follows the owner's design: the logo, a two-color heading (`text-brand-ink`, `text-brand-green-text`), the reference code with a copy button, **Try again**, **Report this problem**, and the illustration (`public/errors/confused-student.webp`). Phones stack the illustration on top, small, so both buttons fit at 360 × 640. From 768 px it's two columns. `ReportProblemDialog`, beside it, is the report dialog with its four states. How it reports, and the plain HTML copy for when the server is down: `docs/ERROR-TRACKING.md`, "The error page".
+- **`Textarea`** (`src/components/ui/textarea.tsx`), added with `npx shadcn@latest add textarea`. The CLI created only that file. Its focus ring and hover border were changed to match `Input` (`ring-2`, `hover:border-foreground/25`).
+- `/design-system`'s "Error page" section shows it with a pretend send that succeeds or fails. `/design-system/throw` shows the real page.
+
 ## Where to see all of this today
 
 `src/app/page.tsx`'s "Components (Step 6)" section shows one example of every new primitive and shared component, so it can be checked in a browser under every preset (`?preset=ocean`, etc.) and both color modes. This is explicitly **not** the real style guide — Step 7 builds a dedicated, dev-only `/design-system` page showing every token, component, and state properly, with a `check:tokens` script enforcing the no-raw-colors rule. Today's section on the demo page is scaffolding, the same way Step 5's `?preset=` links are.

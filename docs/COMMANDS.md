@@ -287,6 +287,9 @@ In the app, a principal gets the same links without the terminal: the dialog aft
 | `heroku releases:retry --app bantayaral` | Runs the release phase again after fixing a setting, without a new push. |
 | `npx tsx scripts/check-settings.ts` | The release phase's settings check, run by hand. On your laptop it lists everything a live server would need (that's expected). |
 | `heroku config:set NEXT_PUBLIC_SENTRY_DSN="https://…" --app bantayaral` | Turns error reports on (Step 59, `docs/ERROR-TRACKING.md`). Deploy afterwards: the build copies it into the code. |
+| `heroku config:set ERROR_PAGE_URL=https://pub-….r2.dev/index.html MAINTENANCE_PAGE_URL=https://pub-….r2.dev/index.html --app bantayaral` | Points Heroku at the "down for a moment" page (Step 59.1, `docs/DEPLOY.md`), shown when the app can't answer. |
+| `heroku maintenance:on --app bantayaral` | Puts the site in maintenance mode: every visitor sees the "down" page and nothing reaches the app. `heroku maintenance:off --app bantayaral` ends it. Only outside school hours. |
+| `heroku apps:info --app bantayaral` | The app's details, including its generation (Cedar or Fir); custom error pages need Cedar. |
 | `curl https://bantayaral.herokuapp.com/api/v1/health` | `{"ok":true,"database":"ok"}` when the site and its database are fine. |
 | `dig www.bantayaral.com CNAME +short` | Where a domain name points. Prints the DNS target once a new record is live; prints nothing while it's still spreading. |
 

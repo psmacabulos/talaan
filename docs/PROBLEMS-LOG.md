@@ -24,7 +24,7 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-007](#p-007--2026-10-13--the-live-site-answered-every-request-with-500) | 2026-10-13 | The live site answered every request with 500 | Other: setup | Heroku, settings | Resolved |
 | [P-008](#p-008--2026-10-13--the-r2-secret-access-key-couldnt-be-found-again) | 2026-10-13 | The R2 secret access key couldn't be found again | Other: setup | Cloudflare R2 | Resolved |
 | [P-009](#p-009--2026-10-13--the-bucket-wasnt-named-talaan-photos) | 2026-10-13 | The bucket wasn't named `talaan-photos` | Other: setup | Cloudflare R2 | Resolved |
-| [P-010](#p-010--2026-10-13--a-missing-setting-gives-500s-instead-of-a-crashed-dyno) | 2026-10-13 | A missing setting gives 500s instead of a crashed dyno | Other: reliability | Heroku, Next.js | Open: owner decides |
+| [P-010](#p-010--2026-10-13--a-missing-setting-gives-500s-instead-of-a-crashed-dyno) | 2026-10-13 | A missing setting gives 500s instead of a crashed dyno | Other: reliability | Heroku, Next.js | Fixed in Step 59.1 (live once deployed) |
 | [P-011](#p-011--2026-10-14--heroku-run-answered-run-command-not-found) | 2026-10-14 | `heroku run` answered `run: command not found` | Other: docs | Heroku CLI, docs | Resolved |
 | [P-012](#p-012--2026-10-15--prisma-migrate-dev-refused-to-drop-a-column-here) | 2026-10-15 | `prisma migrate dev` refused to drop a column here | Other: build | Prisma, building | Resolved |
 | [P-013](#p-013--2026-10-15--a-sign-in-test-still-picked-a-school-at-sign-up) | 2026-10-15 | A sign-in test still picked a school at sign-up | Other: tests | Playwright | Resolved |
@@ -59,6 +59,12 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-042](#p-042--2026-10-23--three-ways-the-new-offline-gate-could-still-lose-taps) | 2026-10-23 | Three ways the new offline gate could still lose taps | Other: correctness | `/gate`, code review | Resolved |
 | [P-043](#p-043--2026-10-23--withsentryconfig-is-not-a-function) | 2026-10-23 | `withSentryConfig is not a function` | Other: setup | Sentry, `next.config.ts` | Resolved |
 | [P-044](#p-044--2026-10-23--the-live-sites-nextjs-has-two-critical-security-holes) | 2026-10-23 | The live site's Next.js has two critical security holes | Security | Next.js 16.3.8 | Fixed locally (16.4.3); deploy pending |
+| [P-045](#p-045--2026-10-25--a-problem-report-would-have-skipped-the-privacy-clean) | 2026-10-25 | A problem report would have skipped the privacy clean | Security (privacy) | Sentry, error page | Resolved |
+| [P-046](#p-046--2026-10-25--the-heading-read-somethingwent-wrong) | 2026-10-25 | The heading read "Somethingwent wrong" | Other: accessibility | Error page | Resolved |
+| [P-047](#p-047--2026-10-25--stopping-on-a-bad-setting-could-have-stopped-a-build) | 2026-10-25 | Stopping on a bad setting could have stopped a build | Other: build | `src/instrumentation.ts` | Resolved |
+| [P-048](#p-048--2026-10-25--sendfeedback-doesnt-exist-in-the-server-build) | 2026-10-25 | `sendFeedback` doesn't exist in the server build | Other: build | Sentry, Turbopack | Resolved |
+| [P-049](#p-049--2026-10-25--processexit-warned-in-the-edge-build) | 2026-10-25 | `process.exit` warned in the Edge build | Other: build | `src/instrumentation.ts`, Turbopack | Resolved |
+| [P-050](#p-050--2026-10-25--a-script-tag-warning-on-the-error-page-in-development) | 2026-10-25 | A "script tag" warning on the error page, in development | Other: development | `npm run dev`, next-themes | Known: development only, watch |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -267,7 +273,7 @@ flowchart LR
 - **Effect:** still safe, because nothing half-works. But it's less visible: `heroku ps` shows the dyno as `up`, not crashed, so you only find out from the logs or the health check.
 - **Possible fix:** make the check end the process, so Heroku reports "crashed" and retries. This is a small code change.
 - **Related (2026-10-15):** the owner asked for friendly error pages with a way to report a problem, instead of a bare "server error". Added to Step 59 in `docs/PLAN.md`. Heroku's own "down for a moment" page (`ERROR_PAGE_URL`) only shows when the server isn't running, so it works together with this fix.
-- **Status:** Open. The owner decides whether to do it; recommended as a task in Step 59.
+- **Status:** Fixed in Step 59.1 (2026-10-25, owner-approved recipe): on a running live server, `register()` now ends the process after the report is flushed, so Heroku marks the dyno crashed, shows the "down for a moment" page (`ERROR_PAGE_URL`) and restarts it. A build still only logs the throw (see P-047). Live once deployed.
 
 ### P-011 · 2026-10-14 · `heroku run` answered "run: command not found"
 - **Where:** the Heroku CLI on your laptop (version 11), running a script on the live server, typed exactly as `docs/DEPLOY.md` said at the time.
@@ -930,3 +936,82 @@ sequenceDiagram
 - **Options weighed:** (1) **upgrade Next.js to 16.4.2** as its own commit, with the full routine, then deploy; (2) wait for the next step's deploy (leaves the live site open meanwhile); (3) `npm audit fix --force` (would also move other packages at once, harder to review). The other findings (`sharp`, Prisma's `deepmerge-ts` and `mysql2`, and Sentry's bundled `vite` and `source-map-js`) are high, not critical, and mostly build-time; they go in the same upgrade where a plain `npm audit fix` covers them.
 - **Solution:** option 1. On 2026-10-25 the owner ran `npm install --save-exact next@16.4.3 eslint-config-next@16.4.3` (16.4.3 had come out by then). `npm audit --omit=dev` then showed only one finding left, a moderate one in `nodemailer` 10.0.16 (`addressparser`: a crafted address with quotes, `;` or `>` could add a recipient; GHSA-8c8m-p3m8-cjg8, GHSA-m943-m63m-w62w, GHSA-85x2-q946-cp5h). Low risk here, since the only address passed in is an email already checked as a plain email format, but fixed in the same commit with `npm install --save-exact nodemailer@10.2.1`. npm's "outside the stated dependency range" only meant the exact pin.
 - **Status:** Fixed locally (Next.js 16.4.3, nodemailer 10.2.1); live once the owner deploys the upgrade commit.
+
+## One error page (Step 59.1, 2026-10-25)
+
+### P-045 · 2026-10-25 · A problem report would have skipped the privacy clean
+- **Where:** `src/lib/error-reporting.ts`, while planning "Report this problem" (found before it was built).
+- **Symptom:** none yet. Reading Sentry's own code showed that `beforeSend`, where Step 59's `scrubEvent` runs, is only called for error events:
+  ```js
+  // node_modules/@sentry/core/build/esm/client.js, processBeforeSend
+  if (isErrorEvent(processedEvent) && beforeSend) { … }
+  function isErrorEvent(event) { return event.type === void 0; }
+  ```
+  A problem report is sent as user feedback, `type: "feedback"`, so it would have gone out without the clean: the page's full address with its query (`?q=Juan`) and the request data Sentry attaches on its own.
+- **Cause:** Sentry has separate hooks per kind of event; `beforeSend` is only for errors.
+- **Options weighed:** (1) clean only the fields `sendProblemReport` sets itself, which misses what Sentry adds later; (2) a Sentry event processor that runs `scrubEvent` on every feedback event, after Sentry has added its own data.
+- **Solution:** option 2, in `startErrorReporting`: `Sentry.addEventProcessor((event) => (event.type === "feedback" ? scrubEvent(event) : event))`. `sendProblemReport` also strips the query itself and never sets a name or an email (tested in `error-reporting.problem-report.test.ts`).
+- **Status:** Resolved.
+
+### P-046 · 2026-10-25 · The heading read "Somethingwent wrong"
+- **Where:** `src/features/errors/error-screen.tsx`, found by its first Vitest run.
+- **Symptom:**
+  ```
+  Expected element to have text content:
+    Something went wrong
+  Received:
+    Somethingwent wrong
+  ```
+- **Cause:** the design puts "Something" and "went wrong" on two lines in two colors, written as two `block` spans with nothing between them. On screen the line break hides it, but the text itself has no space, so copy-paste, search, and some screen readers get "Somethingwent".
+- **Options weighed:** none needed.
+- **Solution:** a `{" "}` between the two spans. The test now checks the heading's text.
+- **Status:** Resolved.
+
+### P-047 · 2026-10-25 · Stopping on a bad setting could have stopped a build
+- **Where:** `src/instrumentation.ts`, while building P-010's fix (found before it ran).
+- **Symptom:** none yet. `register()` already skips the push worker "while building", so Next.js runs it during `npm run build` too. A build counts as a live server (`NODE_ENV` is `production`), so a Mac or CI build without every live setting would have hit `process.exit(1)` part-way through, where before it only logged the throw.
+- **Cause:** P-010's fix ends the process, and the same code runs during a build.
+- **Options weighed:** (1) stop only when `DYNO` is set (Heroku), which leaves `npm run start` on the Mac answering 500s; (2) keep throwing during a build (`NEXT_PHASE === "phase-production-build"`) and stop everywhere else.
+- **Solution:** option 2. A build behaves exactly as before, and any running live server with a bad setting stops.
+- **Status:** Resolved.
+
+### P-048 · 2026-10-25 · `sendFeedback` doesn't exist in the server build
+- **Where:** `src/lib/error-reporting.ts`, the first `npm run dev` load of `/design-system/throw`. Vitest and `tsc` had both passed.
+- **Symptom:**
+  ```
+  ./src/lib/error-reporting.ts:1:1
+  Error: Export sendFeedback doesn't exist in target module
+  The export sendFeedback was not found in module [project]/node_modules/@sentry/nextjs/build/esm/edge/index.js [instrumentation-edge] (ecmascript).
+  Did you mean to import captureFeedback?
+  ```
+- **Cause:** `@sentry/nextjs` has a different entry per runtime (`package.json` `exports`: `browser`, `node`, `edge`). `sendFeedback` is only in the browser one, but this file is built for the server and Edge too, through `src/instrumentation.ts`. Turbopack checks `Sentry.sendFeedback` against each build's real exports. The TypeScript types merge all three entries, so `tsc` couldn't see it.
+- **Options weighed:** (1) a browser-only module for the report, which the server-side rendering of the error page would still compile against the server entry; (2) `captureFeedback`, which all three entries export, and wait for Sentry's answer the way `sendFeedback` does inside (`client.on("afterSendEvent")`, matched on the event id).
+- **Solution:** option 2, with a 15-second limit before "Could not send the report". Tested with a fake client in `error-reporting.problem-report.test.ts`: its own answer, another event's answer, a refusal, no answer, and no client.
+- **Status:** Resolved.
+
+### P-049 · 2026-10-25 · `process.exit` warned in the Edge build
+- **Where:** `src/instrumentation.ts`, the dev server's log after P-010's fix.
+- **Symptom:**
+  ```
+  ⚠ ./src/instrumentation.ts:35:7
+  Warning: A Node.js API is used (process.exit at line: 35) which is not supported in the Edge Runtime.
+  ```
+- **Cause:** Next.js builds `instrumentation.ts` for the Edge runtime as well. The early `return` for anything but Node.js doesn't stop the build from checking the code after it.
+- **Options weighed:** (1) Next.js's own pattern, a separate file per runtime (`register.node`, `register.edge`), which moves the whole start-up; (2) only the stop in its own module, imported where the code already runs on Node.js only.
+- **Solution:** option 2: `src/lib/stop-server.ts`, imported with `await import()` at the point it's needed. After restarting the dev server (it repeated its cached warning until then), the log was clean.
+- **Status:** Resolved.
+
+### P-050 · 2026-10-25 · A "script tag" warning on the error page, in development
+- **Where:** `npm run dev`, `/design-system/throw`. The dev overlay shows "2 Issues": the deliberate error and this one.
+- **Symptom:**
+  ```
+  Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client.
+  ```
+- **Cause:** after a server error, React rebuilds the page around the error page in the browser, and the root layout's theme provider (next-themes) renders an inline `<script>`. React warns about that only in development. It doesn't show on `/design-system` or `/forgot-password`, only after an error.
+- **Effect:** none seen. Light and dark are right in the screenshots at 360 and 1280 px, and the browser tests' production build doesn't print it.
+- **Options weighed:** none yet. Watch it: if a flash of the wrong theme shows on the live error page, revisit.
+- **Status:** Known: development only, watch.
+
+| Date | Owner question (answered in `docs/LEARNING-LOG.md`) |
+|---|---|
+| 2026-10-25 | If the server itself is broken, how can Heroku show our error page? |

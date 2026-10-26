@@ -25,6 +25,7 @@ import { StatusPill } from "@/components/status-pill";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { ToastDemoButton } from "@/components/toast-demo-button";
+import { ErrorScreenPreview } from "./error-screen-preview";
 
 const coreTokens = [
   { label: "Background", className: "bg-background text-foreground border border-border" },
@@ -366,6 +367,13 @@ export function StyleGuideContent() {
             actions={<Button size="sm">Add student</Button>}
           />
         </div>
+      </Section>
+
+      <Section
+        title="Error page"
+        description="The one error page, for every kind of problem. Press Report this problem to see the dialog's states. /design-system/throw shows the real one."
+      >
+        <ErrorScreenPreview />
       </Section>
     </div>
   );

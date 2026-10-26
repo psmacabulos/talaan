@@ -9,8 +9,8 @@ import { Lock } from "lucide-react";
  *
  * Deliberately not built on EmptyState: that component's dashed border
  * reads as "empty, add something here", which is the wrong metaphor for a
- * permission boundary. This mirrors (app)/error.tsx's plainer treatment
- * instead — an unbounded, centered message for an exceptional state.
+ * permission boundary. Instead it's an unbounded, centered message for an
+ * exceptional state, the way the staff area's error page once was.
  */
 export function AccessDenied({ reason }: { reason: string }) {
   return (

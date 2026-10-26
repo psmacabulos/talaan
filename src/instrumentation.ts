@@ -9,9 +9,8 @@
  * Then it starts the push worker (Step 54), everywhere: in development, the
  * browser tests and the live server alike.
  *
- * Error reports start first (Step 59), so a bad setting is reported too:
- * Next.js catches the throw below itself, so the report is sent, and
- * waited for, before it.
+ * Error reports start first (Step 59), so a bad setting is reported too,
+ * and the report is waited for before the process ends.
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
@@ -26,7 +25,14 @@ export async function register() {
       const error = new Error(`The server can't start with these settings:\n- ${problems.join("\n- ")}`);
       reportError(error);
       await flushReports(2_000);
-      throw error;
+      // A build runs this too, and stays as it was: Next.js logs the throw.
+      if (process.env.NEXT_PHASE === "phase-production-build") throw error;
+      // On a running server, Next.js would catch a throw and keep answering
+      // every request with a bare 500 (P-010). Ending the process instead
+      // lets Heroku mark the dyno crashed, show the "down for a moment"
+      // page (Step 59.1) and restart it.
+      const { stopServer } = await import("@/lib/stop-server");
+      stopServer(error);
     }
   }
 

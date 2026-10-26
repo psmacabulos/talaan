@@ -2928,3 +2928,42 @@ env -i PATH="$PATH" npx tsx scripts/check-settings.ts                    # refus
   - `server_name` dropped.
 - The server path was then checked end to end, with a throwaway route (deleted afterwards) against the fake Sentry.
 - One stale-file snag: `tsc` complained about the deleted route's generated type in `.next/types` until the next `npm run build` rewrote them.
+
+## Step 59.1: one error page, with a way to report the problem (2026-10-25)
+
+**Decisions first.** The owner narrowed the step: one error page for every kind of problem, plus a way to report it. They brought a ChatGPT mock-up (desktop, phone and kiosk layouts, and the report dialog's four states) and asked how Heroku could show anything when the server itself is broken. The answer, two pages, is in `docs/LEARNING-LOG.md`. The recipe, `docs/backend/step-59.1-error-page.md`, was written first and approved with the illustration the owner generated separately. No architect review: the step is mostly screens, and the owner was told.
+
+**The illustration.** A 1349 × 1166 PNG with a transparent background (every corner's alpha 0). `sharp`, already installed as part of Next.js, trimmed the empty edges to 903 × 1151 and wrote a 640-wide WebP:
+
+```bash
+node -e "const sharp=require('sharp'); …trim({threshold:1}) … .resize({width:640}).webp({quality:80,alphaQuality:90,effort:6})"
+```
+
+Quality 80 gave 57 KB, 75 gave 52 KB. 80 was kept, under the recipe's 60 KB.
+
+**shadcn's Textarea.** `npx shadcn@latest add textarea --yes` created one file and touched nothing else (`git status`). It came without semicolons and with `ring-3`. Prettier fixed the first. The focus ring and hover border were changed by hand to match `Input`.
+
+**One error page.** The old staff and parent `error.tsx` files were deleted, and a root `src/app/error.tsx` now covers every page under the root layout. `src/app/global-error.tsx` covers the layout itself. It needs its own fonts, so `src/lib/fonts.ts` now holds them for both. Both render `ErrorPage`, which shows `ErrorScreen`, the only error UI.
+
+**What the first runs caught:**
+- **The first Vitest run found the heading read "Somethingwent wrong"** (P-046). The design's two block-level lines had no space between them in the text.
+- **The first `npm run dev` load failed to build** (P-048): `sendFeedback` isn't exported by Sentry's server or Edge builds, and this file is built for both. `tsc` and Vitest had passed, because the types merge all three builds. The fix was to send with `captureFeedback` and wait for Sentry's answer, the way `sendFeedback` does inside.
+- **Reading Sentry's `processBeforeSend` before writing the report** showed `beforeSend` only runs for errors (P-045). So feedback gets the same `scrubEvent` through an event processor.
+- **P-010's fix, `process.exit(1)`, needed two corrections.** It would have stopped `npm run build`, which runs `register()` too, so a build still only throws (P-047). And the dev server warned about it in the Edge build, so the stop moved to `src/lib/stop-server.ts` (P-049). The warning only went away after a restart: the running server kept repeating the cached one.
+
+**Looked at in a real browser.** A Playwright script against `npm run dev` on port 3457 took screenshots of `/design-system/throw` at 360 × 640 and 1280 × 800, light and dark. It also took the style guide's preview with a pretend send in each state: sending, sent, failed.
+- **At 360 × 640** the Report button's box ends at y = 622, so both buttons fit without scrolling.
+- **The first screenshots showed the picture's flat bottom edge below the circle.** The frame now has a round lower half (`overflow-hidden rounded-b-full`), so the edge follows the circle while the hair and the question mark still rise above it.
+- **The dev overlay's second "issue"** is a development-only React warning about next-themes' `<script>`, seen only after a server error (P-050, watched).
+
+**Runs while building:**
+
+```bash
+npx tsc --noEmit                      # clean
+npx eslint <the changed files>        # clean
+npm run check:tokens                  # no raw colors
+npx vitest run                        # 934 passed, before P-048's change
+npx vitest run src/lib/error-reporting src/features/errors   # passed after it
+```
+
+The browser tests (`npm run test:e2e`) and `npm run build` are the owner's to run.

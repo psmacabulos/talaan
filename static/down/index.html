@@ -1,0 +1,310 @@
+<!doctype html>
+<!--
+  Bantay Aral's "down for a moment" page (Step 59.1). Heroku shows it,
+  through ERROR_PAGE_URL and MAINTENANCE_PAGE_URL, whenever the app can't
+  answer at all: crashed, starting, or in maintenance mode. It's the plain
+  HTML copy of src/features/errors/error-screen.tsx, hosted on its own (a
+  public R2 bucket), because nothing from the app runs at those times.
+  Upload it with confused-student.webp beside it; see docs/DEPLOY.md.
+
+  The colors are copied from src/styles/tokens.css and the "school" preset
+  in src/lib/theme/presets.ts, each named after its token. Change them
+  there first, then here.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Down for a moment · Bantay Aral</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Lexend:wght@600;700&display=swap"
+    />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --background: oklch(97.5% 0.006 255.5);
+        --foreground: oklch(25.2% 0.061 262.8);
+        --muted-foreground: oklch(52.4% 0.044 259.2);
+        --primary: oklch(32.5% 0.087 268.9);
+        --primary-foreground: oklch(100% 0 0);
+        --accent: oklch(95.9% 0.01 228.9);
+        --ring: oklch(32.5% 0.087 268.9);
+        --status-present-bg: oklch(95.3% 0.025 160.6);
+        --brand-parent-top: oklch(59.1% 0.145 251.5);
+        --brand-parent: oklch(43.1% 0.161 260.5);
+        --brand-child: oklch(65% 0.144 154.6);
+        --brand-page-light: oklch(76.2% 0.115 158.3);
+        --brand-page-deep: oklch(47.2% 0.081 178.8);
+        --brand-edge: oklch(100% 0 0);
+        --brand-sun: oklch(80.49% 0.1644 78.39);
+        --brand-ink: oklch(27.4% 0.089 260.1);
+        --brand-green-text: oklch(52.7% 0.124 153.7);
+        --radius: 0.625rem;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --background: oklch(19.8% 0.037 264.2);
+          --foreground: oklch(95.1% 0.016 262.8);
+          --muted-foreground: oklch(73.8% 0.043 260.9);
+          --primary: oklch(67.5% 0.081 231.4);
+          --primary-foreground: oklch(17.7% 0.032 258.7);
+          --accent: oklch(29.2% 0.058 252.8);
+          --ring: oklch(67.5% 0.081 231.4);
+          --status-present-bg: oklch(30.9% 0.05 165.9);
+          --brand-parent-top: oklch(100% 0 0);
+          --brand-parent: oklch(87.2% 0.031 258.9);
+          --brand-page-deep: oklch(65.1% 0.115 162.3);
+          --brand-edge: oklch(19.8% 0.037 264.2);
+          --brand-ink: oklch(95.1% 0.016 262.8);
+          --brand-green-text: oklch(75% 0.144 157.9);
+        }
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: "Atkinson Hyperlegible", system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      header {
+        padding: 1rem;
+      }
+      .logo {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.625rem;
+      }
+      .logo svg {
+        height: 2rem;
+        width: auto;
+      }
+      .wordmark {
+        font-family: "Lexend", system-ui, sans-serif;
+        font-weight: 700;
+        font-size: 1.125rem;
+        letter-spacing: -0.025em;
+        line-height: 1;
+      }
+      .ink {
+        color: var(--brand-ink);
+      }
+      .green {
+        color: var(--brand-green-text);
+      }
+      main {
+        flex: 1;
+        width: 100%;
+        max-width: 64rem;
+        margin: 0 auto;
+        padding: 0 1rem 3rem;
+        display: grid;
+        align-content: center;
+        align-items: center;
+        gap: 1.5rem;
+      }
+      .text {
+        order: 2;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+      h1 {
+        margin: 0 0 0.75rem;
+        font-family: "Lexend", system-ui, sans-serif;
+        font-weight: 700;
+        font-size: 2.25rem;
+        line-height: 1.25;
+        letter-spacing: -0.025em;
+      }
+      h1 span {
+        display: block;
+      }
+      p {
+        margin: 0;
+        max-width: 28rem;
+        font-size: 1rem;
+        line-height: 1.5;
+        color: var(--muted-foreground);
+      }
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        width: 100%;
+        max-width: 24rem;
+        height: 2.75rem;
+        padding: 0 1.25rem;
+        border-radius: var(--radius);
+        background: var(--primary);
+        color: var(--primary-foreground);
+        font-size: 1rem;
+        font-weight: 700;
+        text-decoration: none;
+      }
+      .button:focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+      }
+      .button svg {
+        width: 1rem;
+        height: 1rem;
+      }
+      .illustration {
+        order: 1;
+        position: relative;
+        width: 10rem;
+        aspect-ratio: 1;
+        margin: 0 auto;
+      }
+      .illustration .blob {
+        position: absolute;
+        inset: 6%;
+        border-radius: 50%;
+        background: var(--accent);
+      }
+      .illustration .dot {
+        position: absolute;
+        top: 4%;
+        left: 8%;
+        width: 12%;
+        height: 12%;
+        border-radius: 50%;
+        background: var(--status-present-bg);
+      }
+      .illustration img {
+        position: relative;
+        display: block;
+        height: 100%;
+        width: auto;
+        margin: 0 auto;
+      }
+      @media (min-width: 640px) {
+        header {
+          padding: 1.5rem 2rem;
+        }
+        .logo svg {
+          height: 2.75rem;
+        }
+        .wordmark {
+          font-size: 1.5rem;
+        }
+        main {
+          padding: 0 2rem 3rem;
+        }
+        h1 {
+          font-size: 3rem;
+        }
+        p {
+          font-size: 1.125rem;
+        }
+      }
+      @media (min-width: 768px) {
+        main {
+          grid-template-columns: 1fr 1fr;
+          gap: 3rem;
+          padding-bottom: 5rem;
+        }
+        .text {
+          order: 0;
+        }
+        .illustration {
+          order: 0;
+          width: 100%;
+          max-width: 24rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span class="logo" role="img" aria-label="Bantay Aral">
+        <svg viewBox="0 0 106 100" aria-hidden="true" focusable="false">
+          <defs>
+            <linearGradient id="parent" x1="0" y1="24" x2="0" y2="97" gradientUnits="userSpaceOnUse">
+              <stop offset="0" style="stop-color: var(--brand-parent-top)" />
+              <stop offset="1" style="stop-color: var(--brand-parent)" />
+            </linearGradient>
+          </defs>
+          <circle cx="40" cy="15" r="11" style="fill: var(--brand-parent-top)" />
+          <path
+            d="M62 49 C 56 35, 39 28, 25 34 C 7 42, 2 68, 18 82 C 26 89, 36 92, 47 97 C 46 91, 46 87, 48 83 Z"
+            fill="url(#parent)"
+          />
+          <circle cx="68" cy="34" r="10.5" style="fill: var(--brand-child)" />
+          <path
+            d="M50 82 C 52 72, 54 63, 54 57 C 46 49, 32 47, 24 51 C 19 55, 17 60, 16 65 C 30 64, 43 71, 50 82 Z"
+            style="fill: var(--brand-page-light)"
+          />
+          <path
+            d="M50 82 C 53 71, 56 62, 59 55 C 67 49, 82 45, 93 43 C 93 52, 90 58, 86 61 C 72 63, 58 70, 50 82 Z"
+            style="fill: var(--brand-child)"
+          />
+          <path d="M50 84 C 60 71, 76 63, 96 59 C 93 73, 75 85, 50 87 Z" style="fill: var(--brand-page-deep)" />
+          <g fill="none" stroke-linecap="round" style="stroke: var(--brand-edge)" stroke-width="2.8">
+            <path d="M13 67 C 30 65, 44 72, 50 83" />
+            <path d="M50 83 C 58 70, 74 62, 97 58" />
+          </g>
+          <g fill="none" stroke-linecap="round" style="stroke: var(--brand-sun)" stroke-width="4.2">
+            <path d="M82 7 L 84 15" />
+            <path d="M91 21 L 97 16" />
+            <path d="M94 30 L 102 30" />
+          </g>
+        </svg>
+        <span class="wordmark" aria-hidden="true"><span class="ink">Bantay</span><span class="green">Aral</span></span>
+      </span>
+    </header>
+
+    <main>
+      <div class="text">
+        <div>
+          <h1><span class="ink">Down for</span> <span class="green">a moment</span></h1>
+          <p>
+            Bantay Aral isn't answering right now. We've already been told and are working on it. Please try again in a
+            few minutes.
+          </p>
+        </div>
+        <!-- Heroku shows this page inside a frame: _top reloads the whole tab, not just the frame. -->
+        <a class="button" id="try-again" href="https://bantayaral.herokuapp.com/" target="_top">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+            <path d="M21 3v5h-5" />
+          </svg>
+          Try again
+        </a>
+      </div>
+
+      <div class="illustration" aria-hidden="true">
+        <span class="blob"></span>
+        <span class="dot"></span>
+        <img src="confused-student.webp" alt="" width="640" height="816" />
+      </div>
+    </main>
+    <script>
+      // Inside Heroku's frame, the referrer is the address the person opened:
+      // go back there, on whichever domain it was, instead of the fallback.
+      if (document.referrer) document.getElementById("try-again").href = document.referrer;
+    </script>
+  </body>
+</html>

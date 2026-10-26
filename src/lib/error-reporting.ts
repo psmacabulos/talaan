@@ -108,11 +108,65 @@ export function sentryOptions(dsn: string) {
 export function startErrorReporting(dsn: string | undefined): void {
   if (!dsn || process.env.NODE_ENV !== "production" || Sentry.getClient()) return;
   Sentry.init(sentryOptions(dsn));
+  // `beforeSend` only sees errors, never a problem report (Sentry's
+  // `processBeforeSend`), so reports get the same clean here (Step 59.1).
+  Sentry.addEventProcessor((event) => (event.type === "feedback" ? scrubEvent(event) : event));
 }
 
-/** For error pages: an error a page's error boundary caught, which Sentry wouldn't see by itself. */
-export function reportError(error: unknown): void {
-  Sentry.captureException(error);
+/**
+ * For error pages: an error a page's error boundary caught, which Sentry
+ * wouldn't see by itself. `reference` is the code the page shows, tagged
+ * as `digest` like a server error's, so one search finds either (Step 59.1).
+ */
+export function reportError(error: unknown, reference?: string): void {
+  if (!reference) {
+    Sentry.captureException(error);
+    return;
+  }
+  Sentry.withScope((scope) => {
+    scope.setTag("digest", reference);
+    Sentry.captureException(error);
+  });
+}
+
+/** What "Report this problem" sends: the person's note (maybe empty) and the error page's reference code. */
+export type ProblemReport = { note: string; reference?: string };
+
+/** How long "Sending…" waits for Sentry's answer before saying it failed. */
+const REPORT_TIMEOUT_MS = 15_000;
+
+/**
+ * Sends a problem report as Sentry user feedback (Step 59.1). Never a name or
+ * an email; the page's address loses its query; the reference is tagged as
+ * `digest`. Sentry refuses an empty message, so an empty note says so.
+ * Settles once Sentry has answered, and rejects when it refused or never
+ * did. This is what Sentry's own `sendFeedback` does, but that one exists
+ * only in Sentry's browser build, and this file is built for the server too.
+ */
+export function sendProblemReport({ note, reference }: ProblemReport, pageUrl: string): Promise<string> {
+  const client = Sentry.getClient();
+  if (!client) return Promise.reject(new Error("Error reports aren't on"));
+
+  const eventId = Sentry.captureFeedback({
+    message: note.trim() || "No note added.",
+    url: withoutQuery(pageUrl),
+    source: "error-page",
+    tags: reference ? { digest: reference } : undefined,
+  });
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      stop();
+      reject(new Error("Sentry didn't answer"));
+    }, REPORT_TIMEOUT_MS);
+    const stop = client.on("afterSendEvent", (event, response) => {
+      if (event.event_id !== eventId) return;
+      clearTimeout(timeout);
+      stop();
+      const status = response?.statusCode;
+      if (status !== undefined && status >= 200 && status < 300) resolve(eventId);
+      else reject(new Error(`Sentry refused the report (${status ?? "no answer"})`));
+    });
+  });
 }
 
 /** Waits up to `timeoutMs` for reports still on their way, before the server gives up on starting. */

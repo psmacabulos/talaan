@@ -77,6 +77,7 @@ Set with `heroku config:set NAME=value --app bantayaral`. Type secrets yourself;
 | `EMAIL_FROM` | you: `Bantay Aral <no-reply@mail.bantayaral.com>` | The same. The address must be on the domain Resend verified. |
 | `APP_URL` | you: `https://bantayaral.herokuapp.com` | The same. Links in emails use it, never the request's own address. Must start with `https://`. |
 | `NEXT_PUBLIC_SENTRY_DSN` | you: Sentry, the project's Client Keys | Step 59 (`docs/ERROR-TRACKING.md`). Optional: unset, no error reports are sent. Not a secret. The build copies it into the code, so **set it before a deploy**, and deploy again after changing it. |
+| `ERROR_PAGE_URL`, `MAINTENANCE_PAGE_URL` | you: the same `https://pub-….r2.dev/index.html` | Step 59.1. The page Heroku shows when the app can't answer (crashed, starting) or is in maintenance mode, instead of its own "Application error". Both point at `static/down/index.html` in the public `bantayaral-status` bucket (below). Optional, and not part of the release check, so the order doesn't matter. |
 | `S3_ENDPOINT` | you | `https://<account-id>.r2.cloudflarestorage.com` |
 | `S3_BUCKET` | you: `talaan-photos` | The private bucket. |
 | `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | you | An R2 API token with Object Read & Write on `talaan-photos` only. |
@@ -90,6 +91,7 @@ Never set on Heroku: `DEMO_NOW` (the server refuses to start) and `E2E` (meant o
 | Web server | Heroku Basic dyno (never sleeps) | $7 |
 | Database | Heroku Postgres Essential-0 (1 GB, 20 connections) | $5 |
 | Photos | Cloudflare R2 free tier (10 GB; 500 thumbnails are about 8 MB) | $0 |
+| "Down for a moment" page | A second, public R2 bucket, `bantayaral-status` (two files, about 60 KB), on the same free tier | $0 |
 | Push notifications | Expo's push service (free); the worker runs inside the web dyno (`docs/PUSH.md`) | $0 |
 | Email | Resend's free plan (3,000 a month, 100 a day; the app stops at 80 a day), `docs/EMAIL.md` | $0 |
 | **Total** | | **$12**, covered by the Heroku for GitHub Students credit ($13 a month) |
@@ -126,3 +128,7 @@ Each prints its token once. On the tablet, open `/gate` and enter the token on i
 **Back up now.** `heroku pg:backups:capture --app bantayaral`. `heroku pg:backups --app bantayaral` lists the backups, including Heroku's automatic ones.
 
 **Change a setting.** `heroku config:set NAME=value --app bantayaral`. Heroku restarts the dyno by itself, and the settings check runs again.
+
+**Put the "down for a moment" page up (Step 59.1, once).** Cloudflare → R2 → **Create bucket** `bantayaral-status` → its **Settings → Public access → R2.dev subdomain: Allow**. Upload `static/down/index.html` and `static/down/confused-student.webp`. Open the bucket's `https://pub-….r2.dev/index.html` to check it, then `heroku config:set ERROR_PAGE_URL=https://pub-….r2.dev/index.html MAINTENANCE_PAGE_URL=https://pub-….r2.dev/index.html --app bantayaral`. Check with `heroku maintenance:on --app bantayaral` (outside school hours), then `heroku maintenance:off --app bantayaral`. Heroku's docs say custom error pages don't work on "Fir"-generation apps; `heroku apps:info --app bantayaral` shows which this is.
+
+**A live server with a bad setting stops (Step 59.1, P-010).** `heroku ps` shows it `crashed`, the site shows the "down" page, and `heroku logs` names the setting. Set it with `heroku config:set`; Heroku restarts it.
