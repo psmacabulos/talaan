@@ -1015,3 +1015,5 @@ sequenceDiagram
 | Date | Owner question (answered in `docs/LEARNING-LOG.md`) |
 |---|---|
 | 2026-10-25 | If the server itself is broken, how can Heroku show our error page? |
+| 2026-10-26 | I reported a problem on my Mac. Where did it go? |
+| 2026-10-26 | Do I make a `static` and a `down` folder in the bucket? |

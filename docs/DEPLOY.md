@@ -129,6 +129,25 @@ Each prints its token once. On the tablet, open `/gate` and enter the token on i
 
 **Change a setting.** `heroku config:set NAME=value --app bantayaral`. Heroku restarts the dyno by itself, and the settings check runs again.
 
-**Put the "down for a moment" page up (Step 59.1, once).** Cloudflare → R2 → **Create bucket** `bantayaral-status` → its **Settings → Public access → R2.dev subdomain: Allow**. Upload `static/down/index.html` and `static/down/confused-student.webp`. Open the bucket's `https://pub-….r2.dev/index.html` to check it, then `heroku config:set ERROR_PAGE_URL=https://pub-….r2.dev/index.html MAINTENANCE_PAGE_URL=https://pub-….r2.dev/index.html --app bantayaral`. Check with `heroku maintenance:on --app bantayaral` (outside school hours), then `heroku maintenance:off --app bantayaral`. Heroku's docs say custom error pages don't work on "Fir"-generation apps; `heroku apps:info --app bantayaral` shows which this is.
+**Put the "down for a moment" page up (Step 59.1, once).** No folders: the two files go straight into the bucket, side by side. `static/down/` is only where they're kept in this repository. The page finds its picture by the bare name `confused-student.webp`, so the picture must sit next to `index.html` in the bucket.
+
+```
+In the repository                 In the bucket bantayaral-status
+static/down/index.html      →     index.html
+static/down/confused-student.webp → confused-student.webp
+```
+
+1. **The bucket.** Cloudflare dashboard → **R2 Object Storage** → **Create bucket**, named `bantayaral-status`. Keep the default location and the Standard storage class. (Done on 2026-10-26.)
+2. **Upload the two files.** Open the bucket → **Objects** tab → **Upload** → drag in `index.html` and `confused-student.webp` from `static/down/` in Finder, both at once. Don't make a folder first. The list should then show exactly those two names, with no `/` in either.
+3. **Make it public.** The bucket's **Settings** tab → **Public Development URL** (older dashboards call it **R2.dev subdomain**) → **Enable** (or **Allow Access**) → type `allow` when asked. The same box then shows the address, like `https://pub-1a2b3c….r2.dev`. Only this bucket becomes public. `talaan-photos` stays private.
+4. **Check it in a browser.** Open that address with `/index.html` on the end: `https://pub-1a2b3c….r2.dev/index.html`. You should see "Down for a moment" with the illustration, in light or dark like your Mac. If the picture is missing, the two files aren't side by side: check step 2. If the browser downloads the file instead of showing it, delete it and upload it again from the dashboard, which sets its type to `text/html` by itself.
+5. **Point Heroku at it,** with your real address in both places:
+   ```bash
+   heroku config:set ERROR_PAGE_URL=https://pub-1a2b3c….r2.dev/index.html MAINTENANCE_PAGE_URL=https://pub-1a2b3c….r2.dev/index.html --app bantayaral
+   ```
+   The server restarts by itself, as with any setting. Neither is part of the release check, so this can be done before or after the push.
+6. **Check Heroku shows it,** outside school hours: `heroku maintenance:on --app bantayaral`, open `https://bantayaral.herokuapp.com`, see the "down" page, then `heroku maintenance:off --app bantayaral`. If Heroku's grey page shows instead, run `heroku apps:info --app bantayaral`: custom error pages don't work on "Fir"-generation apps.
+
+**Changing the "down" page later:** edit `static/down/index.html`, open it from Finder to check, then upload it to the bucket again with the same name, replacing the old one. No deploy and no `config:set` needed.
 
 **A live server with a bad setting stops (Step 59.1, P-010).** `heroku ps` shows it `crashed`, the site shows the "down" page, and `heroku logs` names the setting. Set it with `heroku config:set`; Heroku restarts it.

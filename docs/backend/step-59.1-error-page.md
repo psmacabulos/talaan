@@ -135,11 +135,7 @@ It arrived with the approval: 903 × 1151 after trimming, 57 KB as WebP.
 ## Your part (owner)
 
 1. Generate the illustration (step 1) and give me the file.
-2. Create the public bucket, after the code is approved:
-   - Cloudflare → R2 → **Create bucket** `bantayaral-status`.
-   - **Settings → Public access → R2.dev subdomain: Allow.**
-   - Upload the two files from `static/down/`.
-   - Open the `https://pub-….r2.dev/index.html` address in a browser to check it.
+2. Create the public bucket and upload the page. The bucket was made on 2026-10-26. The two files go straight into it, side by side, with **no folders**: `static/down/` is only where they're kept in this repository. Every click, and what to check, is in `docs/DEPLOY.md`, "Put the 'down for a moment' page up", steps 2 to 4.
 3. Point Heroku at it, before or after the push. Neither setting is checked by the release phase, so the order doesn't matter:
    ```bash
    heroku config:set ERROR_PAGE_URL=https://pub-….r2.dev/index.html MAINTENANCE_PAGE_URL=https://pub-….r2.dev/index.html --app bantayaral

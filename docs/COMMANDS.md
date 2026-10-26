@@ -217,6 +217,8 @@ The tables are described in `prisma/schema.prisma`. Each change to it becomes a 
 
 ## 7. The gate, the monitor and the USB reader
 
+**These commands use your laptop's database.** A token made here works only at `localhost:3000`. For a gate or monitor on the live site (`bantayaral.com`), run the same command through `heroku run`, as in section 7c. A token from one database is refused by the other.
+
 | Command | What it does |
 |---|---|
 | `npm run device:create -- --school school-balanga --kind gate --label "Main gate tablet"` | Makes a gate device and prints its token **once**. Copy it. |

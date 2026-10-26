@@ -669,6 +669,24 @@ No. `/station` (the **Tap station** menu item) is Phase 1's **pretend gate**, bu
 
 "The demo tools" were the two things that make taps up: the dashboard's old "Simulate a tap" button (gone since Step 55, replaced by "Record time in" for one chosen student) and `/station`. Both write real taps and real parent notifications, which is fine on a demo but wrong at a real school, where a principal clicking "Valid card" would tell a parent their child arrived when nobody tapped anything.
 
+### My new gate token was refused. Is it used up now? How does `/gate` know the school? (owner question, 2026-10-26)
+**A refused token isn't used up.** The gate sends the token to `/api/v1/devices/heartbeat`, which hashes it and looks for a `Device` row with that hash and status `active` (`src/services/devices/authenticate-device.ts`). Nothing is written when there's no match, so you can try the same token as often as you like. A token stops working for only two reasons: its device was revoked, or its row is gone (on your laptop, `npm run db:reset` deletes every device).
+
+**The usual cause: the token was made in a different database from the site you opened.** `npm run device:create` writes to whatever `DATABASE_URL` it sees:
+
+| Where you run it | Which database gets the device | Where the token works |
+|---|---|---|
+| Your Mac's terminal: `npm run device:create -- …` | The local Docker database | `http://localhost:3000/gate` only |
+| `heroku run --app bantayaral "npm run device:create -- …"` | The live Heroku database | `bantayaral.com/gate` only |
+
+Each database has its own `Device` table, so a token made on the Mac doesn't exist on the live site.
+
+**Signing in as the principal first changes nothing.** The gate page ignores staff sign-ins on purpose. A tablet at the gate shouldn't carry a staff session, so the token is all it uses.
+
+**How one `/gate` address serves every school:** the token *is* the school. When the device is made, `--school school-balanga` is saved on its `Device` row. Each time the gate calls the server, the token leads to that row, and the server takes its `schoolId`. That `schoolId` decides the roster the gate downloads and the school its taps are recorded for. This is the same idea as `/gate/display` above: the school comes from who's asking, never from the address.
+
+**Making a gate for a school, step by step:** `docs/DEPLOY.md`, "A gate tablet or a monitor" (live) or `docs/COMMANDS.md` §7 (laptop). In short: run `heroku run --app bantayaral "npm run device:create -- --school school-balanga --kind gate --label 'Main gate tablet'"`, copy the token it prints, open `bantayaral.com/gate`, and paste it in. If the message is "Couldn't reach the server" and not "That token doesn't work", the token is fine and the connection is the problem.
+
 ---
 
 ## What is a "repository"? (Step 9)
@@ -1490,6 +1508,12 @@ It can't use the app's own error page, because that page is part of the app. Whe
 The second one is the trick. You put a plain HTML page somewhere **outside** Heroku (ours, `static/down/index.html`, goes in a public Cloudflare R2 bucket, free) and give Heroku its address with `heroku config:set`. When the router has nothing to forward a request to, it shows that page inside a frame instead of its own grey "Application error". It's plain HTML and CSS because it has to work with no server at all, so it can't have a Report button. Sentry's uptime check is what tells you instead.
 
 One catch: Heroku only does this when the app gives **no** answer. A server that's running but broken answers every request with its own bare 500, so Heroku never steps in. That was P-010. So Step 59.1 also makes a server with a bad setting stop completely, and from then on Heroku shows the page. Full details: `docs/backend/step-59.1-error-page.md`, decisions 8 and 9.
+
+### I reported a problem on my Mac. Where did it go? (owner question, 2026-10-26)
+Nowhere: it stayed in your browser. Under `npm run dev`, "Report this problem" prints the report to the browser's developer console ("Problem report (not sent: reports are off here)") and shows "Thanks, we got it", so every state of the dialog can be seen without sending anything. Only a production build with `NEXT_PUBLIC_SENTRY_DSN` set, which is the live site, sends it, to Sentry's **User Feedback**, and Sentry's new-issue alert emails you. The reference code tags both the error's own report and the person's report, so searching `digest:<code>` in Sentry finds both. Diagrams of every path, including the "down for a moment" page: [Where a Problem Report Goes](https://claude.ai/artifact/VEz8EFFn5U9CwXuog8qa38).
+
+### Do I make a `static` and a `down` folder in the bucket? (owner question, 2026-10-26)
+No. `static/down/` is only where the two files live in this repository, so they're kept apart from the app's own code. In the bucket they go at the top, side by side: `index.html` and `confused-student.webp`. What matters is that they're next to each other, because the page asks for its picture by the bare name `confused-student.webp`, which the browser looks for in the same place as the page. Folders would still work if both files were in the same one, but the address Heroku needs would then be longer (`…/static/down/index.html`). Step by step: `docs/DEPLOY.md`, "Put the 'down for a moment' page up".
 
 ## Planning and review
 
