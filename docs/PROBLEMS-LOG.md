@@ -67,6 +67,7 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-050](#p-050--2026-10-25--a-script-tag-warning-on-the-error-page-in-development) | 2026-10-25 | A "script tag" warning on the error page, in development | Other: development | `npm run dev`, next-themes | Known: development only, watch |
 | [P-051](#p-051--2026-10-26--the-gate-page-is-taller-than-a-landscape-tablet) | 2026-10-26 | The gate page is taller than a landscape tablet | Other: layout | `/gate`, `/gate/display` | Fixed, waiting for the owner's check on the tablet |
 | [P-052](#p-052--2026-10-26--the-gate-said-time-in-but-the-web-app-showed-no-time-in) | 2026-10-26 | The gate said "Time in", but the web app showed no time in | Other: design | Attendance, parent API | Fixed in Step 59.3, waiting for the owner's check |
+| [P-053](#p-053--2026-10-26--a-step-49-test-still-expected-no-time-out-after-in-out-in) | 2026-10-26 | A Step 49 test still expected no time out after in, out, in | Other: tests | Vitest, attendance | Resolved |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -1043,6 +1044,17 @@ sequenceDiagram
   2. Keep Time in as the arrival and turn the second column into **Latest**: the newest tap with its direction ("In 7:05 PM" or "Out 6:44 PM"), shown from the 2nd tap on. The parent API adds a `latest` field and keeps `timeIn` and `timeOut`, so the current parent app doesn't break.
 - **Solution:** option 2, chosen by the owner on 2026-10-26. Step 59.3, recipe `docs/backend/step-59.3-latest-tap.md`.
 - **Status:** Fixed in Step 59.3 (built 2026-10-26), waiting for the owner's checks and approval. Live once deployed.
+
+### P-053 · 2026-10-26 · A Step 49 test still expected no time out after in, out, in
+- **Where:** the owner's `npm test` run of Step 59.3.
+- **Symptom:**
+  ```
+  FAIL  src/features/attendance/attendance-card-list.test.tsx > … > shows no time out after in, out, in, and lists all three taps in a dialog
+  expected document not to contain element, found <time datetime="2026-06-19T00:52:00.000Z">8:52 AM</time> instead
+  ```
+- **Cause:** the test checked Step 49's rule, that the phone list hides a later time in. Step 59.3 shows it on purpose ("Back in 8:52 AM"). The search for everything Step 59.3 touched looked for `timeOut` in code and "Time out" in text, and this test checks a time, not either word.
+- **Solution:** the test now checks the new rule: the second line reads "Back in 8:52 AM" (and, in the two-tap test, "Out 8:40 AM"), and the 8:20 out shows only in the dialog. `npx vitest run src/features/attendance`: 70 passed.
+- **Status:** Resolved.
 
 | Date | Owner question (answered in `docs/LEARNING-LOG.md`) |
 |---|---|

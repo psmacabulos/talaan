@@ -96,7 +96,7 @@ describe("AttendanceCardList", () => {
     expect(items("Class roll")).toHaveLength(1);
   });
 
-  describe("time in and time out (Step 49)", () => {
+  describe("time in and the latest tap (Steps 49 and 59.3)", () => {
     const at = (time: string, n: number): Tap => ({
       id: `7b0d6f8e-4c1a-4f7e-9d7a-2f4b1c3e5a6${n}`,
       schoolId: "school-a",
@@ -110,11 +110,11 @@ describe("AttendanceCardList", () => {
       render(<AttendanceCardList rows={[juan]} taps={[at("07:41", 1), at("08:40", 2)]} day={DAY} label="Students" />);
       const [item] = items("Students");
       expect(within(item).getByText("7:41 AM")).toBeInTheDocument();
-      expect(within(item).getByText("8:40 AM")).toBeInTheDocument();
+      expect(within(item).getByText("8:40 AM").parentElement).toHaveTextContent(/^, out at Out 8:40 AM$/);
       expect(within(item).queryByRole("button")).not.toBeInTheDocument();
     });
 
-    it("shows no time out after in, out, in, and lists all three taps in a dialog", () => {
+    it("shows Back in after in, out, in, and lists all three taps in a dialog", () => {
       render(
         <AttendanceCardList
           rows={[juan]}
@@ -124,7 +124,9 @@ describe("AttendanceCardList", () => {
         />,
       );
       const [item] = items("Students");
-      expect(within(item).queryByText("8:52 AM")).not.toBeInTheDocument();
+      // The newest tap, the time in after coming back (P-052); the out between shows only in the dialog.
+      expect(within(item).getByText("8:52 AM").parentElement).toHaveTextContent(/^, back in at Back in 8:52 AM$/);
+      expect(within(item).queryByText("8:20 AM")).not.toBeInTheDocument();
 
       fireEvent.click(within(item).getByRole("button", { name: /3 taps/ }));
       const dialog = screen.getByRole("dialog", { name: "Juan Cruz's taps" });

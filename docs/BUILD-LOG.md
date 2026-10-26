@@ -2995,3 +2995,5 @@ The browser tests (`npm run test:e2e`) and `npm run build` are the owner's to ru
 - Docs: `ATTENDANCE-MODEL.md`, `PARENT-API.md`, and the parent app's starter kit (`mobile/starter/docs/PRODUCT-RULES.md`, `PLAN.md`).
 
 **Runs while building.** `npx tsc --noEmit` was clean after the change, which also confirmed nothing else read `timeOut`. The rest of the checks are the owner's to run.
+
+**The owner's first `npm test` run** failed one test, in `attendance-card-list.test.tsx`: it still expected Step 49's rule, no later time in on a phone row (P-053). It now checks "Back in 8:52 AM" and "Out 8:40 AM". `npx vitest run src/features/attendance` passed, 70 tests.
