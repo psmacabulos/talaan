@@ -80,9 +80,10 @@ type ChildToday = {
     date: string;
     status: "present" | "late" | "absent" | "idle"; // idle: no tap yet
     flexible: boolean; // a weekend: no late or absent
-    timeIn: string | null;
-    timeOut: string | null;
+    timeIn: string | null; // the first tap: the arrival, which present or late comes from
+    timeOut: string | null; // the last tap, only when it's a time out (none after in, out, in)
     tapCount: number;
+    latest: { at: string; kind: "time_in" | "time_out" } | null; // the newest tap (Talaan Step 59.3); with one tap, the time in
   };
 };
 
@@ -148,7 +149,7 @@ curl -s http://localhost:3000/api/v1/parents/me -H "Authorization: Bearer $TOKEN
     {
       "id": "student-0001", "firstName": "Juan", "lastName": "Cruz", "gradeLevel": 7, "section": "Rizal", "photo": null,
       "school": { "id": "school-balanga", "name": "Balanga City National Science High School", "notificationPreference": "time_in_and_time_out" },
-      "today": { "date": "2026-10-16", "status": "absent", "flexible": false, "timeIn": null, "timeOut": null, "tapCount": 0 }
+      "today": { "date": "2026-10-16", "status": "absent", "flexible": false, "timeIn": null, "timeOut": null, "tapCount": 0, "latest": null }
     }
   ]
 }

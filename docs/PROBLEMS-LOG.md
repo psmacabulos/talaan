@@ -66,6 +66,7 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-049](#p-049--2026-10-25--processexit-warned-in-the-edge-build) | 2026-10-25 | `process.exit` warned in the Edge build | Other: build | `src/instrumentation.ts`, Turbopack | Resolved |
 | [P-050](#p-050--2026-10-25--a-script-tag-warning-on-the-error-page-in-development) | 2026-10-25 | A "script tag" warning on the error page, in development | Other: development | `npm run dev`, next-themes | Known: development only, watch |
 | [P-051](#p-051--2026-10-26--the-gate-page-is-taller-than-a-landscape-tablet) | 2026-10-26 | The gate page is taller than a landscape tablet | Other: layout | `/gate`, `/gate/display` | Fixed, waiting for the owner's check on the tablet |
+| [P-052](#p-052--2026-10-26--the-gate-said-time-in-but-the-web-app-showed-no-time-in) | 2026-10-26 | The gate said "Time in", but the web app showed no time in | Other: design | Attendance, parent API | Fixed in Step 59.3, waiting for the owner's check |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -1027,6 +1028,21 @@ sequenceDiagram
   - A new `short:` variant (height under 44rem) tightens the card's padding and gaps. A test compile with the project's Tailwind (4.3.3) confirmed `short:p-4` comes after `sm:p-8` in the CSS, so it wins on a short screen.
   - The monitor's Earlier list scrolls inside its own box and always keeps at least one row (`min-h-24`) on screen.
 - **Status:** Fixed, waiting for the owner's check on the tablet.
+
+### P-052 · 2026-10-26 · The gate said "Time in", but the web app showed no time in
+- **Where:** the new kiosk tablet, gate "Main gate kiosk"; the time in was looked for in the web app.
+- **Symptom:** the gate showed "Time in" for Katrina Aguilar, but the web app showed no time in for her.
+- **What the code rules out:** the gate shows "Time in" only after the server answered `recorded` (`describeScan` in `src/features/gate/gate-display.ts`), so some database did store the tap. The attendance pages read every tap of the school and day, with no filter on where it came from (`listByDate` in `prisma-tap-repository.ts`).
+- **Possible causes, still to check:**
+  1. **Another database.** The tablet and the web app are on different servers (`bantayaral.com` against `localhost:3000`).
+  2. **The tablet's clock.** The server keeps the gate's own time when it's up to 7 days old, since an offline tap really can be (`chooseTapTime` in `src/services/taps/tap-time.ts`). A new tablet with the wrong date files the tap under that day. The gate shows only the time, not the date, so it looks right. The page's orange "clock is off" bar would show it.
+  3. **Another school, or a page not reloaded.** A super admin looking at a different school, or a page opened before the tap.
+- **Found (owner's screenshots, 2026-10-26):** nothing was lost. All 13 taps are stored, the last a time in at 7:05 PM, and the "13 taps" list shows them. The row shows "Time in 11:09 AM", "Time out —" because that is Step 49's rule (`dayTapSummary` in `src/features/attendance/status.ts`, `docs/ATTENDANCE-MODEL.md`): Time in is the **first** tap, and Time out is the last tap only when it's an out. With an odd number of taps, the row looks the same as a student who arrived and never moved. The parent API's `today` (`src/features/parents/api-responses.ts`) uses the same summary, so the parent app shows the same.
+- **Options weighed:**
+  1. Show only the latest tap (the owner's first idea). It answers "where is the student now?", but the arrival time disappears, and Late is worked out from the arrival, so a row would read "Late, In 7:05 PM".
+  2. Keep Time in as the arrival and turn the second column into **Latest**: the newest tap with its direction ("In 7:05 PM" or "Out 6:44 PM"), shown from the 2nd tap on. The parent API adds a `latest` field and keeps `timeIn` and `timeOut`, so the current parent app doesn't break.
+- **Solution:** option 2, chosen by the owner on 2026-10-26. Step 59.3, recipe `docs/backend/step-59.3-latest-tap.md`.
+- **Status:** Fixed in Step 59.3 (built 2026-10-26), waiting for the owner's checks and approval. Live once deployed.
 
 | Date | Owner question (answered in `docs/LEARNING-LOG.md`) |
 |---|---|

@@ -1,7 +1,7 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████████░░ 92%**  (316 of 343 tasks, 84 of 91 steps approved)
+**Overall progress: ██████████████████░░ 92%**  (318 of 346 tasks, 84 of 92 steps approved)
 
 **Next up:** Step 59.2, A practice restore (not started)
 
@@ -92,6 +92,7 @@
 | 59 | Know when something breaks | ████████░░  75% | Approved |
 | 59.1 | One error page, with a way to report the problem | ██████████ 100% | Approved |
 | 59.2 | A practice restore | ░░░░░░░░░░   0% | Not started |
+| 59.3 | The latest tap, not just the first | ███████░░░  67% | Ready for your review |
 | 60 | Privacy for real student data | ░░░░░░░░░░   0% | Not started |
 | 61 | Queries that don't grow | ░░░░░░░░░░   0% | Not started |
 | 61.1 | The roster answers "nothing changed" cheaply | ░░░░░░░░░░   0% | Not started |
@@ -912,6 +913,14 @@ Cut from Step 59 on 2026-10-23. Essential-0 has no point-in-time rollback: a bac
 - [ ] One practice restore of a live backup into a local database, compared with the live one, written up in `docs/DEPLOY.md` with the commands for a real restore.
 Done when: the restore steps have been followed once for real, and the counts match.
 Commit: `docs(ops): a tested backup restore`
+- [ ] Owner review: I checked it and said "approved"
+
+### Step 59.3: The latest tap, not just the first
+Added 2026-10-26 from P-052. After 13 taps ending on a time in at 7:05 PM, the Attendance row still read "Time in 11:09 AM, Time out —", the same as a student who never moved, and the parent app showed the same. Taken out of order, beside 59.2, which waits on the owner's practice restore. Recipe: `docs/backend/step-59.3-latest-tap.md`.
+- [x] The Attendance table's Time out column becomes **Latest**: from the 2nd tap on, the newest tap with its direction ("Out 4:05 PM", "Back in 7:05 PM"). Time in stays the first tap, which Late is worked out from. The phone list's second line does the same.
+- [x] The parent API's `today` gains `latest: { at, kind } | null`; `timeIn`, `timeOut` and `tapCount` stay as they are, so the parent app already installed keeps working.
+Done when: Katrina's row reads "11:09 AM", "Back in 7:05 PM · 13 taps", "Late", the parent API answers with `latest`, and every check passes.
+Commit: `feat(attendance): show each student's latest tap beside their time in`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 60: Privacy for real student data

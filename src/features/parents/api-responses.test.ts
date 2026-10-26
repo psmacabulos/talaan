@@ -74,9 +74,21 @@ describe("parent API answers", () => {
         timeIn: `${FRIDAY}T07:56:00.000+08:00`,
         timeOut: `${FRIDAY}T16:05:00.000+08:00`,
         tapCount: 2,
+        latest: { at: `${FRIDAY}T16:05:00.000+08:00`, kind: "time_out" },
       },
     });
     for (const secret of PRIVATE) expect(JSON.stringify(json)).not.toContain(secret);
+  });
+
+  it("gives a child who came back in a latest time in and no time out (P-052)", () => {
+    const backIn = [...taps, tap(3, "18:30")];
+    const json = toChildTodayJson({ student, school, day, todayTaps: backIn, recentTaps: [] });
+    expect(json?.today).toMatchObject({
+      timeIn: `${FRIDAY}T07:56:00.000+08:00`,
+      timeOut: null,
+      tapCount: 3,
+      latest: { at: `${FRIDAY}T18:30:00.000+08:00`, kind: "time_in" },
+    });
   });
 
   it("gives a day's taps labelled in and out", () => {

@@ -87,8 +87,11 @@ export type ChildTodayJson = {
     status: AttendanceStatus;
     flexible: boolean;
     timeIn: string | null;
+    /** The last tap, only when it's a time out: after in, out, in there's none. */
     timeOut: string | null;
     tapCount: number;
+    /** The newest tap and its kind (Step 59.3); with one tap, the time in. */
+    latest: { at: string; kind: NotificationKind } | null;
   };
 };
 
@@ -96,7 +99,7 @@ export type ChildTodayJson = {
 export function toChildTodayJson(child: ChildToday): ChildTodayJson | null {
   const { student, school, day, todayTaps } = child;
   if (!school) return null;
-  const summary = dayTapSummary(student.id, todayTaps, day);
+  const { timeIn, latest, taps } = dayTapSummary(student.id, todayTaps, day);
   return {
     id: student.id,
     firstName: student.firstName,
@@ -109,9 +112,10 @@ export function toChildTodayJson(child: ChildToday): ChildTodayJson | null {
       date: day.date,
       status: studentStatus(student.id, todayTaps, day),
       flexible: day.flexible,
-      timeIn: summary.timeIn ? toSchoolOffsetIso(summary.timeIn.tappedAt) : null,
-      timeOut: summary.timeOut ? toSchoolOffsetIso(summary.timeOut.tappedAt) : null,
-      tapCount: summary.taps.length,
+      timeIn: timeIn ? toSchoolOffsetIso(timeIn.tappedAt) : null,
+      timeOut: latest?.kind === "time_out" ? toSchoolOffsetIso(latest.tap.tappedAt) : null,
+      tapCount: taps.length,
+      latest: latest ? { at: toSchoolOffsetIso(latest.tap.tappedAt), kind: latest.kind } : null,
     },
   };
 }

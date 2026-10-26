@@ -8,6 +8,7 @@ import {
   dayTapSummary,
   deriveTapKind,
   formatTapTime,
+  latestLabel,
   schoolDayFor,
   schoolToday,
   studentStatus,
@@ -223,35 +224,43 @@ describe("dayTapSummary", () => {
   const summary = (taps: Tap[]) => dayTapSummary("s1", taps, DAY);
 
   it("has nothing for a student with no tap", () => {
-    expect(summary([])).toEqual({ taps: [], timeIn: undefined, timeOut: undefined });
+    expect(summary([])).toEqual({ taps: [], timeIn: undefined, latest: undefined });
   });
 
-  it("has a time in and no time out after one tap", () => {
+  it("makes the one tap both the time in and the latest", () => {
     const first = tap("s1", at("07:50"));
-    expect(summary([first])).toMatchObject({ timeIn: first, timeOut: undefined });
+    expect(summary([first])).toMatchObject({ timeIn: first, latest: { tap: first, kind: "time_in" } });
   });
 
-  it("makes the second tap the time out", () => {
+  it("makes the second tap the latest, a time out", () => {
     const first = tap("s1", at("07:50"));
     const second = tap("s1", at("16:10"));
-    expect(summary([second, first])).toMatchObject({ timeIn: first, timeOut: second });
+    expect(summary([second, first])).toMatchObject({ timeIn: first, latest: { tap: second, kind: "time_out" } });
   });
 
-  it("shows no time out after in, out, in: the student is back in school", () => {
+  it("makes the latest a time in after in, out, in: the student is back in school", () => {
     const taps = [tap("s1", at("07:38")), tap("s1", at("08:20")), tap("s1", at("08:52"))];
     const result = summary(taps);
-    expect(result.timeOut).toBeUndefined();
+    expect(result.timeIn).toBe(taps[0]);
+    expect(result.latest).toEqual({ tap: taps[2], kind: "time_in" });
     expect(result.taps.map((entry) => entry.kind)).toEqual(["time_in", "time_out", "time_in"]);
   });
 
-  it("makes the fourth tap the time out", () => {
+  it("makes the fourth tap the latest, a time out", () => {
     const taps = ["07:50", "12:00", "13:05", "16:10"].map((time) => tap("s1", at(time)));
-    expect(summary(taps).timeOut).toBe(taps[3]);
+    expect(summary(taps).latest).toEqual({ tap: taps[3], kind: "time_out" });
   });
 
   it("ignores other students and other days", () => {
     const mine = tap("s1", at("07:50"));
     const result = summary([mine, tap("s2", at("07:40")), tap("s1", at("16:00", "2026-06-18"))]);
     expect(result.taps.map((entry) => entry.tap)).toEqual([mine]);
+  });
+});
+
+describe("latestLabel", () => {
+  it("says Out for a time out, and Back in for a later time in, never a plain In", () => {
+    expect(latestLabel("time_out")).toBe("Out");
+    expect(latestLabel("time_in")).toBe("Back in");
   });
 });

@@ -6,7 +6,7 @@ import type { AttendanceRow } from "./attendance-table";
 import { DayTapsIndicator } from "./day-taps";
 import { ManualTapNote } from "./manual-tap-note";
 import { RecordTimeInButton } from "./record-time-in-button";
-import { dayTapSummary, formatTapTime, studentStatus, type SchoolDay } from "./status";
+import { dayTapSummary, formatTapTime, latestLabel, studentStatus, type SchoolDay } from "./status";
 import type { Tap } from "./types";
 
 /**
@@ -50,6 +50,8 @@ export function AttendanceCardList({
     <ul aria-label={label} className={cn("flex flex-col", variant === "cards" ? "gap-2" : "divide-y divide-border")}>
       {rows.map(({ student, cardStatus }) => {
         const summary = dayTapSummary(student.id, taps, day);
+        // With one tap the newest is the time in, already shown (Step 59.3).
+        const latest = summary.taps.length > 1 ? summary.latest : undefined;
 
         return (
           <li
@@ -77,16 +79,16 @@ export function AttendanceCardList({
                   {summary.timeIn ? (
                     <>
                       <span className="sr-only">In at </span>
-                      {/* "In" is spelled out only beside an "Out"; alone, the time says it. */}
-                      {summary.timeOut ? <span aria-hidden="true">In </span> : null}
+                      {/* "In" is spelled out only above a latest tap; alone, the time says it. */}
+                      {latest ? <span aria-hidden="true">In </span> : null}
                       <time dateTime={summary.timeIn.tappedAt}>{formatTapTime(summary.timeIn.tappedAt)}</time>
                       <ManualTapNote tap={summary.timeIn} className="block" />
                       {/* On its own line: side by side they squeezed a long name until it broke mid-word at 360px. */}
-                      {summary.timeOut ? (
+                      {latest ? (
                         <span className="block">
-                          <span className="sr-only">, out at </span>
-                          <span aria-hidden="true">Out </span>
-                          <time dateTime={summary.timeOut.tappedAt}>{formatTapTime(summary.timeOut.tappedAt)}</time>
+                          <span className="sr-only">, {latestLabel(latest.kind).toLowerCase()} at </span>
+                          <span aria-hidden="true">{latestLabel(latest.kind)} </span>
+                          <time dateTime={latest.tap.tappedAt}>{formatTapTime(latest.tap.tappedAt)}</time>
                         </span>
                       ) : null}
                     </>

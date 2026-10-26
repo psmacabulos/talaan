@@ -50,7 +50,7 @@ Commit: `feat(children): link a child with their LRN and birth date`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step M5: Home
-- [ ] Each child's card for today: photo (4:5), name, school, "Grade 7 – Rizal", the status pill, time in and time out, and "N taps today" when there are more than 2
+- [ ] Each child's card for today: photo (4:5), name, school, "Grade 7 – Rizal", the status pill, the time in and from the 2nd tap the latest tap ("Out 4:05 PM", "Back in 7:05 PM", `docs/PRODUCT-RULES.md`), and "N taps today" when there are more than 2
 - [ ] The weekend words when `flexible` is true
 - [ ] Pull to refresh; skeletons while loading; the empty state says how to link a child; the error state offers "Try again"
 - [ ] The child's school's notification setting shown on the card

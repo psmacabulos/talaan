@@ -2982,3 +2982,16 @@ The browser tests (`npm run test:e2e`) and `npm run build` are the owner's to ru
 - Recent on the gate stays at 6 taps, the owner's choice: a new tap pushes out the oldest.
 
 **Not checked by me.** I didn't open it in a browser or on the tablet. Lint, typecheck, tests and the build are the owner's to run.
+
+## Step 59.3: the latest tap, not just the first (2026-10-26)
+
+**Where it came from.** P-052: the owner tapped Katrina Aguilar's card 13 times on the new kiosk tablet. Every tap was stored, but her row read "Time in 11:09 AM, Time out —", the same as a student who never moved, because Step 49 showed the last tap only when it was an out. The owner first suggested showing only the newest tap; the arrival was kept instead, since Late comes from it. Recipe: `docs/backend/step-59.3-latest-tap.md`, approved before the code.
+
+**What changed.**
+- `status.ts`: `DayTapSummary.timeOut` became `latest: { tap, kind }`, the last of the day's labelled taps. New `latestLabel(kind)`: "Out" or "Back in".
+- `attendance-table.tsx`: the column is now **Latest**, filled from the 2nd tap on. `attendance-card-list.tsx` (phones, and the dashboard's class roll) does the same on its second line, with ", out at" or ", back in at" for screen readers.
+- `api-responses.ts`: `today.latest` added. `timeOut` is now worked out from `latest` (only when it's a time out), so its value is the same as before for the installed parent app.
+- Tests: the `dayTapSummary` cases now check `latest`, plus `latestLabel`, a parent API case for in, out, in, and `e2e/attendance.spec.ts` looks for "Out 8:40 AM" and "Back in 8:52 AM" on the demo morning.
+- Docs: `ATTENDANCE-MODEL.md`, `PARENT-API.md`, and the parent app's starter kit (`mobile/starter/docs/PRODUCT-RULES.md`, `PLAN.md`).
+
+**Runs while building.** `npx tsc --noEmit` was clean after the change, which also confirmed nothing else read `timeOut`. The rest of the checks are the owner's to run.

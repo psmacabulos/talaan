@@ -101,15 +101,24 @@ export function deriveTapKind(tap: Tap, allStudentTaps: Tap[]): NotificationKind
 export type DayTapSummary = {
   /** The day's taps, earliest first: the 1st is a time in, the 2nd a time out, and so on. */
   taps: { tap: Tap; kind: NotificationKind }[];
-  /** The first tap. */
+  /** The first tap: the arrival, which present or late is worked out from. */
   timeIn: Tap | undefined;
   /**
-   * The last tap, but only when it's a time out. With in, out, in (out at
-   * noon, back after lunch) the student is in school now, so there's no
-   * time out to show; the full list tells the rest.
+   * The newest tap and whether it was an in or an out (Step 59.3). With
+   * one tap it's the time in itself. With in, out, in (out at noon, back
+   * after lunch) it's the time in after lunch: the student is in school now.
    */
-  timeOut: Tap | undefined;
+  latest: { tap: Tap; kind: NotificationKind } | undefined;
 };
+
+/**
+ * The word before the newest tap's time, from the 2nd tap on (Step 59.3).
+ * A time in there always follows a time out, so it says "Back in", never
+ * a plain "In" that reads like the arrival.
+ */
+export function latestLabel(kind: NotificationKind): string {
+  return kind === "time_out" ? "Out" : "Back in";
+}
 
 /**
  * Time in, time out and every tap of the day for one student, by the same
@@ -125,11 +134,10 @@ export function dayTapSummary(studentId: string, taps: Tap[], day: SchoolDay): D
     tap,
     kind: (index % 2 === 0 ? "time_in" : "time_out") as NotificationKind,
   }));
-  const last = labelled.at(-1);
   return {
     taps: labelled,
     timeIn: labelled[0]?.tap,
-    timeOut: last?.kind === "time_out" ? last.tap : undefined,
+    latest: labelled.at(-1),
   };
 }
 

@@ -9,7 +9,9 @@ test.describe("Attendance: time in and time out (Step 49)", () => {
     await page.goto("/attendance?date=2026-06-19&grade=11&section=Aguinaldo");
 
     const tapsButton = page.getByRole("button", { name: /3 taps.*Rodel Espiritu/ }).locator("visible=true");
-    await expect(page.getByText("8:40 AM").locator("visible=true")).toBeVisible();
+    // Latest (Step 59.3): her time out, and his time in after coming back.
+    await expect(page.getByText("Out 8:40 AM").locator("visible=true")).toBeVisible();
+    await expect(page.getByText("Back in 8:52 AM").locator("visible=true")).toBeVisible();
     await tapsButton.click();
 
     const dialog = page.getByRole("dialog", { name: "Rodel Espiritu's taps" });

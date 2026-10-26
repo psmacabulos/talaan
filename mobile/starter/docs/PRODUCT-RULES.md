@@ -23,6 +23,7 @@ What a parent sees, and why. The same words and rules as Talaan's web app, so pa
 
 - A feed entry reads "**{childName} tapped in** at 7:56 AM", or "tapped out". A push uses the child's first name only: "Juan tapped in at 7:56 AM".
 - Grade and section read "Grade 7 – Rizal", with an en dash.
+- Show the time in (`timeIn`), and from the 2nd tap on the newest tap (`latest`) under it: "Out 4:05 PM" for a `time_out`, "Back in 7:05 PM" for a `time_in`. A later time in always means the child left and came back, so never a plain "In", which reads like the arrival. With one tap, `latest` is the time in itself: show nothing more. (Talaan Step 59.3, 2026-10-26; `timeOut` still works but is "—" after in, out, in, which looked like a child who never moved.)
 - When `tapCount` is more than 2, show "N taps today", with the full list from the taps address. A child can leave and come back.
 - With children at two schools, show each child's school name on their card.
 - The unread count stops at 10 on the server: show "9+" from 10.

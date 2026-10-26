@@ -7,7 +7,7 @@ import type { Student } from "@/features/students/types";
 import { DayTapsIndicator } from "./day-taps";
 import { ManualTapNote } from "./manual-tap-note";
 import { RecordTimeInButton } from "./record-time-in-button";
-import { dayTapSummary, formatTapTime, studentStatus, type SchoolDay } from "./status";
+import { dayTapSummary, formatTapTime, latestLabel, studentStatus, type SchoolDay } from "./status";
 import type { Tap } from "./types";
 
 export interface AttendanceRow {
@@ -20,9 +20,10 @@ export interface AttendanceRow {
  * same "who's actually here" question `ClassRoll` (the dashboard's compact
  * card version) answers, just as a page of its own with a Card column too.
  * From 768px up; phones get `AttendanceCardList` instead (Step 27.8).
- * Time in is the first tap of the day, Time out the last one when it is a
- * time out, and "N taps" opens the whole day when there were more than two
- * (Step 49, `dayTapSummary`). On today's roll, a student with no tap yet
+ * Time in is the first tap of the day. Latest is the newest one from the
+ * 2nd tap on, "Out 4:05 PM" or "Back in 7:05 PM" (Step 59.3), and "N taps"
+ * opens the whole day when there were more than two (Step 49,
+ * `dayTapSummary`). On today's roll, a student with no tap yet
  * gets "Record time in" in the Time in cell, where the time will appear
  * (Step 55).
  */
@@ -45,7 +46,7 @@ export function AttendanceTable({
           <TableRow>
             <TableHead>Student</TableHead>
             <TableHead>Time in</TableHead>
-            <TableHead>Time out</TableHead>
+            <TableHead>Latest</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Card</TableHead>
           </TableRow>
@@ -53,6 +54,8 @@ export function AttendanceTable({
         <TableBody>
           {rows.map(({ student, cardStatus }) => {
             const summary = dayTapSummary(student.id, taps, day);
+            // With one tap the newest is the time in, already shown beside it.
+            const latest = summary.taps.length > 1 ? summary.latest : undefined;
             return (
               <TableRow key={student.id}>
                 <TableCell>
@@ -78,7 +81,7 @@ export function AttendanceTable({
                 </TableCell>
                 <TableCell className="text-muted-foreground tabular-nums">
                   <div className="flex items-center gap-2">
-                    {summary.timeOut ? formatTapTime(summary.timeOut.tappedAt) : "—"}
+                    {latest ? `${latestLabel(latest.kind)} ${formatTapTime(latest.tap.tappedAt)}` : "—"}
                     <DayTapsIndicator summary={summary} studentName={studentName(student)} date={day.date} />
                   </div>
                 </TableCell>

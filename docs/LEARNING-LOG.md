@@ -685,6 +685,8 @@ Each database has its own `Device` table, so a token made on the Mac doesn't exi
 
 **How one `/gate` address serves every school:** the token *is* the school. When the device is made, `--school school-balanga` is saved on its `Device` row. Each time the gate calls the server, the token leads to that row, and the server takes its `schoolId`. That `schoolId` decides the roster the gate downloads and the school its taps are recorded for. This is the same idea as `/gate/display` above: the school comes from who's asking, never from the address.
 
+**A gate for another school** (asked again, 2026-10-26) works the same way, with that school's id in `--school`. A school added on the Schools page gets a random id (a UUID, from `crypto.randomUUID()` in `src/features/schools/actions.ts`), not a short name like `school-balanga`. To find it, run `heroku pg:psql --app bantayaral`, then `select id, name from "School";`. A mistyped id stops the command with `No school with id "…"`, so a gate can't be saved under a school that doesn't exist.
+
 **Making a gate for a school, step by step:** `docs/DEPLOY.md`, "A gate tablet or a monitor" (live) or `docs/COMMANDS.md` §7 (laptop). In short: run `heroku run --app bantayaral "npm run device:create -- --school school-balanga --kind gate --label 'Main gate tablet'"`, copy the token it prints, open `bantayaral.com/gate`, and paste it in. If the message is "Couldn't reach the server" and not "That token doesn't work", the token is fine and the connection is the problem.
 
 ---
