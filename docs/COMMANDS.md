@@ -284,6 +284,7 @@ In the app, a principal gets the same links without the terminal: the dialog aft
 | `heroku logs --app bantayaral --num 500 \| grep "email:"` | Recent email lines: failures (`reset email failed: EAUTH`) and the daily limit. Never addresses. |
 | `dig TXT resend._domainkey.mail.bantayaral.com +short` | Whether Resend's DKIM record is live yet. Empty while it's still spreading. |
 | `heroku pg:psql --app bantayaral` | A `psql` prompt on the live database. `\q` quits. |
+| `heroku pg:psql --app bantayaral --file scripts/set-balanga-logo.sql` | Runs a SQL file on the live database. This one sets Balanga's logo (`docs/DEPLOY.md`, "Change a school's logo"). |
 | `heroku pg:backups:capture --app bantayaral` | A backup right now. `heroku pg:backups --app bantayaral` lists them. |
 | `heroku releases:output --app bantayaral` | What the last release phase printed: "Settings OK.", or which settings refused it (Step 59). |
 | `heroku releases:retry --app bantayaral` | Runs the release phase again after fixing a setting, without a new push. |

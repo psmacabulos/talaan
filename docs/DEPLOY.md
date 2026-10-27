@@ -125,6 +125,14 @@ Each prints its token once. On the tablet, open `/gate` and enter the token on i
 
 **Look inside the database.** `heroku pg:psql --app bantayaral`. `\q` quits.
 
+**Change a school's logo (2026-10-26).** There's no screen for this yet: a logo can only be added when a school is created on the Schools page. Logos are stored in the `School` row itself, as a data URL (`"logoUrl"`), so changing one is a single `update`.
+1. **Prepare the image.** Cut out its white background and put the seal on a round white backing, so it looks the same in light and dark mode (navy lettering vanishes on a dark page otherwise). Save it as a 160 × 160 WebP. That stays sharp at the 40 px the sidebar and Schools list show it, and keeps it near 11 KB, since it's loaded with each page. Keep a 512 px master in `design/assets/`.
+2. **See what's there now:** `heroku pg:psql --app bantayaral --command "select id, name, left(\"logoUrl\", 30) from \"School\";"`
+3. **Set it** from a SQL file, since a data URL is too long to paste: `heroku pg:psql --app bantayaral --file scripts/set-balanga-logo.sql`. It prints the school and the logo's length when it worked. Copy that file for another school, with its own data URL and `where id = '<that school's id>'`.
+4. **Reload the site.** The sidebar shows the new logo.
+
+To undo it: `update "School" set "logoUrl" = null where id = '<id>';` brings back the plain school icon.
+
 **Back up now.** `heroku pg:backups:capture --app bantayaral`. `heroku pg:backups --app bantayaral` lists the backups, including Heroku's automatic ones.
 
 **Change a setting.** `heroku config:set NAME=value --app bantayaral`. Heroku restarts the dyno by itself, and the settings check runs again.
