@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import type { AttendanceRow } from "./attendance-table";
 import { DayTapsIndicator } from "./day-taps";
 import { ManualTapNote } from "./manual-tap-note";
-import { RecordTimeInButton } from "./record-time-in-button";
+import { RecordTapButton } from "./record-tap-button";
 import { dayTapSummary, formatTapTime, latestLabel, studentStatus, type SchoolDay } from "./status";
 import type { Tap } from "./types";
 
@@ -27,7 +27,8 @@ import type { Tap } from "./types";
  *
  * On today's roll, a student with no tap yet gets "Record time in" under
  * their status, where the time will appear (Step 55); once they've tapped,
- * the time takes its place.
+ * the time takes its place. While they're in, "Record time out" sits under
+ * the times (Step 59.4).
  */
 export function AttendanceCardList({
   rows,
@@ -35,7 +36,7 @@ export function AttendanceCardList({
   day,
   label,
   variant = "cards",
-  canRecordTimeIn = false,
+  canRecordByHand = false,
 }: {
   rows: AttendanceRow[];
   taps: Tap[];
@@ -43,8 +44,8 @@ export function AttendanceCardList({
   day: SchoolDay;
   label: string;
   variant?: "cards" | "rows";
-  /** Today's roll on the Attendance page: offer "Record time in" to students with no tap yet. */
-  canRecordTimeIn?: boolean;
+  /** Today's roll on the Attendance page: offer "Record time in" before any tap, and "Record time out" while a student is in. */
+  canRecordByHand?: boolean;
 }) {
   return (
     <ul aria-label={label} className={cn("flex flex-col", variant === "cards" ? "gap-2" : "divide-y divide-border")}>
@@ -52,6 +53,8 @@ export function AttendanceCardList({
         const summary = dayTapSummary(student.id, taps, day);
         // With one tap the newest is the time in, already shown (Step 59.3).
         const latest = summary.taps.length > 1 ? summary.latest : undefined;
+        // An odd number of taps: the student is in, so the next tap is a time out.
+        const canTimeOut = canRecordByHand && summary.taps.length % 2 === 1;
 
         return (
           <li
@@ -72,8 +75,13 @@ export function AttendanceCardList({
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
               <StatusPill status={studentStatus(student.id, taps, day)} flexible={day.flexible} />
-              {canRecordTimeIn && !summary.timeIn ? (
-                <RecordTimeInButton studentId={student.id} studentName={studentName(student)} layout="card" />
+              {canRecordByHand && !summary.timeIn ? (
+                <RecordTapButton
+                  kind="time_in"
+                  studentId={student.id}
+                  studentName={studentName(student)}
+                  layout="card"
+                />
               ) : (
                 <p className="text-sm text-muted-foreground tabular-nums">
                   {summary.timeIn ? (
@@ -89,6 +97,7 @@ export function AttendanceCardList({
                           <span className="sr-only">, {latestLabel(latest.kind).toLowerCase()} at </span>
                           <span aria-hidden="true">{latestLabel(latest.kind)} </span>
                           <time dateTime={latest.tap.tappedAt}>{formatTapTime(latest.tap.tappedAt)}</time>
+                          <ManualTapNote tap={latest.tap} className="block" />
                         </span>
                       ) : null}
                     </>
@@ -100,6 +109,14 @@ export function AttendanceCardList({
                   )}
                 </p>
               )}
+              {canTimeOut ? (
+                <RecordTapButton
+                  kind="time_out"
+                  studentId={student.id}
+                  studentName={studentName(student)}
+                  layout="card"
+                />
+              ) : null}
               <DayTapsIndicator summary={summary} studentName={studentName(student)} date={day.date} />
             </div>
           </li>

@@ -142,13 +142,13 @@ Two thin wrappers do all the summarising, and both just call `studentStatus()` i
 
 `attendanceByGrade` only returns grades that **actually exist at that school**. Two of the three demo schools only have three grade levels each — they'd otherwise show three permanently-empty rows for grades they don't teach.
 
-## Recording a time in by hand (Step 55), end to end
+## Recording a time in or out by hand (Steps 55 and 59.4), end to end
 
 A sticker fails, or a student has none yet, and they're standing in the classroom. Their teacher (or the principal) opens **Attendance**, finds the student's row, and presses **Record time in**. It replaced Step 13's "Simulate a tap", which tapped the *next* student who hadn't tapped, never the one in front of you.
 
 ```mermaid
 sequenceDiagram
-    participant Row as RecordTimeInButton<br/>(attendance row)
+    participant Row as RecordTapButton kind="time_in"<br/>(attendance row)
     participant Action as recordTimeIn()<br/>actions.ts
     participant Service as recordManualTimeIn()<br/>services/taps
     participant DB as Postgres (one transaction)
@@ -171,6 +171,17 @@ The rules live in `recordManualTimeIn()` (`src/services/taps/record-manual-time-
 5. **The card serial is kept when there is one.** The gate's 2-minute check looks for taps of the same serial, so a sticker that finally reads a minute after a hand-recorded time in is caught as a duplicate instead of becoming a time out. Since Step 56 the write also locks that card and checks the whole school day under the lock, so a gate read landing at the same moment can't slip in between (`docs/GATE.md`, "One read, one tap"). A student with no card gets a tap with no serial (`Tap.cardSerial` is nullable since Step 55).
 6. **Never claims a gate read it.** `stationId` is `"manual"`, `source` is `manual`, and `recordedById` names the staff member (kept as null if they're later removed).
 
+### The time out (Step 59.4)
+
+A student who was given a time in by hand has no card to tap on the way home, so without this their day stayed "in". **Record time out** sits in the row's **Latest** cell (under the times on a phone) and runs `recordManualTimeOut()` (`src/services/taps/record-manual-time-out.ts`), through `recordTimeOut()` in the same actions file. It keeps rules 1, 3, 5 and 6, and changes the rest:
+
+- **Only while the student is in.** Taps alternate, so with an odd number of taps today the next one is a time out, and nothing needs storing to say so. With no tap it answers "no time in today"; with an even number, "already out".
+- **No back in by hand** (owner, 2026-10-27). Recording by hand bridges the days until a lost card is replaced, nothing more, and more than two taps a day isn't normal at a school. A student who comes back without a card stays "Out".
+- **Two clicks, one tap.** The id is made from the student, the date and how many taps they already had (`manualTimeOutId`), so two clicks on the same row make the same id. With a card, the writer locks it and looks for any tap of it from the last tap seen to the school's midnight, so a gate read landing in between refuses the hand-recorded one ("already out") instead of storing out, out.
+- **Parents** get a time-out notification only when the school's setting is "time in and time out". It says "tapped out", the same words a card's time out uses.
+
+"Recorded by staff" shows under a hand-recorded latest tap too. Both buttons are one component, `RecordTapButton` (`src/features/attendance/record-tap-button.tsx`), with `kind="time_in"` or `kind="time_out"`, so their confirmations can't drift apart.
+
 ### The `refresh()` line is load-bearing
 
 ```ts
@@ -183,7 +194,7 @@ Without it the button appears to do nothing. Step 11's dev switcher gets a free 
 
 ### Where the button sits
 
-Exactly where the time in will appear, and only while there's none: in the **Time in** cell of the desktop table (a small outline button), and under the status on a phone card (a quieter text button, still 44px tall to tap). Once the student has tapped, the time takes its place. Changed in the owner's review, 2026-10-20: a first version kept a disabled button on every tapped row in its own column, and put a boxed button under the name on phones, next to the "No card" tag. Ten disabled buttons hid the one that worked, and the phone card stacked three things on the left while the "—" on the right sat empty. Past days show no button at all.
+Exactly where the time in will appear, and only while there's none: in the **Time in** cell of the desktop table (a small outline button), and under the status on a phone card (a quieter text button, still 44px tall to tap). Once the student has tapped, the time takes its place. Changed in the owner's review, 2026-10-20: a first version kept a disabled button on every tapped row in its own column, and put a boxed button under the name on phones, next to the "No card" tag. Ten disabled buttons hid the one that worked, and the phone card stacked three things on the left while the "—" on the right sat empty. Past days show no button at all. The time out follows the same rule: in the **Latest** cell while the student is in, gone once they're out.
 
 ## The attendance page (Step 17): picking one class, one day
 
@@ -198,12 +209,13 @@ The other wrinkle is the date. The page opens on today on the school's clock (St
 
 ## Where a `Tap` comes from
 
-Every `Tap` the screens above read is written in one of two places, both through `tapWriter.record()`, which saves the tap with its alert or parent notification in one transaction:
+Every `Tap` the screens above read is written in one of three places, both through `tapWriter.record()`, which saves the tap with its alert or parent notification in one transaction:
 
 | Where | Code | What it writes |
 |---|---|---|
 | The real gate, `/gate` (Step 47), a tablet with the USB reader | `recordTap()` in `src/services/taps/record-tap.ts`, behind `POST /api/v1/gate/taps` | A tap for an active card (time in or out from the day's order), a tap with no student and an alert naming the owner for a lost card (Step 57: it's nobody's attendance), nothing for an unknown card |
 | A time in recorded by hand on the attendance page (Step 55) | `recordManualTimeIn()` in `src/services/taps/record-manual-time-in.ts` | A tap with `source: manual` and who recorded it |
+| A time out recorded by hand on the attendance page (Step 59.4) | `recordManualTimeOut()` in `src/services/taps/record-manual-time-out.ts` | The same, while the student is in |
 
 The seed data (`src/data/seed/taps.ts`) writes the demo morning's taps directly.
 
@@ -219,7 +231,7 @@ Until Step 55.1 there was a third: Phase 1's `/station`, a simulated kiosk where
 
 **I want to show one student's status somewhere.** `studentStatus(student.id, taps, day)` returns the status; pass it straight to `<StatusPill status={...} />` (`docs/COMPONENTS.md`), which already knows the colors and labels.
 
-**I want to change who can record a time in by hand, or when.** Change `mayRecordFor()` or the "no tap yet today" check in `src/services/taps/record-manual-time-in.ts`, and its tests in `record-manual-time-in.test.ts`. The button only mirrors those rules; the server is what enforces them.
+**I want to change who can record a time in or out by hand, or when.** Who: `mayRecordFor()` in `src/services/taps/record-manual-time-in.ts`, shared by both. When: the "no tap yet today" check there, or the "odd number of taps" check in `record-manual-time-out.ts`, with their tests beside them. The buttons only mirror those rules (`canTimeOut` in `attendance-table.tsx` and `attendance-card-list.tsx`); the server is what enforces them.
 
 **I want the actual arrival time, not just the status.** `todaysTap(student.id, taps, day)` returns the tap itself; `formatTapTime(tap.tappedAt)` renders it as "7:56 AM".
 

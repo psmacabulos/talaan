@@ -136,5 +136,34 @@ describe("AttendanceCardList", () => {
         .map((row) => row.textContent);
       expect(rows).toEqual(["1. In7:38 AM", "2. Out8:20 AM", "3. In8:52 AM"]);
     });
+
+    it("offers a time out by hand on today's roll while the student is in, and never a back in (Step 59.4)", () => {
+      const { rerender } = render(
+        <AttendanceCardList rows={[juan]} taps={[at("07:41", 1)]} day={DAY} label="Students" canRecordByHand />,
+      );
+      expect(screen.getByRole("button", { name: "Record time out for Juan Cruz" })).toBeInTheDocument();
+
+      rerender(
+        <AttendanceCardList
+          rows={[juan]}
+          taps={[at("07:41", 1), at("08:40", 2)]}
+          day={DAY}
+          label="Students"
+          canRecordByHand
+        />,
+      );
+      expect(screen.queryByRole("button", { name: /^Record time/ })).not.toBeInTheDocument();
+
+      // A past day's roll: nothing to record.
+      rerender(<AttendanceCardList rows={[juan]} taps={[at("07:41", 1)]} day={DAY} label="Students" />);
+      expect(screen.queryByRole("button", { name: /^Record time/ })).not.toBeInTheDocument();
+    });
+
+    it("says 'Recorded by staff' under a time out recorded by hand", () => {
+      const byHand: Tap = { ...at("15:30", 2), source: "manual", recordedById: "staff-principal" };
+      render(<AttendanceCardList rows={[juan]} taps={[at("07:41", 1), byHand]} day={DAY} label="Students" />);
+      const [item] = items("Students");
+      expect(within(item).getByText("Recorded by staff")).toBeInTheDocument();
+    });
   });
 });

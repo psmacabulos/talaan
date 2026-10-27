@@ -6,7 +6,7 @@ import { StudentAvatar, studentName } from "@/features/students/student-display"
 import type { Student } from "@/features/students/types";
 import { DayTapsIndicator } from "./day-taps";
 import { ManualTapNote } from "./manual-tap-note";
-import { RecordTimeInButton } from "./record-time-in-button";
+import { RecordTapButton } from "./record-tap-button";
 import { dayTapSummary, formatTapTime, latestLabel, studentStatus, type SchoolDay } from "./status";
 import type { Tap } from "./types";
 
@@ -25,19 +25,20 @@ export interface AttendanceRow {
  * opens the whole day when there were more than two (Step 49,
  * `dayTapSummary`). On today's roll, a student with no tap yet
  * gets "Record time in" in the Time in cell, where the time will appear
- * (Step 55).
+ * (Step 55), and a student who is in gets "Record time out" in the Latest
+ * cell (Step 59.4).
  */
 export function AttendanceTable({
   rows,
   taps,
   day,
-  canRecordTimeIn = false,
+  canRecordByHand = false,
 }: {
   rows: AttendanceRow[];
   taps: Tap[];
   day: SchoolDay;
-  /** Today's roll: offer "Record time in" to students with no tap yet. */
-  canRecordTimeIn?: boolean;
+  /** Today's roll: offer "Record time in" before any tap, and "Record time out" while a student is in. */
+  canRecordByHand?: boolean;
 }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
@@ -56,6 +57,8 @@ export function AttendanceTable({
             const summary = dayTapSummary(student.id, taps, day);
             // With one tap the newest is the time in, already shown beside it.
             const latest = summary.taps.length > 1 ? summary.latest : undefined;
+            // An odd number of taps: the student is in, so the next tap is a time out.
+            const canTimeOut = canRecordByHand && summary.taps.length % 2 === 1;
             return (
               <TableRow key={student.id}>
                 <TableCell>
@@ -73,17 +76,34 @@ export function AttendanceTable({
                       {formatTapTime(summary.timeIn.tappedAt)}
                       <ManualTapNote tap={summary.timeIn} className="block" />
                     </>
-                  ) : canRecordTimeIn ? (
-                    <RecordTimeInButton studentId={student.id} studentName={studentName(student)} layout="table" />
+                  ) : canRecordByHand ? (
+                    <RecordTapButton
+                      kind="time_in"
+                      studentId={student.id}
+                      studentName={studentName(student)}
+                      layout="table"
+                    />
                   ) : (
                     "—"
                   )}
                 </TableCell>
                 <TableCell className="text-muted-foreground tabular-nums">
-                  <div className="flex items-center gap-2">
-                    {latest ? `${latestLabel(latest.kind)} ${formatTapTime(latest.tap.tappedAt)}` : "—"}
-                    <DayTapsIndicator summary={summary} studentName={studentName(student)} date={day.date} />
-                  </div>
+                  {latest || !canTimeOut ? (
+                    <div className="flex items-center gap-2">
+                      {latest ? `${latestLabel(latest.kind)} ${formatTapTime(latest.tap.tappedAt)}` : "—"}
+                      <DayTapsIndicator summary={summary} studentName={studentName(student)} date={day.date} />
+                    </div>
+                  ) : null}
+                  {latest ? <ManualTapNote tap={latest.tap} className="block" /> : null}
+                  {canTimeOut ? (
+                    <RecordTapButton
+                      kind="time_out"
+                      studentId={student.id}
+                      studentName={studentName(student)}
+                      layout="table"
+                      className={latest ? "mt-2" : undefined}
+                    />
+                  ) : null}
                 </TableCell>
                 <TableCell>
                   <StatusPill status={studentStatus(student.id, taps, day)} flexible={day.flexible} />

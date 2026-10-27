@@ -127,7 +127,7 @@ export default async function AttendancePage({ searchParams }: PageProps<"/atten
         taps={taps}
         day={day}
         counts={countByStatus(classStudents, taps, day)}
-        canRecordTimeIn={date === today}
+        canRecordByHand={date === today}
       />
     );
   }

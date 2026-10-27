@@ -2997,3 +2997,20 @@ The browser tests (`npm run test:e2e`) and `npm run build` are the owner's to ru
 **Runs while building.** `npx tsc --noEmit` was clean after the change, which also confirmed nothing else read `timeOut`. The rest of the checks are the owner's to run.
 
 **The owner's first `npm test` run** failed one test, in `attendance-card-list.test.tsx`: it still expected Step 49's rule, no later time in on a phone row (P-053). It now checks "Back in 8:52 AM" and "Out 8:40 AM". `npx vitest run src/features/attendance` passed, 70 tests.
+
+## Step 59.4: record a time out by hand (2026-10-27)
+
+**Where it came from.** The owner noticed that a student given a time in by hand (Step 55), because their card was lost, had no way to be timed out: no card to tap at the gate, and no button. Their row, the parent app's `latest` and the parents' feed all kept saying they were at school. Plan approved the same day, with the owner's decision of no "Record back in" by hand: recording by hand only bridges the days until a card is replaced, and more than two taps a day isn't normal at a school. Recipe: `docs/backend/step-59.4-record-time-out.md`, approved before the code.
+
+**What changed.**
+- `record-manual-time-in.ts`: `mayRecordFor()` is exported, and the UUID-shaping body of `manualTimeInId` moved into an exported `nameBasedUuid(name)`. The time-in ids are the same text into the same hash, so they don't change.
+- New `record-manual-time-out.ts`: `recordManualTimeOut()`. It is allowed only with an odd number of taps today and answers `no_time_in` or `already_out` otherwise. Its id is `manualTimeOutId(student, date, tapsBefore)`. With a card, the duplicate window runs from the last tap seen (exclusive) to the school's midnight, so the Step 56 lock refuses it if a gate read of that card landed in between. The notification is `time_out`, by the school's setting.
+- `actions.ts`: `recordTimeOut()`. The session-to-input lookup and the "wake the push worker, tell the monitor, `refresh()`" tail are now two small helpers shared with `recordTimeIn()`. `RecordTimeInResult` became `RecordTapByHandResult`.
+- `record-time-in-button.tsx` → `record-tap-button.tsx`: one `RecordTapButton` with `kind`. Its words, icon (`UserCheck`, `LogOut`) and action come from a small `KINDS` table. Accessible names stay "Record time in for …" and are new as "Record time out for …".
+- `attendance-table.tsx`, `attendance-card-list.tsx`: `canTimeOut = canRecordByHand && taps.length % 2 === 1`. The button goes in the Latest cell (instead of the "—" after one tap, or under "Back in …") and under the times on a phone. "Recorded by staff" also shows under a hand-recorded latest tap. The prop `canRecordTimeIn` became `canRecordByHand` through `attendance-list.tsx` and the page.
+- Tests: `record-manual-time-out.test.ts` (rules, window, ids), `record-manual-time-out.pg.test.ts` (two clicks at once after a time in), two cases in `attendance-card-list.test.tsx`, and the Step 55 browser test now goes on to record the time out.
+- Docs: `ATTENDANCE-MODEL.md` (a "The time out" subsection, the file table, the quick recipe), `LEARNING-LOG.md`, `PLAN.md`.
+
+**One thing weighed while building.** The plan named a separate `record-time-out-button.tsx`. Copying the dialog, pending state and toast into a second file would let the two drift apart, so the recipe changed it to one component with a `kind`, before any code was written.
+
+**Runs while building.** None of the checks: they're the owner's to run.

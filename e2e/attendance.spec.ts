@@ -27,8 +27,12 @@ test.describe("Attendance: time in and time out (Step 49)", () => {
   });
 });
 
-test.describe("Attendance: record a time in by hand (Step 55)", () => {
-  test("records an untapped student's time in from their row, once", async ({ page, context, baseURL }, testInfo) => {
+test.describe("Attendance: record a time in and out by hand (Steps 55 and 59.4)", () => {
+  test("records an untapped student's time in, then their time out, from their row, once each", async ({
+    page,
+    context,
+    baseURL,
+  }, testInfo) => {
     await signInAs(context, "principal", baseURL!);
     // Both projects share one database, so each records a different student
     // with no tap on the demo morning (seed taps), and the clock is pinned
@@ -50,5 +54,18 @@ test.describe("Attendance: record a time in by hand (Step 55)", () => {
     await expect(page.getByText("Recorded by staff").locator("visible=true")).toBeVisible();
     // Once tapped, the time takes the button's place, on both layouts.
     await expect(button).toHaveCount(0);
+
+    // Now in, so the time out can be recorded (Step 59.4). The clock is
+    // still pinned at 9:15 AM, so the time out is too.
+    const outButton = page.getByRole("button", { name: `Record time out for ${name}` }).locator("visible=true");
+    await outButton.click();
+    const outDialog = page.getByRole("dialog", { name: `Record ${name}'s time out now?` });
+    await outDialog.getByRole("button", { name: "Record time out" }).click();
+
+    await expect(page.getByText(`${name}'s time out was recorded at 9:15 AM`)).toBeVisible();
+    await expect(page.getByText("Out 9:15 AM").locator("visible=true")).toBeVisible();
+    // Out, and no back in by hand: neither button is left.
+    await expect(outButton).toHaveCount(0);
+    await expect(page.getByRole("button", { name: `Record time in for ${name}` })).toHaveCount(0);
   });
 });

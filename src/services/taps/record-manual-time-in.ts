@@ -67,19 +67,27 @@ const DEFAULT_DEPS: ManualTimeInDeps = {
 };
 
 /**
- * One fixed id per student per school day, shaped as a version 5 (name-based)
- * UUID so it passes the tap's UUID check. A second click, or a second staff
- * member at the same moment, makes the same id, and the database keeps only
- * one: one tap, one parent notification (Step 55's architect review).
+ * The same text always gives the same id, shaped as a version 5 (name-based)
+ * UUID so it passes the tap's UUID check. What makes a tap recorded by hand
+ * safe to click twice.
  */
-export function manualTimeInId(studentId: string, date: string): string {
-  const hex = createHash("sha256").update(`manual-time-in|${studentId}|${date}`).digest("hex");
+export function nameBasedUuid(name: string): string {
+  const hex = createHash("sha256").update(name).digest("hex");
   const variant = ((parseInt(hex[16], 16) & 0x3) | 0x8).toString(16);
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-${variant}${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }
 
+/**
+ * One fixed id per student per school day. A second click, or a second staff
+ * member at the same moment, makes the same id, and the database keeps only
+ * one: one tap, one parent notification (Step 55's architect review).
+ */
+export function manualTimeInId(studentId: string, date: string): string {
+  return nameBasedUuid(`manual-time-in|${studentId}|${date}`);
+}
+
 /** A principal or super admin records anyone at their school; a teacher only their own advisory class. */
-function mayRecordFor(staff: ManualTapStaff, student: Student): boolean {
+export function mayRecordFor(staff: ManualTapStaff, student: Student): boolean {
   if (staff.role !== "teacher") return true;
   return student.gradeLevel === staff.advisoryGradeLevel && student.section === staff.advisorySection;
 }

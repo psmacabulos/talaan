@@ -661,6 +661,9 @@ Full write-up: `docs/BUILD-LOG.md`'s "After Step 19" entry and `docs/PLAN.md`'s 
 ### Why doesn't a double click on "Record time in" make a time in and a time out? (owner question, 2026-10-20)
 Because the tap's id isn't random. Every tap has an id, and the database refuses a second row with the same one. A gate makes a fresh id for each tap. "Record time in" makes its id from the student and the date instead, so a second click on the same day, or a second teacher pressing it at the same moment, makes **the same id**. The database keeps the first, refuses the second, and the parents' notification, written in the same step as the tap, is only saved once. The button is also greyed out after a tap, but the server never trusts that alone. Full write-up: `docs/ATTENDANCE-MODEL.md`, "Recording a time in by hand".
 
+### And "Record time out"? Why does its id count the taps? (Step 59.4, 2026-10-27)
+The same trick, with one more ingredient. A student can only have one time in a day, so "student + date" is enough for that id. A time out comes after however many taps the student already has, so its id is made from the student, the date **and that count**. Two clicks on the same row both see "1 tap" and make the same id, so the database keeps one. There's no "Record back in" on purpose (owner, 2026-10-27): recording by hand only covers the days until a lost card is replaced. Full write-up: `docs/ATTENDANCE-MODEL.md`, "The time out (Step 59.4)", and the recipe `docs/backend/step-59.4-record-time-out.md`.
+
 ### Will a feature like this be a lot of code? (owner question, 2026-10-20)
 About 350 lines, half of them tests. Most of it already existed: the gate's writer (tap and notification together), the "who should be notified" rule, the guardhouse monitor's feed and the push worker are all reused. The new parts are one small database change, one service with the rules, the button with its confirmation, and the tests.
 
