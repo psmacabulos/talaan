@@ -3052,3 +3052,21 @@ Lint, check:tokens, typecheck, the full test run, the build and the browser test
 
 **The owner's first full run (2026-10-28).** Everything passed except three tests, all Step 59.4's, none from this step's code. Two database tests failed with 2 taps instead of 1: Step 59.4's time-out test wrote a tap inside the UTC day that Step 56's test counts, and the two files run at the same time. The desktop browser test found "Out 9:15 AM" on three rows: the gate tests had tapped two classmates a second time at the same pinned 9:15 AM. Fixed by moving the time-out test to 2031-03-12, counting only Step 56's own students, and checking the student's own row (P-055). `npx vitest run src/services/taps` passed 3 runs out of 3, and `npx playwright test e2e/attendance.spec.ts e2e/gate.spec.ts` passed. That browser run used the owner's build, which was still current, since only test files had changed after it.
 
+
+## Step 59.6: pushes without the title, and status values that never change (2026-10-28)
+
+From the parent app's `docs/API-REQUESTS.md`, which the owner brought back the same day. The owner's first real pushes on Android, after the app's M7a, read "Bantay Aral" twice: Android's own header, then the server's `title` (P-057). The same review settled the app's other requests (`docs/PARENT-APP-REQUESTS.md`), added Steps 59.7, 59.8 and 63.1, and dropped request 4 (feed filters). Recipe first: `docs/backend/step-59.6-push-title-and-fixed-values.md`, approved before any code.
+
+**The architect review (one round).** Nothing blocking. Of five points, one was wrong when checked: it said a tap's `kind` in the parent API used a type that includes `guardian_linked`. `api-responses.ts` imports `NotificationKind` from `src/features/parents/types.ts`, which is `z.enum(["time_in", "time_out"])` (`schemas.ts:43`); the one with `guardian_linked` is Prisma's database enum, a different type. Taken: a test to hold the promise, and, for Step 63, the two places that say "weekend" outright (`attendance-hero.tsx:40`, `docs/PARENT-API.md`). Checked in the parent app's code: it never reads a push's `content.title`, and it shows only "Came in" and "No tap" for a `flexible` day, never the word "weekend".
+
+**What changed.**
+- `PushMessage` (`push-sender.ts`) loses `title`, so no caller can send one. `toPushMessage` loses `title: PRODUCT_NAME` and its now-unused import, and its comment says why. A missing key rather than `""`, which some Android versions could draw as a blank line.
+- `send-due.test.ts`'s `toEqual` on the whole message now has no `title`, so it fails if one comes back. `push-sender.test.ts`'s sample message loses it too.
+- `api-responses.test.ts` gains "the values the parent app can read": `expectTypeOf` on `status` (both answers), both tap `kind`s and `notificationPreference`, which fail at `npm run typecheck` if any type widens, plus `.options` checks on `notificationKindSchema` and `notificationPreferenceSchema`. `notificationPreference`'s type check was added while building; the recipe had only its schema.
+- `docs/PARENT-API.md` gains the fixed values and the `/api/v2` rule, and its push line loses the title. `docs/PUSH.md`'s example loses `"title"`. `mobile/starter/docs/PRODUCT-RULES.md` says "no title". Step 63 in `docs/PLAN.md` gains the `flexible: true` rule for no-class days.
+
+**The architect's code review.** Nothing blocking. It confirmed `toEqualTypeOf` fails `tsc --noEmit` when a type widens or narrows, and that the test files are inside `tsconfig.json`'s `include`. Plain `vitest run` skips type checks, so the guard holds in `npm run typecheck` and CI, as the test's comment says. One change taken: the push test uses `toStrictEqual`, since `toEqual` ignores a key set to `undefined`, so "no title" is now checked literally.
+
+No runs while building: the checks are the owner's.
+
+**The owner's run (2026-10-28).** Lint, check:tokens, typecheck, the tests and the build all passed. The build printed one warning, from code this step didn't touch: the local photo folder traces the whole project (P-058), fixed separately after this step's commit.

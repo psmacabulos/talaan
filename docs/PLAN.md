@@ -1,7 +1,7 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████████░░ 88%**  (328 of 371 tasks, 87 of 98 steps approved)
+**Overall progress: ██████████████████░░ 89%**  (330 of 371 tasks, 87 of 98 steps approved)
 
 **Next up:** Step 59.2, A practice restore (not started)
 
@@ -95,7 +95,7 @@
 | 59.3 | The latest tap, not just the first | ██████████ 100% | Approved |
 | 59.4 | Record a time out by hand | ██████████ 100% | Approved |
 | 59.5 | The parent home, like the app | ██████████ 100% | Approved |
-| 59.6 | Pushes without the title, and status values that never change | ░░░░░░░░░░   0% | Not started |
+| 59.6 | Pushes without the title, and status values that never change | ███████░░░  67% | Ready for your review |
 | 59.7 | The notification list shows today, and opening it clears the badge | ░░░░░░░░░░   0% | Not started |
 | 59.8 | A parent reports a link they don't know | ░░░░░░░░░░   0% | Not started |
 | 60 | Privacy for real student data | ░░░░░░░░░░   0% | Not started |
@@ -949,9 +949,9 @@ Commit: `feat(parents): show each child like the parent app, with a page for the
 - [x] Owner review: I checked it and said "approved"
 
 ### Step 59.6: Pushes without the title, and status values that never change
-Added 2026-10-28 from the parent app's requests 1 and 5 (`docs/PARENT-APP-REQUESTS.md`). Android already puts "Bantay Aral" at the top of every notification, so the title repeated it. Recipe first: `docs/backend/step-59.6-push-title-and-fixed-values.md`.
-- [ ] No `title` on any push: `PushMessage` and `toPushMessage` lose it; the body, data, sound, channel and priority stay as they are.
-- [ ] `docs/PARENT-API.md` promises that `status`, a tap's `kind` and `notificationPreference` never gain a value in `/api/v1`; Step 63 records that a no-class day will reach the app as `flexible: true`.
+Added 2026-10-28 from the parent app's requests 1 and 5 (`docs/PARENT-APP-REQUESTS.md`). Android already puts "Bantay Aral" at the top of every notification, so the title repeated it. Recipe first: `docs/backend/step-59.6-push-title-and-fixed-values.md`. A test in `api-responses.test.ts` holds the promise (architect review).
+- [x] No `title` on any push: `PushMessage` and `toPushMessage` lose it; the body, data, sound, channel and priority stay as they are.
+- [x] `docs/PARENT-API.md` promises that `status`, a tap's `kind` and `notificationPreference` never gain a value in `/api/v1`; Step 63 records that a no-class day will reach the app as `flexible: true`.
 Done when: a push sent through Expo shows "Bantay Aral" once, then "Juan tapped in at 7:56 AM", and every check passes.
 Commit: `feat(push): send pushes without a title, and fix the parent API's status values`
 - [ ] Owner review: I checked it and said "approved"

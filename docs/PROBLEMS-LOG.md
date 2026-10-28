@@ -71,7 +71,8 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-054](#p-054--2026-10-27--the-demo-parent-cant-sign-in-on-the-laptop) | 2026-10-27 | The demo parent can't sign in on the laptop | Other: setup | Parent sign-in, seed data | Worked around |
 | [P-055](#p-055--2026-10-28--two-step-594-tests-collided-with-other-tests-running-at-the-same-time) | 2026-10-28 | Two Step 59.4 tests collided with other tests running at the same time | Other: tests | Vitest, Playwright | Fixed, waiting for the owner's next full run |
 | [P-056](#p-056--2026-10-28--the-expo-access-token-was-pasted-into-a-chat-and-the-setting-still-read-log) | 2026-10-28 | The Expo access token was pasted into a chat, and the setting still read `log` | Security | Heroku, Expo | Waiting for the owner to replace the token |
-| [P-057](#p-057--2026-10-28--every-push-shows-bantay-aral-twice) | 2026-10-28 | Every push shows "Bantay Aral" twice | Other: design | Push, parent app | Planned: Step 59.6 |
+| [P-057](#p-057--2026-10-28--every-push-shows-bantay-aral-twice) | 2026-10-28 | Every push shows "Bantay Aral" twice | Other: design | Push, parent app | Fixed in Step 59.6, live once deployed |
+| [P-058](#p-058--2026-10-28--the-build-warns-that-the-local-photo-folder-traces-the-whole-project) | 2026-10-28 | The build warns that the local photo folder traces the whole project | Other: build | `npm run build`, photos | Fix proposed, after Step 59.6's commit |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -1149,4 +1150,22 @@ sequenceDiagram
   1. A more useful title, such as the child's name, with a shorter body. It changes the lock-screen wording that Step 54 settled, for no gain over the body alone.
   2. No title at all. The body already says who, what and when; iOS shows the app's name in place of a missing title too.
 - **Solution:** option 2, Step 59.6 (`docs/PARENT-APP-REQUESTS.md`).
-- **Status:** Planned: Step 59.6.
+- **Status:** Fixed in Step 59.6 (`title` removed from `PushMessage`), live once deployed. To check: the next push on the owner's phone shows "Bantay Aral" once.
+
+### P-058 · 2026-10-28 · The build warns that the local photo folder traces the whole project
+- **Where:** the owner's `npm run build` for Step 59.6. The build itself finished (40 of 40 pages). The file hasn't changed since Steps 46–48, so this step didn't cause it.
+- **Symptom:**
+  ```
+  Turbopack build encountered 1 warning:
+  ./src/lib/storage/local-photo-storage.ts:20:12
+  Warning: Dynamic filesystem access causes tracing of the whole project
+  > 20 |     return path.join(root, ...key.split("/"));
+  ```
+- **Cause:** `createLocalPhotoStorage` (development's stand-in for R2, files under `.data/photos/`) builds each file's path from the photo key at run time. Next.js can't tell which files that might read, so it marks the whole project as needed by the server.
+- **Does it matter here?** No, for size or cost. That marking (the `.nft.json` trace files) is only used by hosts that copy just the traced files: Vercel, or Next's `output: "standalone"`. Heroku runs `npm start` on the whole built app (`Procfile`), and `next.config.ts` sets no `output`. The live server never runs this code either: it uses `PHOTO_STORAGE=s3` (R2).
+- **Options weighed:**
+  1. Leave it. Harmless, but a warning that's always there hides a new one that matters.
+  2. Scope the path to a fixed folder, as the warning suggests. The root is a parameter (tests pass their own folder), so it can't be fixed at build time.
+  3. The ignore comment the warning offers, `path.join(/*turbopackIgnore: true*/ root, ...)`, listed in `node_modules/next/dist/docs/01-app/03-api-reference/08-turbopack.md` as Turbopack-only "skip".
+- **Solution:** option 3, one line, as its own fix after Step 59.6 is committed.
+- **Status:** Fix proposed, after Step 59.6's commit.

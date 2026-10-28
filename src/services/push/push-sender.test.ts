@@ -10,7 +10,6 @@ import {
 
 const MESSAGE: PushMessage = {
   to: "ExponentPushToken[a]",
-  title: "Bantay Aral",
   body: "Juan tapped in at 7:56 AM",
   data: { notificationId: "n", childId: "c" },
   sound: "default",

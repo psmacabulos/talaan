@@ -51,7 +51,6 @@ A phone stops getting pushes when:
 ```json
 {
   "to": "ExponentPushToken[…]",
-  "title": "Bantay Aral",
   "body": "Juan tapped in at 7:56 AM",
   "data": { "notificationId": "…", "childId": "student-0001" },
   "sound": "default",
@@ -59,6 +58,8 @@ A phone stops getting pushes when:
   "priority": "high"
 }
 ```
+
+**No title** (Step 59.6): Android already puts the app's name, Bantay Aral, at the top of every notification, so a title showed it twice (P-057). iOS shows the app's name in its place.
 
 The **first name only**: the lock screen is visible to anyone near the phone, the text passes through Expo, Google and Apple, and students are minors. `toPushMessage` (`src/services/push/push-message.ts`) builds it.
 

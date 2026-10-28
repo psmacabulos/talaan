@@ -4,6 +4,8 @@ The contract between this backend and the Bantay Aral parent app (Expo, its own 
 
 Rules for changing it: a new field may be added at any time, since the app ignores fields it doesn't know. Renaming or removing a field, or changing what a status code means, needs a new version (`/api/v2/…`), because phones already in parents' hands still call the old one.
 
+**These values never change in `/api/v1`** (Step 59.6): a day's `status` (`present`, `late`, `absent`, `idle`), a tap's `kind` (`time_in`, `time_out`) and a school's `notificationPreference` (`off`, `time_in_only`, `time_in_and_time_out`). The app drops a child it can't read, so a new value would hide that child on every phone not yet updated; a new value means `/api/v2`. A test holds the server to it (`src/features/parents/api-responses.test.ts`). A new **notification** `kind` may still be added, as `guardian_linked` was: the app must hide a kind it doesn't know. A day with no class (Step 63, later) will come as `flexible: true` plus a new field, never a fifth status.
+
 ```mermaid
 sequenceDiagram
     participant App as Parent app
@@ -220,7 +222,7 @@ curl -s -X POST http://localhost:3000/api/v1/parents/push-tokens -H "Authorizati
 - Register after sign-in, whenever Expo gives a new token, and on every app start. Sending the same token again costs one read and writes nothing.
 - **One push address per signed-in phone.** A new token for the same sign-in replaces the old one. A phone that signs in as another parent moves its push address to that parent.
 - Sign-out removes it. A sign-in left unused for 30 days is cleared within the hour, push address included.
-- **What a push looks like** (Step 54): title "Bantay Aral", body "Juan tapped in at 7:56 AM" (the child's first name only), `data: { notificationId, childId }` so a tap can open the feed at that entry, `sound: "default"`, `priority: "high"`, Android `channelId: "attendance"`. The app must create the `attendance` channel before it registers its token: Android doesn't show a push sent to a channel the phone doesn't have.
+- **What a push looks like** (Step 54): no title (Step 59.6: Android already shows the app's name at the top, so a title of "Bantay Aral" showed it twice), body "Juan tapped in at 7:56 AM" (the child's first name only), `data: { notificationId, childId }` so a tap can open the feed at that entry, `sound: "default"`, `priority: "high"`, Android `channelId: "attendance"`. The app must create the `attendance` channel before it registers its token: Android doesn't show a push sent to a channel the phone doesn't have.
 - **A link notice's push** (Step 55.2): body "A new parent account was linked to Juan", no adult's name and no time; same `data` and channel.
 - **Which phones:** every push address of every parent linked to the child (a link notice: only its one recipient), whose sign-in isn't revoked and was used in the last 30 days. A push may arrive a few minutes late: the tap's time is saved at the gate, and the push says that time. How it's sent: `docs/PUSH.md`.
 

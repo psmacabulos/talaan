@@ -1,6 +1,5 @@
 import type { DueDelivery } from "@/data/repositories/push-outbox-repository";
 import { notificationKindLabel } from "@/features/parents/notification-format";
-import { PRODUCT_NAME } from "@/lib/product";
 import { formatSchoolTime } from "@/lib/school-time";
 import type { PushMessage } from "./push-sender";
 
@@ -12,11 +11,12 @@ import type { PushMessage } from "./push-sender";
  * Google and Apple, and students are minors. The data lets a tap on the
  * push open the feed at that entry. Every kind uses the "attendance"
  * channel: Android drops a push sent to a channel the app hasn't made.
+ * No title (Step 59.6): Android already puts the app's name at the top of
+ * every notification, so a title of "Bantay Aral" showed it twice.
  */
 export function toPushMessage(delivery: DueDelivery): PushMessage {
   return {
     to: delivery.token,
-    title: PRODUCT_NAME,
     body: pushBody(delivery),
     data: { notificationId: delivery.notificationId, childId: delivery.studentId },
     sound: "default",

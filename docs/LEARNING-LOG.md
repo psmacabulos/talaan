@@ -1258,6 +1258,16 @@ Without `id: student.id` in the seed, two things go wrong:
 
 The `...` spread copies every property of an object into the new one. Writing `id` first and then spreading is just "this object's columns, plus an id".
 
+### A test that the type checker runs: `expectTypeOf` (Step 59.6)
+
+Most tests check a *value* while the code runs: `expect(1 + 1).toBe(2)`. Some promises are about a *type*: "a child's `status` is only ever one of these four words". Nothing runs to check that, so Vitest's `expectTypeOf` hands it to TypeScript instead:
+
+```ts
+expectTypeOf<DayTapsJson["status"]>().toEqualTypeOf<"present" | "late" | "absent" | "idle">();
+```
+
+If someone later adds `"excused"` to the status type, this line stops compiling, so **`npm run typecheck` fails**, not `npm test`. The test files are part of what `typecheck` checks (`tsconfig.json`'s `include`). That's why the parent API's "these values never change" promise (`docs/PARENT-APP-REQUESTS.md`) is held by a test, not just a sentence in a doc.
+
 ## Database and migrations (Phase 2)
 
 ### Do I need to run a migration? Is `prisma migrate dev` safe? (owner questions, 2026-10-12)

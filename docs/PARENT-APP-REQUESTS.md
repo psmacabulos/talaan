@@ -8,11 +8,11 @@ When a request is built, `docs/PARENT-API.md` (the contract, copied into the app
 
 | # | Request | Decision | Date | Step |
 |---|---|---|---|---|
-| 1 | A new attendance `status` would hide a child | **Taken, as a promise.** The values of `status`, a tap's `kind` and `notificationPreference` never change in `/api/v1`. A new value means `/api/v2`. No `statusLabel` field | 2026-10-28 | 59.6 |
+| 1 | A new attendance `status` would hide a child | **Taken, as a promise.** The values of `status`, a tap's `kind` and `notificationPreference` never change in `/api/v1`. A new value means `/api/v2`. No `statusLabel` field | 2026-10-28 | 59.6 (built, not yet deployed) |
 | 2 | "Seen" separate from "read" | **Taken.** A per-parent "seen" time; the badge counts what's newer than it *and* still unread. `read` stays shared by a child's guardians | 2026-10-28 | 59.7 |
 | 3 | A way to contact the school | **Replaced** (owner). No school contact details. A **Report** button on a new-guardian notice emails the super admin instead, and the removed parent's message stops saying "Contact your child's school." | 2026-10-28 | 59.8 |
 | 4 | Filter the feed by child and by unread | **Dropped for now.** Once the list is today only (below), it's short enough not to need filters | 2026-10-28 | — |
-| 5 | A push without the title "Bantay Aral" | **Taken.** No title on any push; body, data, sound, channel and priority stay the same | 2026-10-28 | 59.6 |
+| 5 | A push without the title "Bantay Aral" | **Taken.** No title on any push; body, data, sound, channel and priority stay the same | 2026-10-28 | 59.6 (built, not yet deployed) |
 | — | The child's photo in the push | **Not asked for, and agreed.** The phone would load the photo from a link with no sign-in: a minor's face at an open address, shown on a lock screen | 2026-10-28 | — |
 | — | The notification list shows today only (owner) | **Taken.** Today's taps on the school's clock, plus any new-guardian notice not yet read, whatever its day. The history moves to a future attendance tab | 2026-10-28 | 59.7 |
 | — | An attendance history tab (owner, future) | **Planned.** Needs a request for a range of days, and must wait for the school calendar so holidays never show as absent | 2026-10-28 | 63.1 |

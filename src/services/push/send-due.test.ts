@@ -21,10 +21,9 @@ function delivery(id: string, overrides: Partial<DueDelivery> = {}): DueDelivery
 }
 
 describe("toPushMessage", () => {
-  it("says the child's first name, what happened and when, on the school's clock", () => {
-    expect(toPushMessage(delivery("a"))).toEqual({
+  it("says the child's first name, what happened and when, on the school's clock, with no title (Step 59.6)", () => {
+    expect(toPushMessage(delivery("a"))).toStrictEqual({
       to: "ExponentPushToken[a]",
-      title: "Bantay Aral",
       body: "Juan tapped in at 7:56 AM",
       data: { notificationId: "notification-a", childId: "student-0001" },
       sound: "default",

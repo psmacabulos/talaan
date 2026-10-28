@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import { schoolDayFor } from "@/features/attendance/status";
 import type { Tap } from "@/features/attendance/types";
+import { notificationPreferenceSchema } from "@/features/schools/schemas";
 import type { School } from "@/features/schools/types";
 import type { Student } from "@/features/students/types";
 import { schoolTimeToIso } from "@/lib/school-time";
@@ -11,7 +12,10 @@ import {
   toNotificationJson,
   toParentJson,
   toSchoolJson,
+  type ChildTodayJson,
+  type DayTapsJson,
 } from "./api-responses";
+import { notificationKindSchema } from "./schemas";
 
 const FRIDAY = "2026-06-19";
 
@@ -176,5 +180,25 @@ describe("parent API answers", () => {
     await expect(apiError("invalid_input", "Check.", { email: "Bad" }).json()).resolves.toEqual({
       error: { code: "invalid_input", message: "Check.", fields: { email: "Bad" } },
     });
+  });
+});
+
+describe("the values the parent app can read", () => {
+  type Status = "present" | "late" | "absent" | "idle";
+  type TapKind = "time_in" | "time_out";
+
+  // The app drops a child it can't read, so a new value would hide that
+  // child on every phone not yet updated (Step 59.6, docs/PARENT-API.md).
+  // The type checks fail at `npm run typecheck`, the others at `npm test`.
+  it("never gain a value in /api/v1", () => {
+    expectTypeOf<ChildTodayJson["today"]["status"]>().toEqualTypeOf<Status>();
+    expectTypeOf<DayTapsJson["status"]>().toEqualTypeOf<Status>();
+    expectTypeOf<NonNullable<ChildTodayJson["today"]["latest"]>["kind"]>().toEqualTypeOf<TapKind>();
+    expectTypeOf<DayTapsJson["taps"][number]["kind"]>().toEqualTypeOf<TapKind>();
+    expectTypeOf<ChildTodayJson["school"]["notificationPreference"]>().toEqualTypeOf<
+      "off" | "time_in_only" | "time_in_and_time_out"
+    >();
+    expect(notificationKindSchema.options).toEqual(["time_in", "time_out"]);
+    expect(notificationPreferenceSchema.options).toEqual(["off", "time_in_only", "time_in_and_time_out"]);
   });
 });

@@ -1,6 +1,6 @@
 # Step 59.6: Pushes without the title, and status values that never change
 
-> **Written before the code, on 2026-10-28, for the owner's approval.** From the parent app's requests 1 and 5 (`docs/PARENT-APP-REQUESTS.md`) and P-057 in `docs/PROBLEMS-LOG.md`. Reviewed by the systems-architect (one round, nothing blocking; one point turned out wrong when checked, see "Review" below).
+> **Written before the code, on 2026-10-28, approved by the owner the same day, then built as written.** One addition while building: the test also pins `school.notificationPreference`'s type, not only its schema's values. From the parent app's requests 1 and 5 (`docs/PARENT-APP-REQUESTS.md`) and P-057 in `docs/PROBLEMS-LOG.md`. Reviewed by the systems-architect (one round, nothing blocking; one point turned out wrong when checked, see "Review" below).
 
 ## Why
 

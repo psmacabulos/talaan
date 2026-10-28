@@ -3,7 +3,6 @@ import { z } from "zod";
 /** One push, in the shape Expo's push service takes (Step 54). */
 export type PushMessage = {
   to: string;
-  title: string;
   body: string;
   data: { notificationId: string; childId: string };
   sound: "default";
