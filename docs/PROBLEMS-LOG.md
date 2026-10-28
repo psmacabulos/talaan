@@ -68,6 +68,10 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-051](#p-051--2026-10-26--the-gate-page-is-taller-than-a-landscape-tablet) | 2026-10-26 | The gate page is taller than a landscape tablet | Other: layout | `/gate`, `/gate/display` | Fixed, waiting for the owner's check on the tablet |
 | [P-052](#p-052--2026-10-26--the-gate-said-time-in-but-the-web-app-showed-no-time-in) | 2026-10-26 | The gate said "Time in", but the web app showed no time in | Other: design | Attendance, parent API | Fixed in Step 59.3, waiting for the owner's check |
 | [P-053](#p-053--2026-10-26--a-step-49-test-still-expected-no-time-out-after-in-out-in) | 2026-10-26 | A Step 49 test still expected no time out after in, out, in | Other: tests | Vitest, attendance | Resolved |
+| [P-054](#p-054--2026-10-27--the-demo-parent-cant-sign-in-on-the-laptop) | 2026-10-27 | The demo parent can't sign in on the laptop | Other: setup | Parent sign-in, seed data | Worked around |
+| [P-055](#p-055--2026-10-28--two-step-594-tests-collided-with-other-tests-running-at-the-same-time) | 2026-10-28 | Two Step 59.4 tests collided with other tests running at the same time | Other: tests | Vitest, Playwright | Fixed, waiting for the owner's next full run |
+| [P-056](#p-056--2026-10-28--the-expo-access-token-was-pasted-into-a-chat-and-the-setting-still-read-log) | 2026-10-28 | The Expo access token was pasted into a chat, and the setting still read `log` | Security | Heroku, Expo | Waiting for the owner to replace the token |
+| [P-057](#p-057--2026-10-28--every-push-shows-bantay-aral-twice) | 2026-10-28 | Every push shows "Bantay Aral" twice | Other: design | Push, parent app | Planned: Step 59.6 |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -1131,3 +1135,18 @@ sequenceDiagram
   - Check `heroku config:get PUSH_SENDER --app bantayaral` reads `expo`, and that `heroku releases --app bantayaral -n 3` shows the release didn't fail. If it did, `heroku releases:output --app bantayaral` says why.
   - From now on, share "done" or an output with secrets blanked out, never a `config:set` line with a secret in it.
 - **Status:** Waiting for the owner to replace the token and check the setting.
+
+### P-057 · 2026-10-28 · Every push shows "Bantay Aral" twice
+- **Where:** the first real pushes on the owner's Android phone, after the parent app's M7a, from the live server (`PUSH_SENDER=expo`). Reported in the parent app's `docs/API-REQUESTS.md`, request 5.
+- **Symptom:**
+  ```
+  (icon)  Bantay Aral · now
+          Bantay Aral
+          Juan tapped in at 7:56 AM
+  ```
+- **Cause:** `toPushMessage` (`src/services/push/push-message.ts`) sends `title: PRODUCT_NAME` on every push, and Android already puts the app's name at the top of every notification beside its icon. With the app closed, Android draws the push from what the server sent, so the app can't remove the title itself.
+- **Options weighed:**
+  1. A more useful title, such as the child's name, with a shorter body. It changes the lock-screen wording that Step 54 settled, for no gain over the body alone.
+  2. No title at all. The body already says who, what and when; iOS shows the app's name in place of a missing title too.
+- **Solution:** option 2, Step 59.6 (`docs/PARENT-APP-REQUESTS.md`).
+- **Status:** Planned: Step 59.6.
