@@ -84,6 +84,7 @@ export async function resolveSession(raw: string | undefined, deps: SessionDeps)
 | `src/app/(app)/layout.tsx` and every page under it | `requireSession()` | Redirect to `/` |
 | Every staff Server Action | `getSession()`, then `if (!session) …` | `{ ok: false, formError: SIGNED_OUT_MESSAGE }` (or a thrown error for the two that already threw) |
 | `resolveMonitorViewer`, `resolvePhotoViewer` | `getSession()` | Not allowed (the monitor's not-connected page, a photo 404) |
+| `webParentPhotoViewer` (the photo route, Step 59.5) | `getParentSession()`, only after `resolvePhotoViewer` said no and only with no `Authorization` header | A photo 404 |
 
 Each page checks for itself, not only the layout: Next.js doesn't re-run a layout on every navigation, and a Server Action can be called directly without any page at all (`node_modules/next/dist/docs/01-app/02-guides/authentication.md`, "Layouts and auth checks").
 

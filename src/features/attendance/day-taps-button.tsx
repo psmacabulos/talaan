@@ -9,8 +9,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { formatSchoolTime } from "@/lib/school-time";
 import type { NotificationKind } from "@/features/parents/types";
+import { DayTapList } from "./day-tap-list";
 
 /**
  * "4 taps": shown only when a student came and went more than once in a
@@ -39,18 +39,7 @@ export function DayTapsButton({
           <DialogTitle>{studentName}&apos;s taps</DialogTitle>
           <DialogDescription>{dateLabel}</DialogDescription>
         </DialogHeader>
-        <ol className="flex flex-col divide-y divide-border">
-          {taps.map((tap, index) => (
-            <li key={tap.id} className="flex items-center justify-between gap-4 py-2.5">
-              <span className="text-foreground">
-                {index + 1}. {tap.kind === "time_in" ? "In" : "Out"}
-              </span>
-              <time dateTime={tap.tappedAt} className="text-muted-foreground tabular-nums">
-                {formatSchoolTime(tap.tappedAt)}
-              </time>
-            </li>
-          ))}
-        </ol>
+        <DayTapList taps={taps} />
       </DialogContent>
     </Dialog>
   );

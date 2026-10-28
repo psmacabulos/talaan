@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createMockParentStudentLinkRepository } from "@/data/repositories/parent-student-link-repository";
 import { createMockSchoolRepository } from "@/data/repositories/school-repository";
 import { createMockStudentRepository } from "@/data/repositories/student-repository";
@@ -8,7 +8,7 @@ import type { Tap } from "@/features/attendance/types";
 import type { School } from "@/features/schools/types";
 import type { Student } from "@/features/students/types";
 import { schoolTimeToIso } from "@/lib/school-time";
-import { childrenToday, RECENT_TAP_COUNT, type ChildrenTodayDeps } from "./children-today";
+import { childToday, childrenToday, RECENT_TAP_COUNT, type ChildrenTodayDeps } from "./children-today";
 
 const FRIDAY = "2026-06-19";
 const SATURDAY = "2026-06-20";
@@ -106,5 +106,42 @@ describe("childrenToday", () => {
 
   it("leaves out a linked child who's no longer at the school", async () => {
     await expect(childrenToday("parent-1", schoolTimeToIso(FRIDAY, "10:00"), deps([], []))).resolves.toEqual([]);
+  });
+
+  it("reads no recent taps when asked for none (the web home and the app's /me)", async () => {
+    const dependencies = deps([tap(1, schoolTimeToIso(FRIDAY, "07:45"))]);
+    const listRecent = vi.spyOn(dependencies.taps, "listRecentByStudent");
+
+    const [child] = await childrenToday("parent-1", schoolTimeToIso(FRIDAY, "10:00"), dependencies, {
+      recentTaps: 0,
+    });
+    expect(child.todayTaps).toHaveLength(1);
+    expect(child.recentTaps).toEqual([]);
+    expect(listRecent).not.toHaveBeenCalled();
+  });
+});
+
+describe("childToday", () => {
+  it("gives one linked child with today's taps and the recent ones", async () => {
+    const taps = [tap(1, schoolTimeToIso(FRIDAY, "07:45")), tap(2, schoolTimeToIso("2026-06-18", "07:10"))];
+    const child = await childToday("parent-1", juan.id, schoolTimeToIso(FRIDAY, "10:00"), deps(taps));
+
+    expect(child?.student.id).toBe(juan.id);
+    expect(child?.todayTaps.map((t) => t.id)).toEqual([taps[0].id]);
+    expect(child?.recentTaps.map((t) => t.id)).toEqual([taps[0].id, taps[1].id]);
+  });
+
+  it("is null for a student this parent isn't linked to, without reading them", async () => {
+    const other: Student = { ...juan, id: "student-other" };
+    const dependencies = deps([], [juan, other]);
+    const getStudent = vi.spyOn(dependencies.students, "getInSchool");
+
+    await expect(childToday("parent-1", other.id, schoolTimeToIso(FRIDAY, "10:00"), dependencies)).resolves.toBeNull();
+    await expect(childToday("parent-2", juan.id, schoolTimeToIso(FRIDAY, "10:00"), dependencies)).resolves.toBeNull();
+    expect(getStudent).not.toHaveBeenCalled();
+  });
+
+  it("is null for a linked child who's no longer at the school", async () => {
+    await expect(childToday("parent-1", juan.id, schoolTimeToIso(FRIDAY, "10:00"), deps([], []))).resolves.toBeNull();
   });
 });

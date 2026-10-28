@@ -942,6 +942,17 @@ Parents will sign in through the Expo app (Phase 3), which can't hold a browser 
 - **The rules are shared.** Step 53 moves parent sign-in into one service that both the web portal and the app's API call, so the 5-wrong-tries limit and the single "That email or password isn't right." answer protect the app too.
 - **The web portal stays live** until the app exists, as the demo and a fallback. Its old cookie held a plain parent id, so once deployed, anyone who typed `parent-balanga-1` into their browser would have seen that parent's children. Signing it cost about 20 lines.
 
+### Why a parent's photo on the web needed its own way in (Step 59.5)
+A student's photo isn't a public file. It comes from `/api/v1/photos/…`, which first works out *who is asking* and shows the photo only to that school's staff, gate or monitor, or to that child's own parent. Each kind of visitor proves who they are differently:
+- the app's token (`Authorization: Bearer tal_par_…`);
+- a gate's token;
+- the guardhouse TV's cookie;
+- the staff cookie.
+
+A parent on the web carries none of those. They have the *parent* cookie, which the route never read. So until Step 59.5 a web parent's own child's photo answered 404, and the old home simply never showed photos.
+
+The fix reads the parent cookie only after the usual check has said no, and only when the request has no `Authorization` header. A staff request costs nothing extra. A request with a bad token stays refused, whatever cookie it also carries. The full rule is decision 4 of `docs/backend/step-59.5-parent-home.md`, and the page-by-page picture is in `docs/PARENT-PORTAL.md`.
+
 ## Accessibility: checking that everyone can use it (Step 27)
 
 The full write-up, with code and a diagram, is [`docs/ACCESSIBILITY.md`](ACCESSIBILITY.md). These are the short versions.
@@ -1139,6 +1150,31 @@ Docker does support Tab completion, but zsh only loads it after you turn it on. 
 plugins=(git docker)
 ```
 Then open a new terminal tab (or run `source ~/.zshrc`). Typing `docker vol` and pressing Tab now completes to `docker volume`, and container and volume names complete too. If it still does nothing, clear zsh's completion cache with `rm -f ~/.zcompdump*` and open a new tab. The plugin also adds short aliases (such as `dps` for `docker ps`). You don't have to use them.
+
+### Which parent accounts are in my local database? (owner question, 2026-10-27)
+List them, newest last:
+
+```bash
+docker exec talaan-postgres psql -U postgres -d talaan -c 'select id, email, "createdAt", "updatedAt" from "Parent" order by "createdAt";'
+```
+
+And a parent's linked children:
+
+```bash
+docker exec talaan-postgres psql -U postgres -d talaan -c "select \"studentId\" from \"ParentStudentLink\" where \"parentId\" = 'parent-balanga-1';"
+```
+
+`npx prisma studio` shows the same tables as a web page, if you'd rather click than type SQL.
+
+The password can't be read back, because only a scrypt hash of it is stored (`src/lib/password.ts`). The clue is `updatedAt`: the six demo parents all start with `updatedAt` equal to `createdAt`. If a demo parent's `updatedAt` is later, the row was changed after the seed. Usually that means the password was reset while testing, and `Talaan123!` no longer works for that parent (P-054 in `docs/PROBLEMS-LOG.md`).
+
+To give the demo password back to one parent, copy the hash of a demo parent that still has it. All six were seeded with the same password:
+
+```bash
+docker exec talaan-postgres psql -U postgres -d talaan -c "update \"Parent\" set \"passwordHash\" = (select \"passwordHash\" from \"Parent\" where id = 'parent-balanga-2') where id = 'parent-balanga-1';"
+```
+
+Two other ways work too. The "Forgot your password?" link at `/parent/login` prints its 6-digit code in the `npm run dev` terminal. Or run `npm run db:reset`, which also deletes every parent you made and every gate and monitor device.
 
 ## The word "client" (Phase 2)
 

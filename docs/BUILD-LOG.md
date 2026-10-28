@@ -3014,3 +3014,41 @@ The browser tests (`npm run test:e2e`) and `npm run build` are the owner's to ru
 **One thing weighed while building.** The plan named a separate `record-time-out-button.tsx`. Copying the dialog, pending state and toast into a second file would let the two drift apart, so the recipe changed it to one component with a `kind`, before any code was written.
 
 **Runs while building.** None of the checks: they're the owner's to run.
+
+## Step 59.5: the parent home, like the app (2026-10-27)
+
+**Where it came from.** The owner wanted the web parent home to have "a similar vibe" to the Expo parent app, and pointed at the app's `illustration-school.png`. Recipe: `docs/backend/step-59.5-parent-home.md`, approved before the code, after one systems-architect round (nothing blocking; three suggestions taken: the photo fallback only without an `Authorization` header, the home skipping recent taps, and a one-child read for the child's page).
+
+**The app changed after the recipe.** Before writing the card, the app's current `child-card.tsx` was read again. Its header comment had changed: at 17:13 that day (app commit `be8aa0c`), two hours after the recipe was written, the owner trimmed the card. It now has no school name and no "Your school sends" line, since "a parent knows their school", and that line moves to a future Profile tab (`docs/PRODUCT-RULES.md` in the app). The recipe's first decision still had both. The goal was "match the app", and this was the owner's newer decision, so the web followed the app. The planned `notificationSentence()` helper and its test were dropped, and the two-schools browser test now checks that no school name shows. The same commit had shrunk the illustration to 360 × 240 (105 KB), so it's copied with `cp`, not resized with `sips`. The recipe records each change as *(built)*.
+
+**What changed.**
+- `photo-viewer.ts`: `webParentPhotoViewer(deps)`, the parent cookie with that parent's links, or null. The photo route tries it only after `resolvePhotoViewer` said no and only when there's no `Authorization` header.
+- `children-today.ts`: the loop body became `readChild()`. New `childToday()` finds the link first, then reads that one child. The home passes `{ recentTaps: 0 }`.
+- `child-summary-card.tsx` → `child-card.tsx`: an `<article>` with the name as a "stretched link" (its `::after` covers the card), so a screen reader hears one link named for the child, not every word on the card. The times panel is a `@container`: side by side from 15 rem of panel width, stacked below it, with the divider moving from the left to the top. This is the first container query in the project; Tailwind 4 has them built in.
+- The attendance dialog's numbered list moved to `DayTapList` (`features/attendance/day-tap-list.tsx`), used by the dialog and the child's page.
+- Pages: the home (`HomeHeading`, the cards, "Link a child" below them), its card-shaped skeleton, and the new `child/[id]` page with its `loading.tsx` and `not-found.tsx`.
+- `formatTapDate`, an alias of `formatSchoolDate`, is gone; `notification-list.tsx` imports `formatSchoolDate`.
+
+**One thing caught while building.** The first draft of the heading's image used `priority`. Next.js 16's own guide (`node_modules/next/dist/docs/01-app/03-api-reference/…/image.md`) says it's deprecated in favour of `preload`, and recommends `loading="eager"` for an above-the-fold image that isn't the main content. The illustration is decorative, so it's `loading="eager"`.
+
+**Seeing it.** A second dev server on port 3100 (`npx next dev -p 3100`), driven by a Playwright script kept in the session's scratch folder, took screenshots at 360 and 1280 px, light and dark, then the server was stopped. `parent-one@balanga.example` couldn't be used: its password had been changed on 2026-10-23 (P-054), so the shots used `parent-one@oceanview.example` and `parent-two@balanga.example`. What was measured:
+- the photos load for the web parent (`naturalWidth` 256), which is the route's new fallback working;
+- the page never scrolls sideways (`scrollWidth` 360 at 360 px);
+- the illustration is 120 px wide at 360 px and 160 px at 1280 px, beside the heading;
+- the back link is 44 px tall.
+
+No linked child had two taps on the real day, and no taps were added. To check the two-half panel, the script copied the time-in half on the page and gave it the exact classes `child-card.tsx` gives the second half. At 360 px the row stays side by side (270 px wide), and the widest time, "10:59 PM", ends 4 px inside it.
+
+**Runs while building.**
+
+```bash
+npx vitest run src/services/photos "src/app/api/v1/photos"      # 10 passed
+npx vitest run src/services/parents/children-today.test.ts      # 9 passed
+npx vitest run src/features/parents src/features/attendance     # 131 passed
+npx prettier --write <two files it flagged>
+```
+
+Lint, check:tokens, typecheck, the full test run, the build and the browser tests are the owner's to run.
+
+**The owner's first full run (2026-10-28).** Everything passed except three tests, all Step 59.4's, none from this step's code. Two database tests failed with 2 taps instead of 1: Step 59.4's time-out test wrote a tap inside the UTC day that Step 56's test counts, and the two files run at the same time. The desktop browser test found "Out 9:15 AM" on three rows: the gate tests had tapped two classmates a second time at the same pinned 9:15 AM. Fixed by moving the time-out test to 2031-03-12, counting only Step 56's own students, and checking the student's own row (P-055). `npx vitest run src/services/taps` passed 3 runs out of 3, and `npx playwright test e2e/attendance.spec.ts e2e/gate.spec.ts` passed. That browser run used the owner's build, which was still current, since only test files had changed after it.
+

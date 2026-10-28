@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { formatTapTime } from "@/features/attendance/status";
-import { formatTapDate } from "./child-summary-card";
+import { formatSchoolDate } from "@/lib/school-time";
 import { markNotificationRead } from "./notification-actions";
 import { LINK_NOTICE_ADVICE, linkedBy, notificationKindLabel } from "./notification-format";
 import type { ParentNotificationItem } from "./notification-format";
@@ -22,7 +22,7 @@ export function NotificationList({ items }: { items: ParentNotificationItem[] })
   // date stays the same — no `Set`s or re-sorting needed.
   const groups: { date: string; items: ParentNotificationItem[] }[] = [];
   for (const item of items) {
-    const date = formatTapDate(item.notification.tappedAt);
+    const date = formatSchoolDate(item.notification.tappedAt);
     const last = groups[groups.length - 1];
     if (last && last.date === date) {
       last.items.push(item);

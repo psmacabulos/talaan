@@ -1,7 +1,7 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████████░░ 92%**  (321 of 350 tasks, 84 of 93 steps approved)
+**Overall progress: ██████████████████░░ 92%**  (326 of 355 tasks, 85 of 94 steps approved)
 
 **Next up:** Step 59.2, A practice restore (not started)
 
@@ -93,7 +93,8 @@
 | 59.1 | One error page, with a way to report the problem | ██████████ 100% | Approved |
 | 59.2 | A practice restore | ░░░░░░░░░░   0% | Not started |
 | 59.3 | The latest tap, not just the first | ███████░░░  67% | Ready for your review |
-| 59.4 | Record a time out by hand | ████████░░  75% | Ready for your review |
+| 59.4 | Record a time out by hand | ██████████ 100% | Approved |
+| 59.5 | The parent home, like the app | ████████░░  80% | Ready for your review |
 | 60 | Privacy for real student data | ░░░░░░░░░░   0% | Not started |
 | 61 | Queries that don't grow | ░░░░░░░░░░   0% | Not started |
 | 61.1 | The roster answers "nothing changed" cheaply | ░░░░░░░░░░   0% | Not started |
@@ -931,6 +932,16 @@ Added 2026-10-27 by the owner: a student given a time in by hand (Step 55) had n
 - [x] Tests: the rules, two clicks at once against Postgres, the phone list, and the browser test continuing from Step 55's time in.
 Done when: a student given a time in by hand is timed out from their row, the row reads "Out" with "Recorded by staff", no button offers a back in, and every check passes.
 Commit: `feat(attendance): record a student's time out by hand from their row`
+- [x] Owner review: I checked it and said "approved"
+
+### Step 59.5: The parent home, like the app
+Added 2026-10-27 by the owner: the web parent home matches the parent app's design (`talaan_parents_app/design/`), with its school illustration. Plan reviewed by the systems-architect (one round, nothing blocking). Recipe first: `docs/backend/step-59.5-parent-home.md`.
+- [x] "My children" with the school illustration; each child as the app's card: photo, class, status, and a panel with the time in and the latest tap. No school name and no "Your school sends" line, as the owner trimmed the app's card the same day. The home no longer reads recent taps.
+- [x] A child's day, `/parent/child/[id]`: today's taps (In, Out) and the last 10, read for that one linked child only; anyone else's child is "not found".
+- [x] A parent on the web sees their own children's photos: the photo route tries the parent cookie only after the usual viewers said no, and only without an `Authorization` header.
+- [x] Tests: the photo route's cases, `childToday`, the card, and the browser test from linking to the child's day.
+Done when: a parent on the web sees the same card as in the app, opens a child's day, can't open another child's, and every check passes.
+Commit: `feat(parents): show each child like the parent app, with a page for their day`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 60: Privacy for real student data

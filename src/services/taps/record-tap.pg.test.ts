@@ -64,9 +64,14 @@ describeWithDatabase("one read, one tap on Postgres (Step 56; needs E2E_DATABASE
     };
   }
 
+  // Only this test's own students: other database test files run at the same time (P-055).
   const tapsOfDay = () =>
     db.tap.findMany({
-      where: { schoolId: SCHOOL, tappedAt: { gte: new Date(DAY_START), lt: new Date(DAY_END) } },
+      where: {
+        schoolId: SCHOOL,
+        studentId: { in: [STUDENT_A, STUDENT_B] },
+        tappedAt: { gte: new Date(DAY_START), lt: new Date(DAY_END) },
+      },
     });
 
   async function cleanUp() {

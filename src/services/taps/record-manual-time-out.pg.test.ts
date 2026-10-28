@@ -16,9 +16,12 @@ import { manualTimeOutId, recordManualTimeOut } from "./record-manual-time-out";
 /**
  * A time out recorded by hand, against real Postgres (Step 59.4): after a
  * time in, two clicks at the same moment must make one time out and at
- * most one parent notification. On a date far ahead, and not Step 55's
- * test date, so no other test's taps are in the way; its rows are removed
- * afterwards. Skipped, not failed, when E2E_DATABASE_URL isn't set.
+ * most one parent notification. On a school day far ahead that no other
+ * database test uses, not even part of: test files run at the same time, and
+ * Step 56's test counts every Balanga tap from 2031-03-05 00:00 UTC to the
+ * next midnight, which a time in on the school's 2031-03-06 fell inside
+ * (P-055). Its rows are removed afterwards. Skipped, not failed, when
+ * E2E_DATABASE_URL isn't set.
  */
 const url = process.env.E2E_DATABASE_URL;
 const describeWithDatabase = url ? describe : describe.skip;
@@ -26,9 +29,9 @@ const describeWithDatabase = url ? describe : describe.skip;
 const SCHOOL = "school-balanga";
 const PRINCIPAL = "staff-principal-school-balanga";
 const STUDENT = "student-0003";
-const TIME_IN = "2031-03-05T23:10:00.000Z";
-const TIME_OUT = "2031-03-06T08:00:00.000Z";
-const DATE = "2031-03-06";
+const TIME_IN = "2031-03-11T23:10:00.000Z"; // 7:10 AM on the 12th at the school
+const TIME_OUT = "2031-03-12T08:00:00.000Z"; // 4:00 PM
+const DATE = "2031-03-12";
 
 describeWithDatabase("recordManualTimeOut on Postgres (Step 59.4; needs E2E_DATABASE_URL)", () => {
   const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });

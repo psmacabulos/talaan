@@ -1061,3 +1061,56 @@ sequenceDiagram
 | 2026-10-25 | If the server itself is broken, how can Heroku show our error page? |
 | 2026-10-26 | I reported a problem on my Mac. Where did it go? |
 | 2026-10-26 | Do I make a `static` and a `down` folder in the bucket? |
+
+## Local demo data (2026-10-27)
+
+### P-054 · 2026-10-27 · The demo parent can't sign in on the laptop
+- **Where:** `/parent/login` on `localhost:3000`, as `parent-one@balanga.example`.
+- **Symptom:** signing in with the demo password `Talaan123!` doesn't work.
+- **What was checked:**
+  - the account is in the local database (`id parent-balanga-1`), with its 3 links (student-0001, 0002 and 0006);
+  - it has no open reset code and no link block;
+  - its `updatedAt` is 2026-10-23 03:26, while the other five demo parents still have `updatedAt` equal to `createdAt` (2026-10-12);
+  - its stored hash checked against `Talaan123!` with the same scrypt `passwordMatches` uses: **no match**. The same check on `parent-balanga-2` matches.
+- **Cause:** the password was changed on 2026-10-23, the day the password reset (Step 55.6) and the parent app against the live server were being tried. A reset that set anything other than `Talaan123!` replaced the demo password for good. A seed or reset never touches it again unless `npm run db:reset` runs.
+- **Options weighed:**
+  1. Copy `parent-balanga-2`'s hash onto `parent-balanga-1` with one SQL `update` (all demo parents were seeded with the same password). Keeps everything else.
+  2. "Forgot your password?" at `/parent/login`, with the code from the `npm run dev` terminal. Also signs the parent out on every phone.
+  3. `npm run db:reset`. Also deletes the parents made by hand and every gate and monitor device.
+- **Solution:** option 1, the command is in `docs/LEARNING-LOG.md` ("Which parent accounts are in my local database?"). The owner runs it.
+- **Status:** Worked around: the owner signed in again with the password they had set. `Talaan123!` still doesn't match `parent-balanga-1` (checked again while building Step 59.5), so the copy-the-hash command above restores it whenever the demo password is wanted.
+
+| Date | Owner question (answered in `docs/LEARNING-LOG.md`) |
+|---|---|
+| 2026-10-27 | For the parent account on local, how do I know what's stored in the database? |
+
+## Step 59.5's checks (2026-10-28)
+
+### P-055 · 2026-10-28 · Two Step 59.4 tests collided with other tests running at the same time
+- **Where:** the owner's `npm test` and `npm run test:e2e` runs of Step 59.5. Both failures came from Step 59.4's tests, not from Step 59.5's code.
+- **Symptoms:**
+  ```
+  FAIL  src/services/taps/record-tap.pg.test.ts > … > gives two reads that both passed the quick check one tap and one Already tapped
+  AssertionError: expected [ { …(8) }, { …(8) } ] to have a length of 1 but got 2
+  FAIL  … > stores one of a gate read and a time in by hand for the same card at once   (the same)
+
+  [desktop] › e2e/attendance.spec.ts:31:7 › … › records an untapped student's time in, then their time out …
+  Error: strict mode violation: getByText('Out 9:15 AM').visible() resolved to 2 elements
+  ```
+- **Causes:**
+  1. **The database tests.** Vitest runs test files at the same time against the one test database. Step 56's test counted every Balanga tap from 2031-03-05 00:00 UTC to the next midnight, for any student. Step 59.4's new time-out test records its time in at `2031-03-05T23:10Z`, which is 7:10 AM on the school's 2031-03-06, inside that window. Its comment said it avoided Step 55's date, but it didn't check Step 56's window, which is a UTC day, not the school's. It fails only when the two files overlap, so it passed in the runs made while building.
+  2. **The browser test.** On the desktop project, the gate tests had already read two other Grade 8 Bonifacio students' cards a second time at the pinned 9:15 AM, so their rows also read "Out 9:15 AM". The check looked for that text anywhere on the page, not in Teresa Lazaro's row. The mobile project's class (Grade 10 Luna) had no such taps, so it passed.
+
+  ```mermaid
+  flowchart LR
+      A["record-manual-time-out.pg<br/>time in 2031-03-05T23:10Z"] -->|"same moment,<br/>same database"| W["record-tap.pg counts<br/>every Balanga tap<br/>2031-03-05 00:00 to 24:00 UTC"]
+      W --> F["2 taps, expected 1"]
+  ```
+- **Options weighed:** for the database tests, (1) move Step 59.4's test to a school day no other test touches, or (2) make Step 56's count only its own two students. Both were done: (1) removes the overlap, (2) keeps a future test on that day from breaking it again. For the browser test, look only in the student's own row (a `tr` on desktop, an `li` on a phone), rather than pick a class the gate tests never tap, which a new gate test could change.
+- **Solution:**
+  - `record-manual-time-out.pg.test.ts` now uses the school day 2031-03-12;
+  - `record-tap.pg.test.ts`'s `tapsOfDay` filters by `STUDENT_A` and `STUDENT_B`, as its clean-up already did;
+  - `e2e/attendance.spec.ts` checks "Recorded by staff" and "Out 9:15 AM" inside the student's own row.
+
+  `npx vitest run src/services/taps` passed 3 runs out of 3 (68 tests). `npx playwright test e2e/attendance.spec.ts e2e/gate.spec.ts` passed (14, and 2 skipped on mobile as always).
+- **Status:** Fixed, waiting for the owner's next full run.

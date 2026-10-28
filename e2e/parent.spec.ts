@@ -73,7 +73,25 @@ test.describe("Parent flow (mobile only)", () => {
     // Redirected to parent dashboard.
     await expect(page).toHaveURL("/parent");
 
-    // Step 4: Check the notification bell.
+    // Step 4: Carmen's card shows her time in (Step 59.5) and opens her day.
+    const card = page.getByRole("article").filter({ hasText: "Carmen Sison" });
+    await expect(card.getByText("Time in")).toBeVisible();
+    await expect(card.getByText("9:15 AM")).toBeVisible();
+    await card.getByRole("link", { name: "Carmen Sison" }).click();
+    await expect(page).toHaveURL(`/parent/child/${student!.id}`);
+    await expect(page.getByRole("heading", { name: "Carmen Sison", level: 1 })).toBeVisible();
+    const today = page.getByRole("region", { name: "Today" });
+    await expect(today.getByText("1. In")).toBeVisible();
+    await expect(today.getByText("9:15 AM")).toBeVisible();
+
+    // A child who isn't theirs is "not found", never someone else's day.
+    const notTheirs = seedStudents.find((s) => s.schoolId === "school-balanga" && s.id !== student!.id)!;
+    await page.goto(`/parent/child/${notTheirs.id}`);
+    await expect(page.getByRole("heading", { name: "We couldn't find that child" })).toBeVisible();
+    await page.getByRole("link", { name: "Go to My children" }).click();
+    await expect(page).toHaveURL("/parent");
+
+    // Step 5: Check the notification bell.
     // The tap we made earlier should now show as a notification for this child.
     // Bell is in the header — on mobile it opens a menu.
     const notificationButton = page.getByRole("button", { name: /Notifications/ });
@@ -88,7 +106,7 @@ test.describe("Parent flow (mobile only)", () => {
     await expect(menu).toBeVisible();
     await expect(menu.getByText(new RegExp(student!.firstName)).first()).toBeVisible();
 
-    // Step 5: Open the full notifications page.
+    // Step 6: Open the full notifications page.
     await page.getByRole("menuitem", { name: /View all/i }).click();
     await expect(page).toHaveURL("/parent/notifications");
 
@@ -104,7 +122,7 @@ test.describe("Parent flow (mobile only)", () => {
         .first(),
     ).toBeVisible();
 
-    // Step 6: Sign out and back in.
+    // Step 7: Sign out and back in.
     // On mobile, sign-out is likely in a menu or footer.
     const accountMenu = page.getByRole("button", { name: /Account|Menu|More/i }).last();
     if (await accountMenu.isVisible()) {
@@ -247,12 +265,13 @@ test.describe("Parent flow (mobile only)", () => {
     await linkChild(page, OCEANVIEW, oceanviewChild);
     await expect(page).toHaveURL("/parent");
 
-    // Both children, each with their own school's name, since they're at two schools.
+    // Both children. No school names (Step 59.5, as in the parent app): a
+    // parent knows their children's schools.
     const main = page.locator("main");
     for (const child of [balangaChild, oceanviewChild]) {
       await expect(main.getByRole("heading", { name: `${child.firstName} ${child.lastName}` })).toBeVisible();
     }
-    await expect(main.getByText(BALANGA)).toBeVisible();
-    await expect(main.getByText(OCEANVIEW)).toBeVisible();
+    await expect(main.getByText(BALANGA)).toHaveCount(0);
+    await expect(main.getByText(OCEANVIEW)).toHaveCount(0);
   });
 });

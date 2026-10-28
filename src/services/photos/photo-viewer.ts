@@ -3,6 +3,7 @@ import {
   parentTokenRepository,
   type ParentStudentLinkRepository,
 } from "@/data/repositories";
+import { getParentSession, type ParentSession } from "@/lib/parent-session";
 import { getSession } from "@/lib/session";
 import { schoolOfPhotoKey, studentOfPhotoKey } from "@/features/students/photo";
 import { monitorDeviceFromCookie } from "@/features/gate/monitor-viewer";
@@ -42,6 +43,23 @@ export async function parentPhotoViewer(
   const caller = await authenticateParent(authorization, now, deps);
   if (!caller) return null;
   const links = await deps.links.listByParent(caller.parentId);
+  return { children: links.map(({ schoolId, studentId }) => ({ schoolId, studentId })) };
+}
+
+/**
+ * A parent signed in on the web (Step 59.5), by their cookie, with their
+ * linked children, each at the school the link saved. Null when no parent
+ * is signed in in this browser.
+ */
+export async function webParentPhotoViewer(
+  deps: {
+    session: () => Promise<ParentSession | null>;
+    links: Pick<ParentStudentLinkRepository, "listByParent">;
+  } = { session: getParentSession, links: parentStudentLinkRepository },
+): Promise<PhotoViewer | null> {
+  const session = await deps.session();
+  if (!session) return null;
+  const links = await deps.links.listByParent(session.parentId);
   return { children: links.map(({ schoolId, studentId }) => ({ schoolId, studentId })) };
 }
 

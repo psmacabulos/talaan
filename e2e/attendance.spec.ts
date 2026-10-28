@@ -44,6 +44,10 @@ test.describe("Attendance: record a time in and out by hand (Steps 55 and 59.4)"
       ? { name: "Manuel Flores", grade: 10, section: "Luna" }
       : { name: "Teresa Lazaro", grade: 8, section: "Bonifacio" };
     await page.goto(`/attendance?date=2026-06-19&grade=${grade}&section=${section}`);
+    // Only this student's row: the gate tests tap other students in the same
+    // class at the same pinned 9:15 AM, so "Out 9:15 AM" can be on their rows
+    // too (P-055). A table row on a desktop, a list item on a phone.
+    const row = page.locator("tr, li").filter({ hasText: name }).locator("visible=true");
 
     const button = page.getByRole("button", { name: `Record time in for ${name}` }).locator("visible=true");
     await button.click();
@@ -51,7 +55,7 @@ test.describe("Attendance: record a time in and out by hand (Steps 55 and 59.4)"
     await dialog.getByRole("button", { name: "Record time in" }).click();
 
     await expect(page.getByText(`${name}'s time in was recorded at 9:15 AM`)).toBeVisible();
-    await expect(page.getByText("Recorded by staff").locator("visible=true")).toBeVisible();
+    await expect(row.getByText("Recorded by staff")).toBeVisible();
     // Once tapped, the time takes the button's place, on both layouts.
     await expect(button).toHaveCount(0);
 
@@ -63,7 +67,7 @@ test.describe("Attendance: record a time in and out by hand (Steps 55 and 59.4)"
     await outDialog.getByRole("button", { name: "Record time out" }).click();
 
     await expect(page.getByText(`${name}'s time out was recorded at 9:15 AM`)).toBeVisible();
-    await expect(page.getByText("Out 9:15 AM").locator("visible=true")).toBeVisible();
+    await expect(row.getByText("Out 9:15 AM")).toBeVisible();
     // Out, and no back in by hand: neither button is left.
     await expect(outButton).toHaveCount(0);
     await expect(page.getByRole("button", { name: `Record time in for ${name}` })).toHaveCount(0);

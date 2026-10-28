@@ -21,8 +21,8 @@ const BELL_ITEMS = 5;
  * feel bare: Step 23 ("Parent dashboard") replaces this with the real
  * parent shell (attendance summaries, history). `(protected)` is a route
  * group — it adds no path segment — so this guard covers every page under
- * it (currently `/parent` and `/parent/link-child`) without covering the
- * public `/parent/login` and `/parent/signup` siblings.
+ * it (`/parent`, a child's day, notifications and `/parent/link-child`)
+ * without covering the public `/parent/login` and `/parent/signup` siblings.
  */
 export default async function ParentProtectedLayout({ children }: { children: ReactNode }) {
   const session = await getParentSession();

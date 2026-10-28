@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createMockParentStudentLinkRepository } from "@/data/repositories/parent-student-link-repository";
 import { createMockParentTokenRepository } from "@/data/repositories/parent-token-repository";
 import { issueParentToken } from "@/services/parents/parent-token";
-import { canViewPhoto, parentPhotoViewer } from "./photo-viewer";
+import { canViewPhoto, parentPhotoViewer, webParentPhotoViewer } from "./photo-viewer";
 
 const KEY = "school-balanga/student-0001/k3x9q2ab.webp";
 const NOW = "2026-10-16T00:00:00.000Z";
@@ -30,26 +30,41 @@ describe("canViewPhoto", () => {
   });
 });
 
+function linksOfParent1() {
+  return createMockParentStudentLinkRepository(
+    [
+      {
+        id: "link-1",
+        schoolId: "school-balanga",
+        parentId: "parent-1",
+        studentId: "student-0001",
+        linkedAt: "2026-06-01T00:00:00.000Z",
+      },
+    ],
+    { latencyMs: 0 },
+  );
+}
+
 describe("parentPhotoViewer", () => {
   it("is the parent's linked children for a working token, and nobody for any other", async () => {
     const tokens = createMockParentTokenRepository();
-    const links = createMockParentStudentLinkRepository(
-      [
-        {
-          id: "link-1",
-          schoolId: "school-balanga",
-          parentId: "parent-1",
-          studentId: "student-0001",
-          linkedAt: "2026-06-01T00:00:00.000Z",
-        },
-      ],
-      { latencyMs: 0 },
-    );
+    const links = linksOfParent1();
     const token = await issueParentToken("parent-1", null, NOW, { tokens });
 
     await expect(parentPhotoViewer(`Bearer ${token}`, NOW, { tokens, links })).resolves.toEqual({
       children: [{ schoolId: "school-balanga", studentId: "student-0001" }],
     });
     await expect(parentPhotoViewer("Bearer tal_par_made-up", NOW, { tokens, links })).resolves.toBeNull();
+  });
+});
+
+describe("webParentPhotoViewer", () => {
+  it("is the signed-in parent's linked children, and nobody when no parent is signed in", async () => {
+    const links = linksOfParent1();
+
+    await expect(webParentPhotoViewer({ session: async () => ({ parentId: "parent-1" }), links })).resolves.toEqual({
+      children: [{ schoolId: "school-balanga", studentId: "student-0001" }],
+    });
+    await expect(webParentPhotoViewer({ session: async () => null, links })).resolves.toBeNull();
   });
 });
