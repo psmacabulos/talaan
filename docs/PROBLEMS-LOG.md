@@ -1114,3 +1114,20 @@ sequenceDiagram
 
   `npx vitest run src/services/taps` passed 3 runs out of 3 (68 tests). `npx playwright test e2e/attendance.spec.ts e2e/gate.spec.ts` passed (14, and 2 skipped on mobile as always).
 - **Status:** Fixed, waiting for the owner's next full run.
+
+## Turning on real pushes (2026-10-28)
+
+### P-056 · 2026-10-28 · The Expo access token was pasted into a chat, and the setting still read `log`
+- **Where:** the live server, `heroku config:set PUSH_SENDER=expo EXPO_ACCESS_TOKEN=… --app bantayaral`, run by the owner with the token typed in. The command and its output were then pasted into the chat with Claude.
+- **Symptoms:**
+  1. The token was in a chat transcript.
+  2. The output ended with `PUSH_SENDER: log`, after `Warning: Release command executing: this config change will not be available until the command succeeds` and `Setting PUSH_SENDER, EXPO_ACCESS_TOKEN and restarting ⬢ bantayaral... done, v39`.
+- **Causes:**
+  1. `heroku config:set` prints every value it sets, secrets included, so pasting its output shares the secret.
+  2. Not yet known. Most likely the CLI printed the value from before the release command finished: with a release phase, a settings change only applies once that command succeeds.
+- **Options weighed:** keep the token, since the chat is private; or revoke it and make a new one. A secret that has left the terminal is treated as exposed, so revoke it.
+- **Solution:**
+  - Revoke the pasted token on expo.dev and set a new one with `heroku config:set EXPO_ACCESS_TOKEN=<new> --app bantayaral`, without pasting the output.
+  - Check `heroku config:get PUSH_SENDER --app bantayaral` reads `expo`, and that `heroku releases --app bantayaral -n 3` shows the release didn't fail. If it did, `heroku releases:output --app bantayaral` says why.
+  - From now on, share "done" or an output with secrets blanked out, never a `config:set` line with a secret in it.
+- **Status:** Waiting for the owner to replace the token and check the setting.

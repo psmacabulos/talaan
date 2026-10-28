@@ -338,6 +338,7 @@ Five wrong passwords for one email answer `429` for 15 minutes. Locally, request
 | `cp docs/PARENT-API.md ../bantayaral-parent-app/docs/TALAAN-API.md` | Copies the API contract. Run it again whenever `docs/PARENT-API.md` changes. |
 | `ipconfig getifaddr en0` | This Mac's address on the Wi-Fi, only when the app should use Talaan on this Mac instead of Heroku: its `EXPO_PUBLIC_API_URL` becomes `http://<address>:3000`. |
 | `heroku config:set PUSH_SENDER=expo EXPO_ACCESS_TOKEN=<token> --app bantayaral` | At the app's M7: the live server sends real pushes instead of only logging them. Type the token yourself. |
+| `heroku logs --tail --app bantayaral \| grep "push:"` | Watch the live server's push lines while you test: `push: sent 1, …` after a tap, `push: receipts ok 1, …` 15 to 20 minutes later. No names or tokens are ever logged. |
 
 ---
 

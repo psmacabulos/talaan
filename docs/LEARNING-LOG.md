@@ -1556,6 +1556,19 @@ Nowhere: it stayed in your browser. Under `npm run dev`, "Report this problem" p
 ### Do I make a `static` and a `down` folder in the bucket? (owner question, 2026-10-26)
 No. `static/down/` is only where the two files live in this repository, so they're kept apart from the app's own code. In the bucket they go at the top, side by side: `index.html` and `confused-student.webp`. What matters is that they're next to each other, because the page asks for its picture by the bare name `confused-student.webp`, which the browser looks for in the same place as the page. Folders would still work if both files were in the same one, but the address Heroku needs would then be longer (`…/static/down/index.html`). Step by step: `docs/DEPLOY.md`, "Put the 'down for a moment' page up".
 
+### Firebase is set up in the app. What does the live server need for real pushes? (owner question, 2026-10-28)
+Two Heroku settings, and nothing about Firebase. The server never talks to Firebase. It hands each push to Expo's push service, and Expo passes it to Firebase (Android) or Apple (iOS) with the Firebase key you uploaded to Expo for the app. So the Firebase key belongs in Expo, never on Heroku.
+
+The two settings:
+- `PUSH_SENDER=expo` makes the server send for real. Until now it was `log`, which builds each push and only logs how many would go.
+- `EXPO_ACCESS_TOKEN` proves to Expo that the pushes come from your server. Make it at expo.dev (Account settings, Access tokens), on the same Expo account that owns the app's project.
+
+```bash
+heroku config:set PUSH_SENDER=expo EXPO_ACCESS_TOKEN=<token> --app bantayaral
+```
+
+Both go in one command, so the server restarts once. With `expo` and no token, the server refuses to start (`checkProductionEnv`). Type the token in your own terminal, never in a chat or a file in a repository. To test and to read the log lines, see `docs/PUSH.md`.
+
 ## Planning and review
 
 ### Why did the architect find things the plan missed? (owner question, 2026-10-16)
