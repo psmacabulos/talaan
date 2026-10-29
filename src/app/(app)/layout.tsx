@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { getNow, isDemoClock } from "@/lib/clock";
-import { formatSchoolDate, formatSchoolTime } from "@/lib/school-time";
 import { requireSession } from "@/lib/session";
 import { schoolRepository, staffRepository } from "@/data/repositories";
 import { getThemeOverride } from "@/lib/theme/theme-override";
@@ -34,10 +33,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   // no school in view has nothing saved, so it shows the app default.
   const themeSelection = overridePresetId ?? (school ? "saved" : DEFAULT_THEME_PRESET_ID);
 
-  // When DEMO_NOW pins the clock (src/lib/clock.ts), every staff page says
-  // so, so a pinned clock can never go unnoticed on a real server.
+  // The top bar's clock starts from the time this page was built; the
+  // browser keeps it going (Step 59.9). When DEMO_NOW pins the clock
+  // (src/lib/clock.ts), every staff page says so, so a pinned clock can
+  // never go unnoticed on a real server.
   const now = getNow();
-  const demoClockLabel = isDemoClock() ? `${formatSchoolDate(now)}, ${formatSchoolTime(now)}` : null;
 
   return (
     <>
@@ -49,7 +49,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         staff={staff}
         schools={schools}
         themeSelection={themeSelection}
-        demoClockLabel={demoClockLabel}
+        now={now}
+        demoClock={isDemoClock()}
       >
         {children}
       </AppShell>

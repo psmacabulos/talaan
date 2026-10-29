@@ -22,7 +22,7 @@ export default async function SettingsPage() {
   if (!session.schoolId) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader as="h2" title="Settings" description="School-wide settings." />
+        <PageHeader title="Settings" description="School-wide settings." />
         <NoSchoolSelected subject="settings" />
       </div>
     );
@@ -33,7 +33,6 @@ export default async function SettingsPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        as="h2"
         title="Settings"
         description={school ? `School-wide settings for ${school.name}.` : "School-wide settings."}
       />

@@ -3,7 +3,7 @@ import type { School } from "@/features/schools/types";
 import type { ThemeSelection } from "@/lib/theme/presets";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { MobileNav } from "./mobile-nav";
-import { TopbarTitle } from "./topbar-title";
+import { TopbarClock } from "./topbar-clock";
 import { DevSwitcher } from "./dev-switcher";
 import { SignOutButton } from "./sign-out-button";
 import { ThemeDropdown } from "./theme-dropdown";
@@ -21,7 +21,8 @@ export function Topbar({
   staff,
   schools,
   themeSelection,
-  demoClockLabel,
+  now,
+  demoClock,
 }: {
   userId: string;
   school: School | null;
@@ -29,8 +30,10 @@ export function Topbar({
   staff: Staff[];
   schools: School[];
   themeSelection: ThemeSelection;
-  /** "June 19, 2026, 9:15 AM" when DEMO_NOW pins the clock, otherwise null. */
-  demoClockLabel: string | null;
+  /** The server's time when it built the page; the top bar's clock starts from it. */
+  now: string;
+  /** Whether DEMO_NOW pins the clock. */
+  demoClock: boolean;
 }) {
   // The dev switcher is a stand-in for real login (Phase 2) — never
   // rendered in production, checked here (not just by which button a
@@ -42,24 +45,24 @@ export function Topbar({
   return (
     <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-card px-4 sm:px-6">
       <MobileNav role={role} school={school} />
-      <TopbarTitle />
+      <TopbarClock key={now} serverNow={now} pinned={demoClock} />
       {/* Light/dark stays at every width (Step 27.5): it's a per-person
           reading preference, as useful on a phone as on a desktop. The demo
           clock badge stays at every width too: a pinned clock must be
-          obvious on any screen. */}
+          obvious on any screen. The pinned time itself is the clock's. */}
       <div className="ml-auto flex shrink-0 items-center gap-2">
-        {demoClockLabel ? (
+        {demoClock ? (
           <span
             className="rounded-full bg-status-late-bg px-2.5 py-1 text-xs font-medium text-status-late"
-            title={`The app's clock is pinned to ${demoClockLabel} (DEMO_NOW).`}
+            title="The app's clock is pinned by DEMO_NOW."
           >
-            Demo clock<span className="hidden md:inline">: {demoClockLabel}</span>
+            Demo clock
           </span>
         ) : null}
         <ThemeToggle />
       </div>
-      {/* Dropped below sm so the page title always has room to breathe on
-          a phone-width top bar — same reasoning as Step 10's identity chip. */}
+      {/* Dropped below sm so the clock always has room to breathe on a
+          phone-width top bar — same reasoning as Step 10's identity chip. */}
       <div className="hidden shrink-0 items-center gap-2 sm:flex">
         {role !== "teacher" && <ThemeDropdown selection={themeSelection} hasSchool={school !== null} />}
         {isDev ? (

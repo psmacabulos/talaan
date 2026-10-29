@@ -81,3 +81,13 @@ export function formatSchoolDate(iso: string): string {
     timeZone: "UTC",
   });
 }
+
+/** "Thursday, October 29, 2026", or "Thu, Oct 29" when short: the school's calendar date with its weekday. */
+export function formatSchoolDay(iso: string, length: "long" | "short"): string {
+  return onSchoolClock(iso).toLocaleDateString(
+    "en-US",
+    length === "long"
+      ? { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "UTC" }
+      : { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" },
+  );
+}

@@ -17,7 +17,8 @@ export function AccessDenied({ reason }: { reason: string }) {
     <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-12 text-center">
       <Lock className="size-10 text-muted-foreground" aria-hidden="true" />
       <div className="flex flex-col gap-1">
-        <p className="font-heading text-base font-semibold text-foreground">You don&apos;t have access to this page</p>
+        {/* The page's h1: the top bar shows the date and time, not a title (Step 59.9). */}
+        <h1 className="font-heading text-base font-semibold text-foreground">You don&apos;t have access to this page</h1>
         <p className="text-sm text-muted-foreground">{reason}</p>
       </div>
       <Link

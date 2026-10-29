@@ -27,7 +27,7 @@ import { requireSession } from "@/lib/session";
 function AttendancePageShell({ description, children }: { description: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader as="h2" title="Attendance" description={description} />
+      <PageHeader title="Attendance" description={description} />
       {children}
     </div>
   );

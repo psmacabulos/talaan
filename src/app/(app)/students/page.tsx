@@ -42,7 +42,7 @@ export default async function StudentsPage({ searchParams }: PageProps<"/student
   if (!session.schoolId) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader as="h2" title="Students" description="Everyone enrolled at this school." />
+        <PageHeader title="Students" description="Everyone enrolled at this school." />
         <NoSchoolSelected subject="student list" />
       </div>
     );

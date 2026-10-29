@@ -59,7 +59,7 @@ export default async function DashboardPage() {
   if (!session.schoolId) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader as="h2" title="Dashboard" description="Attendance for one school at a time." />
+        <PageHeader title="Dashboard" description="Attendance for one school at a time." />
         <NoSchoolSelected />
       </div>
     );
@@ -104,7 +104,6 @@ export default async function DashboardPage() {
     return (
       <div className="flex flex-col gap-6">
         <PageHeader
-          as="h2"
           title={greeting}
           description={
             signedInStaff?.advisoryGradeLevel && signedInStaff.advisorySection
@@ -152,7 +151,6 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        as="h2"
         title={session.role === "super_admin" ? `Viewing ${school?.name ?? "this school"}` : greeting}
         description={
           session.role === "super_admin"

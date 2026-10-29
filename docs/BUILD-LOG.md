@@ -3070,3 +3070,21 @@ From the parent app's `docs/API-REQUESTS.md`, which the owner brought back the s
 No runs while building: the checks are the owner's.
 
 **The owner's run (2026-10-28).** Lint, check:tokens, typecheck, the tests and the build all passed. The build printed one warning, from code this step didn't touch: the local photo folder traces the whole project (P-058), fixed separately after this step's commit.
+
+## Step 59.9: the top bar shows the date and time (2026-10-29)
+
+The owner, moving through the sidebar before a demo the next day, saw the top bar repeat each page's own heading ("Attendance" above "Attendance", P-059) and asked for today's date and time there instead. They then asked what the "Demo clock" badge is for, and whether a clock in the top bar would ask the server for the time every minute. Three options were laid out (device only; the server's time in the page, moved on by the device; asking the server each minute), and the owner picked the second. Built straight away for the demo, taken out of order before 59.7; the recipe was written from the real diff afterwards.
+
+**What changed.**
+- `src/lib/school-time.ts` gains `formatSchoolDay(iso, "long" | "short")`: "Thursday, October 29, 2026" or "Thu, Oct 29", on the school's clock, the same `toLocaleDateString` with `timeZone: "UTC"` on the shifted instant that `formatSchoolDate` already uses (and that `gate-kiosk.tsx` already renders on both server and browser).
+- `src/components/app-shell/topbar-clock.tsx` (new, client) replaces `topbar-title.tsx` (deleted). It starts from the `serverNow` prop and, unless `pinned`, schedules a `setTimeout` for the next minute boundary, showing `serverNow + (Date.now() - loadedAt)`. Only the difference between two device readings is used, so a wrong device clock doesn't matter. `visibilitychange` updates at once after sleep. No state is set in the effect body itself, only in timer callbacks, to stay inside the React hooks lint rules.
+- `topbar.tsx` renders `<TopbarClock key={now} serverNow={now} pinned={demoClock} />`; `key={now}` restarts it whenever the layout gets a fresh server time. `demoClockLabel: string | null` became `now: string` plus `demoClock: boolean` through `app-shell.tsx` and `(app)/layout.tsx`, which no longer formats the label. The badge text is just "Demo clock".
+- Headings: with no `<h1>` in the top bar, `PageHeader`'s `as` prop went (every caller passed `"h2"`; keeping an unused option would be dead code), 12 `as="h2"` came out of the `(app)` pages and three directories, and `AccessDenied`'s title became an `<h1>`, since on a blocked page it's the only heading. `e2e/login.spec.ts` and `e2e/isolation.spec.ts` checked `level: 2` on a page title; both now check `level: 1`.
+
+**Layout choices.** Short date below `xl` (1280px), long from `xl`: between 640 and 1280px the right side of the bar holds the theme dropdown, the dev switcher (or role label) and Sign out, and the long date would truncate there. The date sits in its own `truncate` span and the time in a `shrink-0` one, so if anything is cut it's the end of the date, never the time. `tabular-nums` keeps the width steady as digits change. The clock is a `<time dateTime>` with the school's offset, not a heading and not an `aria-live` region.
+
+**Known limit.** The second or two between the server building the page and the browser starting the clock isn't counted, so the minute can turn over that much late. Fine for a wall-clock display; the taps themselves are timed by the server.
+
+**Formatting.** `npx prettier --check` on the changed files flagged only `e2e/login.spec.ts`, on three older lines this step didn't touch; left alone.
+
+No runs while building: the checks are the owner's.

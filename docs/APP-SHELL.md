@@ -12,7 +12,7 @@ flowchart TB
         Sidebar["sidebar.tsx<br/>static, ≥1024px"]
         MobileNav["mobile-nav.tsx *client*<br/>Sheet drawer, <1024px"]
         NavLinks["nav-links.tsx *client*<br/>the actual <Link> list"]
-        TopbarTitle["topbar-title.tsx *client*"]
+        TopbarClock["topbar-clock.tsx *client*<br/>date and time (Step 59.9)"]
         Topbar["topbar.tsx"]
         AccessDenied["access-denied.tsx"]
     end
@@ -31,9 +31,9 @@ flowchart TB
     Sidebar -->|role, a plain string| NavLinks
     MobileNav -->|role, a plain string| NavLinks
     Topbar --> MobileNav
-    Topbar --> TopbarTitle
+    Layout -->|"now: the server's time, a plain string"| AppShell
+    Topbar --> TopbarClock
     NavItems -.imported directly, not passed as a prop.-> NavLinks
-    NavItems -.imported directly.-> TopbarTitle
     NavItems -->|hasNavAccess| Pages
     Pages -->|when blocked| AccessDenied
     Layout --> Pages
@@ -111,9 +111,42 @@ A teacher who never sees "Staff" in their own sidebar and types `/staff` directl
 
 **Why not a redirect, and why not `notFound()`:** a silent bounce to `/dashboard` hides *why* nothing happened, which fails CLAUDE.md's "clear messages" bar. `notFound()` would render as if the page didn't exist at all — misleading for something that exists but is restricted. A plain, honest message with a way back is the friendlier and more accurate choice for a school app where roles aren't a secret.
 
+## Step 59.9: the top bar shows the date and time, and each page owns its `<h1>`
+
+**Superseded.** The section below ("Why the page title now lives in two places") describes Steps 10 to 59.8. The owner noticed the top bar repeated the page's own heading ("Attendance" above "Attendance") and asked for today's date and time there instead, since this is an attendance monitor.
+
+**What the top bar shows:** "Thu, Oct 29 · 9:15 AM" below 1280px, "Thursday, October 29, 2026 · 9:15 AM" from 1280px up, always on the school's clock (`formatSchoolDay` and `formatSchoolTime` in `src/lib/school-time.ts`), never the viewer's own time zone. On a narrow bar the date truncates first; the time never does.
+
+**Where the time comes from, and what it costs.** The server already builds every page, so `(app)/layout.tsx` writes `getNow()` into it as a plain string. From then on the browser moves it forward by the time passed on the device. No request is ever made for the time.
+
+```mermaid
+sequenceDiagram
+    participant S as Server (layout.tsx)
+    participant B as Browser (TopbarClock)
+    S->>B: the page, with now = "2026-10-29T01:15:30Z" (no extra request)
+    Note over B: loadedAt = the device's Date.now()
+    loop each time the minute turns over (setTimeout, not every second)
+        B->>B: shown = serverNow + (Date.now() - loadedAt)
+    end
+    Note over B: back from sleep (visibilitychange): update at once
+```
+
+Only the *difference* between two device readings is used, so a phone set to the wrong time still shows the right one. The time between the server building the page and the browser starting the clock (a second or two) isn't counted, so a minute can turn over that much late.
+
+```tsx
+// topbar.tsx
+<TopbarClock key={now} serverNow={now} pinned={demoClock} />
+```
+
+`key={now}` starts the clock over whenever the server sends a new time (a full load, or `router.refresh()` after a save). Moving between pages doesn't re-render the layout, so the clock just keeps going.
+
+**The demo clock.** When `DEMO_NOW` pins the app's time (the browser tests), the clock shows that pinned time and stays still, matching the data on the page. The yellow badge now just says "Demo clock"; the time it used to repeat is the clock's.
+
+**Headings.** With no title in the top bar, `PageHeader` is always the page's `<h1>`. Its `as` prop is gone, every `(app)/` page dropped `as="h2"`, and `AccessDenied`'s title became an `<h1>` (it looks the same). The clock is a `<time>` element, not a heading and not a live region, so a screen reader doesn't announce it every minute.
+
 ## Why the page title now lives in two places: `<h1>` (top bar) and `<h2>` (page content)
 
-`TopbarTitle` is a small Client Component that reads the current route segment (`useSelectedLayoutSegment()` — layouts themselves can't see the current path, since they don't rerender on navigation) and looks up its label from `NAV_ITEMS`:
+*Steps 10 to 59.8; replaced by Step 59.9 above.* `TopbarTitle` was a small Client Component that reads the current route segment (`useSelectedLayoutSegment()` — layouts themselves can't see the current path, since they don't rerender on navigation) and looks up its label from `NAV_ITEMS`:
 
 ```tsx
 // topbar-title.tsx — "use client"
@@ -169,7 +202,7 @@ The `topbar.tsx` server component decides whether `DevSwitcher` renders **at all
 
 **`ThemeDropdown`** is unrelated to the dev/production split — CLAUDE.md calls for keeping it in real, "demo" builds, since it is a real way for a principal to try themes. Saving happens separately, on Settings > Appearance (Step 26), and the dropdown's first option, "Saved theme", drops any preview and goes back to what the school saved. It renders whenever `role !== "teacher"`, in production or not. Its own Server Action (`setThemeOverride`) checks the role server-side too, independently of the UI — see `docs/STYLING-SYSTEM.md`'s Step 11 section for what it actually does to the page's colors.
 
-**Both controls disappear below `sm` (640px)**, same reasoning as Step 10's original identity chip: a 360px top bar only has room for the menu button and the page title before things start truncating.
+**Both controls disappear below `sm` (640px)**, same reasoning as Step 10's original identity chip: a 360px top bar only has room for the menu button and the page title (the date and time since Step 59.9) before things start truncating.
 
 ## Step 11.5: big screens — grow generously, then stop
 
@@ -201,10 +234,12 @@ flowchart LR
 
 **I'm building real content for a page past Step 12 and want it to behave well on a big screen:** you don't need to do anything extra for the outer container — `(app)/layout.tsx` already caps it at 1600px past 1536px width. If the content itself is data-dense (a table, a multi-column grid), let it use the *full* available width inside that container rather than adding your own narrower max-width — a wide table or a grid that adds columns as space allows is exactly the kind of thing that should benefit from the reclaimed room. If it's prose-heavy (a form, a long description), a narrower `max-w-prose`/`max-w-xl` wrapper *inside* the page is fine and often better for readability — that's a per-page call, not something the shell should force.
 
-**I want to add a new top-level nav item:** add one entry to `NAV_ITEMS` in `nav-items.ts` (segment, href, label, icon, roles) — the sidebar, the mobile drawer, and the top bar title all pick it up automatically. Create the matching `src/app/(app)/<segment>/page.tsx`.
+**I want to add a new top-level nav item:** add one entry to `NAV_ITEMS` in `nav-items.ts` (segment, href, label, icon, roles) — the sidebar and the mobile drawer both pick it up automatically. Create the matching `src/app/(app)/<segment>/page.tsx`.
 
 **I want to change who can see an existing page:** edit that item's `roles` array in `nav-items.ts`. Nothing else needs touching — the nav and the guard both read from the same place.
 
-**I want to add a heading inside a page that lives in `(app)/`:** use `<PageHeader as="h2" title="..." />`, not a bare `<h1>` — the top bar already owns the page's `<h1>`.
+**I want to add a heading inside a page that lives in `(app)/`:** the page's title is `<PageHeader title="..." />`, its one `<h1>`. Sections below it are `<h2>`.
+
+**I want to change how the top bar's date or time reads:** edit `formatSchoolDay` in `src/lib/school-time.ts` (and its test), or the breakpoint classes in `topbar-clock.tsx`. Keep it on the school's clock, never `new Date().toLocaleString()` without the school's offset.
 
 **I want to know if a role can reach a given section from plain code** (not inside a page): `hasNavAccess(role, "staff")` — returns a boolean, no React needed.

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatSchoolDate,
+  formatSchoolDay,
   formatSchoolTime,
   isWeekend,
   minutesFromClockTime,
@@ -72,6 +73,18 @@ describe("isWeekend", () => {
 describe("formatSchoolDate", () => {
   it("names the school's calendar date", () => {
     expect(formatSchoolDate("2026-06-19T23:56:00.000Z")).toBe("June 20, 2026");
+  });
+});
+
+describe("formatSchoolDay", () => {
+  it("names the school's day with its weekday, long or short", () => {
+    const lateEvening = schoolTimeToIso("2026-10-29", "23:59");
+    expect(formatSchoolDay(lateEvening, "long")).toBe("Thursday, October 29, 2026");
+    expect(formatSchoolDay(lateEvening, "short")).toBe("Thu, Oct 29");
+  });
+
+  it("turns over at the school's midnight, not UTC's", () => {
+    expect(formatSchoolDay("2026-10-29T16:00:00.000Z", "short")).toBe("Fri, Oct 30");
   });
 });
 

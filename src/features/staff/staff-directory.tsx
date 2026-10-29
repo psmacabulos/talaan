@@ -31,7 +31,6 @@ export function StaffDirectory({ items, currentUserId }: { items: Staff[]; curre
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        as="h2"
         title="Staff"
         description="Principals and teachers who can sign in to this school. They cannot see any other school."
         actions={

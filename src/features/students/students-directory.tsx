@@ -70,7 +70,6 @@ export function StudentsDirectory({
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        as="h2"
         title={title}
         description={description}
         actions={

@@ -27,7 +27,7 @@ test.describe("One school can't see another's data (Step 51)", () => {
   test("Oceanview's student search finds no Balanga student", async ({ context, page, baseURL }) => {
     await signInAs(context, "oceanview_principal", baseURL!);
     await page.goto(`/students?q=${encodeURIComponent(balangaStudent.lastName)}`);
-    await expect(page.getByRole("heading", { level: 2, name: "Students" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Students" })).toBeVisible();
     await expect(page.getByText(fullName(balangaStudent))).toHaveCount(0);
   });
 

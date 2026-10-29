@@ -21,7 +21,7 @@ test.describe("Login", () => {
     await page.getByLabel("Password", { exact: true }).fill("Talaan123!");
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
     await expect(page).toHaveURL("/dashboard");
-    await expect(page.getByRole("heading", { level: 2, name: /^Good (morning|afternoon|evening)/ })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening)/ })).toBeVisible();
   });
 
   test("a wrong email or password is refused, with no session", async ({ context, page }, testInfo) => {

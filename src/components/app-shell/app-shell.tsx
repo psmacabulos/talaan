@@ -13,7 +13,8 @@ export function AppShell({
   staff,
   schools,
   themeSelection,
-  demoClockLabel,
+  now,
+  demoClock,
   children,
 }: {
   userId: string;
@@ -22,8 +23,10 @@ export function AppShell({
   staff: Staff[];
   schools: School[];
   themeSelection: ThemeSelection;
-  /** "June 19, 2026, 9:15 AM" when DEMO_NOW pins the clock, otherwise null. */
-  demoClockLabel: string | null;
+  /** The server's time when it built the page; the top bar's clock starts from it. */
+  now: string;
+  /** Whether DEMO_NOW pins the clock. */
+  demoClock: boolean;
   children: ReactNode;
 }) {
   return (
@@ -38,7 +41,8 @@ export function AppShell({
           staff={staff}
           schools={schools}
           themeSelection={themeSelection}
-          demoClockLabel={demoClockLabel}
+          now={now}
+          demoClock={demoClock}
         />
         {/* Below 2xl (1536px), full width — unchanged from Step 10. At 2xl
             and up, padding grows a step further and content stops at a

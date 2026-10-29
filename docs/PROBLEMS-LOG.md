@@ -73,6 +73,8 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-056](#p-056--2026-10-28--the-expo-access-token-was-pasted-into-a-chat-and-the-setting-still-read-log) | 2026-10-28 | The Expo access token was pasted into a chat, and the setting still read `log` | Security | Heroku, Expo | Waiting for the owner to replace the token |
 | [P-057](#p-057--2026-10-28--every-push-shows-bantay-aral-twice) | 2026-10-28 | Every push shows "Bantay Aral" twice | Other: design | Push, parent app | Fixed in Step 59.6, live once deployed |
 | [P-058](#p-058--2026-10-28--the-build-warns-that-the-local-photo-folder-traces-the-whole-project) | 2026-10-28 | The build warns that the local photo folder traces the whole project | Other: build | `npm run build`, photos | Fix proposed, after Step 59.6's commit |
+| [P-059](#p-059--2026-10-29--the-top-bar-repeats-the-pages-own-title) | 2026-10-29 | The top bar repeats the page's own title | Other: design | App shell | Fixed in Step 59.9, waiting for the owner's checks |
+| [P-060](#p-060--2026-10-29--the-parent-api-test-waited-20-seconds-for-a-push-that-stayed-waiting) | 2026-10-29 | The parent API test waited 20 seconds for a push that stayed "waiting" | Other: tests | Push worker, Playwright | Looking into it |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -1169,3 +1171,44 @@ sequenceDiagram
   3. The ignore comment the warning offers, `path.join(/*turbopackIgnore: true*/ root, ...)`, listed in `node_modules/next/dist/docs/01-app/03-api-reference/08-turbopack.md` as Turbopack-only "skip".
 - **Solution:** option 3, one line, as its own fix after Step 59.6 is committed.
 - **Status:** Fix proposed, after Step 59.6's commit.
+
+## The top bar (Step 59.9, 2026-10-29)
+
+### P-059 · 2026-10-29 · The top bar repeats the page's own title
+- **Where:** every staff page (dashboard, attendance, students, staff, settings, schools), found by the owner moving through the sidebar before a demo.
+- **Symptom:**
+  ```
+  ☰  Attendance                          ◐  Principal ▾  Sign out
+  ─────────────────────────────────────────────────────────────
+  Attendance
+  Who tapped in today, ...
+  ```
+- **Cause:** Step 10 put the page's name in the top bar as its `<h1>` (`TopbarTitle`) and turned each page's own heading into an `<h2>`, so the same word showed twice, one above the other.
+- **Options weighed (where the clock's time comes from):**
+  1. The device only. No requests, but the server can't know the device's time when it builds the page, so the spot is blank for a moment; a device set to the wrong time shows it; and a pinned `DEMO_NOW` would disagree with the page's data.
+  2. The server's time written into the page it's already sending, moved on by the browser using only time passed on the device. No requests, right from the first paint, right on a wrong device clock, and matches a pinned demo clock.
+  3. Ask the server every minute. One request per open screen per minute, for nothing option 2 doesn't give.
+- **Solution:** option 2 (owner's choice), Step 59.9: `TopbarClock` in the top bar, and each page's `PageHeader` back to being its `<h1>`. See `docs/APP-SHELL.md`, "Step 59.9".
+- **Status:** Fixed in Step 59.9, waiting for the owner's checks.
+
+### P-060 · 2026-10-29 · The parent API test waited 20 seconds for a push that stayed "waiting"
+- **Where:** the owner's full `npm run test:e2e` for Step 59.9; 99 passed, 1 failed. Step 59.9 doesn't touch the parent API, the push worker or the outbox.
+- **Symptom:**
+  ```
+  [desktop] › e2e/parent-api.spec.ts:66:7 › Parent API (Steps 53.3 and 53.4) › sign up, link a child, see a tap, read the feed, register for push, then sign out
+  Error: expect(received).toEqual(expected)
+  -   "fromLogSender": true,
+  -   "status": "sent",
+  +   "fromLogSender": undefined,
+  +   "status": "waiting",
+  Timeout 20000ms exceeded while waiting on the predicate
+    > 176 |       .toEqual({ status: "sent", fromLogSender: true });
+  ```
+- **What it tells us:** the worker made the phone's delivery (fan-out ran), but never claimed it to send. The log sender always accepts, so it wasn't a retry. Either the claim saw it as not due yet, or a pass failed after the fan-out (`push: a pass failed (…)` on the server's error output), and the next try was the 5-minute check, far past the test's 20 seconds.
+- **Checked:** the Mac's clock and the `talaan-postgres` container's agree to within 0.1 second (a due time from the server's clock compared with the database's `now()` would otherwise do this). Nothing else was listening on port 3100, so the run started its own server. The Mac last woke at 08:25, 50 minutes before the run.
+- **Status:** Looking into it: waiting for the test run on its own, and any `push:` lines in the run's output.
+
+| Date | Owner question (answered in `docs/LEARNING-LOG.md`) |
+|---|---|
+| 2026-10-29 | What's the demo clock for? |
+| 2026-10-29 | Does the server send the time every minute? That would cost us. Can it come from the device? |

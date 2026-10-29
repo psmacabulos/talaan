@@ -26,7 +26,6 @@ export function SchoolsDirectory({ items }: { items: SchoolRow[] }) {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        as="h2"
         title="Schools"
         description="Each school has its own logo, colors and accounts. Open one to see it the way its principal does."
         actions={
