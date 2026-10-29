@@ -21,23 +21,25 @@ function delivery(id: string, overrides: Partial<DueDelivery> = {}): DueDelivery
 }
 
 describe("toPushMessage", () => {
-  it("says the child's first name, what happened and when, on the school's clock, with no title (Step 59.6)", () => {
+  it("puts the child's first name in the title, then what happened and when, on the school's clock (Step 59.6, P-061)", () => {
     expect(toPushMessage(delivery("a"))).toStrictEqual({
       to: "ExponentPushToken[a]",
-      body: "Juan tapped in at 7:56 AM",
+      title: "Juan",
+      body: "Tapped in at 7:56 AM",
       data: { notificationId: "notification-a", childId: "student-0001" },
       sound: "default",
       channelId: "attendance",
       priority: "high",
     });
     expect(toPushMessage(delivery("b", { kind: "time_out", tappedAt: "2026-06-19T08:05:00.000Z" })).body).toBe(
-      "Juan tapped out at 4:05 PM",
+      "Tapped out at 4:05 PM",
     );
   });
 
   it("says a new parent account was linked, with no adult's name and no time (Step 55.2)", () => {
     expect(toPushMessage(delivery("c", { kind: "guardian_linked" }))).toMatchObject({
-      body: "A new parent account was linked to Juan",
+      title: "Juan",
+      body: "A new parent account was linked",
       data: { notificationId: "notification-c", childId: "student-0001" },
       channelId: "attendance",
     });

@@ -51,7 +51,8 @@ A phone stops getting pushes when:
 ```json
 {
   "to": "ExponentPushToken[…]",
-  "body": "Juan tapped in at 7:56 AM",
+  "title": "Juan",
+  "body": "Tapped in at 7:56 AM",
   "data": { "notificationId": "…", "childId": "student-0001" },
   "sound": "default",
   "channelId": "attendance",
@@ -59,7 +60,7 @@ A phone stops getting pushes when:
 }
 ```
 
-**No title** (Step 59.6): Android already puts the app's name, Bantay Aral, at the top of every notification, so a title showed it twice (P-057). iOS shows the app's name in its place.
+**The title is the child's first name** (Step 59.6). Not "Bantay Aral": Android already puts the app's name at the top of every notification, so it showed twice (P-057). Not left out either: when several pushes are showing, Android folds them into lines of "**title** body", and a missing title showed as the word "null" (P-061). A link notice is "Juan" over "A new parent account was linked".
 
 The **first name only**: the lock screen is visible to anyone near the phone, the text passes through Expo, Google and Apple, and students are minors. `toPushMessage` (`src/services/push/push-message.ts`) builds it.
 

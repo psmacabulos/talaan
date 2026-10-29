@@ -93,6 +93,53 @@ flowchart LR
 - `docs/PARENT-APP-REQUESTS.md`: requests 1 and 5 marked built.
 - `docs/BUILD-LOG.md` and P-057's status.
 
+## Change after review: the child's first name as the title (2026-10-29)
+
+> **Built as written on 2026-10-29, at the owner's request ("implement the change now").** No architect round: a two-line change to one function and its tests. From the owner's test on 2026-10-29 (P-061 in `docs/PROBLEMS-LOG.md`) and the parent app's request 8. It replaces decisions 1 and 2 above; decision 3 onwards stays.
+
+**What happened.** With no title, one push on its own looks right. When two or more are showing, Android folds them into a summary it builds itself, one line per push, each "**title** body", and with no title the phone writes the word "null":
+
+```
+(icon)  Bantay Aral · 1m
+        null Katrina tapped in at 8:55 AM
+        null Reynaldo tapped in at 8:55 AM
+```
+
+**The change.** A title again, now the child's first name, and the rest of the sentence as the body, starting with a capital:
+
+| `kind` | `title` | `body` |
+|---|---|---|
+| `time_in` | `Juan` | `Tapped in at 7:56 AM` |
+| `time_out` | `Juan` | `Tapped out at 4:12 PM` |
+| `guardian_linked` | `Juan` | `A new parent account was linked` |
+
+```
+(icon)  Bantay Aral · now               (icon)  Bantay Aral · 1m
+        Juan                                    Katrina  Tapped in at 8:55 AM
+        Tapped in at 7:56 AM                    Reynaldo Tapped in at 8:55 AM
+```
+
+"Bantay Aral" still shows once, the bold line says whose child, and the same first name that was in the body is now in the title, so nothing more about the child reaches the lock screen, Expo, Google or Apple. `data`, sound, channel and priority stay as they are.
+
+**Code.**
+- `src/services/push/push-sender.ts`: `PushMessage` gets `title: string;` back.
+- `src/services/push/push-message.ts`: `title: delivery.childFirstName`, and `pushBody` drops the name:
+  ```ts
+  case "time_in":
+  case "time_out":
+    return `${capitalize(notificationKindLabel(kind))} at ${formatSchoolTime(tappedAt)}`;
+  case "guardian_linked":
+    return "A new parent account was linked";
+  ```
+  `notificationKindLabel` stays the one place the words "tapped in" and "tapped out" live (the web feed uses it too, unchanged); `capitalize` is a one-line helper beside `pushBody`. The comment above `toPushMessage` says why the title is the name (P-061).
+- Tests: `send-due.test.ts`'s three `toPushMessage` cases expect the title and the new bodies; `push-sender.test.ts`'s sample message gets a title.
+
+**Docs.** `docs/PARENT-API.md` "What a push looks like", `docs/PUSH.md`, `mobile/starter/docs/PRODUCT-RULES.md`, `docs/PARENT-APP-REQUESTS.md` (request 8, taken), `docs/PLAN.md` (59.6's tasks and "Done when"), `docs/BUILD-LOG.md`, P-061's status.
+
+**Cost.** None. Expo's push service is free with or without a title.
+
+**Check after deploying.** Tap two linked children within a few seconds. Folded, the bundle reads "Katrina Tapped in at …" with no "null"; unfolded, each push shows the name in bold, then "Tapped in at …".
+
 ## Review
 
 The systems-architect raised five points, each checked against the code:

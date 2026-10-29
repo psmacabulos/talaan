@@ -56,7 +56,7 @@ The same rules and messages as the server's own checks (Talaan's `src/features/p
 
 ## Notifications and push
 
-- A push: no title (the phone shows the app's name above it), body "Juan tapped in at 7:56 AM", `data: { notificationId, childId }`, Android channel `attendance`.
+- A push: title the child's first name, body the rest ("Juan" over "Tapped in at 7:56 AM"; the phone shows the app's name above both), `data: { notificationId, childId }`, Android channel `attendance`.
 - **Create the Android channel `attendance` (name "Attendance") before registering the push token.** Android doesn't show a push sent to a channel the phone doesn't have.
 - **Ask for permission at a moment that explains itself:** right after the parent links their first child ("Get a notification when Jose taps in or out?"), never on first launch.
 - Register the token after sign-in, on every app start, and whenever Expo gives a new one. Sending the same token again is cheap.

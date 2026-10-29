@@ -1587,6 +1587,9 @@ heroku config:set PUSH_SENDER=expo EXPO_ACCESS_TOKEN=<token> --app bantayaral
 
 Both go in one command, so the server restarts once. With `expo` and no token, the server refuses to start (`checkProductionEnv`). Type the token in your own terminal, never in a chat or a file in a repository. To test and to read the log lines, see `docs/PUSH.md`.
 
+### Where did the "null" on bundled pushes come from? (owner question, 2026-10-29)
+From the phone, not the server. When two or more pushes from one app are showing, Android folds them into a summary it builds itself, one line per push, each "**title** body" (Viber's "**FoodPH Channel** See today's top…" just below it is the same shape). Step 59.6 had removed the title, and the phone writes a missing title as the word "null". That's why it vanished when you unfolded the bundle: each push on its own had no title line at all. The app can't fix it, because Android draws pushes before any of the app's code runs, so the server now sends the child's first name as the title: "**Katrina** Tapped in at 8:55 AM". Your offline test only made it show, by delivering two pushes at once. The second tap within 2 minutes was dropped by the server as a duplicate when it synced, which is why each child got one push. P-061 in `docs/PROBLEMS-LOG.md`.
+
 ## Planning and review
 
 ### Why did the architect find things the plan missed? (owner question, 2026-10-16)

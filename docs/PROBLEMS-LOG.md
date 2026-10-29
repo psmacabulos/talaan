@@ -75,6 +75,7 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-058](#p-058--2026-10-28--the-build-warns-that-the-local-photo-folder-traces-the-whole-project) | 2026-10-28 | The build warns that the local photo folder traces the whole project | Other: build | `npm run build`, photos | Fix proposed, after Step 59.6's commit |
 | [P-059](#p-059--2026-10-29--the-top-bar-repeats-the-pages-own-title) | 2026-10-29 | The top bar repeats the page's own title | Other: design | App shell | Fixed in Step 59.9, waiting for the owner's checks |
 | [P-060](#p-060--2026-10-29--the-parent-api-test-waited-20-seconds-for-a-push-that-stayed-waiting) | 2026-10-29 | The parent API test waited 20 seconds for a push that stayed "waiting" | Other: tests | Push worker, Playwright | Looking into it |
+| [P-061](#p-061--2026-10-29--bundled-pushes-show-null-where-the-title-would-be) | 2026-10-29 | Bundled pushes show "null" where the title would be | Other: correctness | Push, parent app | Fixed in Step 59.6, waiting for the owner's checks |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -1212,3 +1213,28 @@ sequenceDiagram
 |---|---|
 | 2026-10-29 | What's the demo clock for? |
 | 2026-10-29 | Does the server send the time every minute? That would cost us. Can it come from the device? |
+
+## Push titles (2026-10-29)
+
+### P-061 · 2026-10-29 · Bundled pushes show "null" where the title would be
+- **Where:** the owner's Android phone (Samsung), live server, after Step 59.6 removed the title. Found while testing the gate offline: the queued taps synced together, so two pushes arrived at once. Also in the parent app's `docs/PROBLEMS-LOG.md` (P-019) and `docs/API-REQUESTS.md` (request 8).
+- **Symptom:** folded, the bundle reads
+  ```
+  (icon)  Bantay Aral · 1m
+          null Katrina tapped in at 8:55 AM
+          null Reynaldo tapped in at 8:55 AM
+  ```
+  Unfolded, each push is right, with no title line and no "null".
+- **Cause:** when two or more pushes from one app are showing, Android folds them into a summary it builds itself, one line per push, each "**title** body". Our pushes have no title, and the phone writes the missing title as the word "null". The server's text is right; the app can't fix it, because Android draws the push and the summary before any of the app's code runs.
+  ```
+  push 1 (no title) ─┐
+                     ├─► Android folds them ─► line = title + " " + body ─► "null Katrina…"
+  push 2 (no title) ─┘
+  ```
+- **Not the cause: the offline repeat.** A second tap of the same card within 2 minutes is saved on the tablet while offline (it can't ask the server), but when it syncs, `recordTap` (`src/services/taps/record-tap.ts`) compares it with the card's taps 2 minutes either side of the tablet's own tap time and answers "duplicate": no new tap, no second push. The screenshot shows one push per child, as expected.
+- **Options weighed:**
+  1. The child's first name as the title, the rest as the body ("Juan" / "Tapped in at 7:56 AM"), as the parent app asks. No "null", "Bantay Aral" still shows once, the bold line says whose child, and nothing more about the child leaves the server than today.
+  2. The title "Bantay Aral" back. No "null", but it undoes Step 59.6 and the summary repeats the app's name on every line.
+  3. The app posts its own group summary. Needs native Android code in the Expo app, for what a title does for free.
+- **Solution:** option 1, a change inside Step 59.6: `toPushMessage` sends `title: childFirstName`, and the body drops the name ("Tapped in at 7:56 AM").
+- **Status:** Fixed in Step 59.6, waiting for the owner's checks and a deploy. To check: two pushes folded together read "Katrina Tapped in at …" with no "null".
