@@ -690,7 +690,24 @@ Each database has its own `Device` table, so a token made on the Mac doesn't exi
 
 **A gate for another school** (asked again, 2026-10-26) works the same way, with that school's id in `--school`. A school added on the Schools page gets a random id (a UUID, from `crypto.randomUUID()` in `src/features/schools/actions.ts`), not a short name like `school-balanga`. To find it, run `heroku pg:psql --app bantayaral`, then `select id, name from "School";`. A mistyped id stops the command with `No school with id "…"`, so a gate can't be saved under a school that doesn't exist.
 
-**Making a gate for a school, step by step:** `docs/DEPLOY.md`, "A gate tablet or a monitor" (live) or `docs/COMMANDS.md` §7 (laptop). In short: run `heroku run --app bantayaral "npm run device:create -- --school school-balanga --kind gate --label 'Main gate tablet'"`, copy the token it prints, open `bantayaral.com/gate`, and paste it in. If the message is "Couldn't reach the server" and not "That token doesn't work", the token is fine and the connection is the problem.
+**Making a gate for a school, step by step:** `docs/DEPLOY.md`, "A gate tablet or a monitor" (live) or `docs/COMMANDS.md` §7 (laptop).
+
+### What can the gate run on, without a pricey NFC tablet or exposed wires? (owner question, 2026-11-10)
+**PoE (Power over Ethernet)** is the idea that solves the wires: one ordinary network cable carries both power and internet. Wall-mount Android tablets made for meeting rooms and time clocks use it, and many have NFC built in. The cable runs from a switch in the guardhouse, inside the wall, into the back of the tablet. That means no charger, no OTG adapter and no USB reader at the gate, and one UPS in the guardhouse covers brownouts. An 8-inch one is listed at about US$86–200 from Chinese factories.
+
+**MF, not EM:** attendance devices come in a 13.56 MHz version (MF, Mifare, IC card), which reads our stickers, and a 125 kHz version (EM, ID card), which never will. Check the letters before buying.
+
+**A "webhook" device** (a Hikvision or ZKTeco terminal that sends each tap to a web address by itself) is cheap and tough, but it speaks its own brand's protocol, not our API, so it needs a translator on the server.
+
+The full comparison, prices, the questions to ask a seller and the test checklist for a sample: [`docs/GATE-HARDWARE-BUYING.md`](GATE-HARDWARE-BUYING.md).
+
+### Will the supplier's UTimeMaster API work with Bantay Aral? (owner question, 2026-11-11)
+Only through a connector. **Push** means the device tells us about each tap the moment it happens; that's how our `/gate` page works. **Polling** means our server keeps asking "anything new?". UTimeMaster's API only supports polling, and its punches carry an employee code instead of the card number. So Bantay Aral would:
+- copy each student and card into UTimeMaster as an "employee";
+- ask it for new punches every few seconds;
+- turn each punch back into a card tap for `recordTap()`.
+
+The card number isn't lost: it's on the employee record (`card_no`), and the employee's "area" decides which terminals get the card. UTimeMaster also needs a server, either a school PC or an internet server (the manual's screenshots use one). Asking the supplier whether the terminal can push straight to our server (ZKTeco's ADMS) may avoid the PC entirely. Details, advantages, disadvantages and the questions for the supplier: [`docs/GATE-HARDWARE-BUYING.md`](GATE-HARDWARE-BUYING.md#a-suppliers-utimemaster-api-evaluated-2026-11-11). In short: run `heroku run --app bantayaral "npm run device:create -- --school school-balanga --kind gate --label 'Main gate tablet'"`, copy the token it prints, open `bantayaral.com/gate`, and paste it in. If the message is "Couldn't reach the server" and not "That token doesn't work", the token is fine and the connection is the problem.
 
 ---
 
@@ -1589,6 +1606,9 @@ Both go in one command, so the server restarts once. With `expo` and no token, t
 
 ### Where did the "null" on bundled pushes come from? (owner question, 2026-10-29)
 From the phone, not the server. When two or more pushes from one app are showing, Android folds them into a summary it builds itself, one line per push, each "**title** body" (Viber's "**FoodPH Channel** See today's top…" just below it is the same shape). Step 59.6 had removed the title, and the phone writes a missing title as the word "null". That's why it vanished when you unfolded the bundle: each push on its own had no title line at all. The app can't fix it, because Android draws pushes before any of the app's code runs, so the server now sends the child's first name as the title: "**Katrina** Tapped in at 8:55 AM". Your offline test only made it show, by delivering two pushes at once. The second tap within 2 minutes was dropped by the server as a duplicate when it synced, which is why each child got one push. P-061 in `docs/PROBLEMS-LOG.md`.
+
+### Why did signing in fail right after a deploy? (owner question, 2026-10-29)
+Your browser and the server were from different releases. A form that saves (sign in, add a student) calls a "server action", and the page asks for it by an ID that each build makes new. You had the sign-in page open from the old release; while it was open, CI passed and Heroku switched to the new one; pressing "Sign in" asked the new server for the old ID, it answered "not found", and the page showed the error screen. Nothing was down or lost, and reloading fixes it. It's called version skew, and it only happens to someone who has a page open across a deploy. The fix proposed is for the error page to recognize it and say the app was just updated, with a Reload button, and not send it to Sentry. P-062 in `docs/PROBLEMS-LOG.md`.
 
 ## Planning and review
 

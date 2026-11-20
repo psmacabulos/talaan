@@ -76,6 +76,7 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-059](#p-059--2026-10-29--the-top-bar-repeats-the-pages-own-title) | 2026-10-29 | The top bar repeats the page's own title | Other: design | App shell | Fixed in Step 59.9, waiting for the owner's checks |
 | [P-060](#p-060--2026-10-29--the-parent-api-test-waited-20-seconds-for-a-push-that-stayed-waiting) | 2026-10-29 | The parent API test waited 20 seconds for a push that stayed "waiting" | Other: tests | Push worker, Playwright | Looking into it |
 | [P-061](#p-061--2026-10-29--bundled-pushes-show-null-where-the-title-would-be) | 2026-10-29 | Bundled pushes show "null" where the title would be | Other: correctness | Push, parent app | Fixed in Step 59.6, waiting for the owner's checks |
+| [P-062](#p-062--2026-10-29--signing-in-right-after-a-deploy-shows-the-error-page) | 2026-10-29 | Signing in right after a deploy shows the error page | Other: reliability | Deploy, sign-in, Sentry | Fix proposed, after Step 59.6's commit |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -1238,3 +1239,27 @@ sequenceDiagram
   3. The app posts its own group summary. Needs native Android code in the Expo app, for what a title does for free.
 - **Solution:** option 1, a change inside Step 59.6: `toPushMessage` sends `title: childFirstName`, and the body drops the name ("Tapped in at 7:56 AM").
 - **Status:** Fixed in Step 59.6, waiting for the owner's checks and a deploy. To check: two pushes folded together read "Katrina Tapped in at …" with no "null".
+
+## Deploys (2026-10-29)
+
+### P-062 · 2026-10-29 · Signing in right after a deploy shows the error page
+- **Where:** the live site, `https://bantayaral.com/` (the sign-in page), the owner signing in as a principal at 1:34 UTC (9:34 AM in the Philippines), just after a push to GitHub passed CI and Heroku deployed the new release.
+- **Symptom:** the error page, instead of the dashboard. The owner used "Report this problem", and Sentry emailed a new issue:
+  ```
+  UnrecognizedActionError
+  Server Action "4051d7b74b7dd5b03a31ef70cb08582f5088995893" was not found on the server.
+  Read more: https://nextjs.org/docs/messages/failed-to-find-server-action
+  release = 841abea7519253b8fe21fc30e8e049fd24d332aa   url = https://bantayaral.com/
+  ```
+- **Cause:** the sign-in form sends its fields to a server action, which the browser asks for by an ID built into each release. The page was opened from release `841abea` (the tag Sentry shows is the browser's release); by the time "Sign in" was pressed, Heroku was running the next build, whose actions have new IDs. Nothing was down and no data was touched: the new server answered "no such action", and Next.js threw that as an error into the error page. Next.js's own guide calls this version skew (`node_modules/next/dist/docs/01-app/02-guides/server-actions.md`, "Deployment considerations").
+  ```
+  browser (page from 841abea) ── "run action 4051d7…" ──► server (new release) ── "not found" ──► error page
+  ```
+  It happens to anyone who has a page open across a deploy and then presses a button that saves: sign in, add a student, record a time out. Reloading fixes it.
+- **Checked:** `deploymentId` in `next.config.ts` (with Heroku's commit as the id) doesn't prevent it: Next.js 16.4's client throws `UnrecognizedActionError` before it looks at the deployment id (`server-action-reducer.js`). It does make link clicks across a deploy do a full reload instead of a broken page, but those haven't been seen here.
+- **Options weighed:**
+  1. Leave it. Rare (only across a deploy), but the person sees "Something went wrong", and every one is a Sentry report and an email.
+  2. Let the error page recognize this one error: say "Bantay Aral was just updated. Reload the page to carry on." with a Reload button in place of "Report this problem", and stop sending it to Sentry, since it's not a bug. One place covers every form. What was typed is lost on reload; the sign-in form is two fields.
+  3. Catch it inside each form instead, so the typed text stays. Every form would need the same code, and a new one could forget it.
+- **Solution:** option 2 proposed, as its own small step after Step 59.6's change is committed. Recipe first.
+- **Status:** Fix proposed, after Step 59.6's commit.

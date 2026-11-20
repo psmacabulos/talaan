@@ -4,6 +4,8 @@ A discussion document, started on 2026-10-14 and kept up to date as decisions ar
 
 **Nothing here changes the plan.** The pilot keeps the planned setup: the `/gate` page on an Android tablet with the USB reader (Step 47, built), with offline taps next (Step 58). For what happens to a tap once it reaches the server, see `docs/GATE.md`.
 
+**Which real products to buy** (wall-mount tablets with NFC on one network cable, phones in locked cases, Hikvision and ZKTeco terminals, industrial readers, with prices, questions for sellers and a test checklist): [`docs/GATE-HARDWARE-BUYING.md`](GATE-HARDWARE-BUYING.md), started 2026-11-10.
+
 ## Contents
 - [The one idea: the server doesn't care what's at the gate](#the-one-idea-the-server-doesnt-care-whats-at-the-gate)
 - [Which gate for which school](#which-gate-for-which-school)
@@ -312,10 +314,11 @@ From the most common problem to the rarest:
 | 2026-10-15 | **Decided** (owner) | A Devices page for principals and super admins, built after Step 53: add a gate or a monitor, and its token (or the monitor's link) is shown once. Pairing codes may come later. The owner is having the page's design drafted first |
 | | Open | Pairing codes instead of a token shown once |
 | | Open | Devices inside Settings, or its own menu item |
+| 2026-11-10 | **Researched** | Real products for the gate, with the wires hidden: see [`docs/GATE-HARDWARE-BUYING.md`](GATE-HARDWARE-BUYING.md). Recommended: one sample of an 8" wall-mount tablet with NFC on one network cable (PoE) |
 
 ## Quick recipes
 
-**A school asks which gate to get.** Start from [Which gate for which school](#which-gate-for-which-school), and ask four things: is there Wi-Fi at the gate? Do they want a screen at the gate? Is there a guardhouse with power? Who will switch it on in the morning?
+**A school asks which gate to get.** Start from [Which gate for which school](#which-gate-for-which-school), and ask four things: is there Wi-Fi at the gate? Do they want a screen at the gate? Is there a guardhouse with power? Who will switch it on in the morning? For the actual products and prices, go to [`docs/GATE-HARDWARE-BUYING.md`](GATE-HARDWARE-BUYING.md).
 
 **See what a reader box would do, today, on a Mac.** Run `npm run tap:record -- --token tal_dev_…`, click the terminal, and tap a sticker on the USB reader. Each line printed is what a box would act on. (More in `docs/GATE.md`, "Try the gate without the tablet".)
 
