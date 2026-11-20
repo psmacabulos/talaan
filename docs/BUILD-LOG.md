@@ -3090,3 +3090,25 @@ The owner, moving through the sidebar before a demo the next day, saw the top ba
 **Formatting.** `npx prettier --check` on the changed files flagged only `e2e/login.spec.ts`, on three older lines this step didn't touch; left alone.
 
 No runs while building: the checks are the owner's.
+
+## Step 59.10: after a deploy, the error page asks for a reload (2026-11-20)
+
+From P-062. On 2026-10-29 the owner signed in on the live site right after a deploy and got "Something went wrong"; Sentry emailed an `UnrecognizedActionError`. The sign-in page had been opened from the previous release, and its server action ID no longer existed on the new one (version skew). Three options were weighed in the problems log; the owner picked option 2 (the error page recognizes it) and asked for it to be built straight away, after approving Steps 59.6 and 59.9, with the recipe written from the diff.
+
+**What was checked first.**
+- `node_modules/next/dist/client/components/unrecognized-action-error.d.ts`: Next.js 16.4.3 exports `unstable_isUnrecognizedActionError(error)`, re-exported from `next/navigation`. Its own doc comment says reloading fixes the mismatch. It's an `instanceof` check against the class Next.js throws, `UnrecognizedActionError`.
+- P-062 already recorded that `deploymentId` in `next.config.ts` doesn't stop this error, because the client throws before it looks at the deployment id. So that wasn't tried again.
+- The original Sentry issue came from the browser (its `release` tag was the old commit), through `reportBrowserError` in `ErrorPage`: the error boundary catches the error, so Sentry's own handlers never see it. Skipping that one call is enough to stop the report.
+
+**What changed.**
+- `ErrorScreen` gained `kind?: "error" | "updated"`. The "updated" version keeps the layout and illustration, and changes the heading (`PRODUCT_NAME` / "was updated"), the text, and the buttons: one **Reload page**, no reference code, no Report and no dialog, even if a caller passes `onReport`.
+- `ErrorPage` computes `updated` once per render, skips `reportBrowserError` for it, and renders the updated screen with `onRetry={() => window.location.reload()}`. `retry` (React's reset of the error boundary) would only draw the same page again, still holding the old action IDs. The reference code is still worked out (it's part of the `useState` that tracks the current error) but isn't shown.
+- `/design-system`'s preview: the boolean became one `PreviewState` (`"succeeds" | "fails" | "updated"`) with a third button, "After a deploy", and the buttons gained `aria-pressed`.
+- Tests: one case in `error-screen.test.tsx`; `error-page.test.tsx` is new and mocks `@/lib/browser-error-reporting`, building the real error with `new UnrecognizedActionError(...)` from `next/dist/client/components/unrecognized-action-error`, the same module `next/navigation` checks against.
+
+**Known limits.**
+- Anything typed into the form is lost on reload. The sign-in form is two fields; for longer forms, option 3 (catch it in each form) remains possible later.
+- It can't be reproduced locally: a dev server or a local build doesn't change under an open page. The real check is a page left open across a deploy.
+- `unstable_` can be renamed in a later Next.js. The import would then stop compiling, so `npm run typecheck` catches it during the upgrade.
+
+No runs while building: the checks are the owner's.

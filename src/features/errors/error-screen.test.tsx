@@ -109,3 +109,17 @@ describe("ErrorScreen (Step 59.1)", () => {
     );
   });
 });
+
+describe("ErrorScreen, after a deploy (P-062)", () => {
+  it("says the app was updated, with only a Reload page button", () => {
+    const { onRetry } = renderScreen({ kind: "updated", onReport: vi.fn() });
+
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Bantay Aral was updated");
+    expect(screen.queryByText("Reference code")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Report this problem" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Reload page" }));
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
+});

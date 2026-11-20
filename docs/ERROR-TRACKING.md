@@ -62,6 +62,8 @@ Ids (random UUIDs) can appear in a page's address. They aren't names. Sentry kee
 
 `IGNORED_ERRORS` in `error-reporting.ts`: "Failed to fetch", "Load failed", "NetworkError when attempting to fetch resource", and the gate's own "Check-in failed", "Roster failed", "Tap failed". An offline gate tablet (Step 58) would otherwise use up the month's 5,000 reports.
 
+A page older than the live release (P-062, Step 59.10) isn't reported at all. After a deploy, a page opened before it asks for server actions by the old release's IDs, and Next.js throws `UnrecognizedActionError`. `ErrorPage` checks for it with `unstable_isUnrecognizedActionError` (`next/navigation`), skips `reportBrowserError`, and shows `ErrorScreen kind="updated"` ("Bantay Aral was updated", Reload page) instead.
+
 ## What it costs
 
 - Sentry Developer plan: **$0**. 5,000 errors a month, one user, 30 days, one uptime monitor. Past 5,000, reports are refused until next month; nothing is billed.
@@ -122,7 +124,7 @@ flowchart TD
 - **Check a report has no personal data:** open it in Sentry, look at "Request" and "Exception": a page address with no `?`, no user, no breadcrumbs.
 - **Test that reports arrive:** on the live site, the browser console: `setTimeout(() => { throw new Error("Sentry test") })`. Without `setTimeout`, an error typed into the console isn't the page's own and isn't caught.
 - **A deploy refused at the release phase:** `heroku releases:output --app bantayaral` shows which setting. Set it, then `heroku releases:retry --app bantayaral` or push again.
-- **See the error page:** `npm run dev`, then `http://localhost:3000/design-system/throw`. `/design-system`'s "Error page" section has the dialog with a pretend send that succeeds or fails.
+- **See the error page:** `npm run dev`, then `http://localhost:3000/design-system/throw`. `/design-system`'s "Error page" section has the dialog with a pretend send that succeeds or fails, and "After a deploy", the version that asks for a reload (Step 59.10).
 - **Find a report from a reference code:** Sentry → Issues (or User Feedback), search `digest:<code>`.
 - **Change the "down" page:** edit `static/down/index.html` (its colors are copied from `tokens.css` and the `school` preset; change those first), open it from Finder to check, then upload it to the `bantayaral-status` bucket again, replacing the old file. No deploy needed.
 - **See the "down" page live:** `heroku maintenance:on --app bantayaral`, open the site, then `heroku maintenance:off --app bantayaral`. The site is unreachable in between, so do it outside school hours.

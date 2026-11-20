@@ -76,7 +76,7 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-059](#p-059--2026-10-29--the-top-bar-repeats-the-pages-own-title) | 2026-10-29 | The top bar repeats the page's own title | Other: design | App shell | Fixed in Step 59.9, waiting for the owner's checks |
 | [P-060](#p-060--2026-10-29--the-parent-api-test-waited-20-seconds-for-a-push-that-stayed-waiting) | 2026-10-29 | The parent API test waited 20 seconds for a push that stayed "waiting" | Other: tests | Push worker, Playwright | Looking into it |
 | [P-061](#p-061--2026-10-29--bundled-pushes-show-null-where-the-title-would-be) | 2026-10-29 | Bundled pushes show "null" where the title would be | Other: correctness | Push, parent app | Fixed in Step 59.6, waiting for the owner's checks |
-| [P-062](#p-062--2026-10-29--signing-in-right-after-a-deploy-shows-the-error-page) | 2026-10-29 | Signing in right after a deploy shows the error page | Other: reliability | Deploy, sign-in, Sentry | Fix proposed, after Step 59.6's commit |
+| [P-062](#p-062--2026-10-29--signing-in-right-after-a-deploy-shows-the-error-page) | 2026-10-29 | Signing in right after a deploy shows the error page | Other: reliability | Deploy, sign-in, Sentry | Fixed in Step 59.10 (waiting for a deploy to confirm) |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -1261,5 +1261,9 @@ sequenceDiagram
   1. Leave it. Rare (only across a deploy), but the person sees "Something went wrong", and every one is a Sentry report and an email.
   2. Let the error page recognize this one error: say "Bantay Aral was just updated. Reload the page to carry on." with a Reload button in place of "Report this problem", and stop sending it to Sentry, since it's not a bug. One place covers every form. What was typed is lost on reload; the sign-in form is two fields.
   3. Catch it inside each form instead, so the typed text stays. Every form would need the same code, and a new one could forget it.
-- **Solution:** option 2 proposed, as its own small step after Step 59.6's change is committed. Recipe first.
-- **Status:** Fix proposed, after Step 59.6's commit.
+- **Solution:** option 2, built as Step 59.10 on 2026-11-20 (the owner chose to build it straight away, recipe from the diff: `docs/backend/step-59.10-reload-after-deploy.md`). `ErrorPage` checks the error with Next.js's own `unstable_isUnrecognizedActionError` (`next/navigation`). For that error it sends nothing to Sentry and shows `ErrorScreen kind="updated"`: "Bantay Aral was updated", and one Reload page button that does a full `window.location.reload()`, since "Try again" would only draw the old page again. Every other error is unchanged.
+  ```
+  UnrecognizedActionError ──► ErrorPage ──► no report ──► "Bantay Aral was updated" ──► [Reload page] ──► the new release's page
+  any other error         ──► ErrorPage ──► Sentry    ──► "Something went wrong" (as before)
+  ```
+- **Status:** Fixed in Step 59.10, waiting for the owner's review and a real deploy to confirm (a page open across the deploy, then Sign in).
