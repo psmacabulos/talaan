@@ -3108,7 +3108,17 @@ From P-062. On 2026-10-29 the owner signed in on the live site right after a dep
 
 **Known limits.**
 - Anything typed into the form is lost on reload. The sign-in form is two fields; for longer forms, option 3 (catch it in each form) remains possible later.
-- It can't be reproduced locally: a dev server or a local build doesn't change under an open page. The real check is a page left open across a deploy.
+- It can't be reproduced locally: a dev server or a local build doesn't change under an open page. The real check is a page left open across a deploy, and it needs two: the error page that shows is the one that came with the open page, so the page must be opened after 59.10 is live and before the next deploy. The first draft of the recipe missed this; the owner's question about where to check it brought it up.
 - `unstable_` can be renamed in a later Next.js. The import would then stop compiling, so `npm run typecheck` catches it during the upgrade.
 
 No runs while building: the checks are the owner's.
+
+## Step 59.11: a build with no warnings (2026-11-20)
+
+From P-058, logged on 2026-10-28 and waiting until Step 59.6 was committed. The owner's build for Step 59.10 showed the warning again, and they asked for the fix straight away, after approving 59.10.
+
+**What was checked.** The warning's own text offers three ways out: a statically scoped path, development-only use, or the ignore comment `path.join(/*turbopackIgnore: true*/ ...)`. P-058 had already weighed them: the root is a parameter (`photo-storage.test.ts` passes its own temporary folder), so it can't be fixed at build time, and the code is already development-only in practice (the live site has `PHOTO_STORAGE=s3`). `node_modules/next/dist/docs/01-app/03-api-reference/08-turbopack.md` lists `turbopackIgnore: true` as Turbopack-only "skip bundling". Its table is about imports, so its use on a `path.join` call rests on the warning's own advice; the owner's build is what confirms it.
+
+**What changed.** One line in `src/lib/storage/local-photo-storage.ts`: the comment before `root` in `fileFor`'s `path.join`, with a two-line code comment pointing at P-058. `photo-storage.ts` and the photo route are untouched.
+
+**Not checked while building:** whether the warning is gone (that's the owner's `npm run build`), and whether a second, different warning was hiding behind it.

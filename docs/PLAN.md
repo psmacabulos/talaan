@@ -1,7 +1,7 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████████░░ 89%**  (339 of 380 tasks, 89 of 100 steps approved)
+**Overall progress: ██████████████████░░ 89%**  (341 of 382 tasks, 90 of 101 steps approved)
 
 **Next up:** Step 59.2, A practice restore (not started)
 
@@ -99,7 +99,8 @@
 | 59.7 | The notification list shows today, and opening it clears the badge | ░░░░░░░░░░   0% | Not started |
 | 59.8 | A parent reports a link they don't know | ░░░░░░░░░░   0% | Not started |
 | 59.9 | The top bar shows the date and time | ██████████ 100% | Approved |
-| 59.1 | After a deploy, the error page asks for a reload | ████████░░  75% | Ready for your review |
+| 59.1 | After a deploy, the error page asks for a reload | ██████████ 100% | Approved |
+| 59.11 | A build with no warnings | █████░░░░░  50% | Ready for your review |
 | 60 | Privacy for real student data | ░░░░░░░░░░   0% | Not started |
 | 61 | Queries that don't grow | ░░░░░░░░░░   0% | Not started |
 | 61.1 | The roster answers "nothing changed" cheaply | ░░░░░░░░░░   0% | Not started |
@@ -994,6 +995,13 @@ Added 2026-11-20 from P-062: signing in on a page opened before a deploy showed 
 - [x] Tests: the updated page's heading and its one button; `ErrorPage` reports an ordinary error and not this one.
 Done when: a page left open across a deploy, then signed in from, shows "Bantay Aral was updated", Reload page brings back a working page, no new Sentry issue arrives, and every check passes.
 Commit: `fix(errors): ask for a reload when a page is older than the deploy`
+- [x] Owner review: I checked it and said "approved"
+
+### Step 59.11: A build with no warnings
+Added 2026-11-20 from P-058: every `npm run build` warned that the local photo folder "causes tracing of the whole project". Harmless on Heroku, but a warning that's always there hides a new one. Option 3 of P-058. Built straight away; the recipe was written from the real diff: `docs/backend/step-59.11-build-warning.md`.
+- [x] `createLocalPhotoStorage`'s `path.join` gets Turbopack's `/*turbopackIgnore: true*/` comment, the fix the warning itself offers. Nothing else changes: development and tests store photos the same way, and the live site uses R2.
+Done when: `npm run build` finishes with no "Turbopack build encountered" warning, the photo storage tests pass, and every check passes.
+Commit: `fix(build): stop the local photo folder tracing the whole project`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 60: Privacy for real student data

@@ -72,11 +72,12 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-055](#p-055--2026-10-28--two-step-594-tests-collided-with-other-tests-running-at-the-same-time) | 2026-10-28 | Two Step 59.4 tests collided with other tests running at the same time | Other: tests | Vitest, Playwright | Fixed, waiting for the owner's next full run |
 | [P-056](#p-056--2026-10-28--the-expo-access-token-was-pasted-into-a-chat-and-the-setting-still-read-log) | 2026-10-28 | The Expo access token was pasted into a chat, and the setting still read `log` | Security | Heroku, Expo | Waiting for the owner to replace the token |
 | [P-057](#p-057--2026-10-28--every-push-shows-bantay-aral-twice) | 2026-10-28 | Every push shows "Bantay Aral" twice | Other: design | Push, parent app | Fixed in Step 59.6, live once deployed |
-| [P-058](#p-058--2026-10-28--the-build-warns-that-the-local-photo-folder-traces-the-whole-project) | 2026-10-28 | The build warns that the local photo folder traces the whole project | Other: build | `npm run build`, photos | Fix proposed, after Step 59.6's commit |
+| [P-058](#p-058--2026-10-28--the-build-warns-that-the-local-photo-folder-traces-the-whole-project) | 2026-10-28 | The build warns that the local photo folder traces the whole project | Other: build | `npm run build`, photos | Fixed in Step 59.11 (waiting for the owner's build) |
 | [P-059](#p-059--2026-10-29--the-top-bar-repeats-the-pages-own-title) | 2026-10-29 | The top bar repeats the page's own title | Other: design | App shell | Fixed in Step 59.9, waiting for the owner's checks |
 | [P-060](#p-060--2026-10-29--the-parent-api-test-waited-20-seconds-for-a-push-that-stayed-waiting) | 2026-10-29 | The parent API test waited 20 seconds for a push that stayed "waiting" | Other: tests | Push worker, Playwright | Looking into it |
 | [P-061](#p-061--2026-10-29--bundled-pushes-show-null-where-the-title-would-be) | 2026-10-29 | Bundled pushes show "null" where the title would be | Other: correctness | Push, parent app | Fixed in Step 59.6, waiting for the owner's checks |
-| [P-062](#p-062--2026-10-29--signing-in-right-after-a-deploy-shows-the-error-page) | 2026-10-29 | Signing in right after a deploy shows the error page | Other: reliability | Deploy, sign-in, Sentry | Fixed in Step 59.10 (waiting for a deploy to confirm) |
+| [P-062](#p-062--2026-10-29--signing-in-right-after-a-deploy-shows-the-error-page) | 2026-10-29 | Signing in right after a deploy shows the error page | Other: reliability | Deploy, sign-in, Sentry | Fixed (Step 59.10) |
+| [P-063](#p-063--2026-11-20--a-push-outbox-test-found-its-delivery-already-claimed) | 2026-11-20 | A push outbox test found its delivery already claimed | Other: tests | Push outbox, test database | Not reproduced |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -1171,8 +1172,12 @@ sequenceDiagram
   1. Leave it. Harmless, but a warning that's always there hides a new one that matters.
   2. Scope the path to a fixed folder, as the warning suggests. The root is a parameter (tests pass their own folder), so it can't be fixed at build time.
   3. The ignore comment the warning offers, `path.join(/*turbopackIgnore: true*/ root, ...)`, listed in `node_modules/next/dist/docs/01-app/03-api-reference/08-turbopack.md` as Turbopack-only "skip".
-- **Solution:** option 3, one line, as its own fix after Step 59.6 is committed.
-- **Status:** Fix proposed, after Step 59.6's commit.
+- **Solution:** option 3, built as Step 59.11 on 2026-11-20 (recipe from the diff: `docs/backend/step-59.11-build-warning.md`). One line in `src/lib/storage/local-photo-storage.ts`:
+  ```ts
+  return path.join(/*turbopackIgnore: true*/ root, ...key.split("/"));
+  ```
+  The comment tells Turbopack not to work out which files this call could reach, so it stops marking the whole project. Nothing changes at run time: the comment is only read by the build.
+- **Status:** Fixed in Step 59.11, waiting for the owner's `npm run build` to show no warning.
 
 ## The top bar (Step 59.9, 2026-10-29)
 
@@ -1266,4 +1271,35 @@ sequenceDiagram
   UnrecognizedActionError ──► ErrorPage ──► no report ──► "Bantay Aral was updated" ──► [Reload page] ──► the new release's page
   any other error         ──► ErrorPage ──► Sentry    ──► "Something went wrong" (as before)
   ```
-- **Status:** Fixed in Step 59.10, waiting for the owner's review and a real deploy to confirm (a page open across the deploy, then Sign in).
+- **Why the owner couldn't make it happen again (2026-11-20):** a docs-only deploy after 59.10 went live, with the sign-in page left open, signed in normally. The action IDs hadn't changed. Next.js 16.4 builds every action ID from a salt that is the build's encryption key (`serverReferenceHashSalt: encryptionKey`, `node_modules/next/dist/build/webpack-config.js`). That key is saved in `.next/cache` and reused by the next build for **14 days** (`EXPIRATION` in `node_modules/next/dist/server/app-render/encryption-utils-server.js`); the guide says the same: "Next.js rotates them at most every 14 days, even when the source is unchanged". So a deploy only breaks an open page when the key has just expired, or the build cache was thrown away. The 2026-10-29 deploy was likely one of those. Not yet confirmed: that Heroku keeps `.next/cache` between builds (the build log should list it under caching).
+  ```
+  build N   ── key K1 (saved in .next/cache, expires in 14 days) ──► action IDs A
+  build N+1 ── K1 still valid ──► same IDs A ──► an open page keeps working   (today's test)
+  build N+k ── K1 expired ──► new key K2 ──► new IDs B ──► an open page gets UnrecognizedActionError (2026-10-29)
+  ```
+- **Status:** Fixed in Step 59.10, approved by the owner on 2026-11-20. Not yet seen live, since a deploy only changes the IDs when the 14-day key rotates (above). Earlier note: a real check: with 59.10 live, open the sign-in page, deploy the next commit, then sign in from the same tab. It takes two deploys, because the error page shown is the one that came with the open page.
+
+## Tests (2026-11-20)
+
+### P-063 · 2026-11-20 · A push outbox test found its delivery already claimed
+- **Where:** the owner's `npm test` for Step 59.11, at 21:42 (Philippine time). The same suite passed, 980 of 980, at 21:24. The only code change in between was a comment in `src/lib/storage/local-photo-storage.ts` (Step 59.11), which no test reaches at run time.
+- **Symptom:** 3 failures, all in `src/data/repositories/prisma-push-outbox.test.ts`; the one pasted:
+  ```
+  FAIL  … > sends a link notice only to its recipient's phones, not the other guardian's (Step 55.2)
+  AssertionError: expected undefined to match object { kind: 'guardian_linked', …(1) }
+   ❯ src/data/repositories/prisma-push-outbox.test.ts:306:21
+  ```
+  The line before it passed: the delivery to `push-test-phone` existed. A moment later `claimDue` didn't return it, so something else had claimed it in between.
+- **Checked:**
+  - No other unit test file claims deliveries: `claimDue` is called only by this test and by `src/services/push/send-due.ts`, the push worker that every running app server starts (`src/instrumentation.ts`).
+  - Not a backlog crowding it out of `claimDue`'s 100: the test database has no waiting deliveries.
+  - Not the clocks: the database container and the Mac agree to the second.
+  - Nothing is connected to the database now (`pg_stat_activity`), so nothing that was running then is still running.
+- **Likely cause (not yet confirmed):** an app server's push worker connected to the test database (`talaan_test`) while the unit tests ran, for example `npm run test:e2e` or `npm run test:a11y` in another terminal, or a server they left running. It claims every due delivery within seconds, including this test's own.
+  ```
+  prisma-push-outbox.test ── fanOut ──► PushDelivery (waiting) ◄── claimDue ── push worker in an app server on talaan_test
+                          └─ claimDue ──► nothing left                      (claimed it first)
+  ```
+- **Rerun:** the owner ran every test again a few minutes later, with no code changed in between (`git diff -- src` showed only Step 59.11's comment, which the failing run already had), and all passed. The same code failing once and then passing points to something running beside the tests that time, not to the code.
+- **If it comes back:** before running `npm test`, check that no `npm run test:e2e`, `npm run test:a11y` or `npm run start` is running in another terminal. If it fails with nothing else running, make this test's link notice one that no worker can see before the test claims it, rather than counting on being the only one claiming.
+- **Status:** Not reproduced (2026-11-20). Left open to watch; no change made.

@@ -96,8 +96,14 @@ npx vitest run src/features/errors
 npm run dev   # then http://localhost:3000/design-system → Error page → "After a deploy", at 360px and 1280px, light and dark
 ```
 
-The real proof needs a deploy, since a local build can't change under an open page:
-1. Open `https://bantayaral.com/` (signed out) in a browser.
-2. Push a commit; wait for CI and Heroku to finish.
-3. Without reloading, sign in. Expect "Bantay Aral was updated"; press Reload page; sign in again.
-4. Sentry: no new `UnrecognizedActionError` issue.
+`/design-system` is development only (it answers "not found" in production), so the live check is on the sign-in page. It needs **two** deploys: the error page that shows is the code that came with the page already open, so a page opened before 59.10 went live still has the old one.
+
+```
+deploy 59.10 ──► open the sign-in page (now carries the new ErrorPage) ──► deploy any next commit ──► sign in in the same tab
+```
+
+1. Push 59.10; wait for CI and Heroku to finish.
+2. Open `https://bantayaral.com/` (signed out) and leave the tab open.
+3. Push the next commit; wait for CI and Heroku to finish.
+4. In the same tab, without reloading, sign in. Expect "Bantay Aral was updated"; press Reload page; sign in again.
+5. Sentry: no new `UnrecognizedActionError` issue.

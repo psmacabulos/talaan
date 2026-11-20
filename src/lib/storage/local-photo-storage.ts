@@ -17,7 +17,9 @@ function assertSafeKey(key: string): void {
 export function createLocalPhotoStorage(root = path.join(process.cwd(), ".data", "photos")): PhotoStorage {
   const fileFor = (key: string) => {
     assertSafeKey(key);
-    return path.join(root, ...key.split("/"));
+    // A path made at run time makes the build trace the whole project
+    // (P-058). Only development and tests store photos here, so skip it.
+    return path.join(/*turbopackIgnore: true*/ root, ...key.split("/"));
   };
 
   return {
