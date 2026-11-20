@@ -17,7 +17,7 @@ for (const line of text.split("\n")) {
   // scattered through the codebase and docs.
   const h = line.match(/^### Step (\d+(?:\.\d+)?): (.+)$/);
   if (h) {
-    cur = { n: Number(h[1]), title: h[2].trim(), build: [], hasReview: false, reviewDone: false };
+    cur = { n: h[1], title: h[2].trim(), build: [], hasReview: false, reviewDone: false };
     steps.push(cur);
     continue;
   }

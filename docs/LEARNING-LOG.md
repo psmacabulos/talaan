@@ -334,6 +334,9 @@ npm install --save-exact next@16.4.3 eslint-config-next@16.4.3
 
 A patch or minor version (16.3 → 16.4) shouldn't break anything; a major one (16 → 17) needs its upgrade guide read first. See `docs/PROBLEMS-LOG.md`, P-044, for why this one is urgent.
 
+### What is the "Upgrade: Next.js 16.4.3 → 16.4.6" message after a build? (owner question, 2026-11-20)
+Since 16.4, `next build` and `next dev` check whether the installed version has a known security problem, and offer to upgrade when it does (the `agentUpgrade` setting, on "security" by default). Choosing to upgrade looks for a coding agent running in that same terminal; finding none, it copies an upgrade prompt to the clipboard. It installs nothing itself: `package.json` stays as it was. Treat the message as a reminder, then upgrade the usual way (the entry above), as its own commit. To see what it's about: `npm audit --omit=dev`. The 2026-11-20 upgrade is P-064 in `docs/PROBLEMS-LOG.md`.
+
 ## Colors and theming
 
 ### Why colors are stored as OKLCH instead of hex
@@ -1114,6 +1117,9 @@ The browser tests run every test twice at the same time, once at phone width and
 
 ### "jsdom was created 136 times": is that a problem? (owner question, 2026-11-20)
 No. jsdom is a pretend browser that the unit tests run in (`environment: "jsdom"` in `vitest.config.ts`). Vitest gives each test file a fresh one, so a test can't leave something behind (a mock, a saved value, a half-open dialog) that makes another file pass or fail by accident. 136 files means 136 fresh copies. The "50s total" is added up across the workers running side by side; the run itself took 11.4s. Vitest's two suggestions trade that safety for speed: `isolate: false` shares one jsdom across files, so leftovers can leak between them; `pool: 'vmThreads'` keeps files apart but runs them in a different way that can behave differently from Node and use more memory. Neither is worth it for 11 seconds. Worth looking at again if the suite ever gets slow: most service and helper tests don't need a browser at all, and a `// @vitest-environment node` line at the top of such a file skips jsdom for it.
+
+### Is the build-warning fix about jsdom? (owner question, 2026-11-20)
+No. Three different things showed up in one evening's output: jsdom's count (a Vitest tip, nothing to fix), a push test that failed once and passed on rerun (P-063, probably something else using the test database at the same time), and the build warning about the photo folder (P-058, fixed in Step 59.11). When output from several commands arrives together, match each message to the command that printed it: "jsdom" and "FAIL" lines come from `npm test`, "Turbopack build encountered" from `npm run build`.
 
 ## Running the database locally with Docker (Step 30)
 

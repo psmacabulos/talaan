@@ -1,7 +1,7 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████████░░ 89%**  (341 of 382 tasks, 90 of 101 steps approved)
+**Overall progress: ██████████████████░░ 90%**  (342 of 382 tasks, 91 of 101 steps approved)
 
 **Next up:** Step 59.2, A practice restore (not started)
 
@@ -99,8 +99,8 @@
 | 59.7 | The notification list shows today, and opening it clears the badge | ░░░░░░░░░░   0% | Not started |
 | 59.8 | A parent reports a link they don't know | ░░░░░░░░░░   0% | Not started |
 | 59.9 | The top bar shows the date and time | ██████████ 100% | Approved |
-| 59.1 | After a deploy, the error page asks for a reload | ██████████ 100% | Approved |
-| 59.11 | A build with no warnings | █████░░░░░  50% | Ready for your review |
+| 59.10 | After a deploy, the error page asks for a reload | ██████████ 100% | Approved |
+| 59.11 | A build with no warnings | ██████████ 100% | Approved |
 | 60 | Privacy for real student data | ░░░░░░░░░░   0% | Not started |
 | 61 | Queries that don't grow | ░░░░░░░░░░   0% | Not started |
 | 61.1 | The roster answers "nothing changed" cheaply | ░░░░░░░░░░   0% | Not started |
@@ -1002,7 +1002,7 @@ Added 2026-11-20 from P-058: every `npm run build` warned that the local photo f
 - [x] `createLocalPhotoStorage`'s `path.join` gets Turbopack's `/*turbopackIgnore: true*/` comment, the fix the warning itself offers. Nothing else changes: development and tests store photos the same way, and the live site uses R2.
 Done when: `npm run build` finishes with no "Turbopack build encountered" warning, the photo storage tests pass, and every check passes.
 Commit: `fix(build): stop the local photo folder tracing the whole project`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 60: Privacy for real student data
 Plan: `docs/SCALING.md` 1.8, from the plan's after-demo list. Due before real use. Likely to be split once its recipe is written.

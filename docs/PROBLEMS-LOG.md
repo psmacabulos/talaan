@@ -72,12 +72,14 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-055](#p-055--2026-10-28--two-step-594-tests-collided-with-other-tests-running-at-the-same-time) | 2026-10-28 | Two Step 59.4 tests collided with other tests running at the same time | Other: tests | Vitest, Playwright | Fixed, waiting for the owner's next full run |
 | [P-056](#p-056--2026-10-28--the-expo-access-token-was-pasted-into-a-chat-and-the-setting-still-read-log) | 2026-10-28 | The Expo access token was pasted into a chat, and the setting still read `log` | Security | Heroku, Expo | Waiting for the owner to replace the token |
 | [P-057](#p-057--2026-10-28--every-push-shows-bantay-aral-twice) | 2026-10-28 | Every push shows "Bantay Aral" twice | Other: design | Push, parent app | Fixed in Step 59.6, live once deployed |
-| [P-058](#p-058--2026-10-28--the-build-warns-that-the-local-photo-folder-traces-the-whole-project) | 2026-10-28 | The build warns that the local photo folder traces the whole project | Other: build | `npm run build`, photos | Fixed in Step 59.11 (waiting for the owner's build) |
+| [P-058](#p-058--2026-10-28--the-build-warns-that-the-local-photo-folder-traces-the-whole-project) | 2026-10-28 | The build warns that the local photo folder traces the whole project | Other: build | `npm run build`, photos | Fixed (Step 59.11) |
 | [P-059](#p-059--2026-10-29--the-top-bar-repeats-the-pages-own-title) | 2026-10-29 | The top bar repeats the page's own title | Other: design | App shell | Fixed in Step 59.9, waiting for the owner's checks |
 | [P-060](#p-060--2026-10-29--the-parent-api-test-waited-20-seconds-for-a-push-that-stayed-waiting) | 2026-10-29 | The parent API test waited 20 seconds for a push that stayed "waiting" | Other: tests | Push worker, Playwright | Looking into it |
 | [P-061](#p-061--2026-10-29--bundled-pushes-show-null-where-the-title-would-be) | 2026-10-29 | Bundled pushes show "null" where the title would be | Other: correctness | Push, parent app | Fixed in Step 59.6, waiting for the owner's checks |
 | [P-062](#p-062--2026-10-29--signing-in-right-after-a-deploy-shows-the-error-page) | 2026-10-29 | Signing in right after a deploy shows the error page | Other: reliability | Deploy, sign-in, Sentry | Fixed (Step 59.10) |
 | [P-063](#p-063--2026-11-20--a-push-outbox-test-found-its-delivery-already-claimed) | 2026-11-20 | A push outbox test found its delivery already claimed | Other: tests | Push outbox, test database | Not reproduced |
+| [P-064](#p-064--2026-11-20--nextjs-1643-has-seven-moderate-security-advisories) | 2026-11-20 | Next.js 16.4.3 has seven moderate security advisories | Security | Next.js 16.4.3 | Fixed locally (16.4.6); deploy pending |
+| [P-065](#p-065--2026-11-20--the-progress-table-showed-step-5910-as-591) | 2026-11-20 | The progress table showed Step 59.10 as "59.1" | Other: tooling | `scripts/progress.mjs` | Fixed |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -1177,7 +1179,7 @@ sequenceDiagram
   return path.join(/*turbopackIgnore: true*/ root, ...key.split("/"));
   ```
   The comment tells Turbopack not to work out which files this call could reach, so it stops marking the whole project. Nothing changes at run time: the comment is only read by the build.
-- **Status:** Fixed in Step 59.11, waiting for the owner's `npm run build` to show no warning.
+- **Status:** Fixed in Step 59.11, approved by the owner on 2026-11-20.
 
 ## The top bar (Step 59.9, 2026-10-29)
 
@@ -1303,3 +1305,39 @@ sequenceDiagram
 - **Rerun:** the owner ran every test again a few minutes later, with no code changed in between (`git diff -- src` showed only Step 59.11's comment, which the failing run already had), and all passed. The same code failing once and then passing points to something running beside the tests that time, not to the code.
 - **If it comes back:** before running `npm test`, check that no `npm run test:e2e`, `npm run test:a11y` or `npm run start` is running in another terminal. If it fails with nothing else running, make this test's link notice one that no worker can see before the test claims it, rather than counting on being the only one claiming.
 - **Status:** Not reproduced (2026-11-20). Left open to watch; no change made.
+
+## Next.js 16.4.6 (2026-11-20)
+
+### P-064 · 2026-11-20 · Next.js 16.4.3 has seven moderate security advisories
+- **Where:** the owner's `npm run build` for Step 59.10. After the route table, Next.js's own upgrade check printed:
+  ```
+  Preparing upgrade...
+  Upgrade: Next.js 16.4.3 → 16.4.6
+  Looking for coding agents...
+  No supported coding agent found. The upgrade prompt was copied to your clipboard.
+  ```
+  Nothing was installed; `package.json` and `node_modules` stayed at 16.4.3 (`node_modules/next/dist/lib/upgrade/nudge.js`: the `security` policy, on by default, only offers an upgrade when the installed version has a known advisory).
+- **Symptom:** `npm audit` listed seven moderate advisories for `next` `>=16.0.0 <=16.4.4`, all fixed by 16.4.6:
+  ```
+  GHSA-mfr8-8qww-v76h  information disclosure across root params ('use cache' through unstable_cache)
+  GHSA-vc7v-qv4w-wrv8  cache leak across root param values in nested 'use cache'
+  GHSA-7qx7-33qx-rqx2  SVG rejection bypass in the image optimization
+  GHSA-f3mh-rxg3-f5g2  HttpOnly cookie exposure on Edge runtime routes
+  GHSA-pc58-hwjq-p385  cross-client response injection in self-hosted apps forwarding fetched responses
+  GHSA-rhh4-g77r-r9qj  cross-user cache disclosure in 'use cache' with binary arguments
+  GHSA-vvgp-ww4w-46vf  cache poisoning of fallback shells in Cache Components
+  ```
+- **Cause:** bugs in Next.js itself. Most need features this app doesn't use (`use cache`, Cache Components, the Edge runtime). Two touch what it does use: image optimization (`next/image`, including student photos) and self-hosting (Heroku runs `next start`).
+- **Options weighed:** (1) upgrade to 16.4.6 as its own commit, with the full routine, then deploy; (2) fold it into the next step (harder to tell which change broke a check); (3) `npm audit fix --force` (moves other packages at once, and here suggests downgrading Prisma to 6.12, a major step back).
+- **Solution:** option 1, after Steps 59.10 and 59.11 were approved. `npm install --save-exact next@16.4.6 eslint-config-next@16.4.6`: npm changed 5 packages; `package-lock.json` moved only Next.js's own entries (`next`, `@next/env`, `@next/eslint-plugin-next`, the `@next/swc-*` binaries, `eslint-config-next`), 48 lines. `unstable_isUnrecognizedActionError` (Step 59.10) and `turbopackIgnore` (Step 59.11) are both still in 16.4.6. `npm audit --omit=dev` afterwards has nothing for `next`.
+- **Left as they are:** the same audit still shows 8 findings, none in Next.js:
+  - `prisma` and `@prisma/config` (high), through `effect` (a slow regular expression in `Schema.TemplateLiteral`). It's used by Prisma's command-line tool and config loading, not by the app's queries. npm's only "fix" is downgrading to Prisma 6.12, so it waits for a Prisma release that updates `effect`.
+  - `@sentry/nextjs` and its build plugins (moderate), through `glob` and `minimatch`. Used while building (uploading source maps), not when serving a page. Fixed in `@sentry/nextjs` 11.16.0, a minor upgrade worth its own commit later.
+- **Status:** Fixed locally (Next.js 16.4.6); live once the owner commits and deploys it. Waiting for the owner's full routine.
+
+### P-065 · 2026-11-20 · The progress table showed Step 59.10 as "59.1"
+- **Where:** `docs/PLAN.md`'s progress block, after `npm run progress` with Step 59.10 in the plan.
+- **Symptom:** two rows read "59.1": the real Step 59.1 ("One error page…") and Step 59.10 ("After a deploy, the error page asks for a reload").
+- **Cause:** `scripts/progress.mjs` turned each heading's number into a number, `Number("59.10")`, which is `59.1`. It was only ever used for display, never to sort, so nothing else was affected. 59.10 is the first step number to end in a 0 after the dot.
+- **Solution:** keep it as the heading's own text: `n: h[1]` instead of `n: Number(h[1])`. The table now reads 59.1, …, 59.9, 59.10, 59.11.
+- **Status:** Fixed.
