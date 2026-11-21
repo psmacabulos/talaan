@@ -21,6 +21,7 @@ const SCREENS: Screen[] = [
   { name: "attendance (principal)", path: "/attendance", as: "principal" },
   { name: "students (principal)", path: "/students", as: "principal" },
   { name: "staff (principal)", path: "/staff", as: "principal" },
+  { name: "devices (principal)", path: "/devices", as: "principal" },
   { name: "settings (principal)", path: "/settings", as: "principal" },
   { name: "dashboard (teacher)", path: "/dashboard", as: "teacher" },
   { name: "attendance (teacher)", path: "/attendance", as: "teacher" },
@@ -271,6 +272,7 @@ test.describe("keyboard and focus", () => {
 test.describe("small screens", () => {
   const LIST_PAGES = [
     { path: "/staff", list: "Staff", as: "principal" },
+    { path: "/devices", list: "Devices", as: "principal" },
     { path: "/students", list: "Students", as: "principal" },
     { path: "/attendance", list: "Students", as: "principal" },
     { path: "/attendance", list: "Students", as: "teacher" },

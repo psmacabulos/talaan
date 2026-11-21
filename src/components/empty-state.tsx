@@ -1,15 +1,19 @@
 import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export function EmptyState({
   icon: Icon,
+  illustration,
   title,
   description,
   action,
   className,
 }: {
-  icon: LucideIcon;
+  /** A small icon, or a larger drawing in its place. */
+  icon?: LucideIcon;
+  illustration?: ReactNode;
   title: string;
   description?: string;
   action?: { label: string; onClick: () => void };
@@ -22,7 +26,7 @@ export function EmptyState({
         className,
       )}
     >
-      <Icon className="size-10 text-muted-foreground" aria-hidden="true" />
+      {illustration ?? (Icon ? <Icon className="size-10 text-muted-foreground" aria-hidden="true" /> : null)}
       <div className="flex flex-col gap-1">
         <p className="font-heading text-base font-semibold text-foreground">{title}</p>
         {description ? <p className="max-w-sm text-sm text-muted-foreground">{description}</p> : null}

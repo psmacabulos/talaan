@@ -3122,3 +3122,66 @@ From P-058, logged on 2026-10-28 and waiting until Step 59.6 was committed. The 
 **What changed.** One line in `src/lib/storage/local-photo-storage.ts`: the comment before `root` in `fileFor`'s `path.join`, with a two-line code comment pointing at P-058. `photo-storage.ts` and the photo route are untouched.
 
 **Not checked while building:** whether the warning is gone (that's the owner's `npm run build`), and whether a second, different warning was hiding behind it.
+
+## Step 59.12: the Devices page (2026-11-20)
+
+The owner remembered the Devices page decided on 2026-10-15 and asked whether its design was in the repo. It wasn't: the board was in the project folder, `Development Assets/Bantay Aral Device Management UI Board.png`, and was copied to `design/device-management.png`. The owner approved splitting it into three steps (59.12 list, 59.13 add, 59.14 disable/enable), the `qrcode` package for 59.13, and asked for a cost review with the systems-architect, as in Steps 53.1 and 61.
+
+**The architect's review.** One architect, continued between rounds with `SendMessage`, with the verified facts in the brief and a reading budget (it read 3 files in round 1, none in round 2).
+- Round 1 found two blocking points in the plan, both confirmed against code already read:
+  - `MonitorViewer` was `{ schoolId, kind }`, so the feed had no device id to mark. It gained `deviceId`.
+  - The plan had put the "seen" write in the stream's keep-alive, which fires every 25 seconds (`KEEP_ALIVE_MS`), not every 5 minutes. That would have been a database call every 25 seconds per open TV. The fix is a separate 5-minute timer.
+- Round 1 also suggested: compute the gap from the app's clock, never throw from the write, select named columns, and add no index (`@@index([schoolId])` already serves the list).
+- Round 1 flagged an existing cost: the tap writer updates `lastSeenAt` on every tap (P-066). It was deferred to keep the step small, and noted under Step 61.
+- Round 2 found nothing blocking. It suggested `after()` for the roster write. It also warned that "a time ahead of now counts as online" is only safe if every writer uses the same clock. Checking that found the heartbeat writing the real time under `DEMO_NOW` (P-067), fixed in this step.
+
+**What changed.** See the recipe, `docs/backend/step-59.12-devices-page.md`, for every file. In short:
+- `connection.ts` holds the rules: 12 minutes for Online, and "2 minutes ago".
+- `listBySchool` and `markSeen` were added to the repository; `markDeviceSeen` uses a 4-minute gap and never throws.
+- The roster route marks the gate with `after()`. The stream marks a monitor with its own timer. The heartbeat uses `getNow()`.
+- The sidebar has a `devices` item. There's the page, the table, the phone cards and the empty state.
+
+**Choices made against the board.**
+- No in-page error card: every page shares one error page (Step 59.1, owner's decision 2026-10-25).
+- No "Tap station" in the sidebar: it was removed in Step 55.1.
+- No location line under a device's name: there's no field for it, and the board's own Add form asks only for a name.
+- No Add buttons or ⋯ menus yet: those come in 59.13 and 59.14. The empty state's text already says "Add a gate tablet or a monitor", ready for the button that comes next.
+
+**Checked while building.**
+- `after` is documented in `node_modules/next/dist/docs/01-app/03-api-reference/04-functions/after.md` for route handlers.
+- It throws outside a request scope (`next/dist/server/after/after.js`), and no unit test calls the roster route directly. The browser tests run it inside a real server.
+- `MonitorSmartphone`, `Tablet` and `Monitor` exist in the installed lucide-react.
+- `EmptyState` already renders from a server page (Attendance).
+- Postgres sorts an enum in declaration order, so `orderBy kind asc` puts gates before monitors.
+
+No runs while building: the checks are the owner's.
+
+### Review round 1: the device icons (2026-11-21)
+
+The owner rejected the device icons: lucide's stock `Tablet` and `Monitor`, bare at 16–24px, read as placeholders next to the board, which puts each device in a soft tinted tile. The first idea was a generated image, and a prompt was written for a realistic 3D render. The owner tried it and the result was a photo-style tablet on a black background, which fit neither the board's flat outline style nor the app. That was the prompt's fault, not the tool's. Images were dropped for drawings written as SVG in `src/features/devices/device-art.tsx`:
+
+- `GateTabletGlyph` (an upright tablet with a camera dot and two tap waves) and `MonitorGlyph` (a wide screen showing a list, on a stand), drawn with `currentColor` on a 24-unit grid. Each has a faint fill (`fillOpacity 0.12`) so it has weight at small sizes.
+- `DeviceKindTile`, the glyph in a rounded tile tinted `bg-primary/10` (`/15` in dark), so it follows each school's theme. It's 36px in the table and 44px on the cards, and the dialogs in 59.13 and 59.14 will reuse it.
+- `DevicesIllustration`, the empty state's drawing: a monitor with a tablet in front, in a `fill-muted` circle, with the tap waves as the only touch of the school's color.
+- `EmptyState` gained an optional `illustration` that takes the icon's place; `icon` became optional. One test added.
+
+The drawings were checked in a scratch page rendered with Playwright, with the default theme's light and dark values and a red primary standing in for another preset. At 36px the tablet's waves were cramped beside its home bar, so the bar was removed and the waves made larger. No package, image file or new color.
+
+### Review round 2: the tile is the type (2026-11-21)
+
+Round 1 put the tile beside the device name, as on the board. The owner preferred it in the Type column instead, replacing the word "Gate" or "Monitor". The name column is plain text again. The word stays as `sr-only` text, so a screen reader still hears the type and the table test's row text is unchanged, and as a `title` so hovering shows it. The phone cards are unchanged: tile on the left, the word under the name.
+
+### Review round 3: no tile, larger drawing (2026-11-21)
+
+At 36px with a tinted tile, the drawing inside was only about 20px, too small to tell a tablet from a monitor. The owner asked for the tile to go so the drawing could be larger. `DeviceKindTile` became `DeviceKindIcon`: just the drawing, in `text-primary`, 32px in the table and 40px on the cards, so the drawing itself is about 60% bigger in the same space. Checked again in the scratch page, in light, dark and a red primary.
+
+### Review round 4: design review against the Staff page (2026-11-21)
+
+The owner asked for a frontend-design review. That skill isn't installed in this setup, so the review was done by hand instead. A scratch Playwright script signed in to the owner's running app through the sign-in form, as the demo principal: the app's own session secret isn't readable, so the tests' cookie shortcut wouldn't work. It took screenshots of `/devices` at 1280px and 360px, in light and dark, and of `/staff` to compare. The first try waited for `/login`, which doesn't exist: the sign-in page is `/`.
+
+Findings, and what the owner chose:
+- **The Type column was weaker without its word.** Three identical drawings read as decoration, and a tablet alone can pass for a phone. The word came back beside the drawing, which is now 28px: done here.
+- **Two devices in the owner's database are both "Main gate tablet".** Nothing stops a repeated name, so Step 59.13 now has a task to refuse one within a school.
+- **The shared table is cramped and flat**: 8px side padding, and a header that looks like a data row. That's every list in the app, so it became its own step, 59.15, after 59.14.
+- The bare header fixes itself when 59.13 adds the Add buttons. A summary line ("3 devices · 1 online") was offered and not taken: the board doesn't have one.
+

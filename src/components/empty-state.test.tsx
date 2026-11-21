@@ -16,4 +16,9 @@ describe("EmptyState", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add student" }));
     expect(onClick).toHaveBeenCalledOnce();
   });
+
+  it("shows a drawing in place of the icon", () => {
+    render(<EmptyState illustration={<svg data-testid="drawing" />} title="No devices yet" />);
+    expect(screen.getByTestId("drawing")).toBeInTheDocument();
+  });
 });

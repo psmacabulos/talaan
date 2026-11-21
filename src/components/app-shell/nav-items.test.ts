@@ -9,6 +9,7 @@ describe("navItemsForRole", () => {
       "attendance",
       "students",
       "staff",
+      "devices",
       "settings",
     ]);
   });
@@ -19,6 +20,7 @@ describe("navItemsForRole", () => {
       "attendance",
       "students",
       "staff",
+      "devices",
       "settings",
     ]);
   });
@@ -29,8 +31,9 @@ describe("navItemsForRole", () => {
 });
 
 describe("hasNavAccess", () => {
-  it("blocks a teacher from staff and settings", () => {
+  it("blocks a teacher from staff, devices and settings", () => {
     expect(hasNavAccess("teacher", "staff")).toBe(false);
+    expect(hasNavAccess("teacher", "devices")).toBe(false);
     expect(hasNavAccess("teacher", "settings")).toBe(false);
   });
 
@@ -41,11 +44,12 @@ describe("hasNavAccess", () => {
 
   it("allows a principal to reach staff and settings", () => {
     expect(hasNavAccess("principal", "staff")).toBe(true);
+    expect(hasNavAccess("principal", "devices")).toBe(true);
     expect(hasNavAccess("principal", "settings")).toBe(true);
   });
 
   it("allows a super admin everywhere", () => {
-    for (const segment of ["schools", "dashboard", "attendance", "students", "staff", "settings"] as const) {
+    for (const segment of ["schools", "dashboard", "attendance", "students", "staff", "devices", "settings"] as const) {
       expect(hasNavAccess("super_admin", segment)).toBe(true);
     }
   });

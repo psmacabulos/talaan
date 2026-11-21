@@ -313,7 +313,7 @@ From the most common problem to the rarest:
 | | Open | Should a box with no screen check in every few minutes? (The tablet doesn't, decided 2026-10-09) |
 | 2026-10-15 | **Decided** (owner) | A Devices page for principals and super admins, built after Step 53: add a gate or a monitor, and its token (or the monitor's link) is shown once. Pairing codes may come later. The owner is having the page's design drafted first |
 | | Open | Pairing codes instead of a token shown once |
-| | Open | Devices inside Settings, or its own menu item |
+| 2026-11-20 | **Decided** (owner) | Devices is its own menu item, following the owner's design board (`design/device-management.png`). Built as Steps 59.12 (the list), 59.13 (add a gate or monitor, with a QR code for the monitor's link) and 59.14 (disable and enable) |
 | 2026-11-10 | **Researched** | Real products for the gate, with the wires hidden: see [`docs/GATE-HARDWARE-BUYING.md`](GATE-HARDWARE-BUYING.md). Recommended: one sample of an 8" wall-mount tablet with NFC on one network cable (PoE) |
 
 ## Quick recipes

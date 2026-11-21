@@ -80,6 +80,8 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-063](#p-063--2026-11-20--a-push-outbox-test-found-its-delivery-already-claimed) | 2026-11-20 | A push outbox test found its delivery already claimed | Other: tests | Push outbox, test database | Not reproduced |
 | [P-064](#p-064--2026-11-20--nextjs-1643-has-seven-moderate-security-advisories) | 2026-11-20 | Next.js 16.4.3 has seven moderate security advisories | Security | Next.js 16.4.3 | Fixed locally (16.4.6); deploy pending |
 | [P-065](#p-065--2026-11-20--the-progress-table-showed-step-5910-as-591) | 2026-11-20 | The progress table showed Step 59.10 as "59.1" | Other: tooling | `scripts/progress.mjs` | Fixed |
+| [P-066](#p-066--2026-11-20--every-gate-tap-rewrites-the-gates-last-seen-time) | 2026-11-20 | Every gate tap rewrites the gate's "last seen" time | Performance | Tap writer, `Device` | Deferred to a later step |
+| [P-067](#p-067--2026-11-20--the-heartbeat-stamped-the-real-time-under-a-pinned-demo-clock) | 2026-11-20 | The heartbeat stamped the real time under a pinned demo clock | Other: correctness | Heartbeat, Devices page | Fixed in Step 59.12 |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -1341,3 +1343,24 @@ sequenceDiagram
 - **Cause:** `scripts/progress.mjs` turned each heading's number into a number, `Number("59.10")`, which is `59.1`. It was only ever used for display, never to sort, so nothing else was affected. 59.10 is the first step number to end in a 0 after the dot.
 - **Solution:** keep it as the heading's own text: `n: h[1]` instead of `n: Number(h[1])`. The table now reads 59.1, …, 59.9, 59.10, 59.11.
 - **Status:** Fixed.
+
+## The Devices page (Step 59.12, 2026-11-20)
+
+### P-066 · 2026-11-20 · Every gate tap rewrites the gate's "last seen" time
+- **Where:** found by the systems-architect while reviewing Step 59.12's plan: `src/data/repositories/prisma-tap-writer.ts`, line 66.
+- **Symptom:** none visible. The cost: `tx.device.update({ where: { id: deviceId }, data: { lastSeenAt } })` runs for every tap, inside the tap's transaction. At about 500 taps a morning, that's 500 updates to the same row. Each leaves a dead row version for Postgres to clean up, writes to the log, and holds the gate's row locked until the tap commits, so two taps at the same gate queue behind each other on that row.
+  ```
+  tap 1 ─► BEGIN … UPDATE "Device" (gate) … COMMIT
+  tap 2 ─► BEGIN … UPDATE "Device" (gate) ← waits for tap 1's lock … COMMIT
+  ```
+- **Cause:** written in Step 45, before the Devices page existed, when one write per tap was the simplest way to keep `lastSeenAt` current.
+- **Options weighed:** (1) the same conditional update as `markSeen` (Step 59.12), with a gap of about a minute: roughly 100 times fewer writes, and no lock at all on most taps; (2) leave it: harmless at one school, it grows with every school's morning rush; (3) drop it, and rely on the 5-minute roster check: the gate would read "seen" up to 5 minutes late, which the 12-minute threshold allows.
+- **Solution:** option 1, in its own later step, to keep 59.12 small (architect's advice). Not built yet.
+- **Status:** Deferred to a later step. Noted in `docs/PLAN.md` under Step 61, "Queries that don't grow".
+
+### P-067 · 2026-11-20 · The heartbeat stamped the real time under a pinned demo clock
+- **Where:** `src/app/api/v1/devices/heartbeat/route.ts`, found while building Step 59.12, from the architect's round-2 note that every "seen" writer must use the same clock.
+- **Symptom:** none yet; it would have been one on the new Devices page. Under `DEMO_NOW` (the browser tests and the demo), the heartbeat wrote the real time, which is months after the pinned clock. `connectionStatus` counts a time ahead of `now` as online, so the test gate would have shown "Online" forever.
+- **Cause:** the heartbeat used `new Date().toISOString()` for both `lastSeenAt` and the `serverTime` it answers with. Gate taps already used `getNow()`.
+- **Solution:** `recordHeartbeat(device.id, getNow())`. `serverTime` stays the real time, since the gate uses it to notice its own wrong clock. On a real server, `getNow()` is the real time, so nothing changes there.
+- **Status:** Fixed in Step 59.12.

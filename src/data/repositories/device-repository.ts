@@ -7,4 +7,12 @@ export interface DeviceRepository {
   create(device: Device, tokenHash: string): Promise<Device>;
   /** Marks the device as seen at `at`. A no-op for an unknown id. */
   recordHeartbeat(id: string, at: string): Promise<void>;
+  /** The school's gates and monitors, gates first, oldest first (Step 59.12). Never another school's. */
+  listBySchool(schoolId: string): Promise<Device[]>;
+  /**
+   * Marks the device as seen at `at`, but only if it wasn't seen in the
+   * `minGapMs` before (Step 59.12), so a device checking in every few
+   * minutes writes at most once per gap. A no-op for an unknown id.
+   */
+  markSeen(id: string, at: string, minGapMs: number): Promise<void>;
 }

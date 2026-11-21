@@ -6,7 +6,8 @@ import { authenticateDevice } from "@/services/devices/authenticate-device";
 /** The cookie a guardhouse TV keeps once its link has connected it (Step 48). */
 export const MONITOR_COOKIE = "talaan_monitor";
 
-export type MonitorViewer = { schoolId: string; kind: "monitor" | "staff" };
+/** `deviceId` is the monitor device's, so its feed can mark it as seen (Step 59.12); null for staff. */
+export type MonitorViewer = { schoolId: string; kind: "monitor" | "staff"; deviceId: string | null };
 
 /**
  * Who may watch a school's live taps: a monitor device (never a gate: a
@@ -15,9 +16,11 @@ export type MonitorViewer = { schoolId: string; kind: "monitor" | "staff" };
  * The school always comes from who is asking, never from the address.
  */
 export function monitorViewerFrom(device: Device | null, session: Session | null): MonitorViewer | null {
-  if (device) return device.kind === "monitor" ? { schoolId: device.schoolId, kind: "monitor" } : null;
+  if (device) {
+    return device.kind === "monitor" ? { schoolId: device.schoolId, kind: "monitor", deviceId: device.id } : null;
+  }
   if (session && session.schoolId && (session.role === "principal" || session.role === "super_admin")) {
-    return { schoolId: session.schoolId, kind: "staff" };
+    return { schoolId: session.schoolId, kind: "staff", deviceId: null };
   }
   return null;
 }

@@ -1,4 +1,5 @@
 import { deviceRepository } from "@/data/repositories";
+import { getNow } from "@/lib/clock";
 import { authenticateDevice } from "@/services/devices/authenticate-device";
 
 /**
@@ -16,7 +17,10 @@ export async function POST(request: Request) {
   }
 
   const now = new Date().toISOString();
-  await deviceRepository.recordHeartbeat(device.id, now);
+  // Seen on the app's clock, like every other "seen" (Step 59.12), so a
+  // pinned DEMO_NOW doesn't leave a gate "Online" forever. The same as
+  // `now` on a real server.
+  await deviceRepository.recordHeartbeat(device.id, getNow());
 
   return Response.json({
     device: { id: device.id, schoolId: device.schoolId, label: device.label, kind: device.kind },

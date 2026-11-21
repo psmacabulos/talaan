@@ -126,6 +126,46 @@ sequenceDiagram
 - **Connecting a TV:** make a monitor device (`npm run device:create -- --kind monitor …`), then open `/gate/display/connect?key=<token>` on the TV once. The route checks it's a monitor key, sets the httpOnly cookie for 400 days, and redirects to `/gate/display`.
 - **One server only:** `tapEvents` lives in the server's memory. On one Heroku dyno that's every viewer. On more than one, swap it for Postgres `LISTEN/NOTIFY` behind the same `publishTap`/`subscribeToTaps`.
 
+## The Devices page (Step 59.12)
+
+`/devices`, for principals and super admins: the school's gates and monitors, with their connection status. Design: `design/device-management.png`. Adding a device comes in Step 59.13, and disabling and enabling one in 59.14.
+
+**Online means "seen lately".** Every device has `lastSeenAt`. Four things write it, all on the app's clock (`getNow()`, so a pinned `DEMO_NOW` stays consistent):
+
+```mermaid
+flowchart LR
+    H["POST /api/v1/devices/heartbeat<br/>gate, at start-up"] -->|recordHeartbeat| D[("Device.lastSeenAt")]
+    T["a gate tap<br/>prisma-tap-writer.ts"] -->|"in the tap's transaction"| D
+    R["GET /api/v1/gate/roster<br/>gate, every 5 min"] -->|"after(): markDeviceSeen"| D
+    S["GET /api/v1/gate/stream<br/>monitor's feed, every 5 min"] -->|"markDeviceSeen"| D
+    D --> P["/devices<br/>connectionStatus(lastSeenAt, now)"]
+```
+
+`markDeviceSeen` (`src/services/devices/mark-seen.ts`) is one conditional `UPDATE` that writes only when the device wasn't seen in the last 4 minutes (`SEEN_GAP_MS`), and it never throws, so a failed write can't fail a roster or close a TV's feed:
+
+```ts
+await db.device.updateMany({
+  where: { id, OR: [{ lastSeenAt: null }, { lastSeenAt: { lt: new Date(seenAt.getTime() - minGapMs) } }] },
+  data: { lastSeenAt: seenAt },
+});
+```
+
+The feed marks a monitor with its own 5-minute timer, not the 25-second keep-alive (the architect's review: otherwise a database call every 25 seconds per TV). A principal watching `/gate/display` from their own sign-in is never marked: `MonitorViewer.deviceId` is null for staff.
+
+**The status** (`src/features/devices/connection.ts`): never seen → "Never connected"; seen within 12 minutes (`ONLINE_WITHIN_MS`) → "Online"; else "Offline". With a 5-minute check and a 4-minute gap, a running device is written every 5 to 10 minutes, so one missed check is allowed. The page works it out when it's opened and doesn't refresh by itself. "Enabled" and "Disabled" are the page's words for `active` and `revoked`.
+
+**Cost:** about 12 small writes an hour per running device, and one indexed read (`@@index([schoolId])`) when the page opens. The list query selects named columns, never `tokenHash`.
+
+| File | Job |
+|---|---|
+| `src/app/(app)/devices/page.tsx` | Who may see it, the school, the list |
+| `src/features/devices/devices-list.tsx` | Empty state, or cards on a phone and a table from 768px |
+| `src/features/devices/device-table.tsx`, `device-cards.tsx`, `device-display.tsx` | The table, the cards, and their connection dot and Enabled/Disabled badge |
+| `src/features/devices/device-art.tsx` | The device drawings (SVG): the tablet and the monitor in the school's color, and the empty state's picture |
+| `src/features/devices/connection.ts` | Online, offline or never; "2 minutes ago"; the labels |
+| `src/services/devices/mark-seen.ts` | The 4-minute gap, and never throwing |
+| `DeviceRepository.listBySchool`, `markSeen` | The two queries |
+
 ## The card serial
 
 A card's serial is its NFC UID. Your USB reader doesn't type it the way NFC Tools shows it: it sends only the **first 4 bytes**, as one **10-digit decimal number**, lowest byte first. `normalizeCardSerial` (`src/features/students/card-serial.ts`) turns anything a reader or a person types into the stored form:
@@ -254,6 +294,8 @@ Since 2026-10-12 a click on Disconnect or Cancel no longer swallows later taps (
 **Try the gate without the tablet.** Create a gate device with `npm run device:create -- --school school-balanga --kind gate --label "Main gate tablet"` and copy the token. Run `npm run tap:record -- --token tal_dev_…`, click the terminal, and tap stickers on the USB reader. Each line printed is what the gate screen will show.
 
 **Change the debounce window.** It's `DEBOUNCE_MS` in `src/services/taps/record-tap.ts`, and the same window goes to the writer's locked check. The tests in `record-tap.test.ts` use 1:59 (duplicate) and 2:01 (a new tap). Move them with it. The gate's own 5-second filter is `REPEAT_WINDOW_MS` in `src/features/gate/repeat-filter.ts`; `e2e/gate.spec.ts` waits past it before a second read.
+
+**A device shows Offline though it's on.** A gate is marked by its roster check every 5 minutes, a monitor by its open feed. Check that the gate page shows "Connected as …" and the monitor its live feed; reload either. To change how long counts as online, change `ONLINE_WITHIN_MS` (and keep it above two `SEEN_GAP_MS` plus a check), with the boundary tests in `connection.test.ts`.
 
 **Change who gets notified.** Change `shouldNotifyParents` in `notify-parents.ts`. Both the gate and the demo buttons follow it, and its table test lists every case.
 

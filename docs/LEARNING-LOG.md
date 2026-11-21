@@ -407,6 +407,9 @@ A **custom color** always gets checked for readability (WCAG AA: text must stand
 
 Full mechanism, with a diagram: [`docs/STYLING-SYSTEM.md`](STYLING-SYSTEM.md)'s Step 26 section.
 
+### Why are the device icons drawn in code instead of generated images? (owner question, 2026-11-21)
+Because a picture can't change color, and this app's colors change per school. The board's icons are flat outlines in a tile tinted with the school's color. Drawn as SVG (shapes written as code), they use the theme's own colors, so they turn red under Crimson and light in dark mode by themselves. They stay sharp from 16px to 220px, and weigh almost nothing. A generated image is the right tool for a photo or a rich illustration that looks the same everywhere, like a marketing page. When you do ask an image tool, describe the *style* you want, not just the object: "flat vector, outline, no 3D, no shadows". Asking for a "3D product render" is what produced the realistic tablet that didn't fit. The drawings are in `src/features/devices/device-art.tsx`.
+
 ---
 
 ## Components and libraries (shadcn/ui)
@@ -1620,6 +1623,12 @@ From the phone, not the server. When two or more pushes from one app are showing
 Your browser and the server were from different releases. A form that saves (sign in, add a student) calls a "server action", and the page asks for it by an ID that each build makes new. You had the sign-in page open from the old release; while it was open, CI passed and Heroku switched to the new one; pressing "Sign in" asked the new server for the old ID, it answered "not found", and the page showed the error screen. Nothing was down or lost, and reloading fixes it. It's called version skew, and it only happens to someone who has a page open across a deploy. Since Step 59.10, the error page recognizes it: it says "Bantay Aral was updated", with one Reload page button, and sends nothing to Sentry. Reload rather than Try again, because Try again only redraws the old page, which still holds the old IDs. P-062 in `docs/PROBLEMS-LOG.md`; recipe `docs/backend/step-59.10-reload-after-deploy.md`.
 
 ## Planning and review
+
+### Can the frontend-design skill review a page? (owner question, 2026-11-21)
+Only when it's installed, and it isn't in this setup. `CLAUDE.md` lists it under "Tools (use if installed)"; add it with `/plugin` in Claude Code if you want it. Without it, a design review still works the same way: sign in to the running app, take screenshots at 360px and 1280px in light and dark, and compare the page with its neighbours (Devices against Staff). A page that matches the rest of the app matters more than a page that's impressive on its own. Several of the "premium" fixes found on Devices were really fixes to the shared table, which would change every list at once.
+
+### Is the Devices page design in the repo? (owner question, 2026-11-20)
+It wasn't. The board was in the project folder next to the repo, `Development Assets/Bantay Aral Device Management UI Board.png`, so nothing inside `talaan/` could point to it. It's now copied to `design/device-management.png`, beside the first prototype, and the steps and docs refer to it there. Keep a design the code is built from inside the repo: it then travels with the code, the commit records which version was built, and anyone (or any tool) working in the repo can find it. Files that aren't for the code (marketing, keys, the Firebase settings) belong outside it, as they are.
 
 ### Why did the architect find things the plan missed? (owner question, 2026-10-16)
 The architect reviewed the plans for Steps 61 and 53.1 (three rounds each) and found real gaps. About half would have been caught anyway by a test or a local run, for example a migration that fails on a table with rows. The other half would have reached the live app: a gate keeping an old roster after two edits overlap, no recovery command for a failed migration, a sign-in limit that counts per email only. It happens for the same reason human teams review each other's work. Whoever writes a plan looks for reasons it works, and a reviewer looks for ways it fails. Most of the gaps were off the normal path: two requests at once, the old server still running during a deploy, a migration failing halfway, demo data shaped differently from the examples. So the plan is now checked against those cases before the first review round, and the architect's rounds keep going.
