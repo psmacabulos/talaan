@@ -3185,3 +3185,27 @@ Findings, and what the owner chose:
 - **The shared table is cramped and flat**: 8px side padding, and a header that looks like a data row. That's every list in the app, so it became its own step, 59.15, after 59.14.
 - The bare header fixes itself when 59.13 adds the Add buttons. A summary line ("3 devices · 1 online") was offered and not taken: the board doesn't have one.
 
+## Step 59.13: add a gate or a monitor (2026-11-21)
+
+The owner approved the plan, and the `qrcode` package, on 2026-11-20, and asked for the architect again for cost. The plan was written from the existing pieces: `generateDeviceToken` and `hashDeviceToken`, the staff "link shown once" dialog as the pattern, `requestOrigin()` for the site's own address, and the monitor connect route from Step 48.
+
+**Architect, one round, no blocking concerns.** Notes taken:
+- *The key in the monitor's link.* Sentry already strips it (`scrubEvent`, no query params, no breadcrumbs). What's left is Heroku's router log and the browser's history, both limited to people who already have access. A pairing-code table was rejected as too big; a `#key=` fragment is the one real upgrade and is deferred. Cheap hardening taken: `Cache-Control: no-store` and `Referrer-Policy: no-referrer` on the connect redirect. Logged as P-068, with a measurement to make after the first deploy (`heroku logs`).
+- *A cap on devices per school:* 25, counted over all rows including disabled ones. It also bounds the Devices page's unpaginated list.
+- *The plaintext key in the action's answer:* fine (a POST, so no HTTP caching, and Sentry drops request bodies); return the finished link from the server, and never put it in an error message. Done.
+- *The dialog:* disable the button while it works, ignore Escape and outside clicks on the key step, and check that `refresh()` doesn't remount it. Done; the buttons component holds the dialog's state, and a re-render keeps it.
+- *Names:* compare trimmed on both sides, because older rows may carry spaces. No unique index, since it would need the existing duplicates cleaned first.
+- *The QR code's purpose* was unclear: a phone scanning it pairs the phone, not a TV. The board has it, so it stays, but the text now says it's for a phone or tablet that will be the monitor.
+
+**Built.** No new queries: the duplicate check and the cap both read the school's own device list, at most 25 rows. `createDevice` became a service so `npm run device:create` follows the same rules. `qrcode` was installed with `npm install qrcode` and `npm install -D @types/qrcode` (the types are a separate package); the lockfile diff was read, and its seven deleted lines are only `"dev": true` flags on packages `qrcode` now also needs at run time.
+
+**Testing.**
+- `@testing-library/user-event` isn't installed and wasn't added just for a test, so the dialog test uses `fireEvent`, like the other tests here.
+- `qrcode` is mocked in that test; in a real browser it draws to a canvas.
+- `ByRole`'s `name` has no `exact` option (a string already matches whole), which `tsc` caught; Playwright's does.
+- While building, the type check, the 42 tests in `src/features/devices`, `src/services/devices` and `src/app/gate`, eslint on the files touched and `check:tokens` were run, and all passed. The full checks are the owner's.
+
+**Looked at in the running app** (the owner's dev server; sign-in is at `/`, not `/login`): the page, step 1, the empty-name error, and step 2 for a gate and a monitor, at 1280px light and 360px dark and light. At 360×640 the monitor's step 2 is taller than the screen, so the dialog got `max-h-[calc(100dvh-2rem)] overflow-y-auto` and scrolls inside itself. Doing that created four devices ("Design check …") in the owner's local database. They were listed first, so only those four matched, then deleted with a one-off script (removed afterwards); the database is back to its three original devices.
+
+
+**Review round 1: the monitor screen names itself (2026-11-21).** The owner added a monitor ("office") from the new dialog, opened its link, saw it go Online on the Devices page, but the screen only said "Gate monitor". That was a fixed heading: the page could already tell which device it was (the cookie leads to the device row) but never showed the name. Earlier in the same session the owner had also asked why a monitor wasn't listed; the check was read-only (a throw-away script listing every device without its hash, deleted afterwards) and found the monitor under Balanga, so the question was really "which screen am I looking at". Change: `MonitorViewer` gained `deviceLabel` (the device's label, or null for a principal), the page passes it down and the header reads `office · <school>`. Tests: `monitor-viewer.test.ts` updated, new `gate-monitor.test.tsx` (mocks `next/navigation` and `EventSource`), `stream/route.test.ts` fixtures updated. `tsc`, the 75 tests in `src/features/gate` and `src/app/api/v1/gate`, eslint and `check:tokens` pass; not looked at in the browser.

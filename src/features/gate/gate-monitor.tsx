@@ -44,7 +44,16 @@ function MonitorAvatar({ event, className }: { event: GateTapEvent; className: s
  * EventSource reconnects by itself; after a reconnect the page reloads its
  * list, so a tap made while disconnected still shows.
  */
-export function GateMonitor({ schoolName, loaded }: { schoolName: string; loaded: GateTapEvent[] }) {
+export function GateMonitor({
+  schoolName,
+  deviceLabel,
+  loaded,
+}: {
+  schoolName: string;
+  /** The monitor device's own name; null when a principal watches from their own sign-in. */
+  deviceLabel: string | null;
+  loaded: GateTapEvent[];
+}) {
   const router = useRouter();
   const [live, setLive] = useState<GateTapEvent[]>([]);
   const [reconnecting, setReconnecting] = useState(false);
@@ -81,7 +90,9 @@ export function GateMonitor({ schoolName, loaded }: { schoolName: string; loaded
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-4 py-3 sm:px-6">
         <div>
           <h1 className="font-heading text-lg font-semibold">Gate monitor</h1>
-          <p className="text-sm text-muted-foreground">{schoolName}</p>
+          <p className="text-sm text-muted-foreground">
+            {deviceLabel ? `${deviceLabel} · ${schoolName}` : schoolName}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           {reconnecting ? (

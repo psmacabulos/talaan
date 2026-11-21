@@ -1,9 +1,10 @@
 import "dotenv/config";
 import { parseArgs } from "node:util";
-import { deviceRepository, schoolRepository } from "@/data/repositories";
+import { schoolRepository } from "@/data/repositories";
+import { DEVICE_LIMIT_MESSAGE, DEVICE_NAME_IN_USE_MESSAGE } from "@/features/devices/names";
 import { deviceKindSchema } from "@/features/devices/schemas";
 import { prisma } from "@/lib/db";
-import { generateDeviceToken, hashDeviceToken } from "@/services/devices/device-token";
+import { createDevice } from "@/services/devices/create-device";
 
 /**
  * Creates a gate or monitor device and prints its token, once. Usage:
@@ -30,24 +31,16 @@ async function main() {
   const school = await schoolRepository.getById(values.school);
   if (!school) throw new Error(`No school with id "${values.school}".`);
 
-  const token = generateDeviceToken();
-  const device = await deviceRepository.create(
-    {
-      id: crypto.randomUUID(),
-      schoolId: school.id,
-      label: values.label.trim(),
-      kind: kind.data,
-      status: "active",
-      lastSeenAt: null,
-    },
-    hashDeviceToken(token),
-  );
+  const created = await createDevice({ schoolId: school.id, kind: kind.data, label: values.label });
+  if (!created.ok) {
+    throw new Error(created.reason === "name-in-use" ? DEVICE_NAME_IN_USE_MESSAGE : DEVICE_LIMIT_MESSAGE);
+  }
 
-  console.log(`Created ${device.kind} "${device.label}" for ${school.name}.`);
-  console.log(`Device id: ${device.id}`);
+  console.log(`Created ${created.device.kind} "${created.device.label}" for ${school.name}.`);
+  console.log(`Device id: ${created.device.id}`);
   console.log("");
   console.log("Token (shown only this once; enter it on the device, then don't keep a copy):");
-  console.log(token);
+  console.log(created.token);
 }
 
 main()

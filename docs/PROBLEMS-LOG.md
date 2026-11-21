@@ -82,6 +82,7 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-065](#p-065--2026-11-20--the-progress-table-showed-step-5910-as-591) | 2026-11-20 | The progress table showed Step 59.10 as "59.1" | Other: tooling | `scripts/progress.mjs` | Fixed |
 | [P-066](#p-066--2026-11-20--every-gate-tap-rewrites-the-gates-last-seen-time) | 2026-11-20 | Every gate tap rewrites the gate's "last seen" time | Performance | Tap writer, `Device` | Deferred to a later step |
 | [P-067](#p-067--2026-11-20--the-heartbeat-stamped-the-real-time-under-a-pinned-demo-clock) | 2026-11-20 | The heartbeat stamped the real time under a pinned demo clock | Other: correctness | Heartbeat, Devices page | Fixed in Step 59.12 |
+| [P-068](#p-068--2026-11-21--a-monitors-one-time-link-carries-its-key-in-the-address) | 2026-11-21 | A monitor's one-time link carries its key in the address | Security | Connect route, Heroku logs | Accepted for now; measure after deploy |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -1364,3 +1365,16 @@ sequenceDiagram
 - **Cause:** the heartbeat used `new Date().toISOString()` for both `lastSeenAt` and the `serverTime` it answers with. Gate taps already used `getNow()`.
 - **Solution:** `recordHeartbeat(device.id, getNow())`. `serverTime` stays the real time, since the gate uses it to notice its own wrong clock. On a real server, `getNow()` is the real time, so nothing changes there.
 - **Status:** Fixed in Step 59.12.
+
+### P-068 · 2026-11-21 · A monitor's one-time link carries its key in the address
+- **Where:** `/gate/display/connect?key=…` (Step 48), now handed out by the Devices page's Add monitor (Step 59.13). Raised by the architect's review of that step.
+- **Symptom:** none. The link has to carry the monitor's key, so the key travels in the address, which is the part most likely to end up in a log.
+- **Cause:** a TV can't type a key, so the link is the whole sign-in. Weighed where the address can leak:
+  - **Sentry:** already safe. `scrubEvent` rebuilds the request as the address without its query, `urlQueryParams` is off and breadcrumbs are off (`src/lib/error-reporting.ts`).
+  - **The app's own logs:** it logs none for requests.
+  - **Heroku's router log:** it records the path including the query. Not checked in this repo; it is Heroku's own behaviour. Only people with access to the Heroku app can read it.
+  - **The browser's history, and a Referer header:** the route redirects at once and the cookie then carries the key. Step 59.13 adds `Cache-Control: no-store` and `Referrer-Policy: no-referrer` to that redirect.
+- **Options weighed:** (1) a pairing code or a short-lived single-use token: needs a table or key rotation, too much for this size. (2) A `#key=` fragment, which is never sent to a server, read by a small page that posts it to the route: the one real upgrade, but more moving parts. (3) Keep the link, add the two headers, and make a leaked key easy to kill with Disable (Step 59.14).
+- **Solution:** option 3 now. Option 2 stays on the list if a school ever shares logs outside its own staff.
+- **Status:** Accepted for now. After the first deploy: run `heroku logs --tail`, open one monitor link, and confirm what the router line shows. The architect asked to ship 59.14 right after 59.13 for the reason above.
+

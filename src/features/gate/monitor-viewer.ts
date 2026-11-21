@@ -6,8 +6,17 @@ import { authenticateDevice } from "@/services/devices/authenticate-device";
 /** The cookie a guardhouse TV keeps once its link has connected it (Step 48). */
 export const MONITOR_COOKIE = "talaan_monitor";
 
-/** `deviceId` is the monitor device's, so its feed can mark it as seen (Step 59.12); null for staff. */
-export type MonitorViewer = { schoolId: string; kind: "monitor" | "staff"; deviceId: string | null };
+/**
+ * `deviceId` is the monitor device's, so its feed can mark it as seen (Step 59.12), and
+ * `deviceLabel` its name, shown on the screen so the office can tell which one it is;
+ * both null for staff.
+ */
+export type MonitorViewer = {
+  schoolId: string;
+  kind: "monitor" | "staff";
+  deviceId: string | null;
+  deviceLabel: string | null;
+};
 
 /**
  * Who may watch a school's live taps: a monitor device (never a gate: a
@@ -17,10 +26,10 @@ export type MonitorViewer = { schoolId: string; kind: "monitor" | "staff"; devic
  */
 export function monitorViewerFrom(device: Device | null, session: Session | null): MonitorViewer | null {
   if (device) {
-    return device.kind === "monitor" ? { schoolId: device.schoolId, kind: "monitor", deviceId: device.id } : null;
+    return device.kind === "monitor" ? { schoolId: device.schoolId, kind: "monitor", deviceId: device.id, deviceLabel: device.label } : null;
   }
   if (session && session.schoolId && (session.role === "principal" || session.role === "super_admin")) {
-    return { schoolId: session.schoolId, kind: "staff", deviceId: null };
+    return { schoolId: session.schoolId, kind: "staff", deviceId: null, deviceLabel: null };
   }
   return null;
 }

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEVICE_NAME_MAX_LENGTH } from "./names";
 
 /** A gate station (`/gate`, records taps) or a guardhouse monitor (`/gate/display`, only watches). */
 export const deviceKindSchema = z.enum(["gate", "monitor"]);
@@ -19,3 +20,15 @@ export const deviceSchema = z.object({
   status: deviceStatusSchema,
   lastSeenAt: z.iso.datetime().nullable(),
 });
+
+/** The Add gate and Add monitor forms (Step 59.13), checked in the browser and again on the server. */
+export const deviceFormSchema = z.object({
+  kind: deviceKindSchema,
+  label: z
+    .string()
+    .trim()
+    .min(1, "Enter a name for this device")
+    .max(DEVICE_NAME_MAX_LENGTH, `Use ${DEVICE_NAME_MAX_LENGTH} characters or fewer`),
+});
+
+export type DeviceFormInput = z.infer<typeof deviceFormSchema>;

@@ -22,7 +22,12 @@ const session = (role: Session["role"], schoolId: string | null = "school-a"): S
 
 describe("monitorViewerFrom", () => {
   it("lets a monitor device watch its own school", () => {
-    expect(monitorViewerFrom(device("monitor"), null)).toEqual({ schoolId: "school-a", kind: "monitor", deviceId: "d1" });
+    expect(monitorViewerFrom(device("monitor"), null)).toEqual({
+      schoolId: "school-a",
+      kind: "monitor",
+      deviceId: "d1",
+      deviceLabel: "Guardhouse TV",
+    });
   });
 
   it("refuses a gate device: a gate records, it doesn't watch", () => {
@@ -30,11 +35,17 @@ describe("monitorViewerFrom", () => {
   });
 
   it("lets a principal, or a super admin with a school, watch that school", () => {
-    expect(monitorViewerFrom(null, session("principal"))).toEqual({ schoolId: "school-a", kind: "staff", deviceId: null });
+    expect(monitorViewerFrom(null, session("principal"))).toEqual({
+      schoolId: "school-a",
+      kind: "staff",
+      deviceId: null,
+      deviceLabel: null,
+    });
     expect(monitorViewerFrom(null, session("super_admin"))).toEqual({
       schoolId: "school-a",
       kind: "staff",
       deviceId: null,
+      deviceLabel: null,
     });
   });
 

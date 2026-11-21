@@ -22,6 +22,10 @@ export async function GET(request: Request) {
   }
 
   const response = NextResponse.redirect(new URL("/gate/display", url));
+  // The address carried a secret: never cache this answer, and never name
+  // the address as the referrer of the page it leads to (Step 59.13).
+  response.headers.set("Cache-Control", "no-store");
+  response.headers.set("Referrer-Policy", "no-referrer");
   response.cookies.set(MONITOR_COOKIE, key, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

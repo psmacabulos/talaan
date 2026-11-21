@@ -1,7 +1,7 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: █████████████████░░░ 87%**  (346 of 396 tasks, 92 of 105 steps approved)
+**Overall progress: ██████████████████░░ 88%**  (352 of 398 tasks, 93 of 105 steps approved)
 
 **Next up:** Step 59.2, A practice restore (not started)
 
@@ -102,7 +102,7 @@
 | 59.10 | After a deploy, the error page asks for a reload | ██████████ 100% | Approved |
 | 59.11 | A build with no warnings | ██████████ 100% | Approved |
 | 59.12 | The Devices page | ██████████ 100% | Approved |
-| 59.13 | Add a gate or a monitor | ░░░░░░░░░░   0% | Not started |
+| 59.13 | Add a gate or a monitor | ██████████ 100% | Approved |
 | 59.14 | Disable and enable a device | ░░░░░░░░░░   0% | Not started |
 | 59.15 | Roomier tables | ░░░░░░░░░░   0% | Not started |
 | 60 | Privacy for real student data | ░░░░░░░░░░   0% | Not started |
@@ -1018,13 +1018,15 @@ Commit: `feat(devices): list a school's gates and monitors with their connection
 - [x] Owner review: I checked it and said "approved"
 
 ### Step 59.13: Add a gate or a monitor
-Added 2026-11-20 (see 59.12). The owner approved a new dependency, `qrcode`, for the monitor's QR code.
-- [ ] **Add gate** and **Add monitor** on the Devices page: a name, then the gate's key or the monitor's link shown once, with Copy, the next steps, and a QR code for the monitor's link. `npm run device:create` stays as a fallback.
-- [ ] A device's name must be new within its school (ignoring upper and lower case and spaces at either end): the form says so instead of making a second "Main gate tablet" (owner, 2026-11-21, from 59.12's design review).
-- [ ] Tests: who may add, a repeated name refused, the key shown once and stored only as a hash, and the browser test from adding a gate to signing a gate in with its key.
-Done when: a principal adds a gate and signs `/gate` in with the key shown, adds a monitor and opens its link, and every check passes.
+Added 2026-11-20 (see 59.12). The owner approved a new dependency, `qrcode` (and its type definitions, `@types/qrcode`, dev only), for the monitor's QR code. Reviewed with the systems-architect on 2026-11-21 (one round, no blocking concerns); its notes are built in. Recipe: `docs/backend/step-59.13-add-device.md`.
+- [x] **Add gate** and **Add monitor** under the Devices page's heading: a name, then the gate's key or the monitor's link shown once, with Copy, the next steps, and a QR code for the monitor's link (drawn in the browser, loaded only when needed). Escape, a click outside and the corner × are ignored while the secret is shown; only Close ends it. `npm run device:create` stays as a fallback.
+- [x] A device's name must be new within its school (ignoring upper and lower case and spaces at either end, disabled devices included): the form says so instead of making a second "Main gate tablet" (owner, 2026-11-21, from 59.12's design review).
+- [x] A school can have at most 25 devices (architect note): the form says so, and it also keeps the Devices page's unpaginated list small.
+- [x] The monitor connect redirect sends `Cache-Control: no-store` and `Referrer-Policy: no-referrer` (P-068).
+- [x] Tests: who may add, a repeated name refused, the cap, the key shown once and stored only as a hash, the dialog's two steps and its ignoring Escape, the connect route's headers, and the browser tests from adding a gate to signing a gate in with its key, and from adding a monitor to opening its link.
+Done when: a principal adds a gate and signs `/gate` in with the key shown, adds a monitor and opens its link, a repeated name is refused, and every check passes.
 Commit: `feat(devices): add a gate or a monitor from the Devices page`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 59.14: Disable and enable a device
 Added 2026-11-20 (see 59.12).

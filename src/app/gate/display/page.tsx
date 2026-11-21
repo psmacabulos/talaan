@@ -47,6 +47,7 @@ export default async function GateDisplayPage({ searchParams }: PageProps<"/gate
   return (
     <GateMonitor
       schoolName={school?.name ?? "Your school"}
+      deviceLabel={viewer.deviceLabel}
       loaded={monitorEventsFromTaps(taps, students, lostCardOwners)}
     />
   );

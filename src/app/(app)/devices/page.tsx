@@ -3,6 +3,7 @@ import { hasNavAccess } from "@/components/app-shell/nav-items";
 import { PageHeader } from "@/components/page-header";
 import { deviceRepository } from "@/data/repositories";
 import { NoSchoolSelected } from "@/features/attendance/no-school-selected";
+import { AddDeviceButtons } from "@/features/devices/add-device-buttons";
 import { DevicesList } from "@/features/devices/devices-list";
 import { getNow } from "@/lib/clock";
 import { requireSession } from "@/lib/session";
@@ -39,6 +40,7 @@ export default async function DevicesPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={TITLE} description={DESCRIPTION} />
+      <AddDeviceButtons />
       <DevicesList devices={devices} now={getNow()} />
     </div>
   );

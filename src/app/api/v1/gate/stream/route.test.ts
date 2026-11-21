@@ -30,7 +30,7 @@ describe("the monitor's live feed marks it as seen (Step 59.12)", () => {
   afterEach(() => vi.useRealTimers());
 
   it("marks a monitor on connect and every 5 minutes, and stops once it has gone", async () => {
-    state.viewer = { schoolId: "school-a", kind: "monitor", deviceId: "monitor-a" };
+    state.viewer = { schoolId: "school-a", kind: "monitor", deviceId: "monitor-a", deviceLabel: "Guardhouse" };
     const { controller } = await open();
     expect(state.markDeviceSeen).toHaveBeenCalledTimes(1);
     expect(state.markDeviceSeen).toHaveBeenCalledWith("monitor-a", "2026-06-19T01:15:00.000Z");
@@ -47,7 +47,7 @@ describe("the monitor's live feed marks it as seen (Step 59.12)", () => {
   });
 
   it("never marks anything for a principal watching from their own sign-in", async () => {
-    state.viewer = { schoolId: "school-a", kind: "staff", deviceId: null };
+    state.viewer = { schoolId: "school-a", kind: "staff", deviceId: null, deviceLabel: null };
     const { controller } = await open();
     vi.advanceTimersByTime(3 * FIVE_MINUTES);
     expect(state.markDeviceSeen).not.toHaveBeenCalled();

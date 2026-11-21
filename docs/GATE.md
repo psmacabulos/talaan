@@ -166,6 +166,34 @@ The feed marks a monitor with its own 5-minute timer, not the 25-second keep-ali
 | `src/services/devices/mark-seen.ts` | The 4-minute gap, and never throwing |
 | `DeviceRepository.listBySchool`, `markSeen` | The two queries |
 
+## Adding a device (Step 59.13)
+
+**Add gate** and **Add monitor** sit under the Devices heading. Each opens a two-step dialog: a name, then the device's secret, **shown once**.
+
+```mermaid
+flowchart LR
+    F["Add gate / Add monitor<br/>(name)"] --> A["addDevice<br/>session, role, school = session.schoolId"]
+    A --> C["createDevice<br/>cap 25 · name unused"]
+    C --> D[("Device row<br/>sha256(token) only")]
+    C --> T["token"] --> R["gate: the key<br/>monitor: .../gate/display/connect?key=…"]
+    R --> X["dialog state only<br/>(gone on Close)"]
+```
+
+- **The secret is never stored.** `createDevice` keeps only `hashDeviceToken(token)`; the token goes back to the dialog and nowhere else. Closing the dialog forgets it, and while it's shown Escape, a click outside and the × are ignored.
+- **A gate** gets the key: open `/gate` on the tablet and paste it into the setup screen (Step 47).
+- **A monitor** gets a link that carries the key, plus a QR code (drawn in the browser, so the link never leaves it). The link signs the screen it's opened on in. The QR code is for a phone or tablet that will be the monitor; a TV opens the link in its own browser. Once connected, the monitor's header shows its own name and the school (`office · Balanga City …`); a principal watching from their own sign-in sees only the school, and doesn't mark any device as seen.
+- **Rules:** a name must be new within the school (case and spaces ignored, disabled devices included), and a school can have at most 25 devices (`names.ts`). The school is always the signed-in person's own. A teacher can't add.
+- **Known weak spot:** the key rides in the link's address, which Heroku's router log would record (P-068). The connect redirect is `no-store` and `no-referrer`; Disable (Step 59.14) is the answer to a leaked link.
+
+| File | Job |
+|---|---|
+| `src/features/devices/actions.ts` | `addDevice`: who may, validation, the finished secret |
+| `src/services/devices/create-device.ts` | The cap, the name rule, the hash, the insert |
+| `src/features/devices/names.ts`, `schemas.ts` | The rules and the form's schema |
+| `src/features/devices/add-device-buttons.tsx`, `add-device-dialog.tsx`, `monitor-qr.tsx` | The buttons, the two-step dialog, the QR code |
+
+**Quick recipe: change the limit.** Edit `MAX_DEVICES_PER_SCHOOL` in `names.ts`; the message and tests follow it.
+
 ## The card serial
 
 A card's serial is its NFC UID. Your USB reader doesn't type it the way NFC Tools shows it: it sends only the **first 4 bytes**, as one **10-digit decimal number**, lowest byte first. `normalizeCardSerial` (`src/features/students/card-serial.ts`) turns anything a reader or a person types into the stored form:
