@@ -1,3 +1,4 @@
+import { DEVICE_DISABLED_CODE } from "@/features/devices/disabled";
 import type { GateTapResponse } from "./responses";
 import type { GateRoster } from "./roster";
 import type { GateTapRequest } from "./schemas";
@@ -33,6 +34,12 @@ export class GateOfflineError extends Error {}
 export class GateServerError extends Error {}
 /** The token no longer works (revoked, or never did): the page goes back to setup. */
 export class GateUnauthorizedError extends Error {}
+/**
+ * The key is real but the office has disabled this device (Step 59.14): the
+ * page waits and keeps the key, the roster and the waiting taps, and carries
+ * on by itself once the device is enabled again.
+ */
+export class GateDisabledError extends Error {}
 
 export type StoredRoster = { etag: string | null; roster: GateRoster };
 
@@ -104,6 +111,17 @@ export async function forgetGate(): Promise<void> {
   if ("caches" in window) await caches.delete(PHOTO_CACHE);
 }
 
+/** Why a 403 was refused: a disabled device (wait), or anything else (the key is no good). */
+async function refusedBy403(response: Response): Promise<GateDisabledError | GateUnauthorizedError> {
+  try {
+    const body = (await response.json()) as { code?: unknown };
+    if (body.code === DEVICE_DISABLED_CODE) return new GateDisabledError();
+  } catch {
+    // Not our server's answer (a school's web filter, say): no code, so the key is treated as refused.
+  }
+  return new GateUnauthorizedError();
+}
+
 function authorized(token: string, extra: Record<string, string> = {}): HeadersInit {
   return { Authorization: `Bearer ${token}`, ...extra };
 }
@@ -115,6 +133,11 @@ function authorized(token: string, extra: Record<string, string> = {}): HeadersI
 export async function checkIn(token: string): Promise<StoredDevice & { serverTime: string }> {
   const response = await fetch("/api/v1/devices/heartbeat", { method: "POST", headers: authorized(token) });
   if (response.status === 401) throw new GateUnauthorizedError();
+  if (response.status === 403) {
+    // Check-in only ever answers 403 for a disabled device; any other 403 (a web filter's) is just "can't reach".
+    const refused = await refusedBy403(response);
+    if (refused instanceof GateDisabledError) throw refused;
+  }
   if (!response.ok) throw new Error(`Check-in failed: ${response.status}`);
   const body = (await response.json()) as {
     device: { label: string; kind: string; schoolId: string };
@@ -130,7 +153,8 @@ export async function checkIn(token: string): Promise<StoredDevice & { serverTim
 export async function refreshRoster(token: string, stored: StoredRoster | null): Promise<StoredRoster> {
   const headers = authorized(token, stored?.etag ? { "If-None-Match": stored.etag } : {});
   const response = await fetch("/api/v1/gate/roster", { headers, cache: "no-store" });
-  if (response.status === 401 || response.status === 403) throw new GateUnauthorizedError();
+  if (response.status === 401) throw new GateUnauthorizedError();
+  if (response.status === 403) throw await refusedBy403(response);
   if (response.status === 304 && stored) return stored;
   if (!response.ok) throw new Error(`Roster failed: ${response.status}`);
 
@@ -162,7 +186,8 @@ export async function sendTap(token: string, tap: GateTapRequest): Promise<GateT
   } catch {
     throw new GateOfflineError();
   }
-  if (response.status === 401 || response.status === 403) throw new GateUnauthorizedError();
+  if (response.status === 401) throw new GateUnauthorizedError();
+  if (response.status === 403) throw await refusedBy403(response);
   if ([429, 502, 503, 504].includes(response.status)) throw new GateOfflineError();
   if (!response.ok) throw new GateServerError(`Tap failed: ${response.status}`);
   try {

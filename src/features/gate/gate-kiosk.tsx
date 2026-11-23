@@ -11,6 +11,7 @@ import {
   askToKeepStorage,
   checkIn,
   forgetGate,
+  GateDisabledError,
   GateUnauthorizedError,
   photosFromCache,
   readStoredDevice,
@@ -36,6 +37,8 @@ const IDLE_AFTER_MS = 5_000;
 const ROSTER_EVERY_MS = 5 * 60_000;
 /** While taps wait, or the server couldn't be reached at start-up, try again this often (Step 58). */
 const RETRY_EVERY_MS = 30_000;
+/** While the office has this gate disabled, it asks this often whether it's been enabled again (Step 59.14). */
+const DISABLED_CHECK_EVERY_MS = 60_000;
 /** Taps the server kept refusing are tried again this often (Step 58). */
 const STUCK_EVERY_MS = 10 * 60_000;
 /** A tablet clock this far off gets a warning; the server corrects badly wrong times anyway (Step 45). */
@@ -65,7 +68,11 @@ function subscribeToWindowFocus(onChange: () => void): () => void {
   };
 }
 
-type Phase = { kind: "starting" } | { kind: "setup"; error: string | null } | { kind: "ready"; label: string };
+type Phase =
+  | { kind: "starting" }
+  | { kind: "setup"; error: string | null }
+  | { kind: "ready"; label: string }
+  | { kind: "disabled"; label: string };
 
 /** "1 tap", "3 taps". */
 function taps(count: number): string {
@@ -146,6 +153,22 @@ export function GateKiosk() {
     setPhase({ kind: "setup", error });
   }, []);
 
+  /**
+   * The office disabled this gate (Step 59.14): stop sending and waiting for
+   * cards, but forget nothing. The key, the roster, the photos and the waiting
+   * taps all stay, so enabling the gate again brings it back by itself.
+   */
+  const pause = useCallback(() => {
+    senderRef.current?.stop();
+    senderRef.current = null;
+    if (checkInTimer.current) clearInterval(checkInTimer.current);
+    checkInTimer.current = null;
+    setQueueSummary(null);
+    setServerReached(true);
+    setConfirmDisconnect(false);
+    setPhase({ kind: "disabled", label: readStoredDevice()?.label ?? "This gate" });
+  }, []);
+
   const loadRoster = useCallback(
     async (token: string) => {
       try {
@@ -167,10 +190,11 @@ export function GateKiosk() {
       } catch (error) {
         if (error instanceof GateUnauthorizedError)
           await disconnect("This gate was disconnected. Ask the office for a new token.");
+        else if (error instanceof GateDisabledError) pause();
         // Anything else (offline, a server hiccup): keep the copy already on the tablet and try again later.
       }
     },
-    [disconnect],
+    [disconnect, pause],
   );
 
   /** The tablet's waiting line for this school, sending with this token (Step 58). */
@@ -184,13 +208,14 @@ export function GateKiosk() {
         onAnswer: (id, response) => settleScan(id, { kind: "answered", response }),
         onUnsent: (id) => settleScan(id, { kind: "saved" }),
         onUnauthorized: () => void disconnect("This gate was disconnected. Ask the office for a new token."),
+        onDisabled: pause,
         onChange: setQueueSummary,
       });
       senderRef.current = sender;
       setQueueSummary(sender.summary());
       return sender;
     },
-    [disconnect, settleScan],
+    [disconnect, pause, settleScan],
   );
 
   /** A check-in worked: the clock warning, then a fresh roster, and anything waiting goes out. */
@@ -220,6 +245,19 @@ export function GateKiosk() {
       } catch (error) {
         if (error instanceof GateUnauthorizedError) {
           await disconnect("That token doesn't work. Ask the office for a new one.");
+          return;
+        }
+        if (error instanceof GateDisabledError) {
+          // A gate that has been set up before waits, with its key and roster kept. One that never connected has nothing to keep.
+          const device = readToken() === token ? readStoredDevice() : null;
+          if (!device) {
+            await disconnect("This gate is disabled. Ask the office to enable it, then set it up again.");
+            return;
+          }
+          tokenRef.current = token;
+          rosterRef.current = readStoredRoster();
+          setRoster(rosterRef.current);
+          setPhase({ kind: "disabled", label: device.label });
           return;
         }
         // The server can't answer, but this tablet has been set up before
@@ -260,12 +298,13 @@ export function GateKiosk() {
             (retryError) => {
               if (retryError instanceof GateUnauthorizedError)
                 void disconnect("This gate was disconnected. Ask the office for a new token.");
+              else if (retryError instanceof GateDisabledError) pause();
             },
           );
         }, RETRY_EVERY_MS);
       }
     },
-    [checkedIn, disconnect, startSender],
+    [checkedIn, disconnect, pause, startSender],
   );
 
   // The start-up check-in retry (Step 58) ends with the page.
@@ -275,6 +314,25 @@ export function GateKiosk() {
     },
     [],
   );
+
+  // While disabled (Step 59.14): ask once a minute whether the office has enabled this gate again, and carry on if so.
+  const disabled = phase.kind === "disabled";
+  useEffect(() => {
+    if (!disabled) return;
+    const timer = setInterval(() => {
+      const token = tokenRef.current;
+      if (!token) return;
+      checkIn(token).then(
+        () => void connect(token),
+        (error) => {
+          if (error instanceof GateUnauthorizedError)
+            void disconnect("This gate was disconnected. Ask the office for a new token.");
+          // Still disabled, or no connection: keep waiting.
+        },
+      );
+    }, DISABLED_CHECK_EVERY_MS);
+    return () => clearInterval(timer);
+  }, [disabled, connect, disconnect]);
 
   // First visit: a ?token= link connects once and then leaves the address bar.
   useEffect(() => {
@@ -437,6 +495,44 @@ export function GateKiosk() {
             Connect
           </Button>
         </form>
+      </main>
+    );
+  }
+
+  if (phase.kind === "disabled") {
+    return (
+      <main className="flex min-h-dvh items-center justify-center bg-background p-6">
+        <div className="flex w-full max-w-md flex-col gap-5 rounded-2xl border border-border bg-card p-6">
+          <div role="status" className="flex flex-col gap-1.5">
+            <h1 className="font-heading text-2xl font-semibold text-foreground">This gate is disabled</h1>
+            <p className="text-muted-foreground">
+              {phase.label} can&apos;t record taps right now. Ask the office to enable it. This screen carries on by
+              itself once they do, and any taps already saved on this tablet are kept.
+            </p>
+          </div>
+          {confirmDisconnect ? (
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-foreground">Disconnect? It will need a new token.</p>
+              <div className="flex gap-2">
+                <Button type="button" variant="destructive" className="h-11" onClick={() => void disconnect(null)}>
+                  Disconnect
+                </Button>
+                <Button type="button" variant="ghost" className="h-11" onClick={() => setConfirmDisconnect(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 self-start"
+              onClick={() => setConfirmDisconnect(true)}
+            >
+              Disconnect
+            </Button>
+          )}
+        </div>
       </main>
     );
   }

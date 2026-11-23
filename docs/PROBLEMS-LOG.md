@@ -1377,7 +1377,7 @@ sequenceDiagram
   - **The browser's history, and a Referer header:** the route redirects at once and the cookie then carries the key. Step 59.13 adds `Cache-Control: no-store` and `Referrer-Policy: no-referrer` to that redirect.
 - **Options weighed:** (1) a pairing code or a short-lived single-use token: needs a table or key rotation, too much for this size. (2) A `#key=` fragment, which is never sent to a server, read by a small page that posts it to the route: the one real upgrade, but more moving parts. (3) Keep the link, add the two headers, and make a leaked key easy to kill with Disable (Step 59.14).
 - **Solution:** option 3 now. Option 2 stays on the list if a school ever shares logs outside its own staff.
-- **Status:** Accepted for now. After the first deploy: run `heroku logs --tail`, open one monitor link, and confirm what the router line shows. The architect asked to ship 59.14 right after 59.13 for the reason above.
+- **Status:** Accepted for now. After the first deploy: run `heroku logs --tail`, open one monitor link, and confirm what the router line shows. The architect asked to ship 59.14 right after 59.13 for the reason above. Step 59.14 now gives a leaked key an answer: Disable stops a gate at its next request and a monitor within 5 minutes (still to check live).
 
 ### P-069 · 2026-11-21 · A monitor's link redirected to `https://localhost:22089`
 - **Where:** `/gate/display/connect?key=…` (Step 48), found on the live site when the owner pasted the link from Add monitor (Step 59.13).

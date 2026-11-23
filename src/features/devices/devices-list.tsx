@@ -20,13 +20,17 @@ export function DevicesList({ devices, now }: { devices: Device[]; now: string }
     );
   }
 
+  // The menu warns before the school's last enabled gate is disabled, which would stop all tap recording.
+  const enabledGates = devices.filter((device) => device.kind === "gate" && device.status === "active");
+  const onlyEnabledGateId = enabledGates.length === 1 ? enabledGates[0].id : null;
+
   return (
     <>
       <div className="md:hidden">
-        <DeviceCards devices={devices} now={now} />
+        <DeviceCards devices={devices} now={now} onlyEnabledGateId={onlyEnabledGateId} />
       </div>
       <div className="hidden md:block">
-        <DeviceTable devices={devices} now={now} />
+        <DeviceTable devices={devices} now={now} onlyEnabledGateId={onlyEnabledGateId} />
       </div>
     </>
   );

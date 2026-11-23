@@ -1,15 +1,23 @@
 import { connectionStatus, KIND_LABEL, lastSeenLabel } from "./connection";
 import { DeviceKindIcon } from "./device-art";
+import { DeviceRowMenu } from "./device-row-menu";
 import { ConnectionLabel, DeviceStatusBadge } from "./device-display";
 import type { Device } from "./types";
 
 /**
  * The school's gates and monitors below 768px (Step 59.12), one card each,
  * as on the design board: the name, then its type, connection and when it
- * was last seen. The badge sits on the right, where the ⋯ menu joins it in
- * Step 59.14.
+ * was last seen. The badge and the ⋮ menu (Step 59.14) sit on the right.
  */
-export function DeviceCards({ devices, now }: { devices: Device[]; now: string }) {
+export function DeviceCards({
+  devices,
+  now,
+  onlyEnabledGateId,
+}: {
+  devices: Device[];
+  now: string;
+  onlyEnabledGateId: string | null;
+}) {
   return (
     <ul aria-label="Devices" className="flex flex-col gap-2">
       {devices.map((device) => {
@@ -25,7 +33,11 @@ export function DeviceCards({ devices, now }: { devices: Device[]; now: string }
                 {seen ? <span className="text-sm text-muted-foreground">· {seen}</span> : null}
               </div>
             </div>
-            <DeviceStatusBadge status={device.status} className="shrink-0" />
+            {/* The 44px menu button hangs past the card's padding, so the badge keeps its place at the right edge. */}
+            <div className="-mt-1.5 -mr-3 flex shrink-0 items-center gap-1">
+              <DeviceStatusBadge status={device.status} />
+              <DeviceRowMenu device={device} onlyEnabledGate={device.id === onlyEnabledGateId} className="size-11" />
+            </div>
           </li>
         );
       })}

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { GateOfflineError, GateServerError, GateUnauthorizedError } from "./gate-client";
+import { GateDisabledError, GateOfflineError, GateServerError, GateUnauthorizedError } from "./gate-client";
 import type { GateTapResponse } from "./responses";
 import { EMPTY_QUEUE, MAX_SERVER_ERRORS, type QueuedTap, type TapQueue } from "./tap-queue";
 import { createTapSender, type TapSenderDeps } from "./tap-sender";
@@ -45,6 +45,7 @@ function setup(initial: TapQueue = EMPTY_QUEUE) {
     onAnswer: vi.fn(),
     onUnsent: vi.fn(),
     onUnauthorized: vi.fn(),
+    onDisabled: vi.fn(),
     onChange: vi.fn(),
   };
   const sender = createTapSender(deps);
@@ -188,6 +189,7 @@ describe("createTapSender", () => {
       onAnswer: vi.fn(),
       onUnsent: vi.fn(),
       onUnauthorized: vi.fn(),
+      onDisabled: vi.fn(),
       onChange: vi.fn(),
     });
     const old = createTapSender(deps());
@@ -210,6 +212,22 @@ describe("createTapSender", () => {
     await settle();
     expect(deps.onUnauthorized).toHaveBeenCalled();
     expect(saved().waiting).toHaveLength(2);
+    sender.kick();
+    await settle();
+    expect(calls).toHaveLength(1);
+  });
+
+  it("stops on a disabled device, keeps the line, and says so without forgetting the key (Step 59.14)", async () => {
+    const { sender, deps, calls, saved } = setup({ waiting: [tap("a"), tap("b")], stuck: [] });
+    sender.kick();
+    await settle();
+    calls[0].reject(new GateDisabledError());
+    await settle();
+    expect(deps.onDisabled).toHaveBeenCalledTimes(1);
+    expect(deps.onUnauthorized).not.toHaveBeenCalled();
+    expect(deps.onUnsent).toHaveBeenCalledWith("a");
+    // Nothing is lost: both taps wait on the tablet, and nothing more is sent.
+    expect(saved().waiting.map((item) => item.id)).toEqual(["a", "b"]);
     sender.kick();
     await settle();
     expect(calls).toHaveLength(1);

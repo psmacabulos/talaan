@@ -118,3 +118,62 @@ test.describe("Adding a device (Step 59.13)", () => {
   });
 });
 
+/**
+ * Disabling and enabling a device (Step 59.14): a disabled gate is refused
+ * with the "disabled" code (never the 401 an unknown key gets), its tablet
+ * waits and keeps its key instead of going back to setup, and enabling it
+ * brings the same key back. Each project adds its own gate.
+ */
+test.describe("Disabling a device (Step 59.14)", () => {
+  test("a disabled gate is refused and waits, and enabling brings the same key back", async ({
+    context,
+    page,
+    request,
+    baseURL,
+  }, testInfo) => {
+    const name = `Pausable gate (${testInfo.project.name})`;
+    await signInAs(context, "principal", baseURL!);
+    await page.goto("/devices");
+
+    await page.getByRole("button", { name: "Add gate" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Device name").fill(name);
+    await dialog.getByRole("button", { name: "Create device" }).click();
+    const key = await dialog.getByLabel("Secret key").inputValue();
+    await dialog.getByRole("button", { name: "Close", exact: true }).click();
+
+    const asGate = (token: string) => ({ headers: { Authorization: `Bearer ${token}` } });
+    expect((await request.get("/api/v1/gate/roster", asGate(key))).status()).toBe(200);
+
+    // The tablet is signed in and has saved who it is.
+    const gate = await context.newPage();
+    await gate.goto(`/gate?token=${key}`);
+    await expect(gate.getByText(`Connected as ${name}`)).toBeVisible();
+
+    // Disable asks first, then says what it did.
+    await page.getByRole("button", { name: `Actions for ${name}` }).click();
+    await page.getByRole("menuitem", { name: "Disable device" }).click();
+    await expect(page.getByRole("dialog", { name: `Disable ${name}?` })).toBeVisible();
+    await page.getByRole("dialog").getByRole("button", { name: "Disable", exact: true }).click();
+    await expect(page.getByText(`${name} was disabled`)).toBeVisible();
+
+    // The server refuses the real key with the disabled code, an unknown key with a plain 401.
+    const refused = await request.get("/api/v1/gate/roster", asGate(key));
+    expect(refused.status()).toBe(403);
+    expect(await refused.json()).toMatchObject({ code: "device_disabled" });
+    expect((await request.get("/api/v1/gate/roster", asGate("tal_dev_not-a-real-key"))).status()).toBe(401);
+
+    // The tablet waits, with its key kept: it doesn't go back to the setup screen.
+    await gate.reload();
+    await expect(gate.getByRole("heading", { name: "This gate is disabled" })).toBeVisible();
+    await expect(gate.getByLabel("Gate token")).toHaveCount(0);
+
+    // Enable needs no question, and the same key works again, with no new setup.
+    await page.getByRole("button", { name: `Actions for ${name}` }).click();
+    await page.getByRole("menuitem", { name: "Enable device" }).click();
+    await expect(page.getByText(`${name} was enabled`)).toBeVisible();
+    expect((await request.get("/api/v1/gate/roster", asGate(key))).status()).toBe(200);
+    await gate.reload();
+    await expect(gate.getByText(`Connected as ${name}`)).toBeVisible();
+  });
+});

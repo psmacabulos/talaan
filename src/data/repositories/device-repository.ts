@@ -15,4 +15,12 @@ export interface DeviceRepository {
    * minutes writes at most once per gap. A no-op for an unknown id.
    */
   markSeen(id: string, at: string, minGapMs: number): Promise<void>;
+  /**
+   * Disables or enables one of the school's devices (Step 59.14). Only that
+   * school's own: false when the id doesn't exist or belongs to another
+   * school. Writes the status and nothing else.
+   */
+  setStatus(schoolId: string, id: string, status: Device["status"]): Promise<boolean>;
+  /** A device's current status, or null for an unknown id: one read by primary key (Step 59.14). */
+  findStatus(id: string): Promise<Device["status"] | null>;
 }

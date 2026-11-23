@@ -93,7 +93,8 @@ update(addTap(queue, tap));
 | gets any answer (recorded, already tapped, lost card, unknown card, can't read) | done | leaves the line |
 | has no connection, no answer within 10 s, or 429, 502, 503, 504 (a server that isn't there just now, as while Heroku restarts) | try again later | stays; doesn't count against it |
 | gets any other error answer (500, a 4xx) | the server refuses this tap | stays; after 5 of these it moves to **stuck**, tried every 10 minutes. Never deleted: a school's web filter or login page can answer a 4xx too |
-| gets 401 or 403 | the token was revoked | the line stays on the tablet |
+| gets 401, or a 403 with no code | the key is no good (unknown, or a monitor's) | the line stays on the tablet; the tablet forgets its key and goes back to setup |
+| gets 403 with the code `device_disabled` (Step 59.14) | the office disabled this gate | the line stays on the tablet; the tablet **waits and keeps its key** (see "Disabling a device") |
 
 A tap that timed out may have been stored after all. Sending it again with the same id gets the first answer back (`recordTap`'s replay), so nothing doubles.
 
@@ -183,7 +184,7 @@ flowchart LR
 - **A gate** gets the key: open `/gate` on the tablet and paste it into the setup screen (Step 47).
 - **A monitor** gets a link that carries the key, plus a QR code (drawn in the browser, so the link never leaves it). The link signs the screen it's opened on in. The QR code is for a phone or tablet that will be the monitor; a TV opens the link in its own browser. The connect route redirects to the site's public address (`requestOrigin`), never to `request.url`, which behind Heroku is the dyno's own `localhost:<port>` (P-069). Once connected, the monitor's header shows its own name and the school (`office · Balanga City …`); a principal watching from their own sign-in sees only the school, and doesn't mark any device as seen.
 - **Rules:** a name must be new within the school (case and spaces ignored, disabled devices included), and a school can have at most 25 devices (`names.ts`). The school is always the signed-in person's own. A teacher can't add.
-- **Known weak spot:** the key rides in the link's address, which Heroku's router log would record (P-068). The connect redirect is `no-store` and `no-referrer`; Disable (Step 59.14) is the answer to a leaked link.
+- **Known weak spot:** the key rides in the link's address, which Heroku's router log would record (P-068). The connect redirect is `no-store` and `no-referrer`; Disable (Step 59.14, below) is the answer to a leaked link.
 
 | File | Job |
 |---|---|
@@ -193,6 +194,40 @@ flowchart LR
 | `src/features/devices/add-device-buttons.tsx`, `add-device-dialog.tsx`, `monitor-qr.tsx` | The buttons, the two-step dialog, the QR code |
 
 **Quick recipe: change the limit.** Edit `MAX_DEVICES_PER_SCHOOL` in `names.ts`; the message and tests follow it.
+
+## Disabling a device (Step 59.14)
+
+Each device has a **⋮ menu**: **Disable device** (asks first) or, for a disabled one, **Enable device** (no question). The key never changes, so Enable brings the very same gate or monitor back.
+
+```mermaid
+flowchart LR
+    M["⋮ Disable device<br/>(confirm)"] --> A["disableDevice<br/>session, role, school = session.schoolId"]
+    A --> S[("Device.status = revoked")]
+    S --> G["gate's next request<br/>403 + code device_disabled"] --> K["tablet pauses:<br/>keeps key, roster, taps"]
+    S --> T["monitor's 5-minute check<br/>findStatus"] --> E["feed ends → page reloads →<br/>'This screen isn't connected'"]
+    K -->|"asks once a minute"| B["Enable → check-in works → carries on"]
+    E -->|"reloads once a minute"| B
+```
+
+- **Why a distinct 403.** A gate that gets a 401 forgets its key (`forgetGate()`), and the key can't be reissued, because only its hash is stored. If disabling answered 401, Enable would flip a row nobody could use. So a *real key of a disabled device* gets **403 with `{ "code": "device_disabled" }`** from the roster, taps and check-in routes (`authenticate-gate.ts`, `heartbeat/route.ts`), and a wrong or missing key still gets 401. Photos answer 404 for anyone refused, so they never wipe a gate.
+- **A gate that is told it is disabled** (`GateDisabledError`, `pause()` in `gate-kiosk.tsx`): stops sending, listening for cards and checking the roster, and shows "This gate is disabled". It forgets **nothing**: key, roster, photos and the saved taps stay. Once a minute it checks in; when that works it connects again and the saved taps go out. A tablet that was never connected has nothing to keep, so it just says so on the setup screen.
+- **A monitor** authenticated once, when its feed connected, so disabling it can't cut an open feed by itself. The feed's existing 5-minute timer (the one that marks it seen) also reads the device's status (`isDeviceStillActive`, one read by primary key) and ends the feed when it isn't enabled. A database error counts as "still enabled", so a hiccup never blanks a guardhouse screen. The screen reloads when its feed is closed for good (`readyState === CLOSED`), which renders "This screen isn't connected", and that page reloads itself once a minute (`RefreshEvery`), so Enable needs no one at the TV. **The longest a disabled monitor keeps showing taps is 5 minutes.**
+- **Rules:** a principal or a super admin with a school open; always that school's own device; another school's id is "not found", never changed. Repeating a change is fine. One log line with the device id and role, no names. A tap already authenticated when the office pressed Disable can still be stored: it is a real tap.
+- **Warning, not a block:** disabling a school's only enabled gate shows a notice in the dialog.
+- **Cost:** about 12 small reads an hour per open monitor, and one read a minute per disabled gate or monitor screen. No new table or setting.
+
+| File | Job |
+|---|---|
+| `src/features/devices/actions.ts` | `disableDevice`, `enableDevice` |
+| `src/services/devices/set-device-status.ts` | The school-scoped status change |
+| `src/features/devices/disabled.ts` | The code and message, shared by the server and the tablet |
+| `src/services/devices/authenticate-gate.ts`, `authenticate-device.ts` | `findDeviceByToken` (any status) and the 403 for a disabled device |
+| `src/features/devices/device-row-menu.tsx` | The ⋮ menu and its confirmation |
+| `src/app/api/v1/gate/stream/route.ts`, `src/services/devices/still-active.ts` | The monitor feed's check |
+| `src/features/gate/gate-kiosk.tsx`, `gate-client.ts`, `tap-sender.ts` | The tablet's pause |
+| `src/features/gate/gate-monitor.tsx`, `refresh-every.tsx` | The monitor's reload |
+
+**Quick recipe: change how soon a disabled monitor stops.** Edit `SEEN_EVERY_MS` in the stream route (it also sets how often the monitor is marked seen). **Change how often a paused gate checks:** `DISABLED_CHECK_EVERY_MS` in `gate-kiosk.tsx`.
 
 ## The card serial
 

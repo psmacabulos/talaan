@@ -1,7 +1,7 @@
 import { gateTapRequestSchema } from "@/features/gate/schemas";
 import { toGateTapResponse } from "@/features/gate/responses";
 import { getNow } from "@/lib/clock";
-import { authenticateGate } from "@/services/devices/authenticate-gate";
+import { authenticateGate, gateAuthResponse } from "@/services/devices/authenticate-gate";
 import { wakePushWorker } from "@/services/push/push-worker";
 import { publishStoredTap } from "@/services/taps/publish-tap";
 import { recordTap } from "@/services/taps/record-tap";
@@ -13,7 +13,7 @@ import { recordTap } from "@/services/taps/record-tap";
  */
 export async function POST(request: Request) {
   const auth = await authenticateGate(request.headers.get("authorization"));
-  if (!auth.ok) return Response.json({ error: auth.error }, { status: auth.status });
+  if (!auth.ok) return gateAuthResponse(auth);
 
   let body: unknown;
   try {

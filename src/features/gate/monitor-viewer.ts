@@ -26,7 +26,9 @@ export type MonitorViewer = {
  */
 export function monitorViewerFrom(device: Device | null, session: Session | null): MonitorViewer | null {
   if (device) {
-    return device.kind === "monitor" ? { schoolId: device.schoolId, kind: "monitor", deviceId: device.id, deviceLabel: device.label } : null;
+    return device.kind === "monitor"
+      ? { schoolId: device.schoolId, kind: "monitor", deviceId: device.id, deviceLabel: device.label }
+      : null;
   }
   if (session && session.schoolId && (session.role === "principal" || session.role === "super_admin")) {
     return { schoolId: session.schoolId, kind: "staff", deviceId: null, deviceLabel: null };

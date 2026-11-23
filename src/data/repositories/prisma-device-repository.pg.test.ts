@@ -67,6 +67,25 @@ describeWithDatabase("devices on Postgres (Step 59.12; needs E2E_DATABASE_URL)",
     expect(oceanview.every((d) => d.schoolId === OCEANVIEW)).toBe(true);
   });
 
+  it("disables and enables only the school's own device, writing nothing else (Step 59.14)", async () => {
+    const id = `${PREFIX}gate-new`;
+    const seenBefore = (await db.device.findUniqueOrThrow({ where: { id } })).lastSeenAt;
+
+    expect(await devices.setStatus(BALANGA, id, "revoked")).toBe(true);
+    expect(await devices.findStatus(id)).toBe("revoked");
+    expect((await db.device.findUniqueOrThrow({ where: { id } })).lastSeenAt).toEqual(seenBefore);
+
+    // Another school's principal can't touch it, and is told nothing happened.
+    expect(await devices.setStatus(OCEANVIEW, id, "active")).toBe(false);
+    expect(await devices.findStatus(id)).toBe("revoked");
+
+    expect(await devices.setStatus(BALANGA, id, "active")).toBe(true);
+    expect(await devices.findStatus(id)).toBe("active");
+
+    expect(await devices.setStatus(BALANGA, `${PREFIX}missing`, "revoked")).toBe(false);
+    expect(await devices.findStatus(`${PREFIX}missing`)).toBeNull();
+  });
+
   it("marks a device seen at most once per gap", async () => {
     const id = `${PREFIX}gate-old`;
     const seenAt = async () => (await db.device.findUniqueOrThrow({ where: { id } })).lastSeenAt?.toISOString();

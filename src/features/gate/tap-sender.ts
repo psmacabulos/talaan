@@ -1,4 +1,4 @@
-import { GateOfflineError, GateServerError, GateUnauthorizedError } from "./gate-client";
+import { GateDisabledError, GateOfflineError, GateServerError, GateUnauthorizedError } from "./gate-client";
 import type { GateTapResponse } from "./responses";
 import { addTap, recordServerError, removeTap, type QueuedTap, type TapQueue } from "./tap-queue";
 
@@ -27,6 +27,8 @@ export type TapSenderDeps = {
   onUnsent: (id: string) => void;
   /** The token was refused: stop, the page disconnects. The line stays saved. */
   onUnauthorized: () => void;
+  /** The device was disabled by the office (Step 59.14): stop, the page waits and keeps the key. The line stays saved. */
+  onDisabled: () => void;
   onChange: (summary: QueueSummary) => void;
 };
 
@@ -85,6 +87,13 @@ export function createTapSender(deps: TapSenderDeps) {
       if (error instanceof GateUnauthorizedError) {
         stopped = true;
         deps.onUnauthorized();
+        return false;
+      }
+      if (error instanceof GateDisabledError) {
+        // The tap stays saved, and shows as saved rather than still being checked.
+        deps.onUnsent(tap.id);
+        stopped = true;
+        deps.onDisabled();
         return false;
       }
       if (error instanceof GateServerError && from === "waiting")
@@ -146,7 +155,7 @@ export function createTapSender(deps: TapSenderDeps) {
         draining = false;
       }
     },
-    /** The page is disconnecting: send nothing more. */
+    /** The page is disconnecting or waiting for the device to be enabled: send nothing more. */
     stop(): void {
       stopped = true;
     },

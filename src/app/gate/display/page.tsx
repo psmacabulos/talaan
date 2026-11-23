@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { alertRepository, schoolRepository, studentRepository, tapRepository } from "@/data/repositories";
 import { GateMonitor } from "@/features/gate/gate-monitor";
+import { RefreshEvery } from "@/features/gate/refresh-every";
 import { monitorEventsFromTaps, newestMonitorTaps } from "@/features/gate/monitor-events";
 import { resolveMonitorViewer } from "@/features/gate/monitor-viewer";
 import { getNow } from "@/lib/clock";
@@ -26,8 +27,9 @@ export default async function GateDisplayPage({ searchParams }: PageProps<"/gate
           <p className="text-muted-foreground">
             {error === "key"
               ? "Ask the office for a new monitor link."
-              : "The live gate feed is for a connected guardhouse screen, or a principal signed in. Ask the office to connect this screen."}
+              : "The live gate feed is for a connected guardhouse screen, or a principal signed in. Ask the office to connect this screen. If the office has just enabled it again, it reconnects by itself within a minute."}
           </p>
+          {error === "key" ? null : <RefreshEvery seconds={60} />}
         </div>
       </main>
     );

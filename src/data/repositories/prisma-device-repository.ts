@@ -49,6 +49,14 @@ export function createPrismaDeviceRepository(db: PrismaClient = prisma): DeviceR
       });
       return rows.map(toDevice);
     },
+    async setStatus(schoolId, id, status) {
+      const { count } = await db.device.updateMany({ where: { id, schoolId }, data: { status } });
+      return count > 0;
+    },
+    async findStatus(id) {
+      const row = await db.device.findUnique({ where: { id }, select: { status: true } });
+      return row?.status ?? null;
+    },
     async markSeen(id, at, minGapMs) {
       const seenAt = new Date(at);
       // One conditional UPDATE: it writes nothing when the device was seen

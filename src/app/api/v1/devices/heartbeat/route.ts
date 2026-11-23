@@ -1,6 +1,7 @@
 import { deviceRepository } from "@/data/repositories";
 import { getNow } from "@/lib/clock";
-import { authenticateDevice } from "@/services/devices/authenticate-device";
+import { DEVICE_DISABLED_CODE, DEVICE_DISABLED_MESSAGE } from "@/features/devices/disabled";
+import { findDeviceByToken } from "@/services/devices/authenticate-device";
 
 /**
  * A device checks in: "this token works, and I'm online." The gate's setup
@@ -11,9 +12,11 @@ import { authenticateDevice } from "@/services/devices/authenticate-device";
  * clock is wrong.
  */
 export async function POST(request: Request) {
-  const device = await authenticateDevice(request.headers.get("authorization"));
-  if (!device) {
-    return Response.json({ error: "Missing, unknown or revoked device token." }, { status: 401 });
+  const device = await findDeviceByToken(request.headers.get("authorization"));
+  if (!device) return Response.json({ error: "Missing or unknown device token." }, { status: 401 });
+  // A disabled device's real key is told so (Step 59.14), so its tablet waits instead of forgetting the key.
+  if (device.status !== "active") {
+    return Response.json({ error: DEVICE_DISABLED_MESSAGE, code: DEVICE_DISABLED_CODE }, { status: 403 });
   }
 
   const now = new Date().toISOString();

@@ -1,9 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { DEVICE_DISABLED_CODE } from "@/features/devices/disabled";
 import {
+  checkIn,
+  GateDisabledError,
   GateOfflineError,
   GateServerError,
   GateUnauthorizedError,
   readStoredDevice,
+  refreshRoster,
   saveToken,
   sendTap,
 } from "./gate-client";
@@ -51,6 +55,11 @@ describe("sendTap (Step 58)", () => {
     }
   });
 
+  it("tells a disabled device from a refused key: it waits instead of forgetting (Step 59.14)", async () => {
+    answering(403, { error: "This device is disabled.", code: DEVICE_DISABLED_CODE });
+    await expect(sendTap("tal_dev_x", TAP)).rejects.toBeInstanceOf(GateDisabledError);
+  });
+
   it("treats an answer cut off on its way as offline, so the tap is sent again", async () => {
     vi.stubGlobal(
       "fetch",
@@ -70,5 +79,33 @@ describe("saveToken (Step 58)", () => {
     expect(readStoredDevice()).toEqual({ label: "Main gate", schoolId: "school-a" });
     saveToken("tal_dev_two");
     expect(readStoredDevice()).toBeNull();
+  });
+});
+
+describe("a disabled device at check-in and roster time (Step 59.14)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  const disabled = { error: "This device is disabled.", code: DEVICE_DISABLED_CODE };
+
+  it("is told apart on the check-in and the roster check", async () => {
+    answering(403, disabled);
+    await expect(checkIn("tal_dev_x")).rejects.toBeInstanceOf(GateDisabledError);
+    await expect(refreshRoster("tal_dev_x", null)).rejects.toBeInstanceOf(GateDisabledError);
+  });
+
+  it("still forgets a key the server refuses with 401, or a roster 403 with no code", async () => {
+    answering(401, { error: "Missing or unknown device token." });
+    await expect(checkIn("tal_dev_x")).rejects.toBeInstanceOf(GateUnauthorizedError);
+    await expect(refreshRoster("tal_dev_x", null)).rejects.toBeInstanceOf(GateUnauthorizedError);
+    answering(403, { error: "Only a gate device can do this." });
+    await expect(refreshRoster("tal_dev_x", null)).rejects.toBeInstanceOf(GateUnauthorizedError);
+  });
+
+  it("treats a check-in 403 with no code (a web filter, say) as can't reach, not as a refused key", async () => {
+    answering(403, { error: "Blocked" });
+    const failure = await checkIn("tal_dev_x").catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(Error);
+    expect(failure).not.toBeInstanceOf(GateUnauthorizedError);
+    expect(failure).not.toBeInstanceOf(GateDisabledError);
   });
 });

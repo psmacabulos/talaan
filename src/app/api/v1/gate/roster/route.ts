@@ -2,7 +2,7 @@ import { after } from "next/server";
 import { cardRepository, studentRepository } from "@/data/repositories";
 import { buildGateRoster, rosterETag } from "@/features/gate/roster";
 import { getNow } from "@/lib/clock";
-import { authenticateGate } from "@/services/devices/authenticate-gate";
+import { authenticateGate, gateAuthResponse } from "@/services/devices/authenticate-gate";
 import { markDeviceSeen } from "@/services/devices/mark-seen";
 
 /**
@@ -13,7 +13,7 @@ import { markDeviceSeen } from "@/services/devices/mark-seen";
  */
 export async function GET(request: Request) {
   const auth = await authenticateGate(request.headers.get("authorization"));
-  if (!auth.ok) return Response.json({ error: auth.error }, { status: auth.status });
+  if (!auth.ok) return gateAuthResponse(auth);
 
   const { schoolId } = auth.device;
   // The 5-minute check doubles as "this gate is on" for the Devices page

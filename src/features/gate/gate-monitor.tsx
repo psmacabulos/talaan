@@ -69,6 +69,9 @@ export function GateMonitor({
     source.onerror = () => {
       dropped = true;
       setReconnecting(true);
+      // Closed for good: the server refused the reconnect, because the office disabled this monitor
+      // (Step 59.14). Reload the page, which then says the screen isn't connected.
+      if (source.readyState === EventSource.CLOSED) router.refresh();
     };
     source.onopen = () => {
       setReconnecting(false);
@@ -90,9 +93,7 @@ export function GateMonitor({
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-4 py-3 sm:px-6">
         <div>
           <h1 className="font-heading text-lg font-semibold">Gate monitor</h1>
-          <p className="text-sm text-muted-foreground">
-            {deviceLabel ? `${deviceLabel} · ${schoolName}` : schoolName}
-          </p>
+          <p className="text-sm text-muted-foreground">{deviceLabel ? `${deviceLabel} · ${schoolName}` : schoolName}</p>
         </div>
         <div className="flex items-center gap-3">
           {reconnecting ? (

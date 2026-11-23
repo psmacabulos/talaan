@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Device } from "@/features/devices/types";
-import { authenticateDevice } from "./authenticate-device";
+import { authenticateDevice, findDeviceByToken } from "./authenticate-device";
 import { hashDeviceToken } from "./device-token";
 
 const gate: Device = {
@@ -36,5 +36,16 @@ describe("authenticateDevice", () => {
   it("rejects a revoked device's token", async () => {
     const devices = devicesWith({ ...gate, status: "revoked" }, "tal_dev_good");
     await expect(authenticateDevice("Bearer tal_dev_good", devices)).resolves.toBeNull();
+  });
+});
+
+describe("findDeviceByToken (Step 59.14)", () => {
+  it("finds a disabled device too, so a gate can tell it from an unknown key", async () => {
+    const disabled = { ...gate, status: "revoked" as const };
+    await expect(findDeviceByToken("Bearer tal_dev_good", devicesWith(disabled, "tal_dev_good"))).resolves.toEqual(
+      disabled,
+    );
+    await expect(findDeviceByToken("Bearer tal_dev_bad", devicesWith(disabled, "tal_dev_good"))).resolves.toBeNull();
+    await expect(findDeviceByToken(null, devicesWith(disabled, "tal_dev_good"))).resolves.toBeNull();
   });
 });
