@@ -81,6 +81,18 @@ A school's own logo (Step 25) still shows inside that school's pages.
 - **`Textarea`** (`src/components/ui/textarea.tsx`), added with `npx shadcn@latest add textarea`. The CLI created only that file. Its focus ring and hover border were changed to match `Input` (`ring-2`, `hover:border-foreground/25`).
 - `/design-system`'s "Error page" section shows it with a pretend send that succeeds or fails. `/design-system/throw` shows the real page.
 
+## The shared table's look (Step 59.15)
+
+Every list's `<table>` (Students, Staff, Attendance, Devices, Schools) uses the one component in `src/components/ui/table.tsx`, so its look is set in three places:
+
+| Part | Classes | Why |
+|---|---|---|
+| `TableHeader` | `bg-muted/40`, and its row never takes the hover tint | A faint band, so the header reads as labels and not as a data row |
+| `TableHead` | `h-11 px-4 text-xs font-medium text-muted-foreground` | Smaller and quieter than the data under it |
+| `TableCell` | `px-4 py-3` | 16px at the sides (it was 8px) and taller rows |
+
+All of it comes from existing tokens, so every theme and dark mode follow. A page that wants something different says so on its own cell or header: the dashboard's class roll sits unframed inside a card, so it uses `px-0`, `py-2` and a transparent header (`bg-transparent`, merged over the default by `cn`).
+
 ## Where to see all of this today
 
 `src/app/page.tsx`'s "Components (Step 6)" section shows one example of every new primitive and shared component, so it can be checked in a browser under every preset (`?preset=ocean`, etc.) and both color modes. This is explicitly **not** the real style guide — Step 7 builds a dedicated, dev-only `/design-system` page showing every token, component, and state properly, with a `check:tokens` script enforcing the no-raw-colors rule. Today's section on the demo page is scaffolding, the same way Step 5's `?preset=` links are.

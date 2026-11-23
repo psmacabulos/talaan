@@ -3228,3 +3228,13 @@ The owner approved the plan, and the `qrcode` package, on 2026-11-20, and asked 
 - *Prettier on whole folders reformatted seven files this step doesn't touch* (committed 59.13 files). I made a patch of just those changes and reversed it with `patch -R` (not git), so the diff holds only this step's work.
 
 **Checks while building.** `tsc` clean, `eslint src e2e` clean, `check:tokens` clean, and `vitest run src/app src/features src/services src/data` passed (875 tests at the time of the run) before the last test files were added; the menu, sender, client and stream tests were run on their own. The Postgres test, the Playwright test and `npm run build` were not run, and the screens were not looked at in a browser (the dev server wasn't running). Those are the owner's checks.
+
+## Step 59.15: roomier tables (2026-11-23)
+
+**What was asked.** "Just keep those undone list for later, I will do it in one fell sweep. For now do 59.15." (The undone list is the owner-side items: Sentry uptime check, practice restore, live P-062 and P-069 checks, P-068 router log, marking P-064 fixed.)
+
+**What was built.** Three class changes in the shared `src/components/ui/table.tsx` (header tint, a smaller muted header, `px-4 py-3` cells). Before editing I grepped every `TableHead` and `TableCell` that sets its own classes: only the dashboard's class roll (`px-0`, deliberately flush with the card beside it) and the Students table's two hand-styled headers conflicted. The class roll got `bg-transparent` on its header and `py-2` on its cells so it keeps its density; the Students headers' now-default classes were removed.
+
+**Looked at.** I used the owner's dev server (already running on port 3000, so I didn't start a second one) and a throw-away Playwright script that signs in through the form and screenshots each list at 1280px and 360px, light and dark. The password field's label matched twice (the field and its "Show password" button), so the script uses `#login-password`. Every page: no sideways scrolling, and the tinted header and the roomier rows look right in both themes. The dashboard shown for the principal has no class roll on it, so its exception was checked in code only.
+
+**Checks while building.** `tsc`, `eslint` on the touched folders, `check:tokens` and the full `vitest run` (1,055 tests) passed. `npm run build`, the Playwright tests (including the axe contrast scan on the new header text) were not run: they are the owner's.

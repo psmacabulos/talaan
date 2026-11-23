@@ -72,11 +72,11 @@ export function StudentsTable({
         <TableHeader>
           <TableRow>
             <SortableHeader field="name" label="Student" params={params} />
-            <TableHead className="text-xs text-muted-foreground">LRN</TableHead>
+            <TableHead>LRN</TableHead>
             <SortableHeader field="grade" label="Grade and section" params={params} />
             <SortableHeader field="age" label="Age" params={params} />
             <SortableHeader field="card" label="Card" params={params} />
-            <TableHead className="text-xs text-muted-foreground">Today</TableHead>
+            <TableHead>Today</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

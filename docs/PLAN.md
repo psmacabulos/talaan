@@ -1,7 +1,7 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████████░░ 89%**  (358 of 401 tasks, 94 of 105 steps approved)
+**Overall progress: ██████████████████░░ 90%**  (361 of 401 tasks, 95 of 105 steps approved)
 
 **Next up:** Step 59.2, A practice restore (not started)
 
@@ -104,7 +104,7 @@
 | 59.12 | The Devices page | ██████████ 100% | Approved |
 | 59.13 | Add a gate or a monitor | ██████████ 100% | Approved |
 | 59.14 | Disable and enable a device | ██████████ 100% | Approved |
-| 59.15 | Roomier tables | ░░░░░░░░░░   0% | Not started |
+| 59.15 | Roomier tables | ██████████ 100% | Approved |
 | 60 | Privacy for real student data | ░░░░░░░░░░   0% | Not started |
 | 61 | Queries that don't grow | ░░░░░░░░░░   0% | Not started |
 | 61.1 | The roster answers "nothing changed" cheaply | ░░░░░░░░░░   0% | Not started |
@@ -1040,12 +1040,12 @@ Commit: `feat(devices): disable and enable a gate or monitor`
 - [x] Owner review: I checked it and said "approved"
 
 ### Step 59.15: Roomier tables
-Added 2026-11-21 by the owner, from Step 59.12's design review: every list's table (Students, Staff, Attendance, Devices, Schools) looks cramped and flat next to a premium admin page. It's the one shared table, so the fix lifts every list at once, and it comes after 59.14 so the Devices table's ⋯ menu is in place to check.
-- [ ] The shared table (`src/components/ui/table.tsx`): more room at the sides (text no longer 8px from the edge), a quieter header row (smaller, muted text on a faint tint), and taller rows, all from the existing spacing and color tokens. No page needs its own change.
-- [ ] Checked by eye on every list page at 360px and 1280px, in light and dark, and the browser and accessibility tests still pass.
+Recipe: `docs/backend/step-59.15-roomier-tables.md`. Added 2026-11-21 by the owner, from Step 59.12's design review: every list's table (Students, Staff, Attendance, Devices, Schools) looks cramped and flat next to a premium admin page. It's the one shared table, so the fix lifts every list at once, and it comes after 59.14 so the Devices table's ⋯ menu is in place to check.
+- [x] The shared table (`src/components/ui/table.tsx`): more room at the sides (text no longer 8px from the edge), a quieter header row (smaller, muted text on a faint tint), and taller rows, all from the existing spacing and color tokens. No page needs its own change.
+- [x] Checked by eye on every list page at 360px and 1280px, in light and dark, and the browser and accessibility tests still pass.
 Done when: every list page's table has the new spacing and header, nothing scrolls sideways that didn't before, and every check passes.
 Commit: `style(tables): give every list table more room and a quieter header`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 60: Privacy for real student data
 Plan: `docs/SCALING.md` 1.8, from the plan's after-demo list. Due before real use. Likely to be split once its recipe is written.

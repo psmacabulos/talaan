@@ -35,10 +35,11 @@ export function ClassRoll({ rows, taps, day }: { rows: AttendanceRow[]; taps: Ta
             the next card. px-0 on every cell keeps the roll on the card's
             inner left edge, same as that list. */}
         <Table label="Class roll">
-          <TableHeader>
+          {/* Unframed inside the card, so no tint, and the compact rows it always had (py-2). */}
+          <TableHeader className="bg-transparent">
             <TableRow>
-              <TableHead className="px-0 text-xs text-muted-foreground">Student</TableHead>
-              <TableHead className="px-0 text-right text-xs text-muted-foreground">Today</TableHead>
+              <TableHead className="h-10 px-0">Student</TableHead>
+              <TableHead className="h-10 px-0 text-right">Today</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -46,7 +47,7 @@ export function ClassRoll({ rows, taps, day }: { rows: AttendanceRow[]; taps: Ta
               const tap = todaysTap(student.id, taps, day);
               return (
                 <TableRow key={student.id}>
-                  <TableCell className="px-0">
+                  <TableCell className="px-0 py-2">
                     <div className="flex items-center gap-3">
                       <StudentAvatar student={student} />
                       <div>
@@ -61,7 +62,7 @@ export function ClassRoll({ rows, taps, day }: { rows: AttendanceRow[]; taps: Ta
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="px-0 text-right">
+                  <TableCell className="px-0 py-2 text-right">
                     <StatusPill status={studentStatus(student.id, taps, day)} flexible={day.flexible} />
                   </TableCell>
                 </TableRow>
