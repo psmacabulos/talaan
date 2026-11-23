@@ -83,6 +83,7 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-066](#p-066--2026-11-20--every-gate-tap-rewrites-the-gates-last-seen-time) | 2026-11-20 | Every gate tap rewrites the gate's "last seen" time | Performance | Tap writer, `Device` | Deferred to a later step |
 | [P-067](#p-067--2026-11-20--the-heartbeat-stamped-the-real-time-under-a-pinned-demo-clock) | 2026-11-20 | The heartbeat stamped the real time under a pinned demo clock | Other: correctness | Heartbeat, Devices page | Fixed in Step 59.12 |
 | [P-068](#p-068--2026-11-21--a-monitors-one-time-link-carries-its-key-in-the-address) | 2026-11-21 | A monitor's one-time link carries its key in the address | Security | Connect route, Heroku logs | Accepted for now; measure after deploy |
+| [P-069](#p-069--2026-11-21--a-monitors-link-redirected-to-httpslocalhost22089) | 2026-11-21 | A monitor's link redirected to `https://localhost:22089` | Other: correctness | Connect route, Heroku | Fixed; live once deployed |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -1378,3 +1379,10 @@ sequenceDiagram
 - **Solution:** option 3 now. Option 2 stays on the list if a school ever shares logs outside its own staff.
 - **Status:** Accepted for now. After the first deploy: run `heroku logs --tail`, open one monitor link, and confirm what the router line shows. The architect asked to ship 59.14 right after 59.13 for the reason above.
 
+### P-069 · 2026-11-21 · A monitor's link redirected to `https://localhost:22089`
+- **Where:** `/gate/display/connect?key=…` (Step 48), found on the live site when the owner pasted the link from Add monitor (Step 59.13).
+- **Symptom:** the browser ended up at `https://localhost:22089/gate/display` and showed an error page. Typing `bantayaral.com/gate/display` by hand then showed the monitor, already connected.
+- **Cause:** the route built its redirect from `request.url`. Behind Heroku's router the request's own URL is the dyno's internal address, so `new URL("/gate/display", request.url)` pointed at `localhost` and the dyno's port. The cookie was set on the same answer, so the connection itself worked; only the address the browser was sent on to was wrong. It never showed on a laptop, where the internal address and the public one are the same.
+- **Options weighed:** (1) read the public address from `x-forwarded-host` and `x-forwarded-proto`: that is what `requestOrigin()` (`src/lib/request-origin.ts`) already does for the set-password link and the Add monitor link. (2) Redirect to the relative path `/gate/display`: a `Location` header with no host is allowed, but `NextResponse.redirect` insists on a full URL. (3) Hard-code `bantayaral.com`: wrong for any other domain or school. Option 1.
+- **Solution:** the route now builds both redirects (success and the `?error=key` page) from `requestOrigin()`. A test pins it: a request the dyno sees as `https://localhost:22089/...` is redirected to the public address. The only other `request.url` uses read query values and don't redirect.
+- **Status:** Fixed; live once deployed. A monitor connected before the fix (like the owner's) keeps working, since its cookie was already set.
