@@ -8,14 +8,15 @@ import {
 } from "@/data/repositories";
 import { actionsOfGroup } from "@/features/audit/groups";
 import { ACTIVITY_PAGE_SIZE, type ActivityParams } from "@/features/audit/search-params";
-import type { AuditAction, AuditCursor, AuditDetails } from "@/features/audit/types";
+import type { AuditAction, AuditCursor, AuditDetails, AuditEvent } from "@/features/audit/types";
 import type { Role } from "@/features/staff/types";
 
 export type ActivityRow = {
   id: string;
   action: AuditAction;
   actorName: string;
-  actorRole: Role;
+  /** Null for a parent, who has no staff role (Step 60.2). */
+  actorRole: Role | null;
   /** The student's or staff member's name, or null when the event is about the school. */
   targetName: string | null;
   details: AuditDetails | null;
@@ -32,9 +33,17 @@ type Deps = {
 
 const defaultDeps: Deps = { audit: auditRepository, staff: staffRepository, students: studentRepository };
 
+export const A_PARENT = "A parent";
 export const FORMER_STAFF = "A former staff member";
 export const REMOVED_STUDENT = "a removed student";
 export const REMOVED_STAFF = "a removed staff member";
+
+/** A parent (no actor stored), a super admin (never in the school's staff list), or a staff member by name. */
+function actorName(event: AuditEvent, staffNames: Map<string, string>): string {
+  if (event.actorId === null || event.actorRole === null) return A_PARENT;
+  if (event.actorRole === "super_admin") return "A super admin";
+  return staffNames.get(event.actorId) ?? FORMER_STAFF;
+}
 
 /**
  * One page of a school's Activity (Step 60.1): three reads however long the
@@ -72,7 +81,7 @@ export async function listActivity(
     return {
       id: event.id,
       action: event.action,
-      actorName: event.actorRole === "super_admin" ? "A super admin" : (staffNames.get(event.actorId) ?? FORMER_STAFF),
+      actorName: actorName(event, staffNames),
       actorRole: event.actorRole,
       targetName,
       details: event.details,

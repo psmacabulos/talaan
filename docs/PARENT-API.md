@@ -57,6 +57,7 @@ TOKEN=tal_par_…   # from the answer
 | `POST /api/v1/parents/password-reset/confirm` | no | `{ email, code, password, deviceLabel? }` | `200 { token, parent }` |
 | `POST /api/v1/parents/logout` | yes | | `204` |
 | `GET /api/v1/parents/me` | yes | | `200 { parent, children: [ChildToday] }` |
+| `DELETE /api/v1/parents/me` | yes | `{ password }` | `204` (Step 60.2) |
 | `POST /api/v1/parents/children` | yes | `{ schoolId, lrn, lastName, birthDate }` | `201 { child: ChildToday }` |
 | `GET /api/v1/parents/children/:id/taps` | yes | `?date=YYYY-MM-DD` (today if left out) | `200 { date, status, flexible, taps: [{ at, kind }] }` |
 | `GET /api/v1/parents/notifications` | yes | `?before=<nextBefore>&limit=30` | `200 { notifications: [Item], unreadCount, nextBefore }` |
@@ -234,6 +235,15 @@ curl -s -X POST http://localhost:3000/api/v1/parents/logout -H "Authorization: B
 
 `204`. This phone's push address is removed and its token stops working. Then clear everything locally.
 
+### `DELETE /me` (delete the account, Step 60.2)
+
+```bash
+curl -s -X DELETE http://localhost:3000/api/v1/parents/me -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" -d '{"password":"…"}' -o /dev/null -w "%{http_code}\n"
+```
+
+`204`: the account is deleted, and **every** sign-in of this parent stopped working in that moment (other phones get `401` on their next call). The app asks for the password in its own confirmation screen (the stores require "delete my account" to be reachable inside the app), then on `204` clears its stored token, push registration and everything local, and goes to sign-in. Deleted: the account and its email, sign-ins, push addresses, links to children and notices addressed to the parent. Kept: the children's school records, and other guardians' access. A wrong password is `403 wrong_password`, **not** `401`, so a typo never looks like "signed out". Too many wrong tries: `429 too_many_tries` (the same limit as sign-in). `401 unauthorized`: the account is already gone. A body that isn't JSON, or no password: `400 invalid_input`.
+
 ### Photos
 
 `child.photo` is a path. Put the server's address in front, and send the same `Authorization` header (`expo-image` takes headers on its `source`). A parent's token loads **only their own linked children's** photos, any photo of theirs. Every other photo is `404`, the same as one that doesn't exist. Each photo is a 4:5 portrait, 256 × 320, WebP or JPEG. A new photo always gets a new path, so a photo can be cached for as long as its path stays the same (the server says `immutable`). A phone keeps a photo it has loaded even after the child is unlinked.
@@ -251,6 +261,7 @@ Every error has one shape:
 | `invalid_input` | 400 | a field failed the server's checks; `fields` has a message per field | show each message under its field |
 | `unauthorized` | 401 | no token, or not a working one | sign out, go to sign-in |
 | `wrong_credentials` | 401 | wrong email or password (`"That email or password isn't right."`) | show the message, keep the email |
+| `wrong_password` | 403 | the wrong password when deleting the account (Step 60.2): "That password isn't right." Never `401`, which means "signed out". | show the message under the password field |
 | `too_many_tries` | 429 | 5 wrong passwords for one email in 15 minutes, 30 wrong passwords or reset codes from one network in 15 minutes, 100 sign-ups from one network in an hour, 5 wrong "link a child" tries by one parent in 15 minutes, 10 tries for one child in 24 hours, or 3 reset codes for one email (20 requests from one network) in an hour | show the message; the form stays usable |
 | `invalid_code` | 400 | a reset code that's wrong, expired, used up or replaced, or an email with no account (Step 55.6): "That code isn't right, or it has expired. Check the newest email, or ask for a new code." Never `401`, which means "signed out". | show the message, keep what was typed |
 | `unavailable` | 503 | no email can go right now (Step 55.6): the day's 80 are used up, or the server isn't set up to send email yet (`EMAIL_SENDER=log`) | show the message; try again later |

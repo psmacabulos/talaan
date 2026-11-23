@@ -27,6 +27,30 @@ const page: ActivityPage = {
   next: { createdAt: "2026-06-19T01:00:00.000Z", id: "7b6d3f0e-1c2a-4d5e-9f10-a1b2c3d4e5f6" },
 };
 
+describe("ActivityList (Step 60.2)", () => {
+  it("shows a parent's own deletion with no role in brackets", () => {
+    const parentPage: ActivityPage = {
+      rows: [
+        {
+          id: "3",
+          action: "parent_account_deleted",
+          actorName: "A parent",
+          actorRole: null,
+          targetName: "Juan Dela Cruz",
+          details: null,
+          createdAt: "2026-06-19T02:00:00.000Z",
+        },
+      ],
+      next: null,
+    };
+    render(<ActivityList page={parentPage} group="parents" isFirstPage />);
+
+    const item = within(screen.getByRole("list", { name: "Activity" })).getByRole("listitem");
+    expect(item).toHaveTextContent("A parent deleted their parent account, which had access to Juan Dela Cruz.");
+    expect(item).not.toHaveTextContent("(");
+  });
+});
+
 describe("ActivityList (Step 60.1)", () => {
   it("reads each line as who, what and to whom, and names changed fields but never values", () => {
     render(<ActivityList page={page} group="all" isFirstPage />);

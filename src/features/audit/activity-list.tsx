@@ -15,7 +15,8 @@ function ActivityItem({ row }: { row: ActivityRow }) {
       <div className="min-w-0">
         <p className="text-sm text-foreground wrap-break-word">
           <span className="font-medium">{row.actorName}</span>{" "}
-          <span className="text-muted-foreground">({roleLabel(row.actorRole)})</span> {verbFor(row.action)}
+          {row.actorRole ? <span className="text-muted-foreground">({roleLabel(row.actorRole)})</span> : null}{" "}
+          {verbFor(row.action)}
           {row.targetName ? (
             <>
               {" "}

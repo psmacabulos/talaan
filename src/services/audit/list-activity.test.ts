@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AuditEvent } from "@/features/audit/types";
 import { ACTIVITY_PAGE_SIZE } from "@/features/audit/search-params";
-import { FORMER_STAFF, listActivity, REMOVED_STUDENT } from "./list-activity";
+import { A_PARENT, FORMER_STAFF, listActivity, REMOVED_STUDENT } from "./list-activity";
 
 function event(n: number, overrides: Partial<AuditEvent> = {}): AuditEvent {
   return {
@@ -54,6 +54,14 @@ describe("listActivity (Step 60.1)", () => {
     );
     expect(page.rows[0]).toMatchObject({ actorName: FORMER_STAFF, targetName: REMOVED_STUDENT });
     expect(page.rows[1]).toMatchObject({ actorName: "A super admin", targetName: null });
+  });
+
+  it("names a parent's own deletion as \"A parent\", with no role and no staff lookup (Step 60.2)", async () => {
+    const d = deps([event(1, { actorId: null, actorRole: null, action: "parent_account_deleted" })])!;
+    const page = await listActivity("school-a", { group: "parents", before: null }, d);
+
+    expect(page.rows[0]).toMatchObject({ actorName: A_PARENT, actorRole: null, targetName: "Juan Dela Cruz" });
+    expect(JSON.stringify(page)).not.toContain("parent-");
   });
 
   it("asks for one row more than a page, and gives the next page's start", async () => {

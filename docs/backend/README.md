@@ -4,6 +4,8 @@
 
 > **Changed 2026-10-22: recipe first, always.** From Step 55.2 on, the owner asked that every step's recipe is written before the code and approved first. A recipe is no longer written from the diff afterwards; if building changes anything, the recipe is updated to match before the review report.
 
+> **Added 2026-11-23: the architect reviews a recipe that has data or cost risk.** Before the owner is asked to approve such a recipe, the `systems-architect` subagent reviews it (read-only). Blocking findings are fixed in the recipe first, and the recipe ends with an "Architect review" section: what was found and what changed. A step with neither risk (a visual, copy or documentation change) is not reviewed, and its recipe says why. The exact definition of the two risks is in `CLAUDE.md`, "Phase 2 variant". Steps 59.15 and 59.16 (styling) had no data or cost risk, so they need nothing more; 60.1's design was reviewed, but its recipe was written after the code, not before.
+
 Phase 1 (the front end) was built by Claude, step by step, with the owner reviewing and approving each one. Phase 2 (the back end — real database, real auth, the tap API) flips that: **the owner writes every line of backend code personally**, to actually learn backend development, not just watch it happen. Claude's job changes from "build it" to "teach it."
 
 ## What Claude does for each step

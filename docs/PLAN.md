@@ -1,7 +1,7 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████████░░ 89%**  (370 of 416 tasks, 97 of 111 steps approved)
+**Overall progress: ██████████████████░░ 90%**  (377 of 420 tasks, 98 of 111 steps approved)
 
 **Next up:** Step 59.2, A practice restore (not started)
 
@@ -108,7 +108,7 @@
 | 59.16 | The product's brand inside the app | ██████████ 100% | Approved |
 | 60 | Privacy for real student data | ░░░░░░░░░░   0% | Not started |
 | 60.1 | Activity log (who changed what) | ██████████ 100% | Approved |
-| 60.2 | A parent deletes their own account | ░░░░░░░░░░   0% | Not started |
+| 60.2 | A parent deletes their own account | ██████████ 100% | Approved |
 | 60.3 | Export and delete one student | ░░░░░░░░░░   0% | Not started |
 | 60.4 | Privacy notice and consent | ░░░░░░░░░░   0% | Not started |
 | 60.5 | Export and delete a whole school | ░░░░░░░░░░   0% | Not started |
@@ -1077,12 +1077,16 @@ Commit: `feat(audit): add an activity log of who changed students, cards, staff 
 - [x] Owner review: I checked it and said "approved"
 
 ### Step 60.2: A parent deletes their own account
-Plan: `docs/SCALING.md` 1.8. Google Play and Apple's App Store both require this before an app that makes accounts can be published (`docs/PARENT-APP-BRIEF.md`).
-- [ ] "Delete my account" in the parent web portal and `DELETE /api/v1/parents/me`, asking for the password. It removes the parent, their sign-ins, push addresses, links, link blocks and notices in one transaction; their children's records stay with the school.
-- [ ] Each linked school's activity log notes that a parent account was removed, against the child, never naming the parent.
-Done when: a parent can delete their account from the portal and the API, nothing of theirs is left, other guardians of the same child are unaffected, and every check passes.
+Recipe: `docs/backend/step-60.2-delete-parent-account.md`. How it works: `docs/PRIVACY.md`. Google Play and Apple's App Store both require this before an app that makes accounts can be published (`mobile/starter/`). Reviewed twice with the systems-architect on 2026-11-23 (the design, then the written recipe): two blocking findings, both built in (a deadlock with the school's "remove parent", and a link-a-child racing the delete).
+- [x] Migration `audit_parent_account_deleted`: a new `parent_account_deleted` event, and `actorId` and `actorRole` nullable (null means the parent themselves, so no parent id is ever kept). The Activity page shows "A parent".
+- [x] `ParentRepository.deleteAccount`: one transaction that locks the parent, writes one event per linked child, deletes their links, and deletes the parent, which removes their sign-ins, push addresses, waiting pushes, reset codes, school blocks and notices addressed to them. The children's records and the other guardians stay. It and the school's "remove parent" each retry once on a deadlock.
+- [x] `deleteParentAccount` (password checked by the sign-in code and limits, the email from the database) behind `DELETE /api/v1/parents/me` (`204`, `400`, `403 wrong_password`, `401`, `429`) and the web action `deleteMyAccount`.
+- [x] The parent portal's **Account** page (header icon) with the "Delete my account" confirmation, and a "Your account was deleted" note on sign-in.
+- [x] `docs/PRIVACY.md` (new), `docs/PARENT-API.md` and the starter kit's M3 updated for the app.
+- [x] Tests: unit (service, route, dialog, audit readers, error helpers, link outcome, Sentry scrubbing), a Postgres test of the transaction and its races, and `e2e/parent-account.spec.ts`.
+Done when: a parent can delete their account from the portal and the API, nothing of theirs is left, other guardians of the same child are unaffected, the school's Activity says "A parent deleted their parent account" with no name, and every check passes.
 Commit: `feat(parents): let a parent delete their own account`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 60.3: Export and delete one student
 - [ ] A principal exports one student's data as a file (their record, cards, taps, links and notifications, no other student's).

@@ -1,8 +1,10 @@
 import type { ParentStudentLink as LinkRow, Prisma, PrismaClient } from "@/generated/prisma/client";
+import type { Role } from "@/features/staff/types";
 import { parentStudentLinkSchema } from "@/features/parents/schemas";
 import type { ParentStudentLink } from "@/features/parents/types";
 import { prisma } from "@/lib/db";
 import type { CreateLinkResult, ParentStudentLinkRepository } from "./parent-student-link-repository";
+import { isDeadlock, isForeignKeyViolation, retryOnce } from "./prisma-errors";
 
 /** A database row → the app's own `ParentStudentLink`. */
 export function toParentStudentLink(row: LinkRow): ParentStudentLink {
@@ -46,6 +48,90 @@ const LINK_TRANSACTION = { maxWait: 5_000, timeout: 10_000 };
 const FIRST_LINKED_FIRST = [{ linkedAt: "asc" as const }, { id: "asc" as const }];
 
 export function createPrismaParentStudentLinkRepository(db: PrismaClient = prisma): ParentStudentLinkRepository {
+  function saveLinkWithNotices(link: ParentStudentLink): Promise<CreateLinkResult> {
+    return db.$transaction(async (tx) => {
+      await lockStudentForLink(tx, link.studentId);
+
+      // Checked after the lock, so a removal and a relink of the same
+      // child can't both get through (Step 55.4).
+      const blocked = await tx.linkBlock.findUnique({
+        where: { parentId_studentId: { parentId: link.parentId, studentId: link.studentId } },
+        select: { id: true },
+      });
+      if (blocked) return { outcome: "blocked" };
+
+      // Skipped, not an error, when the parent and student are already
+      // linked (the same form sent twice at once): an error would cancel
+      // the whole transaction.
+      const inserted = await tx.parentStudentLink.createMany({
+        data: [{ id: link.id, ...toParentStudentLinkData(link) }],
+        skipDuplicates: true,
+      });
+      if (inserted.count === 0) return { outcome: "already_linked" };
+
+      const others = await tx.parentStudentLink.findMany({
+        where: { studentId: link.studentId, schoolId: link.schoolId, parentId: { not: link.parentId } },
+        select: { parentId: true },
+      });
+      if (others.length === 0) return { outcome: "linked", link, noticesMade: 0 };
+      await tx.notification.createMany({
+        data: others.map(({ parentId }) => ({
+          schoolId: link.schoolId,
+          studentId: link.studentId,
+          kind: "guardian_linked" as const,
+          tappedAt: new Date(link.linkedAt),
+          recipientParentId: parentId,
+          aboutParentId: link.parentId,
+        })),
+      });
+      return { outcome: "linked", link, noticesMade: others.length };
+    }, LINK_TRANSACTION);
+  }
+
+  function removeLink(schoolId: string, linkId: string, removedByStaffId: string, removedByRole: Role) {
+    return db.$transaction(async (tx) => {
+      const link = await tx.parentStudentLink.findFirst({
+        where: { id: linkId, schoolId },
+        select: { parentId: true, studentId: true },
+      });
+      if (!link) return null;
+      // Takes turns with linking this child (Step 55.2's lock).
+      await lockStudentForLink(tx, link.studentId);
+
+      // Two principals removing at once: the second finds nothing left to delete.
+      const { count } = await tx.parentStudentLink.deleteMany({ where: { id: linkId, schoolId } });
+      if (count === 0) return null;
+      await tx.linkBlock.createMany({
+        data: [{ schoolId, parentId: link.parentId, studentId: link.studentId, removedByStaffId }],
+        skipDuplicates: true,
+      });
+      // Their pushes about this child that haven't gone yet. "sending" too:
+      // a send that comes back as "retry" goes back to "waiting", and one
+      // whose row is gone just updates nothing. The push worker's fan-out
+      // holds FOR SHARE on the links it reads, so the delete above waited
+      // for any fan-out in progress, and its deliveries are here to delete.
+      await tx.pushDelivery.deleteMany({
+        where: {
+          status: { in: ["waiting", "sending"] },
+          notification: { studentId: link.studentId },
+          pushToken: { parentToken: { parentId: link.parentId } },
+        },
+      });
+      // In the same transaction, so a removal never happens without its record.
+      await tx.auditEvent.create({
+        data: {
+          schoolId,
+          actorId: removedByStaffId,
+          actorRole: removedByRole,
+          action: "parent_link_removed",
+          targetType: "student",
+          targetId: link.studentId,
+        },
+      });
+      return link;
+    }, LINK_TRANSACTION);
+  }
+
   return {
     async listByParent(parentId) {
       const rows = await db.parentStudentLink.findMany({ where: { parentId }, orderBy: FIRST_LINKED_FIRST });
@@ -101,86 +187,19 @@ export function createPrismaParentStudentLinkRepository(db: PrismaClient = prism
     },
     async createWithNotices(link): Promise<CreateLinkResult> {
       // One transaction: a link is never saved without its notices (Step 55.2).
-      return db.$transaction(async (tx) => {
-        await lockStudentForLink(tx, link.studentId);
-
-        // Checked after the lock, so a removal and a relink of the same
-        // child can't both get through (Step 55.4).
-        const blocked = await tx.linkBlock.findUnique({
-          where: { parentId_studentId: { parentId: link.parentId, studentId: link.studentId } },
-          select: { id: true },
-        });
-        if (blocked) return { outcome: "blocked" };
-
-        // Skipped, not an error, when the parent and student are already
-        // linked (the same form sent twice at once): an error would cancel
-        // the whole transaction.
-        const inserted = await tx.parentStudentLink.createMany({
-          data: [{ id: link.id, ...toParentStudentLinkData(link) }],
-          skipDuplicates: true,
-        });
-        if (inserted.count === 0) return { outcome: "already_linked" };
-
-        const others = await tx.parentStudentLink.findMany({
-          where: { studentId: link.studentId, schoolId: link.schoolId, parentId: { not: link.parentId } },
-          select: { parentId: true },
-        });
-        if (others.length === 0) return { outcome: "linked", link, noticesMade: 0 };
-        await tx.notification.createMany({
-          data: others.map(({ parentId }) => ({
-            schoolId: link.schoolId,
-            studentId: link.studentId,
-            kind: "guardian_linked" as const,
-            tappedAt: new Date(link.linkedAt),
-            recipientParentId: parentId,
-            aboutParentId: link.parentId,
-          })),
-        });
-        return { outcome: "linked", link, noticesMade: others.length };
-      }, LINK_TRANSACTION);
+      // If another guardian deleted their account while this ran, the notice
+      // addressed to them fails on its foreign key: run again once, which re-reads
+      // the guardians (Step 60.2). Only if it fails again is it this parent who is gone.
+      try {
+        return await retryOnce(() => saveLinkWithNotices(link), isForeignKeyViolation);
+      } catch (error) {
+        if (isForeignKeyViolation(error)) return { outcome: "parent_gone" };
+        throw error;
+      }
     },
     async removeInSchool(schoolId, linkId, removedByStaffId, removedByRole) {
-      return db.$transaction(async (tx) => {
-        const link = await tx.parentStudentLink.findFirst({
-          where: { id: linkId, schoolId },
-          select: { parentId: true, studentId: true },
-        });
-        if (!link) return null;
-        // Takes turns with linking this child (Step 55.2's lock).
-        await lockStudentForLink(tx, link.studentId);
-
-        // Two principals removing at once: the second finds nothing left to delete.
-        const { count } = await tx.parentStudentLink.deleteMany({ where: { id: linkId, schoolId } });
-        if (count === 0) return null;
-        await tx.linkBlock.createMany({
-          data: [{ schoolId, parentId: link.parentId, studentId: link.studentId, removedByStaffId }],
-          skipDuplicates: true,
-        });
-        // Their pushes about this child that haven't gone yet. "sending" too:
-        // a send that comes back as "retry" goes back to "waiting", and one
-        // whose row is gone just updates nothing. The push worker's fan-out
-        // holds FOR SHARE on the links it reads, so the delete above waited
-        // for any fan-out in progress, and its deliveries are here to delete.
-        await tx.pushDelivery.deleteMany({
-          where: {
-            status: { in: ["waiting", "sending"] },
-            notification: { studentId: link.studentId },
-            pushToken: { parentToken: { parentId: link.parentId } },
-          },
-        });
-        // In the same transaction, so a removal never happens without its record.
-        await tx.auditEvent.create({
-          data: {
-            schoolId,
-            actorId: removedByStaffId,
-            actorRole: removedByRole,
-            action: "parent_link_removed",
-            targetType: "student",
-            targetId: link.studentId,
-          },
-        });
-        return link;
-      }, LINK_TRANSACTION);
+      // Deadlocks with a parent deleting their account, which locks the parent first (Step 60.2): run again once.
+      return retryOnce(() => removeLink(schoolId, linkId, removedByStaffId, removedByRole), isDeadlock);
     },
     async listBlocksInSchool(schoolId, studentIds) {
       if (studentIds.length === 0) return [];

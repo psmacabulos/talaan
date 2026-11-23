@@ -20,8 +20,8 @@ flowchart LR
 model AuditEvent {
   id         String      @id @default(uuid())
   schoolId   String                          // Cascade: goes with a deleted school (Step 60.5)
-  actorId    String                          // a plain copy of the staff id, no relation
-  actorRole  Role
+  actorId    String?                         // a plain copy of the staff id, no relation; null = a parent (Step 60.2)
+  actorRole  Role?
   action     AuditAction                     // student_updated, card_replaced, staff_removed, ...
   targetType AuditTarget                     // student | staff | school
   targetId   String
@@ -36,6 +36,8 @@ model AuditEvent {
 The log holds **ids and the names of changed fields**, never what a field was changed to, never a person's name, an email, a card serial or a parent's identity. `details` is cleaned by `cleanDetails` against `AUDIT_FIELDS` (`src/features/audit/types.ts`), so one careless call can't put a minor's data in the log for good. Names on the page are looked up when it opens, so a removed student or staff member shows as "a removed student" and the log itself never held the name.
 
 `actorId` has no relation on purpose: removing a staff member must neither fail on nor erase what they did. A super admin isn't one of a school's staff (their `schoolId` is null), so they're shown by role ("A super admin"), not looked up.
+
+**A parent has no actor at all (Step 60.2).** `parent_account_deleted` is written when a parent deletes their own account, one event per linked child in that child's school, with `actorId` and `actorRole` null and the child as the target. No parent id is kept, because they asked to be deleted; the Activity page says "A parent deleted their parent account, which had access to <child>." with no role in brackets. It is written inside the deletion's own transaction, like `parent_link_removed`.
 
 ## Writing an event
 

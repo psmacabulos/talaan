@@ -19,6 +19,7 @@ export type ApiErrorCode =
   | "invalid_input"
   | "unauthorized"
   | "wrong_credentials"
+  | "wrong_password"
   | "too_many_tries"
   | "not_found"
   | "conflict"
@@ -30,6 +31,8 @@ const STATUS: Record<ApiErrorCode, number> = {
   invalid_input: 400,
   unauthorized: 401,
   wrong_credentials: 401,
+  // Deleting an account (Step 60.2): never 401, which the app takes as "signed out".
+  wrong_password: 403,
   too_many_tries: 429,
   not_found: 404,
   conflict: 409,

@@ -3270,3 +3270,21 @@ The owner approved the plan, and the `qrcode` package, on 2026-11-20, and asked 
 
 **Checks while building.** `tsc` and `eslint` clean, `check:tokens` clean, the full `vitest run` 1,076 passing and only the 4 pg tests above failing for the missing table. Not run: `npm run build`, Playwright (including `e2e/activity.spec.ts`), the Postgres tests, and a look at the page in a browser (blocked by the stale dev server).
 
+## Step 60.2: a parent deletes their own account (2026-11-23)
+
+**What was asked.** "Lets start step 60.2", then "go with both recommendations" (confirm with the password only; an Account page behind a header link). In between, the owner asked that recipes be reviewed by the architect, then narrowed it to steps with data or cost risk (`CLAUDE.md`, "Phase 2 variant", item 5). This step has both kinds of risk, so its recipe was reviewed twice.
+
+**Architect.** Design review: sound, two blocking points (lock the parent row first; take the email for the password check from the database and assert the verified id). Recipe review: two more blocking points. (1) The delete locks `Parent` first, while the school's `removeInSchool` locks the student, deletes the link, then needs a KEY SHARE on `Parent` for its block row: a deadlock cycle, so both retry once (`isDeadlock`, `retryOnce`). (2) Another guardian linking the same child writes a notice addressed to the deleting parent, which fails on its foreign key after the delete: the whole link transaction is retried once, and only a second failure means the linking parent is the one who is gone. Also adopted: a `403 wrong_password` apart from `401`, nullable actor columns with "A parent" shown, `docs/PRIVACY.md` for what is outside Postgres, deterministic race tests.
+
+**Commands.** `npx prisma migrate dev --name audit_parent_account_deleted` (migration `20261123144517_…`), `npx prisma generate`.
+
+**What was built.** See `docs/backend/step-60.2-delete-parent-account.md` and `docs/PRIVACY.md`. The link repository's two big transaction bodies were pulled into inner functions (`saveLinkWithNotices`, `removeLink`) so a retry can wrap them with the catch outside the transaction; a failed statement aborts an interactive transaction, so the catch can't be inside it.
+
+**Snags.**
+- `@testing-library/user-event` isn't installed (the project's tests use `fireEvent`), so the dialog test was rewritten with it.
+- The first full test run showed `prisma-link-notices.pg.test.ts` failing, though it passes alone: both Postgres files picked the same free child and run at the same time. The new file now takes the first free children by id, where the other takes the last.
+- The new Postgres tests fail with `invalid input value for enum "AuditAction": "parent_account_deleted"` until the migration reaches the test database, the same as in 60.1.
+- A sign-in in the same millisecond as its own delete (`parentToken.create`) can still return an error page once. The recipe had said 401; building it would have touched four routes for a case that needs two requests within a few milliseconds, so it was left and written in `docs/PRIVACY.md` as accepted.
+
+**Checks while building.** `tsc`, `eslint` and `check:tokens` clean; the unit tests pass (1,118) and only the five new Postgres tests fail, for the missing migration in the test database. Not run: `npm run build`, Playwright (including `e2e/parent-account.spec.ts`), the Postgres tests against a migrated test database, and a look at the Account page and dialog in a browser (the dev server needs a restart after a Prisma change).
+

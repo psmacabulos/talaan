@@ -84,6 +84,25 @@ describe("scrubEvent (Step 59)", () => {
   });
 });
 
+describe("scrubEvent and the delete-account request (Step 60.2)", () => {
+  it("never keeps the password in the body of DELETE /api/v1/parents/me", () => {
+    const report: ErrorEvent = {
+      type: undefined,
+      request: {
+        url: "https://bantayaral.com/api/v1/parents/me",
+        method: "DELETE",
+        data: { password: "Hunter2-secret" },
+        headers: { authorization: "Bearer tal_par_SECRET" },
+      },
+    };
+
+    const scrubbed = scrubEvent(report);
+
+    expect(scrubbed.request).toEqual({ url: "https://bantayaral.com/api/v1/parents/me", method: "DELETE" });
+    expect(JSON.stringify(scrubbed)).not.toMatch(/Hunter2|tal_par_SECRET/);
+  });
+});
+
 describe("sentryOptions (Step 59)", () => {
   const options = sentryOptions("https://key@o1.ingest.sentry.io/1");
 

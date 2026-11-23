@@ -63,7 +63,9 @@ export interface ParentStudentLinkRepository {
 export type CreateLinkResult =
   | { outcome: "linked"; link: ParentStudentLink; noticesMade: number }
   | { outcome: "already_linked" }
-  | { outcome: "blocked" };
+  | { outcome: "blocked" }
+  /** This parent deleted their account while the link was being saved (Step 60.2). */
+  | { outcome: "parent_gone" };
 
 /** A school's record that it removed a parent from a child (the mock's stand-in for the `LinkBlock` table). */
 export type LinkBlockRecord = {

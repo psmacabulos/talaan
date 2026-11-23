@@ -6,9 +6,15 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { canEmailPeople } from "@/lib/email/email-sender";
 
 /** Step 22's parent sign-in — a separate flow from the staff login at `/`. */
-export default async function ParentLoginPage() {
+export default async function ParentLoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   // Per request, not at build, for "Forgot your password?": EMAIL_SENDER can change with a restart (Step 55.6).
   await connection();
+  // Sent here by "Delete my account" (Step 60.2): say it's done.
+  const deleted = (await searchParams).deleted === "1";
   return (
     <main className="relative grid min-h-screen flex-1 lg:grid-cols-[1.25fr_1fr] xl:grid-cols-[1.6fr_1fr]">
       {/* Light/dark before sign-in too (Step 27.5), in the form column's
@@ -26,6 +32,12 @@ export default async function ParentLoginPage() {
             <h2 className="font-heading text-2xl font-semibold text-foreground">Parent sign in</h2>
             <p className="text-sm text-muted-foreground">Sign in to see your child&apos;s attendance.</p>
           </div>
+
+          {deleted ? (
+            <p role="status" className="rounded-md bg-muted px-3 py-2 text-sm text-foreground">
+              Your account was deleted. Your children&apos;s school records stay with the school.
+            </p>
+          ) : null}
 
           <ParentLoginForm canResetByEmail={canEmailPeople()} />
         </div>

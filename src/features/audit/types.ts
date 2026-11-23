@@ -15,6 +15,7 @@ export const AUDIT_ACTIONS = [
   "staff_link_created",
   "parent_link_removed",
   "parent_link_allowed_again",
+  "parent_account_deleted",
   "time_in_recorded",
   "time_out_recorded",
   "attendance_times_changed",
@@ -62,8 +63,9 @@ export type AuditEventInput = {
 export type AuditEvent = {
   id: string;
   action: AuditAction;
-  actorId: string;
-  actorRole: Role;
+  /** Null when the parent themselves did it (Step 60.2): no parent id is ever kept. */
+  actorId: string | null;
+  actorRole: Role | null;
   targetType: AuditTarget;
   targetId: string;
   details: AuditDetails | null;

@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { UserRound } from "lucide-react";
 import { getParentSession } from "@/lib/parent-session";
 import { BantayAralLogo } from "@/components/brand/bantay-aral-logo";
 import { MAIN_CONTENT_ID, SkipLink } from "@/components/skip-link";
+import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { notificationRepository, studentRepository } from "@/data/repositories";
 import { NotificationsBell } from "@/features/parents/notifications-bell";
@@ -50,6 +52,12 @@ export default async function ParentProtectedLayout({ children }: { children: Re
         <div className="flex items-center gap-1">
           <ThemeToggle />
           <NotificationsBell items={items} unread={unread} />
+          {/* An icon, not a word, so the phone-width header keeps its room. */}
+          <Button asChild variant="ghost" size="icon" className="text-muted-foreground">
+            <Link href="/parent/account" aria-label="Your account">
+              <UserRound aria-hidden="true" />
+            </Link>
+          </Button>
           <SignOutButton />
         </div>
       </header>

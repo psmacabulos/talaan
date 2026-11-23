@@ -474,6 +474,7 @@ enum AuditAction {
   staff_link_created
   parent_link_removed
   parent_link_allowed_again
+  parent_account_deleted
   time_in_recorded
   time_out_recorded
   attendance_times_changed
@@ -494,9 +495,11 @@ model AuditEvent {
   // instead, with the school's id and no names.
   school     School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   // A plain copy of the staff id, not a relation: removing a staff member
-  // must neither fail on nor erase what they did.
-  actorId    String
-  actorRole  Role
+  // must neither fail on nor erase what they did. Both are null when the
+  // parent themselves did it (Step 60.2): no parent id is kept for a person
+  // who asked to be deleted.
+  actorId    String?
+  actorRole  Role?
   action     AuditAction
   targetType AuditTarget
   targetId   String

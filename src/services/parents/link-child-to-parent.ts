@@ -134,5 +134,8 @@ export async function linkChildToParent(
       return alreadyLinked(student);
     case "blocked":
       return { ok: false, code: "link_blocked", formError: LINK_BLOCKED_MESSAGE };
+    case "parent_gone":
+      // Their account was deleted a moment ago; there is no one to tell.
+      return { ok: false, code: "no_match", formError: NO_MATCHING_CHILD_MESSAGE };
   }
 }

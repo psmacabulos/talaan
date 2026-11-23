@@ -36,6 +36,7 @@ Commit: `feat(api): add the API client with one error handler`
 - [ ] `deviceLabel` from the phone's model
 - [ ] Sign out calls `POST /logout`, then clears everything locally
 - [ ] `/me` called on every app start and every return to the foreground
+- [ ] "Delete my account" inside the app (Google Play and the App Store both require it): a confirmation that says what goes and what stays, the password, then `DELETE /me` (`docs/TALAAN-API.md`). On `204` clear the token, the push registration and everything local, and go to sign-in. `wrong_password` (403) shows under the field and keeps the screen; it is never a sign-out
 - [ ] No "Forgot password?" link yet: the server has it (Talaan Step 55.6), but the screens are their own step after the demo (below)
 Done when: a new parent can sign up, sign out and sign in again, and a sign-in survives closing the app.
 Commit: `feat(auth): add sign up, sign in and sign out`

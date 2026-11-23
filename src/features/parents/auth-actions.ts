@@ -21,6 +21,7 @@ import {
   resetAddressThrottle,
 } from "@/services/auth/login-throttle";
 import { checkParentSignIn } from "@/services/parents/check-parent-sign-in";
+import { deleteParentAccount } from "@/services/parents/delete-parent-account";
 import { linkChildToParent, type LinkChildFieldErrors } from "@/services/parents/link-child-to-parent";
 import { confirmParentPasswordReset, startParentPasswordReset } from "@/services/parents/parent-password-reset";
 import { registerParent, type ParentSignupFieldErrors } from "@/services/parents/register-parent";
@@ -170,6 +171,31 @@ export async function resetParentPassword(
   after(result.notify);
   await setParentSession(result.parent.id);
   redirect("/parent");
+}
+
+export type DeleteMyAccountResult = { ok: false; formError: string };
+
+/**
+ * The Account page's "Delete my account" (Step 60.2): the password confirms
+ * it, then everything of this parent's is deleted
+ * (`deleteParentAccount`) and this browser is signed out. Only a failure
+ * returns; on success it redirects to the sign-in page with a note.
+ */
+export async function deleteMyAccount(password: string): Promise<DeleteMyAccountResult> {
+  const session = await getParentSession();
+  if (!session) return { ok: false, formError: SIGNED_OUT_MESSAGE };
+
+  const result = await deleteParentAccount(session.parentId, password, {
+    parents: parentRepository,
+    throttle: parentSignInThrottle,
+    addressThrottle: parentAddressThrottle,
+    address: await requestAddress(),
+    now: Date.now(),
+  });
+  if (!result.ok) return { ok: false, formError: result.formError };
+
+  await clearParentSession();
+  redirect("/parent/login?deleted=1");
 }
 
 export async function signOutParent(): Promise<void> {

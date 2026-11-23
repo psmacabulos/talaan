@@ -35,6 +35,12 @@ export interface ParentRepository {
    * wrong. The real repository spends the same time on an unknown email.
    */
   verifyPassword(email: string, password: string): Promise<Parent | null>;
+  /**
+   * Step 60.2: deletes this parent's account and everything of theirs, in one
+   * transaction (see the Prisma version). True if there was one to delete;
+   * false when it was already gone (a double click, or another phone).
+   */
+  deleteAccount(parentId: string): Promise<boolean>;
 }
 
 export function createMockParentRepository(
@@ -84,6 +90,16 @@ export function createMockParentRepository(
       const parent = findByEmailSync(email);
       if (!parent) return null;
       return passwordsByParentId.get(parent.id) === password ? parent : null;
+    },
+    async deleteAccount(parentId) {
+      await simulateLatency(latencyMs);
+      // Only the parent: the links, notices and tokens live in other mocks, and
+      // the cascade over them is checked against Postgres only.
+      const index = data.findIndex((parent) => parent.id === parentId);
+      if (index === -1) return false;
+      data.splice(index, 1);
+      passwordsByParentId.delete(parentId);
+      return true;
     },
   };
 }

@@ -5,7 +5,7 @@ export const AUDIT_GROUPS = [
   { id: "students", label: "Students", actions: ["student_created", "student_updated"] },
   { id: "cards", label: "ID cards", actions: ["card_linked", "card_replaced", "card_marked_lost"] },
   { id: "staff", label: "Staff", actions: ["staff_invited", "staff_removed", "staff_link_created"] },
-  { id: "parents", label: "Parents", actions: ["parent_link_removed", "parent_link_allowed_again"] },
+  { id: "parents", label: "Parents", actions: ["parent_link_removed", "parent_link_allowed_again", "parent_account_deleted"] },
   {
     id: "attendance",
     label: "Attendance",

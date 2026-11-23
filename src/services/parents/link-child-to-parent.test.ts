@@ -211,6 +211,20 @@ describe("linkChildToParent and a parent the school removed (Step 55.4)", () => 
   });
 });
 
+describe("linkChildToParent and a parent who deleted their account mid-link (Step 60.2)", () => {
+  it("answers no match, never an error: their account is gone and there is no one to tell", async () => {
+    const d = deps();
+    const gone: LinkChildDeps = {
+      ...d,
+      links: { listByParent: async () => [], createWithNotices: async () => ({ outcome: "parent_gone" }) },
+    };
+    await expect(linkChildToParent("parent-a", details, gone, NOW)).resolves.toMatchObject({
+      ok: false,
+      code: "no_match",
+    });
+  });
+});
+
 describe("linkChildToParent's limits on guessing (Step 55.1)", () => {
   it("stops one parent after 5 wrong tries in 15 minutes, before looking anyone up", async () => {
     const d = deps();

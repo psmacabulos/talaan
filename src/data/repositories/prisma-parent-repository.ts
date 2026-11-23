@@ -5,7 +5,7 @@ import type { Parent } from "@/features/parents/types";
 import { prisma } from "@/lib/db";
 import { decoyPasswordHash, hashPassword, passwordMatches } from "@/lib/password";
 import type { ParentRepository } from "./parent-repository";
-import { isUniqueViolation } from "./prisma-errors";
+import { isDeadlock, isUniqueViolation, retryOnce } from "./prisma-errors";
 
 /** A database row → the app's own `Parent`. The password hash leaves this file only through `getForSession`, for the cookie's fingerprint. */
 export function toParent(row: ParentRow): Parent {
@@ -27,6 +27,9 @@ export function toParentData(parent: Parent) {
     email: normalizeEmail(parent.email),
   };
 }
+
+/** How long deleting an account waits for a free connection, then to finish. */
+const DELETE_TRANSACTION = { maxWait: 5_000, timeout: 10_000 };
 
 export function createPrismaParentRepository(db: PrismaClient = prisma): ParentRepository {
   /**
@@ -71,6 +74,46 @@ export function createPrismaParentRepository(db: PrismaClient = prisma): ParentR
       // answer takes as long and doesn't give away who has an account.
       const matches = await passwordMatches(password, row?.passwordHash ?? (await decoyPasswordHash()));
       return row && matches ? toParent(row) : null;
+    },
+    async deleteAccount(parentId) {
+      // Run again once if it deadlocks with a school removing this parent from a child (Step 60.2).
+      return retryOnce(
+        () =>
+          db.$transaction(async (tx) => {
+            // Locked first, so a link-a-child waits for this and then finds no parent.
+            await tx.$queryRaw`SELECT 1 FROM "Parent" WHERE "id" = ${parentId} FOR UPDATE`;
+            const parent = await tx.parent.findUnique({ where: { id: parentId }, select: { id: true } });
+            // A double click, or another phone: already deleted.
+            if (!parent) return false;
+
+            const links = await tx.parentStudentLink.findMany({
+              where: { parentId },
+              select: { schoolId: true, studentId: true },
+            });
+            // One event per child, in that child's own school, with no actor: a
+            // parent who asked to be deleted leaves no id behind.
+            if (links.length > 0) {
+              await tx.auditEvent.createMany({
+                data: links.map((link) => ({
+                  schoolId: link.schoolId,
+                  action: "parent_account_deleted" as const,
+                  targetType: "student" as const,
+                  targetId: link.studentId,
+                })),
+              });
+            }
+            // Links before the parent, as `removeInSchool` does: the push fan-out holds
+            // FOR SHARE on these rows, so this waits for one in progress, and the
+            // deliveries it wrote go with the parent's tokens below. The link is
+            // `onDelete: Restrict`, so it has to go first anyway.
+            await tx.parentStudentLink.deleteMany({ where: { parentId } });
+            // Cascades their sign-ins and push addresses, reset codes, school blocks and
+            // the notices addressed to them; notices about them lose only their name.
+            await tx.parent.delete({ where: { id: parentId } });
+            return true;
+          }, DELETE_TRANSACTION),
+        isDeadlock,
+      );
     },
   };
 }
