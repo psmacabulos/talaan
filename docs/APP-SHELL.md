@@ -228,6 +228,20 @@ flowchart LR
 
 **Why the placeholder pages changed too, not just the container.** With next-to-no real content yet (Steps 13+ haven't built the real dashboard/tables), a wider container alone wouldn't visibly demonstrate anything — a slightly-less-narrow box around two lines of text still looks like a mostly-empty page. Each placeholder's plain `<p>` became an `EmptyState` panel (icon + "Not built yet" + the same explanatory copy) — genuinely the right component for this now (unlike `AccessDenied`, which deliberately avoided `EmptyState`'s dashed border in Step 10 because "empty, add content" was the wrong metaphor for "you're blocked" — here "nothing built here yet" is exactly what `EmptyState` means). This is honest scope, not a trick: the full "this really fills my monitor" payoff still lands once Steps 13+ add real cards/tables/grids that can actually use the reclaimed width — this step makes sure they inherit good behavior automatically instead of every future page re-deciding it, and makes today's shell and placeholders look intentional in the meantime, not just "technically ready."
 
+## Step 59.16: the product's name at the foot of the sidebar
+
+Inside the app the sidebar's header is the *school's* (its logo, its name, "Attendance portal"), so the Bantay Aral brand had vanished after login. `SidebarProductBrand` (in `sidebar.tsx`) puts "Powered by" and `BantayAralLogo` at the foot of the static sidebar and of the mobile drawer (below Sign out).
+
+```tsx
+<aside className="sticky top-0 h-dvh ... overflow-y-auto">   {/* as tall as the screen, so the foot is always in view */}
+  <SidebarBrand school={school} />                            {/* the school */}
+  <NavLinks role={role} className="flex-1" />                 {/* flex-1 pushes the next line down */}
+  {school ? <SidebarProductBrand className="border-t border-border pt-4" /> : null}
+</aside>
+```
+
+It is hidden when no school is open (a super admin on Schools): the header above is already the product's own mark. The sidebar is `sticky top-0 h-dvh` because a page-tall sidebar would put its foot below the fold on a long page.
+
 ## Quick recipes
 
 **I want to add a new page to the shell** (e.g. a student detail page): add `src/app/(app)/students/[id]/page.tsx`. It automatically gets the sidebar/top bar from `(app)/layout.tsx` — nothing else to wire up. If it should be restricted, add the guard pattern from the "Route guards" section above.
@@ -243,3 +257,5 @@ flowchart LR
 **I want to change how the top bar's date or time reads:** edit `formatSchoolDay` in `src/lib/school-time.ts` (and its test), or the breakpoint classes in `topbar-clock.tsx`. Keep it on the school's clock, never `new Date().toLocaleString()` without the school's offset.
 
 **I want to know if a role can reach a given section from plain code** (not inside a page): `hasNavAccess(role, "staff")` — returns a boolean, no React needed.
+
+**I want to change the product brand at the sidebar's foot:** edit `SidebarProductBrand` in `sidebar.tsx`; the drawer uses the same component. The logo itself is `src/components/brand/bantay-aral-logo.tsx`.

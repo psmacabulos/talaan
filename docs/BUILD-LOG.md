@@ -3238,3 +3238,18 @@ The owner approved the plan, and the `qrcode` package, on 2026-11-20, and asked 
 **Looked at.** I used the owner's dev server (already running on port 3000, so I didn't start a second one) and a throw-away Playwright script that signs in through the form and screenshots each list at 1280px and 360px, light and dark. The password field's label matched twice (the field and its "Show password" button), so the script uses `#login-password`. Every page: no sideways scrolling, and the tinted header and the roomier rows look right in both themes. The dashboard shown for the principal has no class roll on it, so its exception was checked in code only.
 
 **Checks while building.** `tsc`, `eslint` on the touched folders, `check:tokens` and the full `vitest run` (1,055 tests) passed. `npm run build`, the Playwright tests (including the axe contrast scan on the new header text) were not run: they are the owner's.
+
+## Step 59.16: the product's brand inside the app (2026-11-23)
+
+**What was asked.** "In the login we have the Bantay Aral logo but once we are inside the brand is gone." The owner typed `/skil-web design`; no such skill exists in the session (and the frontend-design plugin wasn't loaded), so the design rules in CLAUDE.md were applied directly.
+
+**Why it was missing.** The sidebar header is the school's identity (`SidebarBrand`); the Bantay Aral mark appeared there only for a super admin with no school open. The parent area already used `BantayAralLogo`. Three options were put to the owner (A: foot of the sidebar and drawer; B: brand on top, school below; C: top bar on phones); they chose A.
+
+**What was built.** `SidebarProductBrand` in `sidebar.tsx` ("Powered by" and `BantayAralLogo` at size `sm`), used at the foot of `Sidebar` and in the drawer's footer under Sign out. Hidden when `school` is null. No new asset, token or dependency.
+
+**A snag.** The first screenshot at 1280px showed no brand: the sidebar stretches to the full page height, so its foot sat below the fold. Fix: `sticky top-0 h-dvh self-start overflow-y-auto` on the `<aside>` (it is `display: none` below 1024px anyway). I tried a tagline under the name first, but the 224px column is too narrow and it would wrap, so it is left out.
+
+**Looked at.** Screenshots at 1280px and 360px (drawer open), light and dark, through the owner's dev server. Next's round dev badge covers part of "Powered by" in the corner; it exists only in dev.
+
+**Checks while building.** `tsc` clean, `eslint` on `app-shell` clean, the app-shell tests pass (12). `npm run build`, the full suite and Playwright are the owner's.
+

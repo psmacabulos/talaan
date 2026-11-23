@@ -1,7 +1,7 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████████░░ 90%**  (361 of 401 tasks, 95 of 105 steps approved)
+**Overall progress: ██████████████████░░ 90%**  (364 of 404 tasks, 96 of 106 steps approved)
 
 **Next up:** Step 59.2, A practice restore (not started)
 
@@ -105,6 +105,7 @@
 | 59.13 | Add a gate or a monitor | ██████████ 100% | Approved |
 | 59.14 | Disable and enable a device | ██████████ 100% | Approved |
 | 59.15 | Roomier tables | ██████████ 100% | Approved |
+| 59.16 | The product's brand inside the app | ██████████ 100% | Approved |
 | 60 | Privacy for real student data | ░░░░░░░░░░   0% | Not started |
 | 61 | Queries that don't grow | ░░░░░░░░░░   0% | Not started |
 | 61.1 | The roster answers "nothing changed" cheaply | ░░░░░░░░░░   0% | Not started |
@@ -1045,6 +1046,14 @@ Recipe: `docs/backend/step-59.15-roomier-tables.md`. Added 2026-11-21 by the own
 - [x] Checked by eye on every list page at 360px and 1280px, in light and dark, and the browser and accessibility tests still pass.
 Done when: every list page's table has the new spacing and header, nothing scrolls sideways that didn't before, and every check passes.
 Commit: `style(tables): give every list table more room and a quieter header`
+- [x] Owner review: I checked it and said "approved"
+
+### Step 59.16: The product's brand inside the app
+Recipe: `docs/backend/step-59.16-product-brand-in-the-app.md`. Added 2026-11-23 by the owner: the Bantay Aral logo is on the login page, but once signed in the brand is gone (the sidebar header is the school's own). Option A of three was chosen: a small "Powered by" and the logo at the foot of the sidebar and the phone drawer.
+- [x] `SidebarProductBrand` at the foot of the static sidebar and the mobile drawer, hidden when no school is open (the header already shows the mark then). The sidebar is pinned to the screen's height so its foot is always in view.
+- [x] A component test, and `docs/APP-SHELL.md` updated.
+Done when: a principal sees "Powered by Bantay Aral" at the foot of the sidebar at 1280px and in the drawer at 360px, in light and dark, and every check passes.
+Commit: `feat(shell): show the Bantay Aral brand at the foot of the sidebar`
 - [x] Owner review: I checked it and said "approved"
 
 ### Step 60: Privacy for real student data

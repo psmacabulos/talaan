@@ -16,7 +16,7 @@ import type { Role } from "@/features/staff/types";
 import type { School } from "@/features/schools/types";
 import { NavLinks } from "./nav-links";
 import { SignOutButton } from "./sign-out-button";
-import { SidebarBrand } from "./sidebar";
+import { SidebarBrand, SidebarProductBrand } from "./sidebar";
 
 /** The <900px equivalent of the sidebar (design/school-portal-prototype.html) — an off-canvas drawer, closing itself once a link is tapped. */
 export function MobileNav({ role, school }: { role: Role; school: School | null }) {
@@ -40,6 +40,7 @@ export function MobileNav({ role, school }: { role: Role; school: School | null 
         <NavLinks role={role} onNavigate={() => setOpen(false)} className="p-4" />
         <SheetFooter className="border-t border-border">
           <SignOutButton placement="drawer" />
+          {school ? <SidebarProductBrand className="pt-2" /> : null}
         </SheetFooter>
       </SheetContent>
     </Sheet>

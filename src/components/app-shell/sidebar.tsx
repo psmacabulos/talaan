@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { School as SchoolIcon } from "lucide-react";
-import { BantayAralMark } from "@/components/brand/bantay-aral-logo";
+import { BantayAralLogo, BantayAralMark } from "@/components/brand/bantay-aral-logo";
 import { PRODUCT_NAME } from "@/lib/product";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/features/staff/types";
@@ -47,14 +47,30 @@ export function SidebarBrand({ school }: { school: School | null }) {
   );
 }
 
+/**
+ * The product's own name at the foot of the sidebar and the drawer (Step
+ * 59.16). The top of both belongs to the school (its logo and name), so the
+ * product signs the page at the bottom instead. Not shown when a super
+ * admin has no school open: the header above already is the product's mark.
+ */
+export function SidebarProductBrand({ className }: { className?: string }) {
+  return (
+    <div className={cn("flex items-center gap-2 px-2", className)}>
+      <span className="text-xs text-muted-foreground">Powered by</span>
+      <BantayAralLogo size="sm" />
+    </div>
+  );
+}
+
 export function Sidebar({ role, school, className }: { role: Role; school: School | null; className?: string }) {
   return (
     <aside
       aria-label="Sidebar"
-      className={cn("w-64 shrink-0 flex-col gap-6 border-r border-border bg-card px-4 py-6", className)}
+      className={cn("sticky top-0 h-dvh w-64 shrink-0 flex-col gap-6 self-start overflow-y-auto border-r border-border bg-card px-4 py-6", className)}
     >
       <SidebarBrand school={school} />
       <NavLinks role={role} className="flex-1" />
+      {school ? <SidebarProductBrand className="border-t border-border pt-4" /> : null}
     </aside>
   );
 }
