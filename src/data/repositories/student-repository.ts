@@ -10,6 +10,8 @@ export interface StudentRepository {
    * caller can leak a row by forgetting to compare schools afterwards.
    */
   getInSchool(schoolId: string, id: string): Promise<Student | null>;
+  /** These students at `schoolId`, in no particular order; ids from another school or that don't exist are left out. One query, for the Activity page's names (Step 60.1). */
+  listByIdsInSchool(schoolId: string, ids: readonly string[]): Promise<Student[]>;
   /** Appends a new student (Step 15's "Add student"). Idempotent by `id`, same as `TapRepository.create`. */
   create(student: Student): Promise<Student>;
   /** Replaces an existing student by `id`, only within `schoolId`. Returns `null` if there's no such student there. */
@@ -40,6 +42,10 @@ export function createMockStudentRepository(
     async getInSchool(schoolId, id) {
       await simulateLatency(latencyMs);
       return data.find((student) => student.id === id && student.schoolId === schoolId) ?? null;
+    },
+    async listByIdsInSchool(schoolId, ids) {
+      await simulateLatency(latencyMs);
+      return data.filter((student) => student.schoolId === schoolId && ids.includes(student.id));
     },
     async create(student) {
       await simulateLatency(latencyMs);

@@ -71,6 +71,11 @@ export function createPrismaStudentRepository(db: PrismaClient = prisma): Studen
       const row = await db.student.findFirst({ where: { id, schoolId } });
       return row ? toStudent(row) : null;
     },
+    async listByIdsInSchool(schoolId, ids) {
+      if (ids.length === 0) return [];
+      const rows = await db.student.findMany({ where: { schoolId, id: { in: [...ids] } } });
+      return rows.map(toStudent);
+    },
     async create(student) {
       const row = await db.student.upsert({
         where: { id: student.id },

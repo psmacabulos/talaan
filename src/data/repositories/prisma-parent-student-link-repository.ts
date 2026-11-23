@@ -139,7 +139,7 @@ export function createPrismaParentStudentLinkRepository(db: PrismaClient = prism
         return { outcome: "linked", link, noticesMade: others.length };
       }, LINK_TRANSACTION);
     },
-    async removeInSchool(schoolId, linkId, removedByStaffId) {
+    async removeInSchool(schoolId, linkId, removedByStaffId, removedByRole) {
       return db.$transaction(async (tx) => {
         const link = await tx.parentStudentLink.findFirst({
           where: { id: linkId, schoolId },
@@ -168,6 +168,17 @@ export function createPrismaParentStudentLinkRepository(db: PrismaClient = prism
             pushToken: { parentToken: { parentId: link.parentId } },
           },
         });
+        // In the same transaction, so a removal never happens without its record.
+        await tx.auditEvent.create({
+          data: {
+            schoolId,
+            actorId: removedByStaffId,
+            actorRole: removedByRole,
+            action: "parent_link_removed",
+            targetType: "student",
+            targetId: link.studentId,
+          },
+        });
         return link;
       }, LINK_TRANSACTION);
     },
@@ -190,8 +201,10 @@ export function createPrismaParentStudentLinkRepository(db: PrismaClient = prism
       }));
     },
     async allowAgainInSchool(schoolId, blockId) {
+      const block = await db.linkBlock.findFirst({ where: { id: blockId, schoolId }, select: { studentId: true } });
+      if (!block) return null;
       const { count } = await db.linkBlock.deleteMany({ where: { id: blockId, schoolId } });
-      return count > 0;
+      return count > 0 ? { studentId: block.studentId } : null;
     },
   };
 }

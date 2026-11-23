@@ -1,5 +1,6 @@
 import {
   CalendarCheck,
+  History,
   IdCard,
   LayoutDashboard,
   MonitorSmartphone,
@@ -10,7 +11,7 @@ import {
 } from "lucide-react";
 import type { Role } from "@/features/staff/types";
 
-export type NavSegment = "schools" | "dashboard" | "attendance" | "students" | "staff" | "devices" | "settings";
+export type NavSegment = "schools" | "dashboard" | "attendance" | "students" | "staff" | "devices" | "activity" | "settings";
 
 export type NavItem = {
   segment: NavSegment;
@@ -36,6 +37,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { segment: "staff", href: "/staff", label: "Staff", icon: IdCard, roles: SCHOOL_STAFF_ROLES },
   // The school's gates and monitors (Step 59.12).
   { segment: "devices", href: "/devices", label: "Devices", icon: MonitorSmartphone, roles: SCHOOL_STAFF_ROLES },
+  // Who changed what (Step 60.1).
+  { segment: "activity", href: "/activity", label: "Activity", icon: History, roles: SCHOOL_STAFF_ROLES },
   { segment: "settings", href: "/settings", label: "Settings", icon: Settings, roles: SCHOOL_STAFF_ROLES },
 ];
 

@@ -801,6 +801,9 @@ The **dev switcher** (the "Principal, Balanga City..." menu in the top bar) exis
 ### "Open a school" (Step 25) is the dev switcher's own swap, borrowed
 The schools list's **Open** button needs to show a super admin *that school's app* — its colors, its logo, its principal's view — without a real multi-account login yet. The dev switcher already knows how to become someone else, so `openSchool()` reuses exactly that machinery instead of inventing a new mechanism: `setDevSession(principal.id)` (switch the pretend-signed-in user to that school's principal), `clearThemeOverride()` (drop the theme-override cookie so the *school's own* preset applies), then `redirect("/dashboard")`. Three existing building blocks; the only new part is finding the school's principal first via `staffRepository.listBySchool()`. That's also why the add-school form collects the principal's name and email: a brand-new school has no principal to switch into unless creating the school creates an **invited** principal account at the same time. (In Phase 2, "Open a school" could become a real super-admin privilege backed by a real session — the same three building blocks, minus the dev-cookie part.)
 
+### Where do I find the activity log? (Step 60.1)
+In the sidebar (the menu button on a phone) there's an **Activity** item, between Devices and Settings. It shows for a principal or a super admin; a teacher doesn't see it, and typing `/activity` gives "You don't have access". A super admin has to open a school first (Schools, then Open), because the log belongs to one school. A new menu item is only one line in `nav-items.ts`; the page itself is `src/app/(app)/activity/page.tsx`. How the log works: `docs/AUDIT-LOG.md`.
+
 ---
 
 ## CSS layout: Flexbox spacing gotchas

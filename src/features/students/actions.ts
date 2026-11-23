@@ -4,12 +4,15 @@ import { refresh } from "next/cache";
 import { SIGNED_OUT_MESSAGE } from "@/features/auth/messages";
 import { getSession } from "@/lib/session";
 import { studentRepository } from "@/data/repositories";
+import { changedStudentFields } from "@/features/audit/changed-fields";
+import type { AuditAction } from "@/features/audit/types";
+import { actorOf, recordAudit } from "@/services/audit/record-audit";
 import { getPhotoStorage } from "@/lib/storage/photo-storage";
 import { prepareCardChange, type PreparedCardChange } from "./card-changes";
 import { newPhotoKey, PHOTO_CONTENT_TYPE } from "./photo";
 import { readPhotoUpload } from "./photo-changes";
 import { studentFormSchema } from "./schemas";
-import { NO_STUDENT_CHANGES, studentChangesSchema, type StudentChanges } from "./student-changes";
+import { NO_STUDENT_CHANGES, studentChangesSchema, type PendingCard, type StudentChanges } from "./student-changes";
 import type { StudentFormInput } from "./types";
 
 export type StudentFormFieldErrors = Partial<Record<keyof StudentFormInput, string>>;
@@ -35,8 +38,15 @@ type Checked =
       card: Extract<PreparedCardChange, { ok: true }>;
       photo: Extract<Awaited<ReturnType<typeof readPhotoUpload>>, { ok: true }>;
       removePhoto: boolean;
+      cardAction: AuditAction | null;
     }
   | { ok: false; result: StudentFormActionResult };
+
+/** Which card event a Save's card change is (Step 60.1), or none. */
+function cardAuditAction(card: PendingCard): AuditAction | null {
+  if (card.replaceLost) return card.link ? "card_replaced" : "card_marked_lost";
+  return card.link ? "card_linked" : null;
+}
 
 /**
  * Everything Save will do, checked before any of it is saved: the fields
@@ -64,7 +74,14 @@ async function checkEverything(
   const photo = await readPhotoUpload(photoForm);
   if (!photo.ok) return { ok: false, result: { ok: false, formError: photo.message } };
 
-  return { ok: true, data: parsed.data, card, photo, removePhoto: parsedChanges.data.removePhoto };
+  return {
+    ok: true,
+    data: parsed.data,
+    card,
+    photo,
+    removePhoto: parsedChanges.data.removePhoto,
+    cardAction: cardAuditAction(parsedChanges.data.card),
+  };
 }
 
 /** Stores a new thumbnail and answers with its key; otherwise the key the student should keep (or none). */
@@ -116,7 +133,10 @@ export async function createStudent(
   const id = crypto.randomUUID();
   const photoKey = await storePhoto(session.schoolId, id, checked, undefined);
   await studentRepository.create({ id, schoolId: session.schoolId, ...checked.data, photoKey });
+  const who = { schoolId: session.schoolId, actor: actorOf(session), targetType: "student", targetId: id } as const;
+  await recordAudit({ ...who, action: "student_created" });
   const cardError = await applyCard(checked.card, id);
+  if (!cardError && checked.cardAction) await recordAudit({ ...who, action: checked.cardAction });
 
   refresh();
   return cardError ? { ok: false, formError: cardError } : { ok: true };
@@ -153,7 +173,11 @@ export async function updateStudent(
   const photoKey = await storePhoto(session.schoolId, id, checked, existing.photoKey);
   await studentRepository.update(session.schoolId, { ...existing, ...checked.data, photoKey });
   if (existing.photoKey && existing.photoKey !== photoKey) await getPhotoStorage().delete(existing.photoKey);
+  const who = { schoolId: session.schoolId, actor: actorOf(session), targetType: "student", targetId: id } as const;
+  const fields = changedStudentFields(existing, checked.data, existing.photoKey !== photoKey);
+  if (fields.length > 0) await recordAudit({ ...who, action: "student_updated", details: { fields } });
   const cardError = await applyCard(checked.card, id);
+  if (!cardError && checked.cardAction) await recordAudit({ ...who, action: checked.cardAction });
 
   refresh();
   return cardError ? { ok: false, formError: cardError } : { ok: true };

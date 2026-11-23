@@ -1,7 +1,7 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████████░░ 90%**  (364 of 404 tasks, 96 of 106 steps approved)
+**Overall progress: ██████████████████░░ 89%**  (370 of 416 tasks, 97 of 111 steps approved)
 
 **Next up:** Step 59.2, A practice restore (not started)
 
@@ -107,6 +107,11 @@
 | 59.15 | Roomier tables | ██████████ 100% | Approved |
 | 59.16 | The product's brand inside the app | ██████████ 100% | Approved |
 | 60 | Privacy for real student data | ░░░░░░░░░░   0% | Not started |
+| 60.1 | Activity log (who changed what) | ██████████ 100% | Approved |
+| 60.2 | A parent deletes their own account | ░░░░░░░░░░   0% | Not started |
+| 60.3 | Export and delete one student | ░░░░░░░░░░   0% | Not started |
+| 60.4 | Privacy notice and consent | ░░░░░░░░░░   0% | Not started |
+| 60.5 | Export and delete a whole school | ░░░░░░░░░░   0% | Not started |
 | 61 | Queries that don't grow | ░░░░░░░░░░   0% | Not started |
 | 61.1 | The roster answers "nothing changed" cheaply | ░░░░░░░░░░   0% | Not started |
 | 62 | Pages ask the database once | ░░░░░░░░░░   0% | Not started |
@@ -1057,13 +1062,46 @@ Commit: `feat(shell): show the Bantay Aral brand at the foot of the sidebar`
 - [x] Owner review: I checked it and said "approved"
 
 ### Step 60: Privacy for real student data
-Plan: `docs/SCALING.md` 1.8, from the plan's after-demo list. Due before real use. Likely to be split once its recipe is written.
-- [ ] A privacy notice parents see, and a record of each parent's consent. The wording comes from the school.
-- [ ] Export and delete one student's data, and a whole school's.
-- [ ] A parent can delete their own account from the app. Google Play and Apple's App Store both require this before an app that makes accounts can be published (`docs/PARENT-APP-BRIEF.md`).
-- [ ] An audit log: who added, changed or removed students, cards and staff, and when.
-Done when: a school can answer "what do you keep about my child, and can you delete it?", and every check passes.
-Commit: `feat(privacy): add consent, data export and deletion, and an audit log`
+Plan: `docs/SCALING.md` 1.8, from the plan's after-demo list. Due before real use. **Split on 2026-11-23** into 60.1 to 60.5 below, each small enough for one review: the audit log first (the deletes write to it), then a parent's own account, one student, the privacy notice, and a whole school. Nothing is ticked here; the sub-steps are.
+Done when: a school can answer "what do you keep about my child, and can you delete it?", and 60.1 to 60.5 are approved.
+
+### Step 60.1: Activity log (who changed what)
+Recipe: `docs/backend/step-60.1-audit-log.md`. How it works: `docs/AUDIT-LOG.md`. Reviewed with the systems-architect on 2026-11-23 (no fatal problem; three blocking points, all built in: the retention index and where the cleanup runs, a super admin named by role, parent-link events logged against the child).
+- [x] Migration `audit_events`: an `AuditEvent` table (school, actor id and role, action, target, the *names* of changed fields, time) with an index in the page's own order and one on age for the cleanup.
+- [x] `recordAudit` writes an event after a change succeeds (never failing the school's work), keeps `details` to a fixed list of field names, and at most once an hour deletes a batch of events older than two years. Removing a parent is written inside its own transaction.
+- [x] Logged: add and edit a student (with which fields changed), link, replace or mark lost a card, invite or remove staff, make a sign-in link, remove a parent's access and allow it again, record a time in or out by hand, change the attendance times, and a super admin opening a school.
+- [x] An Activity page for principals and super admins (teachers can't open it): filter chips, newest first, "Older activity" paging kept in the URL, three reads a page.
+- [x] Tests: unit, a Postgres test for the repository and the in-transaction removal event, and `e2e/activity.spec.ts`.
+Done when: a principal sees who did what, with no name stored in the log, no email, no card serial and no changed value, one school never sees another's, and every check passes.
+Commit: `feat(audit): add an activity log of who changed students, cards, staff and parent access`
+- [x] Owner review: I checked it and said "approved"
+
+### Step 60.2: A parent deletes their own account
+Plan: `docs/SCALING.md` 1.8. Google Play and Apple's App Store both require this before an app that makes accounts can be published (`docs/PARENT-APP-BRIEF.md`).
+- [ ] "Delete my account" in the parent web portal and `DELETE /api/v1/parents/me`, asking for the password. It removes the parent, their sign-ins, push addresses, links, link blocks and notices in one transaction; their children's records stay with the school.
+- [ ] Each linked school's activity log notes that a parent account was removed, against the child, never naming the parent.
+Done when: a parent can delete their account from the portal and the API, nothing of theirs is left, other guardians of the same child are unaffected, and every check passes.
+Commit: `feat(parents): let a parent delete their own account`
+- [ ] Owner review: I checked it and said "approved"
+
+### Step 60.3: Export and delete one student
+- [ ] A principal exports one student's data as a file (their record, cards, taps, links and notifications, no other student's).
+- [ ] A principal deletes a student after typing a confirmation: their taps, alerts, notifications, links, cards and photo go in one transaction, with an audit event written inside it that holds no name.
+Done when: a deleted student leaves nothing behind, another school's students can't be exported or deleted, and every check passes.
+Commit: `feat(privacy): export and delete one student's data`
+- [ ] Owner review: I checked it and said "approved"
+
+### Step 60.4: Privacy notice and consent
+- [ ] Each school has a privacy notice (wording from the school, edited by its principal) with a version.
+- [ ] A parent accepts the current version at sign-up, and again when it changes; the version and date of each acceptance are kept.
+Done when: a parent can't use the app until they have accepted the school's current notice, and every check passes.
+Commit: `feat(privacy): add a privacy notice and record each parent's consent`
+- [ ] Owner review: I checked it and said "approved"
+
+### Step 60.5: Export and delete a whole school
+- [ ] A super admin exports a school's data and deletes it after a typed confirmation, in batches that fit a small database. The deletion is recorded in the server log with the school's id and no names (its activity log goes with it).
+Done when: a deleted school leaves no rows in any table, no other school is touched, and every check passes.
+Commit: `feat(privacy): export and delete a whole school`
 - [ ] Owner review: I checked it and said "approved"
 
 ### Step 61: Queries that don't grow

@@ -4,7 +4,9 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 import { parentStudentLinkRepository } from "@/data/repositories";
 import { SIGNED_OUT_MESSAGE } from "@/features/auth/messages";
+import type { Role } from "@/features/staff/types";
 import { getSession } from "@/lib/session";
+import { recordAudit } from "@/services/audit/record-audit";
 
 export type ParentLinkActionResult = { ok: true } | { ok: false; error: string };
 
@@ -14,11 +16,11 @@ const NOT_ALLOWED = "You don't have permission to manage parent accounts.";
 const idSchema = z.string().min(1).max(64);
 
 /** A principal or super admin with a school open; everything they do here is at that school. */
-async function manager(): Promise<{ schoolId: string; staffId: string } | { error: string }> {
+async function manager(): Promise<{ schoolId: string; staffId: string; role: Role } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: SIGNED_OUT_MESSAGE };
   if (!session.schoolId || session.role === "teacher") return { error: NOT_ALLOWED };
-  return { schoolId: session.schoolId, staffId: session.userId };
+  return { schoolId: session.schoolId, staffId: session.userId, role: session.role };
 }
 
 /**
@@ -33,7 +35,7 @@ export async function removeParentLink(linkId: unknown): Promise<ParentLinkActio
   const id = idSchema.safeParse(linkId);
   if (!id.success) return { ok: false, error: "That parent account was already removed." };
 
-  const removed = await parentStudentLinkRepository.removeInSchool(caller.schoolId, id.data, caller.staffId);
+  const removed = await parentStudentLinkRepository.removeInSchool(caller.schoolId, id.data, caller.staffId, caller.role);
   if (!removed) return { ok: false, error: "That parent account was already removed." };
 
   refresh();
@@ -49,6 +51,14 @@ export async function allowParentLinkAgain(blockId: unknown): Promise<ParentLink
 
   const allowed = await parentStudentLinkRepository.allowAgainInSchool(caller.schoolId, id.data);
   if (!allowed) return { ok: false, error: "That parent can already link this child." };
+  // Logged against the child, never the parent.
+  await recordAudit({
+    schoolId: caller.schoolId,
+    actor: { id: caller.staffId, role: caller.role },
+    action: "parent_link_allowed_again",
+    targetType: "student",
+    targetId: allowed.studentId,
+  });
 
   refresh();
   return { ok: true };

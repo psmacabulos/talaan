@@ -7,7 +7,7 @@ import type {
   RemovedGuardian,
 } from "@/features/parents/types";
 import type { Student } from "@/features/students/types";
-import type { Staff } from "@/features/staff/types";
+import type { Role, Staff } from "@/features/staff/types";
 import { seedNotifications, seedParentStudentLinks, seedParents, seedStaff, seedStudents } from "@/data/seed";
 import { DEFAULT_LATENCY_MS, simulateLatency } from "./latency";
 
@@ -43,17 +43,20 @@ export interface ParentStudentLinkRepository {
    * Step 55.4's "Remove": deletes one link at `schoolId` and blocks that
    * parent from the child, in one transaction, with the parent's pushes
    * about the child that haven't gone yet. Null if there's no such link (any
-   * more): another principal may have removed it a moment ago.
+   * more): another principal may have removed it a moment ago. The Activity
+   * log's `parent_link_removed` event is written in that same transaction
+   * (Step 60.1), against the child, so removing a parent is never unrecorded.
    */
   removeInSchool(
     schoolId: string,
     linkId: string,
     removedByStaffId: string,
+    removedByRole: Role,
   ): Promise<{ parentId: string; studentId: string } | null>;
   /** The blocks of these students at `schoolId`, with the parent's name and who removed them, newest first. */
   listBlocksInSchool(schoolId: string, studentIds: string[]): Promise<RemovedGuardian[]>;
-  /** Step 55.4's "Allow again": deletes one block at `schoolId`. True if there was one. */
-  allowAgainInSchool(schoolId: string, blockId: string): Promise<boolean>;
+  /** Step 55.4's "Allow again": deletes one block at `schoolId` and gives back the child it was for, or null if there was none. */
+  allowAgainInSchool(schoolId: string, blockId: string): Promise<{ studentId: string } | null>;
 }
 
 /** What linking did: a new link and how many guardians it told (each gets a push), or why there's none. */
@@ -215,9 +218,9 @@ export function createMockParentStudentLinkRepository(
     async allowAgainInSchool(schoolId, blockId) {
       await simulateLatency(latencyMs);
       const index = blocks.findIndex((block) => block.id === blockId && block.schoolId === schoolId);
-      if (index === -1) return false;
-      blocks.splice(index, 1);
-      return true;
+      if (index === -1) return null;
+      const [{ studentId }] = blocks.splice(index, 1);
+      return { studentId };
     },
   };
 }

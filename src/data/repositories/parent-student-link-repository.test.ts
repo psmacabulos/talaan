@@ -184,14 +184,14 @@ describe("createMockParentStudentLinkRepository", () => {
         staff,
       });
 
-      await expect(repo.removeInSchool("school-b", "link-1", "staff-1")).resolves.toBeNull();
-      await expect(repo.removeInSchool("school-a", "link-1", "staff-1")).resolves.toEqual({
+      await expect(repo.removeInSchool("school-b", "link-1", "staff-1", "principal")).resolves.toBeNull();
+      await expect(repo.removeInSchool("school-a", "link-1", "staff-1", "principal")).resolves.toEqual({
         parentId: "parent-a",
         studentId: "student-a",
       });
       await expect(repo.listByParent("parent-a")).resolves.toEqual([link2]);
       // A second remove finds nothing left.
-      await expect(repo.removeInSchool("school-a", "link-1", "staff-1")).resolves.toBeNull();
+      await expect(repo.removeInSchool("school-a", "link-1", "staff-1", "principal")).resolves.toBeNull();
 
       await expect(repo.createWithNotices({ ...link1, id: "link-again" })).resolves.toEqual({ outcome: "blocked" });
       const [removed] = await repo.listBlocksInSchool("school-a", ["student-a"]);
@@ -202,8 +202,8 @@ describe("createMockParentStudentLinkRepository", () => {
       });
       await expect(repo.listBlocksInSchool("school-b", ["student-a"])).resolves.toEqual([]);
 
-      await expect(repo.allowAgainInSchool("school-b", removed.blockId)).resolves.toBe(false);
-      await expect(repo.allowAgainInSchool("school-a", removed.blockId)).resolves.toBe(true);
+      await expect(repo.allowAgainInSchool("school-b", removed.blockId)).resolves.toBeNull();
+      await expect(repo.allowAgainInSchool("school-a", removed.blockId)).resolves.toEqual({ studentId: removed.studentId });
       await expect(repo.createWithNotices({ ...link1, id: "link-again" })).resolves.toMatchObject({
         outcome: "linked",
       });

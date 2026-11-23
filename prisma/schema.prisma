@@ -39,6 +39,7 @@ model School {
   devices            Device[]
   linkAttempts       LinkAttempt[]
   linkBlocks         LinkBlock[]
+  auditEvents        AuditEvent[]
 }
 
 enum Role {
@@ -456,4 +457,54 @@ model Device {
   updatedAt  DateTime     @updatedAt
 
   @@index([schoolId])
+}
+
+// What staff did to a school's student data (Step 60.1), for the principal's
+// Activity page. Never a name, an email, a card serial or a changed value:
+// only ids, and for an edit the *names* of the fields that changed
+// (`src/services/audit/record-audit.ts` filters `details` to a fixed list).
+enum AuditAction {
+  student_created
+  student_updated
+  card_linked
+  card_replaced
+  card_marked_lost
+  staff_invited
+  staff_removed
+  staff_link_created
+  parent_link_removed
+  parent_link_allowed_again
+  time_in_recorded
+  time_out_recorded
+  attendance_times_changed
+  school_opened
+}
+
+enum AuditTarget {
+  student
+  staff
+  school
+}
+
+model AuditEvent {
+  id         String      @id @default(uuid())
+  schoolId   String
+  // Cascade, unlike most relations here: deleting a whole school (Step 60.5)
+  // takes its log with it. That deletion is recorded in the server log
+  // instead, with the school's id and no names.
+  school     School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  // A plain copy of the staff id, not a relation: removing a staff member
+  // must neither fail on nor erase what they did.
+  actorId    String
+  actorRole  Role
+  action     AuditAction
+  targetType AuditTarget
+  targetId   String
+  details    Json?
+  createdAt  DateTime    @default(now())
+
+  // The Activity page's order and its keyset cursor: newest first, ties by id.
+  @@index([schoolId, createdAt(sort: Desc), id(sort: Desc)])
+  // The retention cleanup deletes across schools by age alone.
+  @@index([createdAt])
 }

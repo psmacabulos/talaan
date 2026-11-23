@@ -4,11 +4,12 @@ import { refresh } from "next/cache";
 import { staffRepository } from "@/data/repositories";
 import { SIGNED_OUT_MESSAGE } from "@/features/auth/messages";
 import { getSession } from "@/lib/session";
+import { actorOf, recordAudit } from "@/services/audit/record-audit";
 import { EMAIL_IN_USE_MESSAGE } from "./messages";
 import { staffRowActions } from "./row-actions";
 import { makeSignInLink, type SignInLink } from "./sign-in-link";
 import { staffFormSchema } from "./schemas";
-import type { Staff, StaffFormInput } from "./types";
+import type { Role, Staff, StaffFormInput } from "./types";
 
 export type StaffFormFieldErrors = Partial<Record<keyof StaffFormInput, string>>;
 
@@ -67,6 +68,13 @@ export async function inviteStaff(input: StaffFormInput): Promise<StaffFormActio
     email,
   });
 
+  await recordAudit({
+    schoolId: session.schoolId,
+    actor: actorOf(session),
+    action: "staff_invited",
+    targetType: "staff",
+    targetId: staff.id,
+  });
   refresh();
   return { ok: true, link: await makeSignInLink(staff) };
 }
@@ -81,7 +89,7 @@ export type StaffRowActionResult = { ok: true } | { ok: false; error: string };
  */
 async function findActionTarget(
   staffId: string,
-): Promise<{ staff: Staff; userId: string; schoolId: string } | { error: string }> {
+): Promise<{ staff: Staff; userId: string; schoolId: string; role: Role } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: SIGNED_OUT_MESSAGE };
   if (!session.schoolId || session.role === "teacher") {
@@ -94,7 +102,17 @@ async function findActionTarget(
     return { error: "That staff member no longer exists." };
   }
 
-  return { staff, userId: session.userId, schoolId: session.schoolId };
+  return { staff, userId: session.userId, schoolId: session.schoolId, role: session.role };
+}
+
+/** The parts of an audit event every ⋮ menu action shares. */
+function staffEvent(target: { staff: Staff; userId: string; schoolId: string; role: Role }) {
+  return {
+    schoolId: target.schoolId,
+    actor: { id: target.userId, role: target.role },
+    targetType: "staff",
+    targetId: target.staff.id,
+  } as const;
 }
 
 export type SignInLinkActionResult = { ok: true; link: SignInLink } | { ok: false; error: string };
@@ -114,7 +132,9 @@ export async function createSignInLink(staffId: string): Promise<SignInLinkActio
     return { ok: false, error: "You can't make a link for your own account." };
   }
 
-  return { ok: true, link: await makeSignInLink(target.staff) };
+  const link = await makeSignInLink(target.staff);
+  await recordAudit({ ...staffEvent(target), action: "staff_link_created" });
+  return { ok: true, link };
 }
 
 /** Step 27.6's "Remove". The menu asks for confirmation first; this re-checks the same rules. */
@@ -127,6 +147,7 @@ export async function removeStaff(staffId: string): Promise<StaffRowActionResult
   }
 
   await staffRepository.remove(target.schoolId, staffId);
+  await recordAudit({ ...staffEvent(target), action: "staff_removed" });
   refresh();
   return { ok: true };
 }

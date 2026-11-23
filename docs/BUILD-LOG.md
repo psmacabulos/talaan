@@ -3253,3 +3253,20 @@ The owner approved the plan, and the `qrcode` package, on 2026-11-20, and asked 
 
 **Checks while building.** `tsc` clean, `eslint` on `app-shell` clean, the app-shell tests pass (12). `npm run build`, the full suite and Playwright are the owner's.
 
+## Step 60.1: an activity log (2026-11-23)
+
+**What was asked.** "Lets start step 60", then "go, also if you think architect is needed to be consulted do it, otherwise proceed." Step 60 had four unrelated features, so it was split into 60.1 to 60.5 in `docs/PLAN.md` first (audit log, a parent deletes their account, one student, the privacy notice, a whole school), and 60.1 was built.
+
+**Architect.** Consulted, because the step adds a table every staff action writes to and sets up the delete steps. Verdict: sound, with three blocking points: put the retention cleanup in the write path (the Activity page might never be opened) with an index on `createdAt`; label a super admin by role (their `schoolId` is null, so a staff lookup would call every one a "former staff member"); log parent-link events against the child, which meant `allowAgainInSchool` had to return the child's id. Also adopted: the page's index in its exact order, a typed allowlist for `details`, one batched student query for names, and writing the parent-removal event inside `removeInSchool`'s transaction. Decided on its 60.5 point: the table's school relation is `Cascade`, and 60.5 will record a school's deletion in the server log (its id, no names) because the log goes with the school.
+
+**Commands.** `npx prisma migrate dev --name audit_events` (applied to the dev database; migration `20261123123551_audit_events`), then `npx prisma generate`.
+
+**What was built.** See `docs/backend/step-60.1-audit-log.md` and `docs/AUDIT-LOG.md`.
+
+**Snags.**
+- The existing tests called `removeInSchool(…)` with three arguments, `allowAgainInSchool` returned a boolean, and `isolation.test.ts` mocks the whole repositories module. `tsc` found the first two; the isolation test failed with "No `auditRepository` export is defined on the mock", so it got a no-op one. The other tests were fixed by passing `"principal"`.
+- The Postgres tests (`*.pg.test.ts`, which run when `E2E_DATABASE_URL` is set) fail with "The table `public.AuditEvent` does not exist" until the migration reaches the test database. I tried to apply it by loading `.env` from a one-line script; that was refused (rightly: `.env` is the owner's), so the owner runs `migrate deploy` against the test database, or runs `npm run test:e2e` once (its global setup does that).
+- The first screenshot of `/activity` showed the error page: `TypeError: Cannot read properties of undefined (reading 'findMany')`. The owner's `npm run dev` had loaded the Prisma Client before the new table existed and keeps it on `globalThis` between reloads (`src/lib/db.ts`). A second dev server can't be started to check ("Another next dev server is already running"). Restarting the dev server fixes it.
+
+**Checks while building.** `tsc` and `eslint` clean, `check:tokens` clean, the full `vitest run` 1,076 passing and only the 4 pg tests above failing for the missing table. Not run: `npm run build`, Playwright (including `e2e/activity.spec.ts`), the Postgres tests, and a look at the page in a browser (blocked by the stale dev server).
+

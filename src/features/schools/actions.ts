@@ -8,6 +8,7 @@ import { SIGNED_OUT_MESSAGE } from "@/features/auth/messages";
 import { EMAIL_IN_USE_MESSAGE } from "@/features/staff/messages";
 import { makeSignInLink, type SignInLink } from "@/features/staff/sign-in-link";
 import { getSession, startStaffSession } from "@/lib/session";
+import { actorOf, recordAudit } from "@/services/audit/record-audit";
 import { clearThemeOverride } from "@/lib/theme/theme-override-actions";
 import { attendanceTimesSchema, createSchoolSchema, notificationPreferenceSchema, schoolThemeSchema } from "./schemas";
 import type { CreateSchoolFormInput, NotificationPreference, SchoolTheme } from "./types";
@@ -103,6 +104,17 @@ export async function updateAttendanceTimes(times: AttendanceTimes): Promise<Att
   }
 
   await schoolRepository.update({ ...school, ...parsed.data });
+  const fields = (["lateAfter", "absentFrom"] as const).filter((field) => school[field] !== parsed.data[field]);
+  if (fields.length > 0) {
+    await recordAudit({
+      schoolId: session.schoolId,
+      actor: actorOf(session),
+      action: "attendance_times_changed",
+      targetType: "school",
+      targetId: session.schoolId,
+      details: { fields },
+    });
+  }
 
   refresh();
   return { ok: true };
@@ -226,6 +238,14 @@ export async function openSchool(schoolId: string): Promise<OpenSchoolActionResu
   }
 
   await startStaffSession(session.userId, school.id);
+  // A super admin opening a school's student data is the log's most important access event.
+  await recordAudit({
+    schoolId: school.id,
+    actor: actorOf(session),
+    action: "school_opened",
+    targetType: "school",
+    targetId: school.id,
+  });
   await clearThemeOverride();
   redirect("/dashboard");
 }

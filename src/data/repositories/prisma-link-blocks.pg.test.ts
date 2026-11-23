@@ -38,6 +38,9 @@ describeWithDatabase("link blocks on Postgres (Step 55.4; needs E2E_DATABASE_URL
   async function cleanUp() {
     await db.notification.deleteMany({ where: { id: { startsWith: PREFIX } } });
     await db.notification.deleteMany({ where: { recipientParentId: { in: [REMOVED, OTHER] } } });
+    await db.auditEvent.deleteMany({
+      where: { actorId: principal, targetType: "student", targetId: { in: [child, otherChild] } },
+    });
     await db.linkBlock.deleteMany({ where: { parentId: { in: [REMOVED, OTHER] } } });
     await db.parentStudentLink.deleteMany({ where: { parentId: { in: [REMOVED, OTHER] } } });
   }
@@ -113,12 +116,22 @@ describeWithDatabase("link blocks on Postgres (Step 55.4; needs E2E_DATABASE_URL
     await delivery("other-child", otherChild, `${REMOVED}-phone`, "waiting");
     await delivery("other-guardian", child, `${OTHER}-phone`, "waiting");
 
-    await expect(links.removeInSchool(BALANGA, await removedLinkId(), principal)).resolves.toEqual({
+    await expect(links.removeInSchool(BALANGA, await removedLinkId(), principal, "principal")).resolves.toEqual({
       parentId: REMOVED,
       studentId: child,
     });
 
     await expect(db.parentStudentLink.count({ where: { parentId: REMOVED, studentId: child } })).resolves.toBe(0);
+    // Step 60.1: the removal's record, against the child and never naming the parent.
+    await expect(
+      db.auditEvent.findFirstOrThrow({ where: { actorId: principal, targetId: child } }),
+    ).resolves.toMatchObject({
+      schoolId: BALANGA,
+      actorRole: "principal",
+      action: "parent_link_removed",
+      targetType: "student",
+      details: null,
+    });
     await expect(
       db.linkBlock.findUnique({ where: { parentId_studentId: { parentId: REMOVED, studentId: child } } }),
     ).resolves.toMatchObject({ schoolId: BALANGA, removedByStaffId: principal });
@@ -129,22 +142,22 @@ describeWithDatabase("link blocks on Postgres (Step 55.4; needs E2E_DATABASE_URL
   it("lets only one of two removals at once through, with one block and no clash", async () => {
     const linkId = await removedLinkId();
     const results = await Promise.all([
-      links.removeInSchool(BALANGA, linkId, principal),
-      links.removeInSchool(BALANGA, linkId, principal),
+      links.removeInSchool(BALANGA, linkId, principal, "principal"),
+      links.removeInSchool(BALANGA, linkId, principal, "principal"),
     ]);
     expect(results.filter((result) => result === null)).toHaveLength(1);
     await expect(db.linkBlock.count({ where: { parentId: REMOVED, studentId: child } })).resolves.toBe(1);
   });
 
   it("keeps a removed parent from linking again, then lets them after Allow again", async () => {
-    await links.removeInSchool(BALANGA, await removedLinkId(), principal);
+    await links.removeInSchool(BALANGA, await removedLinkId(), principal, "principal");
 
     await expect(links.createWithNotices(linkFor(REMOVED))).resolves.toEqual({ outcome: "blocked" });
     await expect(db.parentStudentLink.count({ where: { parentId: REMOVED, studentId: child } })).resolves.toBe(0);
 
     const [block] = await links.listBlocksInSchool(BALANGA, [child]);
     expect(block).toMatchObject({ parent: { lastName: REMOVED }, removedBy: { firstName: expect.any(String) } });
-    await expect(links.allowAgainInSchool(BALANGA, block.blockId)).resolves.toBe(true);
+    await expect(links.allowAgainInSchool(BALANGA, block.blockId)).resolves.toEqual({ studentId: block.studentId });
 
     // Linking again tells the other guardian again.
     await expect(links.createWithNotices(linkFor(REMOVED))).resolves.toMatchObject({
@@ -155,13 +168,13 @@ describeWithDatabase("link blocks on Postgres (Step 55.4; needs E2E_DATABASE_URL
 
   it("removes and allows nothing for another school", async () => {
     const linkId = await removedLinkId();
-    await expect(links.removeInSchool(OCEANVIEW, linkId, principal)).resolves.toBeNull();
+    await expect(links.removeInSchool(OCEANVIEW, linkId, principal, "principal")).resolves.toBeNull();
     await expect(db.parentStudentLink.count({ where: { id: linkId } })).resolves.toBe(1);
 
-    await links.removeInSchool(BALANGA, linkId, principal);
+    await links.removeInSchool(BALANGA, linkId, principal, "principal");
     const [block] = await links.listBlocksInSchool(BALANGA, [child]);
     await expect(links.listBlocksInSchool(OCEANVIEW, [child])).resolves.toEqual([]);
-    await expect(links.allowAgainInSchool(OCEANVIEW, block.blockId)).resolves.toBe(false);
+    await expect(links.allowAgainInSchool(OCEANVIEW, block.blockId)).resolves.toBeNull();
     await expect(db.linkBlock.count({ where: { id: block.blockId } })).resolves.toBe(1);
   });
 });

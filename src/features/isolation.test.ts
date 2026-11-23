@@ -44,6 +44,8 @@ vi.mock("@/data/repositories", async () => {
     parentStudentLinkRepository: createMockParentStudentLinkRepository(copy(seed.seedParentStudentLinks), options),
     schoolRepository: createMockSchoolRepository(copy(seed.seedSchools), options),
     alertRepository: createMockAlertRepository(copy(seed.seedAlerts), copy(seed.seedTaps), options),
+    // Never reached either: only the writes that are refused first would log.
+    auditRepository: { record: async () => {}, listPage: async () => [], deleteOlderThan: async () => 0 },
     // Never reached: every write below is refused before it (Step 55's recordTimeIn).
     tapWriter: { record: async () => "created" as const },
   };
@@ -114,7 +116,12 @@ describe("Oceanview can't reach Balanga's data (Step 51)", () => {
     await expect(parentStudentLinkRepository.listBySchool(BALANGA)).resolves.toContainEqual(balangaLink);
 
     // Balanga removes one itself; Oceanview still can't undo it.
-    await parentStudentLinkRepository.removeInSchool(BALANGA, balangaLink.id, `staff-principal-${BALANGA}`);
+    await parentStudentLinkRepository.removeInSchool(
+      BALANGA,
+      balangaLink.id,
+      `staff-principal-${BALANGA}`,
+      "principal",
+    );
     const [block] = await parentStudentLinkRepository.listBlocksInSchool(BALANGA, [balangaLink.studentId]);
     await expect(allowParentLinkAgain(block.blockId)).resolves.toEqual({
       ok: false,

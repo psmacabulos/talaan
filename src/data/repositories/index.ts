@@ -42,3 +42,5 @@ export {
   parentPasswordResetRepository,
   createPrismaParentPasswordResetRepository,
 } from "./prisma-parent-password-reset-repository";
+export { type AuditRepository, type NewAuditEvent } from "./audit-repository";
+export { auditRepository, createPrismaAuditRepository } from "./prisma-audit-repository";

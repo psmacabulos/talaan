@@ -6,6 +6,7 @@ import { SIGNED_OUT_MESSAGE } from "@/features/auth/messages";
 import { getNow } from "@/lib/clock";
 import { formatSchoolTime } from "@/lib/school-time";
 import { getSession } from "@/lib/session";
+import { recordAudit } from "@/services/audit/record-audit";
 import { markAlertHandled as handleAlert } from "@/services/alerts/mark-alert-handled";
 import { wakePushWorker } from "@/services/push/push-worker";
 import { publishStoredTap } from "@/services/taps/publish-tap";
@@ -37,6 +38,17 @@ async function manualTapInput(studentId: string): Promise<ManualTimeInInput | { 
     },
     now: getNow(),
   };
+}
+
+/** A tap recorded by hand is a staff edit to attendance, so it goes in the Activity log (Step 60.1). */
+async function recordHandTap(input: ManualTimeInInput, action: "time_in_recorded" | "time_out_recorded") {
+  await recordAudit({
+    schoolId: input.schoolId,
+    actor: { id: input.staff.id, role: input.staff.role },
+    action,
+    targetType: "student",
+    targetId: input.studentId,
+  });
 }
 
 /**
@@ -74,6 +86,7 @@ export async function recordTimeIn(studentId: string): Promise<RecordTapByHandRe
   const studentName = `${result.student.firstName} ${result.student.lastName}`;
   if (result.outcome === "already_tapped") return { ok: false, error: `${studentName} already tapped in today.` };
 
+  await recordHandTap(input, "time_in_recorded");
   await announce(result, result.notified);
   return { ok: true, studentName, time: formatSchoolTime(result.tap.tappedAt) };
 }
@@ -94,6 +107,7 @@ export async function recordTimeOut(studentId: string): Promise<RecordTapByHandR
   if (result.outcome === "no_time_in") return { ok: false, error: `${studentName} has no time in today.` };
   if (result.outcome === "already_out") return { ok: false, error: `${studentName} is already out.` };
 
+  await recordHandTap(input, "time_out_recorded");
   await announce(result, result.notified);
   return { ok: true, studentName, time: formatSchoolTime(result.tap.tappedAt) };
 }
