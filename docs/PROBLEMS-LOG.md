@@ -84,6 +84,9 @@ Related: `docs/BUILD-LOG.md` has the full story of each step, and `docs/DEPLOY.m
 | [P-067](#p-067--2026-11-20--the-heartbeat-stamped-the-real-time-under-a-pinned-demo-clock) | 2026-11-20 | The heartbeat stamped the real time under a pinned demo clock | Other: correctness | Heartbeat, Devices page | Fixed in Step 59.12 |
 | [P-068](#p-068--2026-11-21--a-monitors-one-time-link-carries-its-key-in-the-address) | 2026-11-21 | A monitor's one-time link carries its key in the address | Security | Connect route, Heroku logs | Accepted for now; measure after deploy |
 | [P-069](#p-069--2026-11-21--a-monitors-link-redirected-to-httpslocalhost22089) | 2026-11-21 | A monitor's link redirected to `https://localhost:22089` | Other: correctness | Connect route, Heroku | Fixed; live once deployed |
+| [P-070](#p-070--2026-11-23--the-build-refused-a-use-server-file-that-exported-constants) | 2026-11-23 | The build refused a "use server" file that exported constants | Build | Server actions | Fixed |
+| [P-071](#p-071--2026-11-23--postgres-test-files-shared-rows-and-failed-now-and-then) | 2026-11-23 | Postgres test files shared rows and failed now and then | Tests | Postgres tests | Fixed |
+| [P-072](#p-072--2026-11-23--a-double-click-on-delete-student-failed-instead-of-answering-already-deleted) | 2026-11-23 | A double click on "Delete student" failed instead of answering "already deleted" | Other: correctness | Student delete | Fixed |
 
 
 ## Benchmarks: what the performance fixes are worth at 5,000 students (2026-10-16)
@@ -1386,3 +1389,56 @@ sequenceDiagram
 - **Options weighed:** (1) read the public address from `x-forwarded-host` and `x-forwarded-proto`: that is what `requestOrigin()` (`src/lib/request-origin.ts`) already does for the set-password link and the Add monitor link. (2) Redirect to the relative path `/gate/display`: a `Location` header with no host is allowed, but `NextResponse.redirect` insists on a full URL. (3) Hard-code `bantayaral.com`: wrong for any other domain or school. Option 1.
 - **Solution:** the route now builds both redirects (success and the `?error=key` page) from `requestOrigin()`. A test pins it: a request the dyno sees as `https://localhost:22089/...` is redirected to the public address. The only other `request.url` uses read query values and don't redirect.
 - **Status:** Fixed; live once deployed. A monitor connected before the fix (like the owner's) keeps working, since its cookie was already set.
+
+## Privacy (Step 60, 2026-11-23)
+
+### P-070 · 2026-11-23 · The build refused a "use server" file that exported constants
+- **Where:** `src/features/students/privacy-actions.ts` (Step 60.3), found by the owner's `npm run build`.
+- **Symptom:** `Error: Turbopack build failed with 3 errors: ./src/features/students/privacy-actions.ts:11:1 Error: Only async functions are allowed to be exported in a "use server" file.` Then, from the client side, `Export deleteStudentAction doesn't exist in target module … The module has no exports at all.`
+- **Cause:** the file exported two message strings (`export const WRONG_CONFIRMATION_MESSAGE = …`) next to the action, so the test could import them. Next.js turns every export of a "use server" file into a callable server endpoint, so it allows only async functions (types are erased, so they're fine). `tsc`, `eslint` and the unit tests all passed: the tests mock the action's module, and nothing but the build checks the rule.
+  ```
+  privacy-actions.ts ("use server")          the build
+    export type …            ✓ erased
+    export async function …  ✓ becomes an endpoint
+    export const MESSAGE     ✗ "Only async functions are allowed"
+  ```
+- **Options weighed:** (1) move the messages to a plain module, as `features/auth/messages.ts` and `features/staff/messages.ts` already do; (2) make them non-exported and test the text by value: loses the shared constant. (3) Also catch it before the build: a test that reads every "use server" file and fails on any other kind of export, so a mocked module can't hide it again.
+- **Solution:** options 1 and 3. `privacy-messages.ts` holds the three messages; `src/use-server-exports.test.ts` checks every "use server" file in `src/` (it found no other offender).
+- **Status:** Fixed in Step 60.3, before approval.
+
+### P-071 · 2026-11-23 · Postgres test files shared rows and failed now and then
+- **Where:** the `*.pg.test.ts` files in `src/data/repositories/`, which Vitest runs at the same time, against one test database. Found while re-running the suite for P-070.
+- **Symptom:** a different test failed on different runs, each passing on its own:
+  - `prisma-link-blocks.pg.test.ts`, "removes the link, blocks the parent…", at its audit-event check.
+  - `prisma-alert-repository.pg.test.ts`: `AssertionError: expected 4 to be 3` on the count of Balanga's open alerts.
+  - `prisma-isolation.test.ts`: one case now and then.
+  - `prisma-parent-account-deletion.pg.test.ts`, the race with `removeInSchool`: `Error: Test timed out in 5000ms.`
+- **Cause:** four separate overlaps, three of them from the tests added in Steps 60.2 and 60.3:
+  - the 60.2 test took "the first two seed students with no parent" by id, exactly as `prisma-link-blocks.pg.test.ts` does, so both changed the same child's links and audit events;
+  - the 60.3 test adds an open alert at Balanga, which the alert test counts;
+  - the isolation test picks "any Balanga row" with no order, so it could pick a row another file was adding or deleting in that moment;
+  - the race test's five rounds each wait about a second for Postgres to notice the deadlock it is there to prove (`deadlock_timeout`), so it runs about 5.2 seconds, past Vitest's 5-second default.
+  ```
+  link-blocks.pg ──┐                       ┌── same child's links and events
+  parent-account ──┴─ first 2 free students┘
+  student-data.pg ─── open alert at Balanga ── alert.pg counts it
+  isolation.test ──── "any Balanga row" ────── may be a row another file is deleting
+  ```
+- **Options weighed:** (1) run the Postgres files one at a time (`--no-file-parallelism`): hides the problem and slows every run; (2) give each test its own rows, and make the readers pick only the demo data's rows. Option 2.
+- **Solution:** the 60.2 test now makes and removes two students of its own; the 60.3 test's alert is marked handled; the isolation test picks only demo rows (`student-…`, `parent-…`); the link-blocks check also filters by action; the race test has a 20-second limit. Five runs in a row of the repository tests then showed only the six tests waiting for 60.3's migration in the test database.
+- **Round 2 (the owner's run, once the test database had the migration):** the first fix wasn't enough. `prisma-link-blocks.pg.test.ts` picked "the first free Balanga students by id", and the new test students (`sdt-…`, `delete-test-…`) sort before the demo data's `student-…`, so it took `sdt-victim`. That one overlap failed five tests in two files (`expected [ 'other-child' ] to deeply equal [ 'other-child', …(2) ]`; `expected null to deeply equal { studentId: 'sdt-victim' }`; the export finding the link-blocks test's parents; `Foreign key constraint violated on the constraint: Notification_studentId_fkey` in the 60.3 cleanup). Limiting link-blocks to demo students then made it pick `student-0003`, which `prisma-push-outbox.test.ts` uses and expects to have one parent phone, so that test failed one run in six (`expected [ { …(3) }, { …(3) }, { …(3) } ] to deeply equal [ { …(3) } ]`).
+- **Final fix:** every Postgres test that changes a student's links or notices now makes its own students and removes them afterwards: `prisma-link-blocks`, `prisma-link-notices`, `prisma-parent-account-deletion` and `prisma-student-data`. Readers of demo data pick by demo id. Eight runs in a row of `src/data/repositories` then passed all 199 tests.
+- **Status:** Fixed in Step 60.3. **Rule for later tests:** a Postgres test that writes makes its own rows (students included) with its own id prefix; a test that reads demo data picks rows by a demo id, never "the first free one".
+
+### P-072 · 2026-11-23 · A double click on "Delete student" failed instead of answering "already deleted"
+- **Where:** `deleteAll` in `src/data/repositories/prisma-student-data-repository.ts` (Step 60.3), found by its Postgres test "deletes once: a double click finds nothing the second time", on the owner's run.
+- **Symptom:** `Invalid tx.student.delete() invocation … An operation failed because it depends on one or more records that were required but not found. No record was found for a delete.` (Prisma's P2025). In the app, the second of two quick clicks would have shown the error page instead of "That student was already deleted".
+- **Cause:** both requests read the student *before* taking the lock. The second then waited for the lock, and once the first had committed it carried on with a student that no longer existed, down to the last `delete`. P2025 isn't one of the retryable errors, so it surfaced.
+  ```
+  click 1: read ✓ ─ lock ─ delete everything ─ COMMIT
+  click 2: read ✓ ─ lock (waits) ……………………………… ─ delete everything (nothing) ─ delete student ✗ P2025
+  ```
+- **Options weighed:** (1) catch P2025 and answer "not found": hides the real ordering mistake; (2) lock first, then read: locks a row by an id before checking it belongs to the caller's school; (3) read to check the school, lock, then **read again under the lock** and stop if it's gone. Option 3. Step 60.2's account deletion already locks first, then reads, so it didn't have this problem.
+- **Solution:** option 3, and the test now passes; it runs two deletes at once and expects exactly one result and one `student_deleted` event.
+- **Status:** Fixed in Step 60.3, before approval.
+

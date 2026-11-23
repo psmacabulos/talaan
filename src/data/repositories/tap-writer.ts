@@ -29,7 +29,9 @@ export interface TapWriter {
   /**
    * "exists" when a tap with this id is already stored (a retry that raced
    * the first try); "duplicate" when the same card has a tap in
-   * `duplicateWindow`. Nothing is written in either case.
+   * `duplicateWindow`. "gone" when the student, or the card's school
+   * record, was deleted while this was being written (Step 60.3).
+   * Nothing is written in any of these cases.
    */
-  record(write: TapWrite): Promise<"created" | "exists" | "duplicate">;
+  record(write: TapWrite): Promise<"created" | "exists" | "duplicate" | "gone">;
 }

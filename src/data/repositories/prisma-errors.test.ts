@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
-import { isDeadlock, retryOnce } from "./prisma-errors";
+import { isDeadlock, isRetryable, retryOnce } from "./prisma-errors";
 
 function prismaError(code: string, message = "boom") {
   return new Prisma.PrismaClientKnownRequestError(message, { code, clientVersion: "test" });
@@ -36,5 +36,14 @@ describe("retryOnce (Step 60.2)", () => {
     const run = vi.fn().mockRejectedValue(new Error("nope"));
     await expect(retryOnce(run, isDeadlock)).rejects.toThrow("nope");
     expect(run).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("isRetryable (Step 60.3)", () => {
+  it("is true for a deadlock and for a foreign-key failure, and for nothing else", () => {
+    expect(isRetryable(prismaError("P2034"))).toBe(true);
+    expect(isRetryable(prismaError("P2003"))).toBe(true);
+    expect(isRetryable(prismaError("P2002"))).toBe(false);
+    expect(isRetryable(new Error("boom"))).toBe(false);
   });
 });

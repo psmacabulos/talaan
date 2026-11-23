@@ -16,6 +16,8 @@ export const AUDIT_ACTIONS = [
   "parent_link_removed",
   "parent_link_allowed_again",
   "parent_account_deleted",
+  "student_exported",
+  "student_deleted",
   "time_in_recorded",
   "time_out_recorded",
   "attendance_times_changed",

@@ -16,6 +16,7 @@ import type { LinkedGuardian, RemovedGuardian } from "@/features/parents/types";
 import { CardBox } from "./card-box";
 import { LinkedParents } from "./linked-parents";
 import { PhotoBox } from "./photo-box";
+import { StudentPrivacySection } from "./student-privacy-section";
 import { studentFormMaxBirthDate, studentFormSchema } from "./schemas";
 import { NO_CARD_CHANGE, type PendingCard } from "./student-changes";
 import type { Card, GradeLevel, Student, StudentFormInput, StudentFormValues } from "./types";
@@ -333,6 +334,8 @@ export function StudentForm({
           }}
           error={cardError}
         />
+
+        {student ? <StudentPrivacySection student={student} onDeleted={onSuccess} /> : null}
       </div>
 
       <SheetFooter className="flex-row justify-end border-t border-border [&>button]:h-11 [&>button]:flex-1 sm:[&>button]:h-8 sm:[&>button]:flex-none">

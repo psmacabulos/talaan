@@ -11,7 +11,7 @@ import { createPrismaParentStudentLinkRepository } from "./prisma-parent-student
  * nothing else), that two removals at once don't collide, and that the
  * block holds inside the link's own transaction. Its parents, links,
  * notifications and pushes are its own (ids starting "link-block-test-"),
- * on seed children nobody is linked to, all removed afterwards. Skipped, not
+ * on two students of its own, all removed afterwards. Skipped, not
  * failed, when E2E_DATABASE_URL isn't set.
  */
 const url = process.env.E2E_DATABASE_URL;
@@ -61,13 +61,23 @@ describeWithDatabase("link blocks on Postgres (Step 55.4; needs E2E_DATABASE_URL
   }
 
   beforeAll(async () => {
-    const unlinked = await db.student.findMany({
-      where: { schoolId: BALANGA, parentLinks: { none: {} } },
-      select: { id: true },
-      orderBy: { id: "asc" },
-      take: 2,
+    // Two students of its own, never seed students: other Postgres test files use seed
+    // students and run at the same time (P-071).
+    [child, otherChild] = [`${PREFIX}child-1`, `${PREFIX}child-2`];
+    await db.student.deleteMany({ where: { id: { in: [child, otherChild] } } });
+    await db.student.createMany({
+      data: [child, otherChild].map((id) => ({
+        id,
+        schoolId: BALANGA,
+        firstName: "Test",
+        lastName: id,
+        birthDate: new Date("2012-03-04"),
+        gradeLevel: 7,
+        section: "A",
+        guardianName: "Guardian",
+        guardianMobile: "09171234567",
+      })),
     });
-    [child, otherChild] = unlinked.map((student) => student.id);
     principal = (await db.staff.findFirstOrThrow({ where: { schoolId: BALANGA, role: "principal" } })).id;
 
     await db.parent.deleteMany({ where: { id: { in: [REMOVED, OTHER] } } });
@@ -102,6 +112,7 @@ describeWithDatabase("link blocks on Postgres (Step 55.4; needs E2E_DATABASE_URL
     await cleanUp();
     // Their sign-ins and push addresses go with them.
     await db.parent.deleteMany({ where: { id: { in: [REMOVED, OTHER] } } });
+    await db.student.deleteMany({ where: { id: { in: [child, otherChild] } } });
     await db.$disconnect();
   });
 
@@ -124,7 +135,7 @@ describeWithDatabase("link blocks on Postgres (Step 55.4; needs E2E_DATABASE_URL
     await expect(db.parentStudentLink.count({ where: { parentId: REMOVED, studentId: child } })).resolves.toBe(0);
     // Step 60.1: the removal's record, against the child and never naming the parent.
     await expect(
-      db.auditEvent.findFirstOrThrow({ where: { actorId: principal, targetId: child } }),
+      db.auditEvent.findFirstOrThrow({ where: { actorId: principal, targetId: child, action: "parent_link_removed" } }),
     ).resolves.toMatchObject({
       schoolId: BALANGA,
       actorRole: "principal",

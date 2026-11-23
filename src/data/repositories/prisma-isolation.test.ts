@@ -23,6 +23,10 @@ const describeWithDatabase = url ? describe : describe.skip;
 
 const BALANGA = "school-balanga";
 const OCEANVIEW = "school-oceanview";
+// The demo data's own rows ("student-0001", "parent-balanga-1"), never a row another Postgres
+// test file is making and removing at the same moment (P-071).
+const SEED_ID = { startsWith: "student-" };
+const SEED_STUDENT = { id: SEED_ID };
 
 describeWithDatabase("Prisma repositories keep schools apart (Step 51; needs E2E_DATABASE_URL)", () => {
   const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
@@ -36,7 +40,7 @@ describeWithDatabase("Prisma repositories keep schools apart (Step 51; needs E2E
   afterAll(() => db.$disconnect());
 
   it("students: another school's id finds nothing and updates nothing", async () => {
-    const student = await db.student.findFirstOrThrow({ where: { schoolId: BALANGA } });
+    const student = await db.student.findFirstOrThrow({ where: { schoolId: BALANGA, ...SEED_STUDENT } });
     await expect(students.getInSchool(BALANGA, student.id)).resolves.toMatchObject({ id: student.id });
 
     await expect(students.getInSchool(OCEANVIEW, student.id)).resolves.toBeNull();
@@ -53,7 +57,7 @@ describeWithDatabase("Prisma repositories keep schools apart (Step 51; needs E2E
   });
 
   it("cards: another school sees no card history and can't mark a card lost", async () => {
-    const card = await db.card.findFirstOrThrow({ where: { schoolId: BALANGA, status: "active" } });
+    const card = await db.card.findFirstOrThrow({ where: { schoolId: BALANGA, status: "active", studentId: SEED_ID } });
     await expect(cards.listByStudent(OCEANVIEW, card.studentId)).resolves.toEqual([]);
     await expect(cards.getActiveForStudent(OCEANVIEW, card.studentId)).resolves.toBeNull();
     await expect(cards.markLost(OCEANVIEW, card.id)).resolves.toBeNull();
@@ -61,7 +65,7 @@ describeWithDatabase("Prisma repositories keep schools apart (Step 51; needs E2E
   });
 
   it("taps: another school finds neither a tap nor a student's taps", async () => {
-    const tap = await db.tap.findFirstOrThrow({ where: { schoolId: BALANGA, studentId: { not: null } } });
+    const tap = await db.tap.findFirstOrThrow({ where: { schoolId: BALANGA, studentId: SEED_ID } });
     await expect(taps.getInSchool(OCEANVIEW, tap.id)).resolves.toBeNull();
     await expect(taps.listByStudent(OCEANVIEW, tap.studentId!)).resolves.toEqual([]);
     await expect(taps.getInSchool(BALANGA, tap.id)).resolves.toMatchObject({ id: tap.id });
@@ -70,7 +74,7 @@ describeWithDatabase("Prisma repositories keep schools apart (Step 51; needs E2E
   it("notifications: another school finds nothing and marks nothing read", async () => {
     // A tap's notification is every guardian's, so the parent asking doesn't matter here.
     const PARENT = "parent-balanga-1";
-    const notification = await db.notification.findFirstOrThrow({ where: { schoolId: BALANGA } });
+    const notification = await db.notification.findFirstOrThrow({ where: { schoolId: BALANGA, studentId: SEED_ID } });
     await expect(notifications.getInSchool(OCEANVIEW, notification.id)).resolves.toBeNull();
     await expect(
       notifications.listPageForStudent(OCEANVIEW, notification.studentId, PARENT, { before: null, take: 10 }),
@@ -89,7 +93,9 @@ describeWithDatabase("Prisma repositories keep schools apart (Step 51; needs E2E
   });
 
   it("parent links: another school sees neither a child's parent accounts nor the school's new links (Step 55.3)", async () => {
-    const link = await db.parentStudentLink.findFirstOrThrow({ where: { schoolId: BALANGA } });
+    const link = await db.parentStudentLink.findFirstOrThrow({
+      where: { schoolId: BALANGA, studentId: SEED_ID, parentId: { startsWith: "parent-" } },
+    });
     const own = await links.listGuardiansInSchool(BALANGA, [link.studentId]);
     expect(own.map((guardian) => guardian.linkId)).toContain(link.id);
     // Never the parent's email.

@@ -285,6 +285,16 @@ describe("recordTap", () => {
     expect(await recordTap(sent, deps)).toMatchObject({ outcome: "recorded", replayed: true });
   });
 
+  it("answers an unknown card, and keeps nothing, when the student is deleted between reading the card and saving the tap (Step 60.3)", async () => {
+    const { deps, taps } = setup();
+    deps.writer = { record: async () => "gone" };
+
+    const result = await recordTap(input(), deps);
+
+    expect(result).toMatchObject({ outcome: "unknown_card", replayed: false });
+    expect(taps).toHaveLength(0);
+  });
+
   it("asks the writer to check the card's 2 minutes either side again, under its lock (Step 56)", async () => {
     const { deps, writes } = setup();
     const sent = input();

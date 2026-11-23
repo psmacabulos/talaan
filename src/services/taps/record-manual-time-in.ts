@@ -156,6 +156,8 @@ export async function recordManualTimeIn(
     seenAt: input.now,
     duplicateWindow,
   });
+  // Deleted while this was on its way (Step 60.3).
+  if (written === "gone") return { outcome: "not_found" };
   if (written !== "created") return { outcome: "already_tapped", student: tapStudent };
   return { outcome: "recorded", tap, student: tapStudent, direction: "time_in", notified, replayed: false };
 }

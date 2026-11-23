@@ -10,8 +10,8 @@ import { createPrismaParentStudentLinkRepository, lockStudentForLink } from "./p
  * Step 55.2's link notices against real Postgres: only a real database
  * shows that two parents linking one child at the same moment take turns
  * on the child's row, so the second always tells the first, and that the
- * lock never holds up a tap's write. Its parents are its own (ids starting
- * "link-notice-test-"), on a seed child nobody is linked to, all removed
+ * lock never holds up a tap's write. Its parents and its child are its own
+ * (ids starting "link-notice-test-"), all removed
  * afterwards. Skipped, not failed, when E2E_DATABASE_URL isn't set.
  */
 const url = process.env.E2E_DATABASE_URL;
@@ -42,10 +42,21 @@ describeWithDatabase("link notices on Postgres (Step 55.2; needs E2E_DATABASE_UR
   }
 
   beforeAll(async () => {
-    child = await db.student.findFirstOrThrow({
-      where: { schoolId: "school-balanga", parentLinks: { none: {} } },
-      select: { id: true, schoolId: true },
-      orderBy: { id: "desc" },
+    // A student of its own, never a seed student: other Postgres test files use seed
+    // students and run at the same time (P-071).
+    child = { id: `${PREFIX}child`, schoolId: "school-balanga" };
+    await db.student.deleteMany({ where: { id: child.id } });
+    await db.student.create({
+      data: {
+        ...child,
+        firstName: "Test",
+        lastName: "Child",
+        birthDate: new Date("2012-03-04"),
+        gradeLevel: 7,
+        section: "A",
+        guardianName: "Guardian",
+        guardianMobile: "09171234567",
+      },
     });
     await db.parent.deleteMany({ where: { id: { in: PARENTS } } });
     await db.parent.createMany({
@@ -65,6 +76,7 @@ describeWithDatabase("link notices on Postgres (Step 55.2; needs E2E_DATABASE_UR
   afterAll(async () => {
     await cleanUp();
     await db.parent.deleteMany({ where: { id: { in: PARENTS } } });
+    await db.student.deleteMany({ where: { id: child.id } });
     await db.$disconnect();
   });
 

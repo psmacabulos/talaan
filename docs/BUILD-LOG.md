@@ -3288,3 +3288,36 @@ The owner approved the plan, and the `qrcode` package, on 2026-11-20, and asked 
 
 **Checks while building.** `tsc`, `eslint` and `check:tokens` clean; the unit tests pass (1,118) and only the five new Postgres tests fail, for the missing migration in the test database. Not run: `npm run build`, Playwright (including `e2e/parent-account.spec.ts`), the Postgres tests against a migrated test database, and a look at the Account page and dialog in a browser (the dev server needs a restart after a Prisma change).
 
+## Prisma updated to 7.10.1 (2026-11-23)
+
+**What was asked.** Before Step 60.3, "update Prisma, because I am seeing a notification about updates".
+
+**What the notification was.** The Prisma command line printed an update notice because npm's `latest` tag for the `prisma` package currently points at **8.0.0-rc.35**, a release candidate (`npm view prisma dist-tags`: `latest: 8.0.0-rc.35`, `prev: 7.10.1`). The runtime packages' `latest` is still the stable **7.10.1**. A release candidate of a major version is not something to run a database of students' records on, so the update was **not** taken. The real gap was smaller: `@prisma/client` and `@prisma/adapter-pg` were at 7.10.0 while the `prisma` command line was already 7.10.1, a mismatch.
+
+**What was done.** `npm install @prisma/client@7.10.1 @prisma/adapter-pg@7.10.1 prisma@7.10.1` (the three now match; `package.json` ranges are `^7.10.1`), then `npx prisma generate`. The lockfile changed only for the Prisma packages. `npx prisma migrate status`: schema up to date. `tsc`, `eslint` and the whole test suite (1,125 tests, including the Postgres ones) pass. Not run: `npm run build`, Playwright.
+
+**Left alone.** `npm audit` reports advisories in tools that Prisma's command line pulls in for development only (`effect`, `hono`) and in Sentry's build plugin (`glob`, `minimatch`). Its suggested fix for the Prisma one is `npm audit fix --force`, which would install `prisma@6.12.0`, a **downgrade across a major version**; do not run it. They don't run in the deployed app. To revisit when Prisma 8 is stable. Sentry's `@sentry/nextjs` upgrade is already on the deferred list.
+
+**Moving to 8 later.** Wait for 8.0.0 to be `latest` for `@prisma/client` too, read its upgrade guide, do it as its own step with the schema, `prisma.config.ts` and adapter checked first.
+
+## Step 60.3: export and delete one student (2026-11-23)
+
+**What was asked.** "Lets start step 60.3", then "go with both recommendations, but before that update Prisma" (type the student's full name to confirm; keep the activity events about a deleted student). Prisma was updated first (see "Prisma updated to 7.10.1" above), then this step was built.
+
+**Architect.** The recipe was reviewed before the owner approved it. Three blocking findings: (1) the delete took links before notifications and claimed `removeInSchool` does the same; it doesn't, and the push worker locks notification rows first, so the order could deadlock; (2) `retryOnce` takes one predicate, so `isRetryable` (deadlock or foreign key) was needed, and the assumption that Prisma 7 reports a failed `DELETE` as P2003 had to be proved, not assumed; (3) what the export leaves out had to be a decision. Also adopted: the tap writer's `"gone"` answer, an `Alert.studentId` index, a 10-second transaction, a sanitised file name, an error-level log for a failed photo delete.
+
+**Commands.** `npx prisma migrate dev --name audit_student_export_delete` (migration `20261123150601_…`), `npx prisma generate`.
+
+**What was built.** See `docs/backend/step-60.3-export-and-delete-student.md` and `docs/PRIVACY.md`.
+
+**Snags.**
+- `prisma-tap-writer.ts` already returned "exists" for a unique-key clash; a foreign-key failure there now returns `"gone"`, and three callers needed to handle it (`recordTap` and the two manual-tap services). `tsc` found none of them by itself, since a union return wasn't exhaustive in those places; they were found by reading where `written` is used.
+- The recipe said to render the confirm dialog outside the drawer's form to stop React's portal event bubbling from pressing "Save student". The dialog is already a portal; the real fix is `stopPropagation` in the dialog's own form, with a test that wraps the section in a form.
+- `prettier --write` reflowed one unrelated line in `student-form.tsx`; it was put back so the diff is only the three added lines.
+- **The owner's `npm run build` failed** (P-070): `privacy-actions.ts`, a "use server" file, exported two message constants, and Next.js allows only async functions there. `tsc`, `eslint` and the tests all passed, since the tests mock that module. The messages moved to `privacy-messages.ts`, and a new test, `src/use-server-exports.test.ts`, reads every "use server" file and fails on any other export. Running `prettier --write` over the folder for the fix reformatted two committed files (`linked-parents.test.tsx`, `parent-link-actions.ts`) and one line of `student-form.tsx`; those were put back with `git diff … | patch -R`, so the diff holds only this step's lines.
+- **Postgres test files were sharing rows** (P-071), found while re-running the suite for P-070: the 60.2 test picked the same free seed students as the link-blocks test, the 60.3 test's open alert changed the alert test's count, and the isolation test picked "any Balanga row". Each test now makes its own rows or picks only demo rows, and the deadlock race test got a 20-second limit (it takes about 5.2 seconds because every round waits for Postgres's 1-second deadlock check, which is also the proof that the retry works).
+- **On the owner's run (test database migrated), round 2 of P-071 and a real bug.** Five Postgres tests failed because `prisma-link-blocks` picked a 60.3 test student (`sdt-…` sorts before `student-…`); fixing that by limiting it to demo students made it pick `student-0003`, which the push-outbox test owns. The final fix: link-blocks and link-notices now make their own students too. And `deleteAll` failed a double click with P2025 (P-072): it read the student before the lock, so the second request ran on after the first had deleted it. It now reads again under the lock. Eight runs of `src/data/repositories` then passed all 199 tests.
+- Three of the nine new Postgres tests (export, another school's student, the foreign-key premise) ran and passed; the other six fail with `invalid input value for enum "AuditAction": "student_deleted"` until the migration reaches the test database, the same as in 60.1 and 60.2.
+
+**Checks while building.** `tsc`, `eslint` and `check:tokens` clean; the unit tests pass (1,164); only the six Postgres tests above fail, for the missing migration. Not run: `npm run build`, Playwright (including `e2e/student-privacy.spec.ts`), the Postgres tests against a migrated test database, and a look at the drawer's Privacy section and dialog in a browser (the dev server needs a restart after the Prisma update and the migration).
+

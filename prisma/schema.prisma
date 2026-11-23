@@ -189,6 +189,8 @@ model Alert {
 
   // "This school's open alerts, newest first" (the dashboard).
   @@index([schoolId, acknowledged, createdAt])
+  // "This student's alerts" (Step 60.3's export and delete); Postgres doesn't index a foreign key by itself.
+  @@index([studentId])
 }
 
 // A parent belongs to no school (Step 53): each linked child carries its own,
@@ -475,6 +477,8 @@ enum AuditAction {
   parent_link_removed
   parent_link_allowed_again
   parent_account_deleted
+  student_exported
+  student_deleted
   time_in_recorded
   time_out_recorded
   attendance_times_changed

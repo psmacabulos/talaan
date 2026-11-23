@@ -29,6 +29,8 @@ const VERB: Record<AuditAction, string> = {
   parent_link_removed: "removed a parent's access to",
   parent_link_allowed_again: "allowed a removed parent to link again to",
   parent_account_deleted: "deleted their parent account, which had access to",
+  student_exported: "downloaded the data of",
+  student_deleted: "deleted the records of",
   time_in_recorded: "recorded a time in for",
   time_out_recorded: "recorded a time out for",
   attendance_times_changed: "changed the attendance times",

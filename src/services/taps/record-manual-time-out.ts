@@ -111,6 +111,8 @@ export async function recordManualTimeOut(
     seenAt: input.now,
     duplicateWindow,
   });
+  // Deleted while this was on its way (Step 60.3).
+  if (written === "gone") return { outcome: "not_found" };
   if (written !== "created") return { outcome: "already_out", student: tapStudent };
   return { outcome: "recorded", tap, student: tapStudent, direction: "time_out", notified, replayed: false };
 }

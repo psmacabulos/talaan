@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { toAlertData } from "./prisma-alert-repository";
 import { toNotificationData } from "./prisma-notification-repository";
 import { toTapData } from "./prisma-tap-repository";
+import { isForeignKeyViolation } from "./prisma-errors";
 import type { TapWrite, TapWriter } from "./tap-writer";
 
 /** Prisma's error code for "a unique value (here, the tap's id) is already taken". */
@@ -74,6 +75,9 @@ export function createPrismaTapWriter(db: PrismaClient = prisma): TapWriter {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === UNIQUE_CONSTRAINT_FAILED) {
           return "exists";
         }
+        // The student was deleted between reading the card and saving this (Step 60.3):
+        // there is no one left to record it for, and nothing was kept.
+        if (isForeignKeyViolation(error)) return "gone";
         throw error;
       }
     },

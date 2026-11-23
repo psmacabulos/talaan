@@ -37,6 +37,8 @@ The log holds **ids and the names of changed fields**, never what a field was ch
 
 `actorId` has no relation on purpose: removing a staff member must neither fail on nor erase what they did. A super admin isn't one of a school's staff (their `schoolId` is null), so they're shown by role ("A super admin"), not looked up.
 
+**Two events about a student's data (Step 60.3).** `student_exported` is written (best-effort, after the file is made) when a principal downloads a student's data. `student_deleted` is written **inside** the deletion's own transaction, with the staff member as actor and the student's id as target. Neither holds a name; after a deletion both show as "a removed student". The events about a deleted student are kept on purpose: a random id and field names are no personal data, and they are the school's proof of who deleted what.
+
 **A parent has no actor at all (Step 60.2).** `parent_account_deleted` is written when a parent deletes their own account, one event per linked child in that child's school, with `actorId` and `actorRole` null and the child as the target. No parent id is kept, because they asked to be deleted; the Activity page says "A parent deleted their parent account, which had access to <child>." with no role in brackets. It is written inside the deletion's own transaction, like `parent_link_removed`.
 
 ## Writing an event

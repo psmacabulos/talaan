@@ -1,7 +1,7 @@
 # Build plan
 
 <!-- progress:start -->
-**Overall progress: ██████████████████░░ 90%**  (377 of 420 tasks, 98 of 111 steps approved)
+**Overall progress: ██████████████████░░ 91%**  (385 of 425 tasks, 99 of 111 steps approved)
 
 **Next up:** Step 59.2, A practice restore (not started)
 
@@ -109,7 +109,7 @@
 | 60 | Privacy for real student data | ░░░░░░░░░░   0% | Not started |
 | 60.1 | Activity log (who changed what) | ██████████ 100% | Approved |
 | 60.2 | A parent deletes their own account | ██████████ 100% | Approved |
-| 60.3 | Export and delete one student | ░░░░░░░░░░   0% | Not started |
+| 60.3 | Export and delete one student | ██████████ 100% | Approved |
 | 60.4 | Privacy notice and consent | ░░░░░░░░░░   0% | Not started |
 | 60.5 | Export and delete a whole school | ░░░░░░░░░░   0% | Not started |
 | 61 | Queries that don't grow | ░░░░░░░░░░   0% | Not started |
@@ -1089,11 +1089,17 @@ Commit: `feat(parents): let a parent delete their own account`
 - [x] Owner review: I checked it and said "approved"
 
 ### Step 60.3: Export and delete one student
-- [ ] A principal exports one student's data as a file (their record, cards, taps, links and notifications, no other student's).
-- [ ] A principal deletes a student after typing a confirmation: their taps, alerts, notifications, links, cards and photo go in one transaction, with an audit event written inside it that holds no name.
-Done when: a deleted student leaves nothing behind, another school's students can't be exported or deleted, and every check passes.
+Recipe: `docs/backend/step-60.3-export-and-delete-student.md`. How it works: `docs/PRIVACY.md`. Reviewed with the systems-architect on 2026-11-23 (three blocking findings, all fixed in the recipe before any code: the delete order against the push worker, the retry's predicate, and what the export leaves out). The owner chose confirming by typing the student's full name, and keeping the activity events about a deleted student (a random id and field names, no name).
+- [x] Migration `audit_student_export_delete`: `student_exported` and `student_deleted` events, and an index on `Alert.studentId`.
+- [x] `StudentDataRepository` (Postgres only): `exportOf` and `deleteAll`, one transaction that removes the student, cards, every tap (including a lost card's, found by its serial), alerts, notices, parent links and blocks, with the `student_deleted` event inside it; it retries once on a deadlock or a lost race (`isRetryable`).
+- [x] The tap writer answers `"gone"` when the student was deleted while a tap was being saved, and the gate, the manual time in and the manual time out answer without a 500.
+- [x] The service (`student-privacy.ts`): a principal or super admin with a school open only, the typed name checked again on the server, the photo file deleted after the database, a failed photo delete logged at error level with its key.
+- [x] `GET /students/[id]/export` (a JSON download, never cached, a cleaned file name) and the `deleteStudentAction` server action.
+- [x] A "Privacy" section in the student drawer: the download, and "Delete this student…" with a dialog that says what goes and what stays and asks for the student's name.
+- [x] `docs/PRIVACY.md`, `docs/AUDIT-LOG.md` updated; tests, a Postgres test of the transaction and its races, and `e2e/student-privacy.spec.ts`.
+Done when: a deleted student leaves nothing of theirs behind, another school's students can't be exported or deleted, a gate tap racing the delete ends cleanly, and every check passes.
 Commit: `feat(privacy): export and delete one student's data`
-- [ ] Owner review: I checked it and said "approved"
+- [x] Owner review: I checked it and said "approved"
 
 ### Step 60.4: Privacy notice and consent
 - [ ] Each school has a privacy notice (wording from the school, edited by its principal) with a version.

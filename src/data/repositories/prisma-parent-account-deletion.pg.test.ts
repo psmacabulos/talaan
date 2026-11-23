@@ -11,8 +11,8 @@ import { createPrismaParentStudentLinkRepository } from "./prisma-parent-student
  * Step 60.2's account deletion against real Postgres, where the cascades,
  * the lock order and the races live. Its parents are its own (ids starting
  * "delete-test-"), on seed children nobody is linked to, all removed
- * afterwards (they take the first free students by id, where the link-notices
- * test takes the last, as both files run at once), and so are the audit rows it makes (by school and child, as a
+ * afterwards, on two students of its own (never seed students, which other
+ * Postgres test files share), and so are the audit rows it makes (by school and child, as a
  * deleted parent's rows carry no actor). The mock repository can't show any
  * of this. Skipped, not failed, when E2E_DATABASE_URL isn't set.
  */
@@ -70,16 +70,28 @@ describeWithDatabase("deleting a parent's account on Postgres (Step 60.2; needs 
     });
   }
 
+  // Students of its own, never seed students: other Postgres test files pick free seed students
+  // and run at the same time, and sharing one made them fail now and then (P-071).
+  const CHILDREN = [`${PREFIX}child-1`, `${PREFIX}child-2`];
+
   beforeAll(async () => {
-    const free = await db.student.findMany({
-      where: { schoolId: "school-balanga", parentLinks: { none: {} } },
-      select: { id: true, schoolId: true },
-      // From the other end of the list than the link-notices test, which runs at the same time.
-      orderBy: { id: "asc" },
-      take: 2,
-    });
-    [child, otherChild] = free;
+    child = { id: CHILDREN[0], schoolId: "school-balanga" };
+    otherChild = { id: CHILDREN[1], schoolId: "school-balanga" };
     await cleanUp();
+    await db.student.deleteMany({ where: { id: { in: CHILDREN } } });
+    await db.student.createMany({
+      data: CHILDREN.map((id) => ({
+        id,
+        schoolId: "school-balanga",
+        firstName: "Test",
+        lastName: id,
+        birthDate: new Date("2012-03-04"),
+        gradeLevel: 7,
+        section: "A",
+        guardianName: "Guardian",
+        guardianMobile: "09171234567",
+      })),
+    });
   });
 
   beforeEach(async () => {
@@ -89,6 +101,7 @@ describeWithDatabase("deleting a parent's account on Postgres (Step 60.2; needs 
 
   afterAll(async () => {
     await cleanUp();
+    await db.student.deleteMany({ where: { id: { in: CHILDREN } } });
     await db.$disconnect();
   });
 
@@ -195,28 +208,33 @@ describeWithDatabase("deleting a parent's account on Postgres (Step 60.2; needs 
     await expect(db.parentStudentLink.count({ where: { parentId: NEWCOMER } })).resolves.toBe(1);
   });
 
-  it("a school removing the parent and the parent deleting at once both finish, in either order", async () => {
-    for (let round = 0; round < 5; round += 1) {
-      await cleanUp();
-      await makeParents();
-      const row = await db.parentStudentLink.create({ data: link(LEAVING) });
-      const principal = (
-        await db.staff.findFirstOrThrow({
-          where: { schoolId: child.schoolId, role: "principal" },
-          select: { id: true },
-        })
-      ).id;
+  // Each round can wait about a second for Postgres to notice a deadlock (`deadlock_timeout`), so this needs more than the default 5 seconds.
+  it(
+    "a school removing the parent and the parent deleting at once both finish, in either order",
+    { timeout: 20_000 },
+    async () => {
+      for (let round = 0; round < 5; round += 1) {
+        await cleanUp();
+        await makeParents();
+        const row = await db.parentStudentLink.create({ data: link(LEAVING) });
+        const principal = (
+          await db.staff.findFirstOrThrow({
+            where: { schoolId: child.schoolId, role: "principal" },
+            select: { id: true },
+          })
+        ).id;
 
-      const [removed, deleted] = await Promise.all([
-        links.removeInSchool(child.schoolId, row.id, principal, "principal"),
-        parents.deleteAccount(LEAVING),
-      ]);
+        const [removed, deleted] = await Promise.all([
+          links.removeInSchool(child.schoolId, row.id, principal, "principal"),
+          parents.deleteAccount(LEAVING),
+        ]);
 
-      // Whichever won: the account is gone, and neither failed.
-      expect(deleted).toBe(true);
-      expect(removed === null || removed.studentId === child.id).toBe(true);
-      await expect(db.parent.count({ where: { id: LEAVING } })).resolves.toBe(0);
-      await db.auditEvent.deleteMany({ where: { actorId: principal, targetId: child.id } });
-    }
-  });
+        // Whichever won: the account is gone, and neither failed.
+        expect(deleted).toBe(true);
+        expect(removed === null || removed.studentId === child.id).toBe(true);
+        await expect(db.parent.count({ where: { id: LEAVING } })).resolves.toBe(0);
+        await db.auditEvent.deleteMany({ where: { actorId: principal, targetId: child.id } });
+      }
+    },
+  );
 });

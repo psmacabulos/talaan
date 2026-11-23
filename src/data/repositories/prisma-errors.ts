@@ -36,3 +36,8 @@ export async function retryOnce<T>(run: () => Promise<T>, shouldRetry: (error: u
     return run();
   }
 }
+
+/** True for a failure that is worth one more try (Step 60.3): a deadlock, or a row another transaction was saving for the same student when this one tried to delete it. */
+export function isRetryable(error: unknown): boolean {
+  return isDeadlock(error) || isForeignKeyViolation(error);
+}

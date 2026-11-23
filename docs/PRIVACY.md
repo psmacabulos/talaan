@@ -6,7 +6,7 @@ Step 60 answers the question a school will ask under the Data Privacy Act: "what
 |---|---|---|
 | The activity log of who changed what | 60.1 | built |
 | A parent deletes their own account | 60.2 | built (below) |
-| Export and delete one student | 60.3 | not built |
+| Export and delete one student | 60.3 | built (below) |
 | Privacy notice and consent | 60.4 | not built |
 | Export and delete a whole school | 60.5 | not built |
 
@@ -47,6 +47,51 @@ flowchart TB
 - **A wrong password is `403 wrong_password`, never `401`.** The app signs out on any `401`.
 - **A school's block on a parent goes with the account.** It was per parent id, so it never stopped a new account; linking a child still needs the LRN, last name and birth date, and the log keeps that the school removed them.
 - **Accepted:** someone with a stolen session can lock the owner out of signing in with five wrong deletes, as they already can through sign-in. A sign-in in the very instant of its own delete can return an error page once.
+
+## Export and delete one student (Step 60.3)
+
+From the **Privacy** section at the bottom of a student's drawer, for a principal or a super admin with a school open (a teacher has no access, and the download answers 403). The school is always the session's own, so another school's student is "not found".
+
+**Download** (`/students/<id>/export`, a JSON file, never cached): the student's record, photo thumbnail, cards, taps (and taps of their lost card), alerts, the time-in and time-out notices, and the *names* of linked parents with the day they linked. Not other students, not a parent's email or mobile, not which gate read a tap, not which staff member did what, not parent block history. The download is recorded in Activity ("downloaded the data of …").
+
+**Delete**: type the student's full name (the server checks it again, so a direct request can't skip it). One database transaction, with the `student_deleted` event inside it:
+
+```mermaid
+flowchart TB
+    S["Principal types the student's name"] --> V["server re-checks the name and the school"]
+    V --> T["One transaction (10 s, retried once on a lost race)"]
+    T --> A["lock the student (takes turns with linking a parent)"]
+    A --> N["delete notifications (their pushes cascade)"]
+    N --> L["delete parent links and blocks"]
+    L --> X["delete alerts, then taps: the student's and their lost cards' (found by serial)"]
+    X --> C["delete cards"]
+    C --> E["write 'student_deleted' (actor and school, no name)"]
+    E --> D["delete the student"]
+    D --> F["after the commit: delete the photo file"]
+```
+
+| Goes | Stays |
+|---|---|
+| the student, their cards (the serial is free again) | the school, staff and other students |
+| every tap of theirs and every tap of their lost card, with its alert | the parents' accounts (they just have one child fewer; a parent can delete their own, Step 60.2) |
+| alerts, time-in and time-out notices, "a parent linked" notices, and pushes still waiting | activity events about the student: a random id and field names, no name; they show as "a removed student" |
+| every parent link and any school block on a parent for them | `LinkAttempt` rows: a hash that expires within 24 hours |
+| the photo file (current thumbnail) | |
+
+**Not in our power to recall, or only after a while** (say so if asked):
+- Backups hold the rows until they expire.
+- A browser may keep the photo for up to a year (`Cache-Control: private, max-age=31536000`).
+- A gate tablet keeps the student's name, photo and card until its next roster check (within 5 minutes). A tap it sends for them after that is answered as an unknown card and saved as nothing; one queued offline is answered the same way.
+- The guardhouse monitor's live list and an open dashboard can show the student until refreshed.
+- A push already being sent can still reach a phone once, with the child's first name.
+- Thumbnails from earlier photo replacements can linger in storage: it can't list files, and a replaced photo is deleted best-effort (`students/actions.ts`). A failed delete of the *current* photo is logged at error level with its key (never a name); the photo address works for anyone holding the key until the file is removed, so someone must delete that key by hand.
+
+### Why it is built the way it is
+
+- **Notifications are deleted before the links**, the order the push worker takes them in (it locks notification rows, then takes a share of the links), so the delete waits for a push in progress instead of deadlocking with it. A Postgres test holds a fan-out open to prove it.
+- **One retry.** A tap saved for the student in the same instant makes the final `DELETE` fail on its foreign key (`P2003`, proved by a test); the second run deletes that tap too. The tap writer, in turn, answers `"gone"` when the student vanishes mid-tap, so a gate never gets a 500.
+- **Not soft delete.** A flag would still keep the data, the opposite of the request.
+- **The events stay.** They hold a random id and field names, no personal data, and are the school's evidence of who deleted what.
 
 ## Quick recipes
 

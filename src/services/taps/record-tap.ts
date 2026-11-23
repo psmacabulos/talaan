@@ -274,6 +274,9 @@ export async function recordTap(input: RecordTapInput, deps: RecordTapDeps = DEF
     seenAt: input.receivedAt,
     duplicateWindow,
   });
+  // The student was deleted while this was on its way (Step 60.3): nothing was saved, and
+  // for the gate it is a card nobody owns now. A normal answer, so the tablet doesn't resend.
+  if (written === "gone") return { outcome: "unknown_card", tap, replayed: false };
   if (written === "duplicate") {
     // Another read of this card was stored while this one was on its way.
     const winner = await deps.taps.findByCardBetween(

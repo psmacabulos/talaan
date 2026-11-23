@@ -242,6 +242,16 @@ Usual causes:
 ### Is a step committed yet? (owner question, 2026-10-23)
 `git status` answers it. A step's code is committed when it no longer lists the step's files. What usually stays behind is one small docs change: when you say "approved", the "Owner review" box in `docs/PLAN.md` is ticked and `npm run progress` rewrites the progress block, *after* the step's commit. So Step 55.5's code and recipe are in `53858d9`, and only that tick (`M docs/PLAN.md`) is left. It's docs-only, so it can go in its own small commit (`docs(plan): approve step 55.5`) or ride along with the next step's. `git log --oneline -- <file>` shows which commit last touched one file.
 
+### Splitting a commit that holds two changes (owner question, 2026-11-24)
+Step 60.3's Prisma update and its feature went into one commit (`3fd107a`). It hadn't been pushed (`git status` said "ahead"), so it could be undone and made again as two:
+1. `git reset --soft HEAD~1` takes the last commit away but keeps every change it held. Nothing in the files changes.
+2. `git restore --staged .` unstages everything, so you choose what goes in each commit.
+3. `git add package.json package-lock.json`, then `git commit -m "fix(deps): update Prisma to 7.10.1"`.
+4. `git add -A`, then `git commit -m "feat(privacy): export and delete one student's data"`.
+5. `git log --oneline -3` shows the two new commits.
+
+Only do this before pushing. A pushed commit is already on GitHub, and rewriting it means a force push. Once pushed, leave it as it is: one commit with a clear message is fine. To fix only the last commit's message, use `git commit --amend -m "…"` (also before pushing).
+
 ## Keeping local and CI in sync
 
 ### A page stuck on "Rendering…" after big changes: restart `npm run dev` (2026-10-12)
@@ -1469,6 +1479,11 @@ The second run is the real test. The first run only proves the code works on wha
 
 Once Step 36 is approved, one run per check is enough. The double run is just how you check the reset works.
 
+### Why Prisma says "update available" to a version I shouldn't install (2026-11-23)
+Packages on npm have **tags**, and `latest` is just the tag the maintainers last put on a version, so it can point at a *release candidate* (`8.0.0-rc.35`): a trial version of the next major. The `prisma` command prints "update available" by looking at that tag. Check before updating: `npm view prisma dist-tags`, and `npm outdated` for the packages you actually run. The safe update is the newest **stable** version in the major you're on (7.10.0 to 7.10.1 here, which also makes `@prisma/client`, `@prisma/adapter-pg` and `prisma` the same version). And never run `npm audit fix --force` blindly: for Prisma it offers to *downgrade* to 6.12.0. Full story: `docs/BUILD-LOG.md`, "Prisma updated to 7.10.1".
+
+---
+
 ## Growing to many schools
 
 ### Is the app ready to grow from one school to many? (owner question, 2026-10-13)
@@ -1659,3 +1674,6 @@ Because most deploys don't change the IDs the page asks for. Next.js makes each 
 
 ### Where do I look for what a log line or an error number means? (owner question, 2026-10-23)
 `docs/COMMANDS.md` now starts with a "Where else to look" table, so it's the one place to begin. In short: `email:` log lines, and the messages people see, are in `docs/EMAIL.md` ("What the log says, and what people see"). The parent API's error codes and status numbers (`400`, `401`, `429`, `503`) are in `docs/PARENT-API.md` ("Errors"). Symptoms you might hit, with what to try, are in `docs/COMMANDS.md` section 9. Each step's recipe adds its own lines to those same tables, and its "Where it's documented" section says which ones it added.
+
+### Are the errors we hit, and their fixes, written down? (owner question, 2026-11-24)
+Yes, in two places. `docs/PROBLEMS-LOG.md` has one numbered, dated entry per problem: where it happened, the real error text, the cause, the options weighed, the fix, and its status (P-070 to P-072 are Step 60.3's). It's written when the problem is found, not at the end of the step, and its status is updated once fixed. `docs/BUILD-LOG.md` tells the same story inside the step's section, in order, with a pointer to the P-number. A confusion that wasn't a real problem goes here instead. To find one: search `PROBLEMS-LOG.md` for the error text you saw.
