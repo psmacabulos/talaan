@@ -3321,3 +3321,32 @@ The owner approved the plan, and the `qrcode` package, on 2026-11-20, and asked 
 
 **Checks while building.** `tsc`, `eslint` and `check:tokens` clean; the unit tests pass (1,164); only the six Postgres tests above fail, for the missing migration. Not run: `npm run build`, Playwright (including `e2e/student-privacy.spec.ts`), the Postgres tests against a migrated test database, and a look at the drawer's Privacy section and dialog in a browser (the dev server needs a restart after the Prisma update and the migration).
 
+
+## Step 60.4: a school's privacy notice (2026-11-24 to 2026-11-26)
+
+**What was asked.** "Lets start step 60.4", then "go with both recommendations": split the privacy notice from the parent's consent (60.4 the school's side, 60.5 the parent's, the whole-school delete renumbered to 60.6), and a school with no published notice can't be linked to yet (60.5's rule). On 2026-11-26 the owner asked whether a super admin can publish for a busy principal (yes, already in the design) and chose to keep it as written, with no in-app draft.
+
+**Why the split.** The plan said a parent accepts the notice "at sign-up", but a parent account belongs to no school when it's made; the school is only known when a child is linked, and one parent can link children at several schools. So consent is per school, at linking, and that half (with its API change) is 60.5.
+
+**Architect.** The recipe was reviewed before the owner approved it. One blocking finding: the Activity log was to be the only record of who published a version, but `recordAudit` is best-effort and can drop an event; the event is now written inside `publish`'s own transaction, with P2002 caught outside it (a unique violation aborts the transaction). Also adopted: a test that a made-up `basedOnVersion` ahead of the newest leaves no gap, `pre-wrap` with `break-words` and a lone `\r` normalized, database CHECKs on version and length, `skipDuplicates` and a warning in the demo data, `versions()` never selecting the text, and, for 60.5, consent pointing at `(schoolId, version)` through a composite foreign key.
+
+**Commands.**
+```bash
+npx prisma format
+npx prisma migrate dev --name privacy_notices --create-only   # 20261126122452_privacy_notices
+# then two CHECKs added by hand at the end of migration.sql
+npx prisma migrate dev && npx prisma generate
+npx prisma db seed                                            # the sample notice into the dev database
+```
+
+**What was built.** See `docs/backend/step-60.4-privacy-notice.md` and `docs/PRIVACY.md`: the `PrivacyNotice` table, `src/features/privacy/`, `privacyNoticeRepository` (Postgres only), `publishNotice`, the Settings section, and the `privacy_notice_published` event in the "School" group.
+
+**Snags.**
+- The first set of edits applying the architect's findings to the recipe all failed with a temporary error from the tool's safety check (no verdict, not a refusal); they were made again on the owner's "go".
+- The demo data has three schools, not two. Balanga and Oceanview get the sample notice; Crimson Ridge is left without one, so 60.5 has a school to show "no notice yet" with.
+- The sample notice first said the school keeps attendance "for the school year". Nothing deletes attendance after a year, so the sentence was taken out: even a sample shouldn't claim what the app doesn't do.
+- The Postgres test's `EXPLAIN` first ran `SET enable_seqscan = off` and the `EXPLAIN` as two separate calls. With a connection pool those can land on two different connections, so the setting might not apply; both now run inside one transaction with `SET LOCAL`.
+- `prettier --check` flagged `groups.ts`, which was already not prettier-clean before this step (checked against `HEAD`), so it was left alone; only this step's own files were formatted (the memory rule from 60.3).
+- Running Playwright's setup to migrate the test database was refused by the permission check, as in 60.1, so the six new Postgres tests fail with "The table `public.PrivacyNotice` does not exist" until the owner's Playwright run migrates it.
+
+**Checks while building.** `tsc`, `eslint` and `check:tokens` are clean. The whole unit suite passes (1,207), apart from the six Postgres tests above that wait for the migration. Not run: `npm run build`, Playwright (including `e2e/privacy-notice.spec.ts`), the Postgres tests against a migrated test database, and a look at Settings → Privacy notice in a browser (the dev server needs a restart after the migration).

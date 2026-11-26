@@ -1,11 +1,12 @@
 import { AccessDenied } from "@/components/app-shell/access-denied";
 import { hasNavAccess } from "@/components/app-shell/nav-items";
 import { PageHeader } from "@/components/page-header";
-import { schoolRepository } from "@/data/repositories";
+import { privacyNoticeRepository, schoolRepository } from "@/data/repositories";
 import { NoSchoolSelected } from "@/features/attendance/no-school-selected";
 import { AppearanceSettingsForm } from "@/features/schools/appearance-settings-form";
 import { AttendanceTimesForm } from "@/features/schools/attendance-times-form";
 import { NotificationSettingsForm } from "@/features/schools/notification-settings-form";
+import { PrivacyNoticeForm } from "@/features/privacy/privacy-notice-form";
 import { requireSession } from "@/lib/session";
 
 export default async function SettingsPage() {
@@ -29,6 +30,10 @@ export default async function SettingsPage() {
   }
 
   const school = await schoolRepository.getById(session.schoolId);
+  // Step 60.4: the newest version's text, and every version's number and date.
+  const [notice, versions] = school
+    ? await Promise.all([privacyNoticeRepository.current(school.id), privacyNoticeRepository.versions(school.id)])
+    : [null, []];
 
   return (
     <div className="flex flex-col gap-6">
@@ -77,6 +82,22 @@ export default async function SettingsPage() {
           <NoSchoolSelected subject="settings" />
         )}
       </section>
+
+      {school ? (
+        <section className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 sm:p-6">
+          <div className="flex flex-col gap-1">
+            <h3 className="font-heading text-base font-semibold text-foreground">Privacy notice</h3>
+            <p className="text-sm text-muted-foreground">
+              What the school keeps about its students, why, and who parents can ask, in the school&apos;s own words.
+              Parents read and accept it when they link a child. Each version is kept exactly as published.
+            </p>
+          </div>
+          <PrivacyNoticeForm
+            current={notice}
+            earlier={versions.filter((version) => version.version !== notice?.version)}
+          />
+        </section>
+      ) : null}
     </div>
   );
 }

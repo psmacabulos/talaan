@@ -168,7 +168,7 @@ Errors only reach `heroku logs`, which nobody reads at 7 AM. If the tap address 
 
 Already on the plan's later list: consent records, export and delete per school, and an audit log of who changed what. One more piece belongs here: a parent deleting their own account from the app, which both app stores require before publishing an app that creates accounts. Schools will ask how Talaan handles students' data under the Data Privacy Act. This step is the technical half. The wording of a privacy notice comes from the school; this page isn't legal advice.
 
-**Split on 2026-11-23:** 60.1 the activity log (`docs/AUDIT-LOG.md`), 60.2 a parent deletes their own account, 60.3 export and delete one student, 60.4 the privacy notice and consent, 60.5 export and delete a whole school.
+**Split on 2026-11-23:** 60.1 the activity log (`docs/AUDIT-LOG.md`), 60.2 a parent deletes their own account, 60.3 export and delete one student, 60.4 the privacy notice and consent, 60.5 export and delete a whole school. **Split again on 2026-11-24:** 60.4 the school's privacy notice, 60.5 a parent's consent to it, 60.6 export and delete a whole school.
 
 ## 2. The parent app
 

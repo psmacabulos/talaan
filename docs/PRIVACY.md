@@ -7,8 +7,9 @@ Step 60 answers the question a school will ask under the Data Privacy Act: "what
 | The activity log of who changed what | 60.1 | built |
 | A parent deletes their own account | 60.2 | built (below) |
 | Export and delete one student | 60.3 | built (below) |
-| Privacy notice and consent | 60.4 | not built |
-| Export and delete a whole school | 60.5 | not built |
+| A school's privacy notice | 60.4 | built (below) |
+| A parent's consent to it | 60.5 | not built |
+| Export and delete a whole school | 60.6 | not built |
 
 ## A parent deletes their own account (Step 60.2)
 
@@ -93,8 +94,36 @@ flowchart TB
 - **Not soft delete.** A flag would still keep the data, the opposite of the request.
 - **The events stay.** They hold a random id and field names, no personal data, and are the school's evidence of who deleted what.
 
+## A school's privacy notice (Step 60.4)
+
+Settings → **Privacy notice**, for a principal, or a super admin who has opened the school. The wording is the school's own; Bantay Aral only keeps and shows it. Under the Data Privacy Act the school decides what it keeps about its students, so the notice is its statement, not ours, and this page is not legal advice.
+
+```mermaid
+flowchart LR
+    F["Settings form: the text, and the version it was editing"] --> S["publishNotice: principal or super admin with the school open; 200 to 20,000 characters; not the same text"]
+    S --> T["One transaction"]
+    T --> N["check the newest version is still the one edited"]
+    N --> I["insert version N+1"]
+    I --> E["write 'privacy_notice_published' (who, no details)"]
+```
+
+| Kept | For how long |
+|---|---|
+| every published version's text, number and date (`PrivacyNotice`) | until the school is deleted (60.6). A version is never edited or removed: a correction is a new version, so the exact text a parent accepted (60.5) can always be shown. |
+| who published each version (the Activity log) | two years, like every event (`AUDIT_RETENTION_MS`) |
+
+- **A super admin can publish for a busy principal** (the owner's decision, 2026-11-26). The draft and the principal's approval happen outside the app; the super admin opens the school and publishes the approved text. Activity then shows "Super admin published a new privacy notice". Keep the principal's written approval: it is the school's proof that the wording is theirs.
+- **Plain text only**, paragraphs separated by a blank line. React shows it as text, so nothing in it can run in a reader's browser.
+- **Two people publishing at once:** the second is told someone published meanwhile, and keeps their text. The unique `(schoolId, version)` makes a skipped or repeated version impossible.
+- **The demo data** gives Balanga and Oceanview a clearly marked sample (version 1); Crimson Ridge has none. The live site's demo data was loaded once, at the first deploy, so the real pilot school starts with no notice until its principal publishes one.
+- Nothing a parent sees changes yet. Step 60.5 asks each parent to accept the current version.
+
 ## Quick recipes
 
 **See what a deleted parent left in the database:** nothing of theirs, by design. `select * from "AuditEvent" where action = 'parent_account_deleted'` shows only the child's id and the school.
 
 **Delete a parent's account by hand (support):** there is no tool, on purpose: the parent does it themselves with their password. If they've lost it, they reset it first (Step 55.6), then delete.
+
+**See a school's notice versions:** `select version, "publishedAt", char_length(body) from "PrivacyNotice" where "schoolId" = '<school id>' order by version desc;`. Who published each is in Activity → School.
+
+**Fix a typo in a published notice:** publish it again with the correction (a new version). A version can't be edited, on purpose; in 60.5 every parent is asked to accept the new one.

@@ -40,6 +40,7 @@ model School {
   linkAttempts       LinkAttempt[]
   linkBlocks         LinkBlock[]
   auditEvents        AuditEvent[]
+  privacyNotices     PrivacyNotice[]
 }
 
 enum Role {
@@ -483,6 +484,7 @@ enum AuditAction {
   time_out_recorded
   attendance_times_changed
   school_opened
+  privacy_notice_published
 }
 
 enum AuditTarget {
@@ -494,7 +496,7 @@ enum AuditTarget {
 model AuditEvent {
   id         String      @id @default(uuid())
   schoolId   String
-  // Cascade, unlike most relations here: deleting a whole school (Step 60.5)
+  // Cascade, unlike most relations here: deleting a whole school (Step 60.6)
   // takes its log with it. That deletion is recorded in the server log
   // instead, with the school's id and no names.
   school     School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -514,4 +516,24 @@ model AuditEvent {
   @@index([schoolId, createdAt(sort: Desc), id(sort: Desc)])
   // The retention cleanup deletes across schools by age alone.
   @@index([createdAt])
+}
+
+// A school's privacy notice (Step 60.4), in the school's own words. A
+// published version is never changed: publishing again adds the next one,
+// so the exact text a parent accepted (Step 60.5) can always be shown. Who
+// published it is in the Activity log, written in the same transaction.
+// The migration also adds two CHECKs Prisma can't declare: version >= 1,
+// and a body of at most 20,000 characters.
+model PrivacyNotice {
+  id          String   @id @default(uuid())
+  schoolId    String
+  // Cascade: goes with a deleted school (Step 60.6), like its Activity log.
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  version     Int
+  // Plain text, paragraphs separated by a blank line. 200 to 20,000 characters.
+  body        String
+  publishedAt DateTime @default(now())
+
+  // One row per version; also "this school's newest version" (ORDER BY version DESC LIMIT 1).
+  @@unique([schoolId, version])
 }

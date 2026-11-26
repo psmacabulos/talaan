@@ -21,6 +21,18 @@ import { toStaffData } from "@/data/repositories/prisma-staff-repository";
 import { toStudentData } from "@/data/repositories/prisma-student-repository";
 import { toTapData } from "@/data/repositories/prisma-tap-repository";
 
+/** The demo schools that start with a published privacy notice (Step 60.4). */
+const DEMO_NOTICE_SCHOOLS = ["school-balanga", "school-oceanview"];
+
+/** Clearly a sample, so no one mistakes it for a real school's notice. */
+const SAMPLE_PRIVACY_NOTICE = `Sample notice for the demo. Your school writes its own.
+
+This school keeps each student's name, birth date, LRN, grade and section, a guardian's name and mobile number, a photo for the gate's screen, and the times their ID card is tapped at the gate. We use them to record attendance and to tell parents when their child arrives and leaves.
+
+Only the school's principal and staff can see a student's records. A teacher sees their own advisory class. We delete a student's records when a guardian asks.
+
+To see what we keep about your child, or to ask us to correct or delete it, contact the principal's office.`;
+
 /**
  * Copies Phase 1's demo data into the database, keeping the same readable
  * ids ("school-balanga", "student-0001", ...) that the demo logins, the
@@ -42,6 +54,16 @@ export async function insertDemoData(db: PrismaClient) {
       create: { id: school.id, ...toSchoolData(school) },
     });
   }
+
+  // Step 60.4: sample wording for two demo schools; Crimson Ridge has none,
+  // so a school without a notice can be seen too. Never run this against a
+  // live school: the live site's demo data was loaded once, at the first
+  // deploy. Even then, skipDuplicates leaves a school's own version 1 alone
+  // instead of adding this sample over it.
+  await db.privacyNotice.createMany({
+    data: DEMO_NOTICE_SCHOOLS.map((schoolId) => ({ schoolId, version: 1, body: SAMPLE_PRIVACY_NOTICE })),
+    skipDuplicates: true,
+  });
 
   // Every active demo staff account signs in with the demo password
   // (SEED_STAFF_PASSWORD). An invited one has none until Step 50.5's link.

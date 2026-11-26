@@ -11,7 +11,7 @@ export const AUDIT_GROUPS = [
     label: "Attendance",
     actions: ["time_in_recorded", "time_out_recorded", "attendance_times_changed"],
   },
-  { id: "school", label: "School", actions: ["school_opened"] },
+  { id: "school", label: "School", actions: ["school_opened", "privacy_notice_published"] },
 ] as const satisfies readonly { id: string; label: string; actions: readonly AuditAction[] }[];
 
 export type AuditGroupId = (typeof AUDIT_GROUPS)[number]["id"];

@@ -35,6 +35,7 @@ const VERB: Record<AuditAction, string> = {
   time_out_recorded: "recorded a time out for",
   attendance_times_changed: "changed the attendance times",
   school_opened: "opened the school",
+  privacy_notice_published: "published a new privacy notice",
 };
 
 const ROLE_LABEL: Record<Role, string> = {

@@ -22,6 +22,7 @@ export const AUDIT_ACTIONS = [
   "time_out_recorded",
   "attendance_times_changed",
   "school_opened",
+  "privacy_notice_published",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

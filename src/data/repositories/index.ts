@@ -46,3 +46,5 @@ export { type AuditRepository, type NewAuditEvent } from "./audit-repository";
 export { auditRepository, createPrismaAuditRepository } from "./prisma-audit-repository";
 export { type StudentDataRepository } from "./student-data-repository";
 export { studentDataRepository, createPrismaStudentDataRepository } from "./prisma-student-data-repository";
+export { type PrivacyNoticeRepository, type PublishNoticeOutcome } from "./privacy-notice-repository";
+export { privacyNoticeRepository, createPrismaPrivacyNoticeRepository } from "./prisma-privacy-notice-repository";
